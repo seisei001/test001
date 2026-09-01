@@ -1,25 +1,24 @@
 # シンプルWebアプリ (app.py)
 
-Pythonの標準ライブラリ(`http.server`)のみで動く、外部フレームワーク不要の単一ファイルWebアプリです。
-
-## ローカルで動かす
-
-```bash
-python3 app.py
-```
-
-デフォルトで `http://localhost:8000` で起動します。ポートを変えたい場合は `PORT` 環境変数を指定してください。
-
-```bash
-PORT=8080 python3 app.py
-```
+Pythonの標準ライブラリ(`http.server`)のみで動く、外部フレームワーク不要の単一ファイルWebアプリです。**ターミナル操作なし、iPhoneのブラウザだけ**で動作確認から公開まで完結します。
 
 - `/` : 現在時刻・稼働時間・アクセス回数などを表示するHTMLページ
 - `/health` : ヘルスチェック用JSON(`{"status": "ok"}`)
 - `/api/time` : 現在時刻のJSON
 - `/api/hello?name=Claude` : 簡単な挨拶JSON
 
-## Renderで自動公開する
+## iPhoneのSafariでGitHub Codespacesを使って動作確認する(タップ操作のみ)
+
+1. Safariで `https://github.com/seisei001/test001` を開く(デスクトップ用Webサイト表示にしておくと操作しやすい)
+2. ブランチを `claude/url-link-homepage-i7jbdz` に切り替える
+3. 緑色の **Code** ボタン → **Codespaces** タブ → **Create codespace on claude/url-link-homepage-i7jbdz** をタップ
+4. 数十秒〜数分待つ(環境が自動的に構築される)。ブラウザ上にVS Codeの画面が開く
+5. `.devcontainer/devcontainer.json` の設定により、起動と同時にアプリが自動で立ち上がり、ポート8000のプレビューが**自動的に新しいタブで開く**(ターミナルを開いたりコマンドを打つ操作は不要)
+6. もし自動で開かない場合は、画面下の **PORTS** タブに8000番が表示されているので、そこの「地球儀アイコン(Open in Browser)」をタップする
+
+コードを直接ブラウザ上で編集した場合も、画面左側の **Source Control(分岐アイコン)** パネルから、変更にメッセージを入力して **Commit** → **Sync Changes** をタップするだけでGitHubに反映できます(`git`コマンドの入力は不要)。
+
+## Renderで無料公開する(タップ操作のみ)
 
 このリポジトリ直下の `render.yaml` を使うと、Render側の細かい手動設定なしにデプロイできます。
 
