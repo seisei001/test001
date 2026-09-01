@@ -94,5 +94,5 @@ app.get('/api/fetch', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`URL Link Content Viewer running at http://localhost:${PORT}`);
+  console.log(`URLリンク内容ビューアを起動しました: http://localhost:${PORT}`);
 });
