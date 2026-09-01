@@ -68,10 +68,77 @@
     navStatus.textContent = message;
   }
 
+  // ローカルでNode.jsサーバー(server.js)を起動している場合は /api/fetch を使う。
+  // GitHub Pagesなどサーバーが無い環境では公開のCORSプロキシ経由で取得する。
+  async function fetchViaBackend(url) {
+    const res = await fetch(`/api/fetch?url=${encodeURIComponent(url)}`);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('バックエンドAPIが見つかりません');
+    }
+    return res.json();
+  }
+
+  function stripHtml(html, url) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, style, noscript, iframe, svg, template').forEach((el) => el.remove());
+    const title = (doc.querySelector('title')?.textContent || '').trim() || url;
+
+    const blockTags = new Set([
+      'P', 'DIV', 'BR', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+      'TR', 'BLOCKQUOTE', 'SECTION', 'ARTICLE', 'PRE', 'UL', 'OL', 'TABLE'
+    ]);
+    const parts = [];
+    function walk(node) {
+      node.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const t = child.textContent.replace(/\s+/g, ' ').trim();
+          if (t) parts.push(t);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          walk(child);
+          if (blockTags.has(child.tagName)) parts.push('\n');
+        }
+      });
+    }
+    if (doc.body) walk(doc.body);
+
+    const text = parts
+      .join(' ')
+      .replace(/ ?\n ?/g, '\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return { url, title, text };
+  }
+
+  const CORS_PROXIES = [
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
+  ];
+
+  async function fetchViaProxy(url) {
+    for (const buildProxyUrl of CORS_PROXIES) {
+      try {
+        const res = await fetch(buildProxyUrl(url), { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) continue;
+        const html = await res.text();
+        return stripHtml(html, url);
+      } catch {
+        // このプロキシが失敗したら次を試す
+      }
+    }
+    return { url, error: '取得に失敗しました(外部プロキシ経由でも取得できませんでした)' };
+  }
+
   async function fetchUrlContent(url) {
     if (fetchCache.has(url)) return fetchCache.get(url);
-    const res = await fetch(`/api/fetch?url=${encodeURIComponent(url)}`);
-    const data = await res.json();
+    let data;
+    try {
+      data = await fetchViaBackend(url);
+    } catch {
+      data = await fetchViaProxy(url);
+    }
     fetchCache.set(url, data);
     return data;
   }

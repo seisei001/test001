@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const FETCH_TIMEOUT_MS = 15000;
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'docs')));
 
 // ページ本文を改行を保ったまま抽出する
 function extractText($) {

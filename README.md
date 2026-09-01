@@ -29,8 +29,23 @@ URLを改行区切りで入力(またはテキストファイルから読み込�
 
 6. 表示された本文は自由に編集でき、必要な部分だけ残してから「内容を保管」を押せば、その内容だけがダウンロードされる
 
+## GitHub Pagesで公開してiPhoneのSafariから見る
+
+GitHub Pagesは静的ファイルしか配信できずNode.jsサーバーは動かせないため、`docs/app.js`はサーバーが無い環境では自動的に公開のCORSプロキシ(`allorigins.win`など)経由でページを取得するようになっています。以下の手順で公開できます。
+
+1. GitHubのリポジトリページで **Settings → Pages** を開く
+2. 「Build and deployment」の **Source** を `Deploy from a branch` にする
+3. **Branch** で公開したいブランチ(例: `claude/url-link-homepage-i7jbdz`)を選び、フォルダは **`/docs`** を選択して **Save**
+4. 数分待つと `https://<ユーザー名>.github.io/<リポジトリ名>/`(例: `https://seisei001.github.io/test001/`)で公開される
+5. iPhoneのSafariでそのURLを開けば利用できる。ホーム画面に追加すればアプリのように起動できる(共有ボタン → 「ホーム画面に追加」)
+
+この設定はリポジトリの管理者権限が必要な操作のため、上記はGitHub上で手動で行ってください。
+
+**注意**: 公開のCORSプロキシは無料・非公式のサービスで、混雑時に失敗したりレート制限にかかることがあります。安定して使いたい場合は、`server.js`を自分のサーバー(Renderなど)にホストし、`docs/app.js`のフェッチ先をそのURLに変更する方法もあります。
+
 ## 仕組み
 
-- ブラウザから直接他サイトを`fetch`するとCORSで失敗することが多いため、サーバー側(`/api/fetch`)で対象URLを取得し、`cheerio`でHTMLから本文テキストを抽出してからブラウザに返しています。
+- ローカルで`npm start`した場合は、サーバー側(`/api/fetch`)で対象URLを取得し、`cheerio`でHTMLから本文テキストを抽出してからブラウザに返します(CORSに引っかからない)。
+- GitHub Pagesなどサーバーが無い環境では、`/api/fetch`が使えないことを検知して自動的に公開のCORSプロキシ経由で取得し、ブラウザ内(`DOMParser`)で同じロジックの本文抽出を行います。
 - 読み込んだURLリストと現在位置は`localStorage`に保存されるため、ページを再読み込みしても続きから再開できます。
 - `viewport-fit=cover`やApple向けのWeb Appメタタグ、44px以上のタップ領域などを設定し、iPhoneのSafariでも操作しやすいようにしています。
