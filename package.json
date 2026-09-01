@@ -1,0 +1,14 @@
+{
+  "name": "url-link-content-viewer",
+  "version": "1.0.0",
+  "description": "テキストファイルに記載されたURLを順番に開き、必要な内容を選んでダウンロードするWebアプリ",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.19.2"
+  }
+}
