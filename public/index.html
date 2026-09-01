@@ -2,64 +2,52 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="URLビューア">
 <title>URLリンク内容ビューア</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="app-header">
   <h1>URLリンク内容ビューア</h1>
-  <p class="subtitle">URLが書かれたテキストファイルを読み込み、1件ずつ内容を確認して必要な部分を保存し、まとめてダウンロードできます。</p>
+  <p class="subtitle">URLを改行区切りで入力すると、1行目から順番にページ内容を表示します。</p>
 </header>
 
 <main>
   <section class="panel" id="load-panel">
-    <h2>1. URLリストを読み込む</h2>
+    <h2>URLを入力</h2>
+    <textarea id="url-textarea" rows="6" placeholder="https://example.com&#10;https://example.org&#10;..."></textarea>
     <div class="load-row">
       <label class="file-label">
-        テキストファイルを選択(1行に1URL)
+        テキストファイルから読み込む
         <input type="file" id="file-input" accept=".txt,text/plain">
       </label>
-      <span class="or">または</span>
-      <button id="paste-toggle" type="button" class="secondary">直接貼り付け</button>
-    </div>
-    <textarea id="url-textarea" placeholder="https://example.com&#10;https://example.org&#10;..." hidden></textarea>
-    <div class="load-row">
       <button id="start-btn" type="button">読み込み開始</button>
-      <span id="load-status" class="status"></span>
     </div>
+    <p id="load-status" class="status"></p>
   </section>
 
   <section class="panel" id="view-panel" hidden>
-    <h2>2. 内容を確認して必要な部分を保存</h2>
-    <div class="nav-row">
-      <button id="prev-btn" type="button">← 前へ</button>
-      <span id="progress" class="progress"></span>
-      <button id="next-btn" type="button">次へ →</button>
-      <button id="refetch-btn" type="button" class="secondary">再取得</button>
-    </div>
     <div class="current-url-row">
+      <span id="progress" class="progress"></span>
       <a id="current-url" href="#" target="_blank" rel="noopener noreferrer"></a>
     </div>
-    <div id="fetch-status" class="status"></div>
     <h3 id="current-title"></h3>
-    <p class="hint">下のテキストは自動抽出した本文です。必要な部分だけ残すよう自由に編集してから「リストに追加」を押してください。</p>
-    <textarea id="content-editor" rows="14"></textarea>
-    <div class="load-row">
-      <button id="add-btn" type="button">この内容をリストに追加</button>
-      <button id="copy-btn" type="button" class="secondary">クリップボードにコピー</button>
-      <button id="skip-btn" type="button" class="secondary">追加せず次へ</button>
-    </div>
-  </section>
+    <div id="fetch-status" class="status"></div>
+    <p class="hint">必要な部分だけ残すように自由に編集できます(「内容を保管」でこの内容がダウンロードされます)。</p>
+    <textarea id="content-editor" rows="12"></textarea>
+    <p id="nav-status" class="status error" role="alert"></p>
 
-  <section class="panel" id="collected-panel" hidden>
-    <h2>3. 保存済みの内容</h2>
-    <div id="collected-list" class="collected-list"></div>
-    <div class="load-row">
-      <button id="download-btn" type="button">まとめてダウンロード</button>
-      <button id="clear-all-btn" type="button" class="danger">全てクリア</button>
-      <span id="collected-count" class="status"></span>
-    </div>
+    <nav class="menu-bar" aria-label="操作メニュー">
+      <button id="next-btn" type="button" class="menu-btn">次</button>
+      <button id="prev-btn" type="button" class="menu-btn">前</button>
+      <button id="store-btn" type="button" class="menu-btn primary">内容を保管</button>
+      <button id="finish-btn" type="button" class="menu-btn danger">終了</button>
+    </nav>
   </section>
 </main>
 
