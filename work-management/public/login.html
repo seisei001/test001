@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkMap - ログイン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@700;900&family=Noto+Sans+JP:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><path d="M12 7.4V12M12 12L6.4 17M12 12l5.6 5"/></svg></div>
+      <div class="brand-name">WorkMap</div>
+    </div>
+    <h1>ワークスペースにログイン</h1>
+    <p>表示名とパスワードを入力してください</p>
+    <form id="login-form">
+      <div class="field">
+        <label>表示名</label>
+        <input type="text" id="name" placeholder="例: 田中" required>
+      </div>
+      <div class="field">
+        <label>パスワード</label>
+        <input type="password" id="password" placeholder="パスワード" required>
+      </div>
+      <div class="error-text" id="error"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">ログイン</button>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value;
+  const password = document.getElementById('password').value;
+  const errorEl = document.getElementById('error');
+  errorEl.textContent = '';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password })
+    });
+    if (!res.ok) {
+      errorEl.textContent = 'パスワードが違います';
+      return;
+    }
+    const data = await res.json();
+    localStorage.setItem('wm_token', data.token);
+    localStorage.setItem('wm_name', data.name);
+    window.location.href = 'index.html';
+  } catch (err) {
+    errorEl.textContent = '通信エラーが発生しました';
+  }
+});
+</script>
+</body>
+</html>

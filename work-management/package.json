@@ -1,0 +1,13 @@
+{
+  "name": "work-management",
+  "version": "1.0.0",
+  "description": "タスク分解ツリーとタイムライン(ガントチャート)で進める軽量ワーク管理ツール",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

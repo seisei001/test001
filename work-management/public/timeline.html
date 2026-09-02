@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkMap - タイムライン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">プロジェクト &nbsp;/&nbsp; <b id="crumb-name">-</b></div>
+      <div class="tabs" id="tabs-root"></div>
+      <div class="top-actions" id="top-actions"></div>
+    </div>
+    <div class="page-header" id="page-header"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--success-text);"></span>完了</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>進行中</div>
+      <div class="legend-item"><span class="legend-dot" style="background:transparent;border:1.5px dashed var(--faint);"></span>未着手</div>
+      <div class="legend-item">🔒 ブロック中(先行タスク完了待ち)</div>
+      <div class="legend-item"><span class="legend-line"></span>依存関係</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--accent);"></span>本日</div>
+    </div>
+    <div class="gantt-scroll" id="gantt-root"></div>
+  </div>
+</div>
+<div id="modal-root"></div>
+<script src="app.js"></script>
+<script src="timeline.js"></script>
+</body>
+</html>
