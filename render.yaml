@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: workmap
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: work-management
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: WM_PASSWORD
+        sync: false
