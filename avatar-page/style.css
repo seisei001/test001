@@ -1,0 +1,152 @@
+:root {
+  --grass-height: 22vh;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  overflow-x: hidden;
+  background: #bdeaff;
+}
+
+.scene {
+  position: relative;
+  width: 100%;
+  height: 82vh;
+  overflow: hidden;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#6ec6ff 0%, #bdeaff 70%, #eaffea 100%);
+}
+
+.sun {
+  position: absolute;
+  top: 6%;
+  right: 8%;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #ffe066;
+  box-shadow: 0 0 40px 15px rgba(255, 224, 102, 0.7);
+}
+
+.grass {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--grass-height);
+  background: radial-gradient(circle at 20% 0%, #7ed957 0 40%, transparent 41%),
+              radial-gradient(circle at 60% 0%, #7ed957 0 40%, transparent 41%),
+              linear-gradient(#8de65c, #4caf3d);
+  background-size: 60px 40px, 60px 40px, 100% 100%;
+}
+
+.avatar {
+  position: absolute;
+  bottom: calc(var(--grass-height) - 6px);
+  left: 40%;
+  width: 140px;
+  height: 140px;
+  transform-origin: bottom center;
+  transition: left 1.4s ease-in-out;
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.25));
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-emoji {
+  display: none;
+  font-size: 110px;
+  line-height: 1;
+}
+
+.avatar.img-failed .avatar-emoji {
+  display: block;
+}
+
+.avatar.walking {
+  animation: bob 0.4s ease-in-out infinite;
+}
+
+.avatar.facing-left {
+  transform: scaleX(-1);
+}
+
+.avatar.jumping {
+  animation: jump 0.5s ease-out;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.avatar.facing-left.walking {
+  animation: bob-left 0.4s ease-in-out infinite;
+}
+
+@keyframes bob-left {
+  0%, 100% { transform: scaleX(-1) translateY(0); }
+  50% { transform: scaleX(-1) translateY(-10px); }
+}
+
+@keyframes jump {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-70px); }
+  100% { transform: translateY(0); }
+}
+
+.flyer {
+  position: absolute;
+  font-size: 28px;
+  will-change: transform;
+  user-select: none;
+  pointer-events: none;
+}
+
+.cloud {
+  position: absolute;
+  font-size: 40px;
+  opacity: 0.9;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.controls button {
+  font-size: 18px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #ff8fab;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #d46080;
+}
+
+.controls button:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.hint {
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  margin: 0 0 12px;
+}

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>草原であそぶ女の子</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="scene" class="scene">
+    <div class="sky">
+      <div class="sun"></div>
+    </div>
+    <div class="grass"></div>
+
+    <div id="avatar" class="avatar">
+      <img id="avatar-img" alt="女性のアバター"
+           src="https://api.dicebear.com/9.x/lorelei/svg?seed=Haruka&backgroundType=transparent&flip=false"
+           onerror="this.style.display='none'; this.parentElement.classList.add('img-failed');">
+      <span class="avatar-emoji" aria-hidden="true">🙆‍♀️</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-left" aria-label="左へ少し移動">◀</button>
+    <button id="btn-jump" aria-label="ジャンプ">ジャンプ</button>
+    <button id="btn-right" aria-label="右へ少し移動">▶</button>
+  </div>
+  <p class="hint">← → キーで少し動かせます / スペースキーでジャンプ。しばらく操作しないと自分で歩き回ります。</p>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
