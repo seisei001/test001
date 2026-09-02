@@ -49,59 +49,34 @@ body {
 
 .avatar {
   position: absolute;
-  bottom: calc(var(--grass-height) - 6px);
+  bottom: calc(var(--grass-height) - 4px);
   left: 40%;
-  width: 140px;
-  height: 140px;
-  transform-origin: bottom center;
+  width: 96px;
+  height: 128px;
   transition: left 1.4s ease-in-out;
-  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.25));
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-emoji {
-  display: none;
-  font-size: 110px;
-  line-height: 1;
-}
-
-.avatar.img-failed .avatar-emoji {
-  display: block;
-}
-
-.avatar.walking {
-  animation: bob 0.4s ease-in-out infinite;
 }
 
 .avatar.facing-left {
   transform: scaleX(-1);
 }
 
-.avatar.jumping {
+/* キャラクター素材: Kenney "Toon Characters 1" の Female adventurer(CC0)のスプライトシート */
+.avatar-sprite {
+  width: 96px;
+  height: 128px;
+  background-image: url('assets/character_femaleAdventurer_sheet.png');
+  background-repeat: no-repeat;
+  background-size: 864px 640px;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.25));
+}
+
+.avatar-sprite.jumping {
   animation: jump 0.5s ease-out;
-}
-
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.avatar.facing-left.walking {
-  animation: bob-left 0.4s ease-in-out infinite;
-}
-
-@keyframes bob-left {
-  0%, 100% { transform: scaleX(-1) translateY(0); }
-  50% { transform: scaleX(-1) translateY(-10px); }
 }
 
 @keyframes jump {
   0% { transform: translateY(0); }
-  40% { transform: translateY(-70px); }
+  40% { transform: translateY(-55px); }
   100% { transform: translateY(0); }
 }
 
@@ -110,14 +85,6 @@ body {
   font-size: 28px;
   will-change: transform;
   user-select: none;
-  pointer-events: none;
-}
-
-.cloud {
-  position: absolute;
-  font-size: 40px;
-  opacity: 0.9;
-  will-change: transform;
   pointer-events: none;
 }
 

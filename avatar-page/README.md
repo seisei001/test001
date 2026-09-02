@@ -12,16 +12,22 @@ npx serve avatar-page
 
 ## 使っている素材とライセンス
 
-- **アバター**: [DiceBear](https://www.dicebear.com/) の `lorelei` スタイル(SVGをAPI経由で取得)。
-  CC0(パブリックドメイン)ライセンスで、商用利用・改変・帰属表示なしで利用可能です。
-  ライセンス一覧: https://www.dicebear.com/licenses/
+- **アバター**: [Kenney](https://kenney.nl/) の「[Toon Characters 1](https://kenney.nl/assets/toon-characters-1)」に収録されている
+  "Female adventurer" のスプライトシート(`assets/character_femaleAdventurer_sheet.png`)をそのまま1枚の画像として使用しています。
+  CC0(パブリックドメイン)ライセンスで、商用利用・改変・帰属表示なしで利用可能です(ライセンス全文: `assets/LICENSE-kenney-toon-characters-1.txt`)。
+  歩行・ジャンプの動きは、この素材にあらかじめ収録されている実際のアニメーションフレーム
+  (`walk0`〜`walk7`の8コマ歩行モーション、`jump`ポーズ)をそのまま切り替えて再生しているだけで、
+  自作の関節モーションなどは使用していません。フレームの座標は `assets/character_femaleAdventurer_sheet.xml`
+  (素材に同梱されているオリジナルのメタデータ)を参照しています。
 - **背景・草・太陽・蝶や鳥・ボール**: すべてCSS/絵文字による自作の表現で、外部素材は使用していません。
 
 ## 構成(モジュール分割)
 
 - `index.html` — ページ構造
-- `style.css` — 見た目・アニメーション定義
-- `js/avatar.js` — アバターの自律移動(歩き回り)とユーザー操作(左右に少し移動・ジャンプ)
+- `style.css` — 見た目・スプライトの表示設定
+- `assets/` — Kenneyのスプライトシート本体・フレーム定義・ライセンス全文
+- `js/avatar.js` — アバターの自律移動(歩き回り)、ユーザー操作(左右に少し移動・ジャンプ)、
+  スプライトシートのフレーム切り替え(歩行/ジャンプ/待機)
 - `js/scene-objects.js` — 蝶・鳥・ボールなど、自律的に動くオブジェクト
 - `js/main.js` — 上記モジュールを組み立てて画面に接続する起点
 
