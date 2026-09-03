@@ -1,0 +1,145 @@
+:root {
+  --grass-height: 22vh;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  overflow-x: hidden;
+  background: #bdeaff;
+}
+
+.scene {
+  position: relative;
+  width: 100%;
+  height: 92vh;
+  overflow: hidden;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#6ec6ff 0%, #bdeaff 70%, #eaffea 100%);
+}
+
+.sun {
+  position: absolute;
+  top: 6%;
+  right: 8%;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #ffe066;
+  box-shadow: 0 0 40px 15px rgba(255, 224, 102, 0.7);
+}
+
+.cloud {
+  position: absolute;
+  width: 100px;
+  height: 36px;
+  background: #fff;
+  border-radius: 999px;
+  opacity: 0.9;
+  filter: drop-shadow(20px 6px 0 #fff) drop-shadow(-20px 4px 0 #fff);
+  animation: drift linear infinite;
+}
+.cloud-a { top: 10%; width: 90px; height: 30px; animation-duration: 60s; }
+.cloud-b { top: 20%; width: 130px; height: 42px; animation-duration: 85s; animation-delay: -20s; }
+.cloud-c { top: 6%; width: 70px; height: 26px; animation-duration: 50s; animation-delay: -10s; }
+
+@keyframes drift {
+  from { transform: translateX(-140px); }
+  to { transform: translateX(calc(100vw + 140px)); }
+}
+
+.grass {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--grass-height);
+  background: radial-gradient(circle at 20% 0%, #7ed957 0 40%, transparent 41%),
+              radial-gradient(circle at 60% 0%, #7ed957 0 40%, transparent 41%),
+              linear-gradient(#8de65c, #4caf3d);
+  background-size: 60px 40px, 60px 40px, 100% 100%;
+}
+
+.avatar {
+  position: absolute;
+  bottom: calc(var(--grass-height) - 4px);
+  left: 40%;
+  width: 96px;
+  height: 128px;
+  transition: left var(--move-duration, 1.4s) ease-in-out;
+}
+
+.avatar.facing-left {
+  transform: scaleX(-1);
+}
+
+.avatar-mood {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.avatar.facing-left .avatar-mood {
+  transform: translateX(-50%) scaleX(-1);
+}
+.avatar-mood.visible {
+  opacity: 1;
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-6px); }
+}
+.avatar.facing-left .avatar-mood.visible {
+  animation-name: bobFlipped;
+}
+@keyframes bobFlipped {
+  0%, 100% { transform: translateX(-50%) scaleX(-1) translateY(0); }
+  50% { transform: translateX(-50%) scaleX(-1) translateY(-6px); }
+}
+
+/* キャラクター素材: Kenney "Toon Characters 1" の Female adventurer(CC0)のスプライトシート */
+.avatar-sprite {
+  width: 96px;
+  height: 128px;
+  background-image: url('assets/character_femaleAdventurer_sheet.png');
+  background-repeat: no-repeat;
+  background-size: 864px 640px;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.25));
+}
+
+.avatar-sprite.jumping {
+  animation: jump 0.5s ease-out;
+}
+
+@keyframes jump {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-55px); }
+  100% { transform: translateY(0); }
+}
+
+.flyer {
+  position: absolute;
+  font-size: 26px;
+  will-change: transform;
+  user-select: none;
+  pointer-events: none;
+}
+
+.hint {
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  margin: 10px 0 0;
+}
