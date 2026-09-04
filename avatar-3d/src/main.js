@@ -13,16 +13,16 @@ const { scene, camera, renderer, controls } = createScene(canvas);
 function createPlaceholder() {
   const group = new THREE.Group();
   const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.28, 0.9, 8, 16),
+    new THREE.CapsuleGeometry(0.17, 0.75, 8, 16),
     new THREE.MeshStandardMaterial({ color: 0xf3b6c9, roughness: 0.6 })
   );
-  body.position.y = 0.95;
+  body.position.y = 0.78;
   body.castShadow = true;
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.2, 24, 24),
+    new THREE.SphereGeometry(0.13, 24, 24),
     new THREE.MeshStandardMaterial({ color: 0xffe1c9, roughness: 0.6 })
   );
-  head.position.y = 1.65;
+  head.position.y = 1.48;
   head.castShadow = true;
   group.add(body, head);
   return group;
@@ -35,10 +35,14 @@ async function loadAvatar() {
   loader.register((parser) => new VRMLoaderPlugin(parser));
 
   try {
-    const headResponse = await fetch(AVATAR_URL, { method: 'HEAD' });
-    if (!headResponse.ok) throw new Error('avatar.vrm not found');
+    const response = await fetch(AVATAR_URL);
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || contentType.includes('text/html')) {
+      throw new Error('avatar.vrm not found (dev server returned no file)');
+    }
+    const buffer = await response.arrayBuffer();
 
-    const gltf = await loader.loadAsync(AVATAR_URL);
+    const gltf = await loader.parseAsync(buffer, '');
     const vrm = gltf.userData.vrm;
     VRMUtils.removeUnnecessaryVertices(gltf.scene);
     VRMUtils.combineSkeletons(gltf.scene);
@@ -61,10 +65,12 @@ async function loadAvatar() {
 
 loadAvatar();
 
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
+timer.connect(document);
 function animate() {
   requestAnimationFrame(animate);
-  const delta = Math.min(0.1, clock.getDelta());
+  timer.update();
+  const delta = Math.min(0.1, timer.getDelta());
   controller?.update(delta);
   controls.update();
   renderer.render(scene, camera);
