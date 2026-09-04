@@ -18,6 +18,27 @@ npm run dev
 `public/models/avatar.vrm` が無い場合はピンク色のプレースホルダーが表示されます。
 配置方法は `public/models/README.md` を参照してください。
 
+## iPhoneなどスマホから見る(GitHub Pages公開)
+
+このアプリ自体はWebGL・タッチ操作に対応しているためiPhoneのSafariでも動作しますが、
+`npm run dev` はこの開発環境内でしか開けないため、外部からアクセスするには公開が必要です。
+
+```bash
+cd avatar-3d
+npm run build
+```
+
+`vite.config.js` の設定により、ビルド結果は `docs/avatar-3d/` に出力されます
+(GitHub Pagesのサブフォルダとして公開する想定)。`avatar.vrm` を配置してからビルドすれば、
+アバター本体も含めて公開されます。
+
+1. GitHubのリポジトリページで **Settings → Pages** を開く
+2. 「Build and deployment」の **Source** を `Deploy from a branch` にする
+3. **Branch** で公開したいブランチ、フォルダは **`/docs`** を選択して **Save**
+4. 数分待つと `https://<ユーザー名>.github.io/<リポジトリ名>/avatar-3d/` で公開される
+
+この設定はリポジトリの管理者権限が必要なため、GitHub上で手動で行ってください。
+
 ## 使用しているアバター素材
 
 **VRoid公式サンプル「AvatarSample_A」**を想定しています。
