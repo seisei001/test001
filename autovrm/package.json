@@ -1,0 +1,17 @@
+{
+  "name": "autovrm",
+  "version": "1.0.0",
+  "description": "自律的に動くVRM女性アバターを表示する、フレームワーク非依存のビューアライブラリ",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "peerDependencies": {
+    "three": "^0.150.0 || ^0.160.0 || ^0.170.0 || ^0.180.0",
+    "@pixiv/three-vrm": "^3.0.0",
+    "@pixiv/three-vrm-animation": "^3.0.0"
+  }
+}
