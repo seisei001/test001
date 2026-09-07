@@ -19,5 +19,12 @@
     "description": "自律的に呼吸・瞬き・仕草・歩行するVRMアバターをただ眺めるページ",
     "path": "apps/avatar/",
     "icon": "🧍‍♀️"
+  },
+  {
+    "id": "workmap",
+    "name": "WorkMap",
+    "description": "タスク分解ツリーとタイムライン(ガントチャート)で進めるワーク管理ツール",
+    "path": "apps/workmap/",
+    "icon": "🗺️"
   }
 ]

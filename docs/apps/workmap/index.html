@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="WorkMap">
+<title>WorkMap</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1>WorkMap</h1>
+<p class="subtitle">タスク分解ツリーとタイムラインでワークを管理します(このブラウザ内に保存)。</p>
+</header>
+
+<main>
+<div class="toolbar">
+  <select id="project-select" aria-label="プロジェクトを選択"></select>
+  <button class="btn btn-ghost" id="new-project-btn">+ 新規プロジェクト</button>
+  <div class="toolbar-spacer"></div>
+  <div class="tabs">
+    <div class="tab" id="tab-tree">タスク分解</div>
+    <div class="tab" id="tab-timeline">タイムライン</div>
+  </div>
+  <div class="month-nav" id="month-nav" style="display:none;align-items:center;gap:8px;font-size:13px;font-weight:700;">
+    <button class="icon-btn" id="prev-month" style="width:36px;height:36px;" aria-label="前の月"></button>
+    <span id="month-label">-</span>
+    <button class="icon-btn" id="next-month" style="width:36px;height:36px;" aria-label="次の月"></button>
+  </div>
+  <div id="notif-wrap" style="position:relative;">
+    <button class="icon-btn" id="bell-btn" aria-label="通知"></button>
+    <div id="notif-panel-host"></div>
+  </div>
+</div>
+
+<div id="page-header" class="page-header"></div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:var(--success-text);"></span>完了</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>進行中</div>
+  <div class="legend-item"><span class="legend-dot" style="background:transparent;border:1.5px dashed var(--faint);"></span>未着手</div>
+  <div class="legend-item">🔒 ブロック中(先行タスク完了待ち)</div>
+</div>
+
+<div id="tree-view"></div>
+<div id="timeline-view"></div>
+</main>
+
+<div id="modal-root"></div>
+
+<footer>データはこの端末のブラウザ内にのみ保存されます(他の端末とは共有されません)。</footer>
+
+<script src="app.js"></script>
+<script>
+  document.getElementById('prev-month').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
+  document.getElementById('next-month').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+</script>
+</body>
+</html>
