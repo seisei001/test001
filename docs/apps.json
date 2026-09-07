@@ -12,5 +12,12 @@
     "description": "URLリストを順番に開いて内容を確認・編集できるビューア",
     "path": "apps/url-viewer/",
     "icon": "🔗"
+  },
+  {
+    "id": "avatar",
+    "name": "VRMアバター",
+    "description": "自律的に呼吸・瞬き・仕草・歩行するVRMアバターをただ眺めるページ",
+    "path": "apps/avatar/",
+    "icon": "🧍‍♀️"
   }
 ]
