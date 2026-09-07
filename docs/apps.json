@@ -1,0 +1,16 @@
+[
+  {
+    "id": "hello",
+    "name": "ひとことメモ",
+    "description": "思いついたことをサッと記録できるシンプルなメモ帳",
+    "path": "apps/hello/",
+    "icon": "📝"
+  },
+  {
+    "id": "url-viewer",
+    "name": "URLリンク内容ビューア",
+    "description": "URLリストを順番に開いて内容を確認・編集できるビューア",
+    "path": "apps/url-viewer/",
+    "icon": "🔗"
+  }
+]
