@@ -85,3 +85,14 @@ URLを改行区切りで入力(またはテキストファイルから読み込�
 - 読み込んだURLリストと現在位置は`localStorage`に保存されるため、ページを再読み込みしても続きから再開できます。
 
 **注意**: 公開のCORSプロキシは無料・非公式のサービスで、混雑時に失敗したりレート制限にかかることがあります。
+
+### 🧍‍♀️ VRMアバター (`apps/avatar/`)
+
+自律的に呼吸・瞬き・仕草・歩行・座る、といった一通りの行動をするVRM女性アバターをただ眺めるページです。操作は視点のドラッグ回転のみ。
+
+- `lib/` — `seisei001/test001` の `resources` ブランチにある `autovrm` ライブラリ本体(three.js製、フレームワーク非依存)
+- `animations/` — 自律行動用のモーション素材一式(出典・ライセンスは `resources` ブランチの `autovrm/README.md` を参照)
+- `models/AvatarSample_A.vrm` — `seisei001/vtubet` から持ち込んだVRoid公式サンプルモデル(商用利用可・クレジット不要。詳細は `models/LICENSE.md`)
+- `three.js` / `@pixiv/three-vrm` 等はビルド不要で使えるよう、`index.html`内のimport mapでCDN(jsdelivr)から読み込んでいる
+
+このアプリの本体である`autovrm`ライブラリは今後も改修していく予定。ライブラリ自体を直す場合は、まず`resources`ブランチ側で直してから、この`apps/avatar/lib/`と`apps/avatar/animations/`に反映すること。
