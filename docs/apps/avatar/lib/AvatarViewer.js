@@ -44,7 +44,9 @@ function createPlaceholder() {
  * ```
  *
  * イベント: 'ready'(アバター読み込み完了) / 'error'(detail: Error) /
- *          'statechange'(detail: 現在の行動状態の文字列)
+ *          'statechange'(detail: 現在の行動状態の文字列。仕草の場合は
+ *          'gesture:animations/vrmviewer/Surprised.vrma' のように
+ *          再生中クリップのmanifest上のパスまで含む)
  */
 export default class AvatarViewer extends EventTarget {
   /**

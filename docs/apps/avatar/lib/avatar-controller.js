@@ -23,6 +23,16 @@ const BLINK_DURATION_S = 0.12;
 
 const CROSSFADE_S = 0.35;
 
+// idleAnimation(既定ではvrmviewer/Relax.vrma)は、冒頭に「伸びをする」演出が
+// 入っており、そのまま毎回頭から再生すると直立へ戻るたびに何度も伸びを繰り返して
+// しまい不自然だった。フレーム単位でクリップを解析し、伸びが収まって姿勢が安定する
+// 地点(30fps中55フレーム目、約39.933秒)を境に「導入(1回だけ)」と「ループ(以降は
+// これだけを繰り返す)」に分割する。この定数はRelax.vrma固有の値で、
+// idleAnimationを差し替えた場合は無効(下記_splitIdleClip参照、失敗時は
+// 分割前の振る舞いにフォールバックする)。
+const IDLE_LOOP_START_FRAME = 55;
+const IDLE_CLIP_FPS = 30;
+
 const DEFAULT_BEHAVIOR_TIMING = {
   minIntervalSeconds: 4,
   maxIntervalSeconds: 9,
@@ -110,7 +120,9 @@ export default class AvatarController {
     this.mixer = new THREE.AnimationMixer(vrm.scene);
     this.clips = new Map();
     this.actionClipNames = [];
-    this.idleAction = null;
+    this.actionClipPaths = new Map(); // 内部名(action0等) -> manifest上のパス(デバッグ・識別用)
+    this.idleAction = null; // 導入(伸び等)を含む、最初の1回だけ再生する部分
+    this.idleLoopAction = null; // 導入の後、以降ずっと繰り返す落ち着いた部分(無ければidleActionを使い回す)
     this.walkStartAction = null;
     this.walkLoopAction = null;
     this.walkStopAction = null;
@@ -120,8 +132,8 @@ export default class AvatarController {
     this.animationsReady = false;
     this.onReady = options.onReady ?? null;
 
-    // 状態機械: 'idle' | 'gesture' | 'walk-start' | 'walk-loop' | 'walk-stop'
-    //          | 'run' | 'seq-enter:<id>' | 'seq-loop:<id>' | 'seq-exit:<id>'
+    // 状態機械: 'idle' | 'gesture:<manifest上のクリップパス>' | 'walk-start' | 'walk-loop'
+    //          | 'walk-stop' | 'run' | 'seq-enter:<id>' | 'seq-loop:<id>' | 'seq-exit:<id>'
     this.state = 'idle';
     this.phaseTimer = 0; // 現在のワンショット/ループ区間の残り時間
     this.nextBehaviorTimer = 2 + Math.random() * 2;
@@ -172,8 +184,22 @@ export default class AvatarController {
         this.clips.set(name, clip);
 
         if (name === 'idle' && !this.idleAction) {
-          this.idleAction = this.mixer.clipAction(clip);
-          this.idleAction.setLoop(THREE.LoopRepeat, Infinity);
+          const { introClip, loopClip } = this._splitIdleClip(clip);
+          this.idleAction = this.mixer.clipAction(introClip);
+          this.idleLoopAction = loopClip ? this.mixer.clipAction(loopClip) : this.idleAction;
+          if (loopClip) {
+            this.idleLoopAction.setLoop(THREE.LoopRepeat, Infinity);
+            // 導入(伸び等)は起動直後の1回だけ。終わったら落ち着いたループへ。
+            this.idleAction.setLoop(THREE.LoopOnce, 1);
+            this.idleAction.clampWhenFinished = true;
+            this.mixer.addEventListener('finished', (e) => {
+              if (e.action === this.idleAction && this.state === 'idle') {
+                this._crossfadeTo(this.idleLoopAction, true);
+              }
+            });
+          } else {
+            this.idleLoopAction.setLoop(THREE.LoopRepeat, Infinity);
+          }
           this.idleAction.play();
           this.currentAction = this.idleAction;
           this.animationsReady = true;
@@ -191,6 +217,7 @@ export default class AvatarController {
           this.runAction.timeScale = this.walkConfig.runTimeScale;
         } else if (name.startsWith('action')) {
           this.actionClipNames.push(name);
+          this.actionClipPaths.set(name, path);
         } else if (name.startsWith('seqEnter:') || name.startsWith('seqLoop:') || name.startsWith('seqExit:')) {
           const [kind, id] = name.split(':');
           const config = (m.poseSequences ?? []).find((s) => s.id === id);
@@ -221,6 +248,25 @@ export default class AvatarController {
   _randomBehaviorInterval() {
     const { minIntervalSeconds, maxIntervalSeconds } = this.behaviorTiming;
     return minIntervalSeconds + Math.random() * (maxIntervalSeconds - minIntervalSeconds);
+  }
+
+  // idleAnimationを「導入(1回だけ)」と「ループ(以降繰り返す)」に分割する。
+  // IDLE_LOOP_START_FRAMEはRelax.vrma向けに解析済みの値なので、他のクリップに
+  // 差し替えた場合や、クリップがその長さより短い場合は分割せず全体をそのまま
+  // ループに使う(導入なし)。
+  _splitIdleClip(clip) {
+    const totalFrames = Math.round(clip.duration * IDLE_CLIP_FPS);
+    if (totalFrames <= IDLE_LOOP_START_FRAME + 1) {
+      return { introClip: clip, loopClip: null };
+    }
+    try {
+      const introClip = THREE.AnimationUtils.subclip(clip, `${clip.name}-intro`, 0, IDLE_LOOP_START_FRAME, IDLE_CLIP_FPS);
+      const loopClip = THREE.AnimationUtils.subclip(clip, `${clip.name}-loop`, IDLE_LOOP_START_FRAME, totalFrames, IDLE_CLIP_FPS);
+      return { introClip, loopClip };
+    } catch (err) {
+      console.warn('idleAnimationの分割に失敗、通常ループにフォールバック', err);
+      return { introClip: clip, loopClip: null };
+    }
   }
 
   _applyOffset(bone, base, eulerX, eulerY, eulerZ) {
@@ -265,7 +311,9 @@ export default class AvatarController {
       const clip = this.clips.get(name);
       const action = this.mixer.clipAction(clip);
       this._crossfadeTo(action, false);
-      this.state = 'gesture';
+      // クリップの由来パスをstateに含める(デバッグ・行動分析用。
+      // 例: 'gesture:animations/vrmviewer/Surprised.vrma')
+      this.state = `gesture:${this.actionClipPaths.get(name) ?? name}`;
       this.phaseTimer = clip.duration + 0.4;
     } else if (type === 'walk') {
       this._pickNewWalkTarget();
@@ -296,10 +344,10 @@ export default class AvatarController {
       return;
     }
 
-    if (this.state === 'gesture') {
+    if (this.state.startsWith('gesture')) {
       this.phaseTimer -= delta;
       if (this.phaseTimer <= 0) {
-        this._crossfadeTo(this.idleAction, true);
+        this._crossfadeTo(this.idleLoopAction, true);
         this.state = 'idle';
         this.nextBehaviorTimer = this._randomBehaviorInterval();
       }
@@ -327,7 +375,7 @@ export default class AvatarController {
           this.state = 'walk-stop';
           this.phaseTimer = this.walkStopAction.getClip().duration;
         } else {
-          this._crossfadeTo(this.idleAction, true);
+          this._crossfadeTo(this.idleLoopAction, true);
           this.state = 'idle';
           this.nextBehaviorTimer = this._randomBehaviorInterval();
         }
@@ -346,7 +394,7 @@ export default class AvatarController {
     if (this.state === 'walk-stop') {
       this.phaseTimer -= delta;
       if (this.phaseTimer <= 0) {
-        this._crossfadeTo(this.idleAction, true);
+        this._crossfadeTo(this.idleLoopAction, true);
         this.state = 'idle';
         this.nextBehaviorTimer = this._randomBehaviorInterval();
       }
@@ -381,7 +429,7 @@ export default class AvatarController {
     if (this.state.startsWith('seq-exit:')) {
       this.phaseTimer -= delta;
       if (this.phaseTimer <= 0) {
-        this._crossfadeTo(this.idleAction, true);
+        this._crossfadeTo(this.idleLoopAction, true);
         this.state = 'idle';
         this.nextBehaviorTimer = this._randomBehaviorInterval();
       }

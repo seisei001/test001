@@ -38,7 +38,9 @@ export const DEFAULT_ANIMATION_MANIFEST = {
     'animations/desktopwaifu/Joyful_Jump.vrma',
     'animations/desktopwaifu/Spinning.vrma',
     'animations/desktopwaifu/Arm_Stretching.vrma',
-    'animations/desktopwaifu/Stroke_Shaking_Head.vrma',
+    // Stroke_Shaking_Head.vrmaは除外: hipsボーンにクリップ全編を通じて
+    // 誤った約90度の回転が定数で入っており(通常は4〜30度程度)、再生すると
+    // 全身が横倒しになったまま(逆さ吊りのように)表示される壊れたデータだった。
     'animations/desktopwaifu/talking.vrma',
     'animations/desktopwaifu/talking_on_phone.vrma',
     'animations/desktopwaifu/thinking.vrma',
