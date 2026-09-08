@@ -23,15 +23,17 @@ const BLINK_DURATION_S = 0.12;
 
 const CROSSFADE_S = 0.35;
 
-// idleAnimation(既定ではvrmviewer/Relax.vrma)は、冒頭に「伸びをする」演出が
+// vrmviewer/Relax.vrma(以前のidleAnimation)は、冒頭に「伸びをする」演出が
 // 入っており、そのまま毎回頭から再生すると直立へ戻るたびに何度も伸びを繰り返して
 // しまい不自然だった。フレーム単位でクリップを解析し、伸びが収まって姿勢が安定する
-// 地点(30fps中55フレーム目、約39.933秒)を境に「導入(1回だけ)」と「ループ(以降は
-// これだけを繰り返す)」に分割する。この定数はRelax.vrma固有の値で、
-// idleAnimationを差し替えた場合は無効(下記_splitIdleClip参照、失敗時は
-// 分割前の振る舞いにフォールバックする)。
+// 地点(30fps中55フレーム目)を境に「導入(1回だけ)」と「ループ(以降はこれだけを
+// 繰り返す)」に分割する。この定数はRelax.vrma固有の値なので、idleAnimationとして
+// このクリップが使われているときだけ適用する(下記_splitIdleClip参照。それ以外の
+// クリップでは無関係な位置で切ってしまい繋ぎ目が不自然になるため、分割せず
+// そのままループに使う)。
 const IDLE_LOOP_START_FRAME = 55;
 const IDLE_CLIP_FPS = 30;
+const IDLE_SPLIT_TARGET_PATH = 'animations/vrmviewer/Relax.vrma';
 
 const DEFAULT_BEHAVIOR_TIMING = {
   minIntervalSeconds: 4,
@@ -184,7 +186,7 @@ export default class AvatarController {
         this.clips.set(name, clip);
 
         if (name === 'idle' && !this.idleAction) {
-          const { introClip, loopClip } = this._splitIdleClip(clip);
+          const { introClip, loopClip } = this._splitIdleClip(clip, path);
           this.idleAction = this.mixer.clipAction(introClip);
           this.idleLoopAction = loopClip ? this.mixer.clipAction(loopClip) : this.idleAction;
           if (loopClip) {
@@ -251,10 +253,13 @@ export default class AvatarController {
   }
 
   // idleAnimationを「導入(1回だけ)」と「ループ(以降繰り返す)」に分割する。
-  // IDLE_LOOP_START_FRAMEはRelax.vrma向けに解析済みの値なので、他のクリップに
-  // 差し替えた場合や、クリップがその長さより短い場合は分割せず全体をそのまま
-  // ループに使う(導入なし)。
-  _splitIdleClip(clip) {
+  // IDLE_LOOP_START_FRAMEはRelax.vrma向けに解析済みの値なので、idleAnimationが
+  // それ以外のクリップに差し替えられている場合や、クリップがその長さより短い
+  // 場合は分割せず全体をそのままループに使う(導入なし)。
+  _splitIdleClip(clip, path) {
+    if (path !== IDLE_SPLIT_TARGET_PATH) {
+      return { introClip: clip, loopClip: null };
+    }
     const totalFrames = Math.round(clip.duration * IDLE_CLIP_FPS);
     if (totalFrames <= IDLE_LOOP_START_FRAME + 1) {
       return { introClip: clip, loopClip: null };
