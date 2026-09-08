@@ -68,6 +68,21 @@ html, body {
   margin: 8px 0 0;
   padding: 0 12px env(safe-area-inset-bottom, 0px);
 }
+
+.debug-state-label {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-family: monospace;
+  border-radius: 4px;
+  max-width: 90%;
+  word-break: break-all;
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -78,6 +93,7 @@ html, body {
     <p><strong>アバターを読み込めませんでした。</strong></p>
     <p>しばらくしてからもう一度開いてみてください。</p>
   </div>
+  <div id="debug-state-label" class="debug-state-label"></div>
 </div>
 <p class="hint">操作はありません(指でドラッグすると視点を回転できます)。アバターが自律的に呼吸・瞬き・仕草・歩行・座るなどを行う様子をただ眺めるページです。</p>
 
@@ -99,10 +115,19 @@ html, body {
 
   const canvas = document.getElementById('scene-canvas');
   const notice = document.getElementById('missing-avatar-notice');
+  const debugLabel = document.getElementById('debug-state-label');
 
-  const viewer = new AvatarViewer(canvas, { avatarUrl: AVATAR_URL });
+  const viewer = new AvatarViewer(canvas, {
+    avatarUrl: AVATAR_URL,
+    // 待機(idle)の出現をユーザー指示により大幅に短縮し、行動から行動へ
+    // ほぼ連続的に切り替わるようにしている(既定は4〜9秒)。
+    behaviorTiming: { minIntervalSeconds: 0.07, maxIntervalSeconds: 0.13 },
+  });
   viewer.addEventListener('ready', () => { notice.hidden = true; });
   viewer.addEventListener('error', () => { notice.hidden = false; });
+  viewer.addEventListener('statechange', (e) => {
+    if (debugLabel) debugLabel.textContent = e.detail;
+  });
   viewer.start();
 </script>
 </body>
