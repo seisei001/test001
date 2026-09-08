@@ -110,6 +110,7 @@ export default class AvatarController {
     this.mixer = new THREE.AnimationMixer(vrm.scene);
     this.clips = new Map();
     this.actionClipNames = [];
+    this.actionClipPaths = new Map(); // 内部名(action0等) -> manifest上のパス(デバッグ・識別用)
     this.idleAction = null;
     this.walkStartAction = null;
     this.walkLoopAction = null;
@@ -120,8 +121,8 @@ export default class AvatarController {
     this.animationsReady = false;
     this.onReady = options.onReady ?? null;
 
-    // 状態機械: 'idle' | 'gesture' | 'walk-start' | 'walk-loop' | 'walk-stop'
-    //          | 'run' | 'seq-enter:<id>' | 'seq-loop:<id>' | 'seq-exit:<id>'
+    // 状態機械: 'idle' | 'gesture:<manifest上のクリップパス>' | 'walk-start' | 'walk-loop'
+    //          | 'walk-stop' | 'run' | 'seq-enter:<id>' | 'seq-loop:<id>' | 'seq-exit:<id>'
     this.state = 'idle';
     this.phaseTimer = 0; // 現在のワンショット/ループ区間の残り時間
     this.nextBehaviorTimer = 2 + Math.random() * 2;
@@ -191,6 +192,7 @@ export default class AvatarController {
           this.runAction.timeScale = this.walkConfig.runTimeScale;
         } else if (name.startsWith('action')) {
           this.actionClipNames.push(name);
+          this.actionClipPaths.set(name, path);
         } else if (name.startsWith('seqEnter:') || name.startsWith('seqLoop:') || name.startsWith('seqExit:')) {
           const [kind, id] = name.split(':');
           const config = (m.poseSequences ?? []).find((s) => s.id === id);
@@ -265,7 +267,9 @@ export default class AvatarController {
       const clip = this.clips.get(name);
       const action = this.mixer.clipAction(clip);
       this._crossfadeTo(action, false);
-      this.state = 'gesture';
+      // クリップの由来パスをstateに含める(デバッグ・行動分析用。
+      // 例: 'gesture:animations/vrmviewer/Surprised.vrma')
+      this.state = `gesture:${this.actionClipPaths.get(name) ?? name}`;
       this.phaseTimer = clip.duration + 0.4;
     } else if (type === 'walk') {
       this._pickNewWalkTarget();
@@ -296,7 +300,7 @@ export default class AvatarController {
       return;
     }
 
-    if (this.state === 'gesture') {
+    if (this.state.startsWith('gesture')) {
       this.phaseTimer -= delta;
       if (this.phaseTimer <= 0) {
         this._crossfadeTo(this.idleAction, true);
