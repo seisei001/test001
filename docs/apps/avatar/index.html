@@ -45,6 +45,23 @@ html, body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
+.avatar-switch-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
 .notice {
   position: absolute;
   top: 16px;
@@ -89,6 +106,7 @@ html, body {
 <div id="app">
   <canvas id="scene-canvas"></canvas>
   <a class="back-link" href="../../">← ハブに戻る</a>
+  <button id="avatar-switch-btn" class="avatar-switch-btn" type="button"></button>
   <div id="missing-avatar-notice" class="notice" hidden>
     <p><strong>アバターを読み込めませんでした。</strong></p>
     <p>しばらくしてからもう一度開いてみてください。</p>
@@ -111,16 +129,37 @@ html, body {
 <script type="module">
   import { AvatarViewer } from './lib/index.js';
 
-  // 使用するアバターをここで切り替える(models/ 配下のファイル名を指定)。
+  // 使用できるアバター(models/ 配下のファイル名を指定)。
   // 現在確保しているもの: AvatarSample_A.vrm / AvatarSample_B.vrm(いずれもVRoid公式・商用利用可)
-  const AVATAR_URL = 'models/AvatarSample_B.vrm';
+  const AVATAR_FILES = {
+    A: 'models/AvatarSample_A.vrm',
+    B: 'models/AvatarSample_B.vrm',
+  };
+  const STORAGE_KEY = 'avatar-app:selected-avatar';
+
+  function loadSelectedAvatar() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved === 'A' || saved === 'B' ? saved : 'B';
+    } catch {
+      return 'B';
+    }
+  }
+
+  let selectedAvatar = loadSelectedAvatar();
 
   const canvas = document.getElementById('scene-canvas');
   const notice = document.getElementById('missing-avatar-notice');
   const debugLabel = document.getElementById('debug-state-label');
+  const switchBtn = document.getElementById('avatar-switch-btn');
+
+  function updateSwitchBtnLabel() {
+    switchBtn.textContent = `アバター切替(${selectedAvatar})`;
+  }
+  updateSwitchBtnLabel();
 
   const viewer = new AvatarViewer(canvas, {
-    avatarUrl: AVATAR_URL,
+    avatarUrl: AVATAR_FILES[selectedAvatar],
     // 待機(idle)の出現をユーザー指示により大幅に短縮し、行動から行動へ
     // ほぼ連続的に切り替わるようにしている(既定は4〜9秒)。
     behaviorTiming: { minIntervalSeconds: 0.07, maxIntervalSeconds: 0.13 },
@@ -131,6 +170,13 @@ html, body {
     if (debugLabel) debugLabel.textContent = e.detail;
   });
   viewer.start();
+
+  switchBtn.addEventListener('click', () => {
+    selectedAvatar = selectedAvatar === 'A' ? 'B' : 'A';
+    updateSwitchBtnLabel();
+    try { localStorage.setItem(STORAGE_KEY, selectedAvatar); } catch {}
+    viewer.setAvatar(AVATAR_FILES[selectedAvatar]);
+  });
 </script>
 </body>
 </html>
