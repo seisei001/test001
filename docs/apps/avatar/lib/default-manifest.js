@@ -19,7 +19,11 @@
 // - hmcs/idle-maid.vrma: npm `@hmcs/assets`(MIT AND CC-BY-4.0)
 
 export const DEFAULT_ANIMATION_MANIFEST = {
-  idleAnimation: 'animations/vrmviewer/Relax.vrma',
+  // idleAnimationは基点となる直立の待機姿勢。vrmviewer/Relax.vrmaは伸びをして
+  // 両腕を高く上げる演出を含んでおり、待機間隔を短くすると腕を上げた姿勢が
+  // 頻繁に目立ってしまうため、腕を上げないただの立ち待機ポーズである
+  // hmcs/idle-maid.vrmaを採用している。
+  idleAnimation: 'animations/hmcs/idle-maid.vrma',
 
   // 直立のまま始まり直立のまま終わる、ランダム再生用の仕草・ジェスチャー
   actionAnimations: [
@@ -30,6 +34,7 @@ export const DEFAULT_ANIMATION_MANIFEST = {
     'animations/vrmviewer/Goodbye.vrma',
     'animations/vrmviewer/Jump.vrma',
     'animations/vrmviewer/LookAround.vrma',
+    'animations/vrmviewer/Relax.vrma',
     'animations/vrmviewer/Sad.vrma',
     'animations/vrmviewer/Sleepy.vrma',
     'animations/vrmviewer/Surprised.vrma',
@@ -47,7 +52,6 @@ export const DEFAULT_ANIMATION_MANIFEST = {
     'animations/desktopwaifu/Femme_Peek_Around_Corner.vrma',
     'animations/hanami/world-turn-left.vrma',
     'animations/hanami/world-turn-right.vrma',
-    'animations/hmcs/idle-maid.vrma',
   ],
 
   // 歩行: 開始→ループ(移動しながら)→停止、の3段階で自然に繋ぐ
