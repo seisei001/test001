@@ -111,7 +111,9 @@ html, body {
 <script type="module">
   import { AvatarViewer } from './lib/index.js';
 
-  const AVATAR_URL = 'models/AvatarSample_A.vrm';
+  // 使用するアバターをここで切り替える(models/ 配下のファイル名を指定)。
+  // 現在確保しているもの: AvatarSample_A.vrm / AvatarSample_B.vrm(いずれもVRoid公式・商用利用可)
+  const AVATAR_URL = 'models/AvatarSample_B.vrm';
 
   const canvas = document.getElementById('scene-canvas');
   const notice = document.getElementById('missing-avatar-notice');
