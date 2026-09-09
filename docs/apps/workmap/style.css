@@ -140,26 +140,36 @@ button{ font-family:inherit; }
 .pill-progress{ background:var(--accent-soft); color:var(--accent); }
 .pill-todo{ background:var(--neutral-bg); color:var(--muted); }
 .pill-blocked{ background:var(--warn-bg); color:var(--warn-text); }
-.phase-sub{ display:flex; align-items:center; justify-content:space-between; margin-top:9px; gap:8px; }
+.phase-sub{ display:flex; align-items:center; justify-content:space-between; margin-top:9px; gap:8px; flex-wrap:wrap; row-gap:8px; }
 .phase-note{ margin-top:9px; padding:7px 9px; border-radius:8px; background:var(--warn-bg); color:var(--warn-text); font-size:11px; font-weight:600; display:flex; align-items:center; gap:6px; }
 .chip-collapsed{ font-size:11.5px; color:var(--faint); margin-top:8px; cursor:pointer; }
 .node-sub{ width:206px; padding:10px 11px; }
 .sub-row{ display:flex; align-items:center; gap:7px; }
 .sub-title{ font-size:12px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sub-title.dim{ color:var(--faint); }
-.status-dot{ width:14px; height:14px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; cursor:pointer; border:none; padding:0; }
+.status-dot{ width:24px; height:24px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; cursor:pointer; border:none; padding:0; }
 .status-todo{ border:2px solid var(--border); background:transparent; }
 .status-progress{ background:var(--accent); }
 .status-done{ background:var(--success-text); }
 .chev{ color:var(--faint); flex:none; background:none; border:none; cursor:pointer; padding:0; display:flex; }
-.node-actions{ display:flex; gap:2px; margin-left:2px; flex:none; }
-.node-actions button{ background:none; border:none; color:var(--faint); cursor:pointer; padding:6px; display:flex; min-width:28px; min-height:28px; align-items:center; justify-content:center; }
-.node-actions button:hover{ color:var(--text); }
+.node-actions{ display:flex; gap:2px; margin-left:2px; flex:none; position:relative; }
+.node-actions button{ background:none; border:none; color:var(--faint); cursor:pointer; padding:6px; display:flex; min-width:36px; min-height:36px; border-radius:8px; align-items:center; justify-content:center; }
+.node-actions button:hover{ color:var(--text); background:var(--neutral-bg); }
+.action-menu{
+  position:absolute; top:calc(100% + 4px); right:0; min-width:170px; background:var(--panel-bg);
+  border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); z-index:20; overflow:hidden;
+}
+.action-menu button{
+  display:flex; align-items:center; gap:9px; width:100%; min-height:44px; padding:0 14px; border:none; background:none;
+  color:var(--text); font-size:13px; font-weight:600; cursor:pointer; text-align:left; border-radius:0;
+}
+.action-menu button:hover{ background:var(--neutral-bg); }
+.action-menu button.danger{ color:var(--danger); }
 .avatar-xs{ width:19px; height:19px; font-size:9.5px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; background:var(--accent-soft); color:var(--accent); }
 
 /* gantt */
-.gantt{ display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--panel-bg); width:max-content; }
-.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); }
+.gantt{ display:flex; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel-bg); width:max-content; max-width:100%; overflow-x:auto; overflow-y:hidden; }
+.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); position:sticky; left:0; z-index:6; background:var(--panel-bg); box-shadow:2px 0 5px rgba(0,0,0,.06); }
 .tl-head{ height:44px; display:flex; align-items:center; padding:0 12px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.04em; background:var(--panel-alt); border-bottom:1px solid var(--border); }
 .tl-row{ height:44px; display:flex; align-items:center; gap:6px; padding:0 12px; font-size:12px; background-image:repeating-linear-gradient(to bottom, var(--border-soft) 0 1px, transparent 1px 44px); }
 .tl-row.indent{ padding-left:32px; }
