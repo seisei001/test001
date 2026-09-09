@@ -26,5 +26,12 @@
     "description": "タスク分解ツリーとタイムライン(ガントチャート)で進めるワーク管理ツール",
     "path": "apps/workmap/",
     "icon": "🗺️"
+  },
+  {
+    "id": "neon-dash",
+    "name": "ネオン・ダッシュ",
+    "description": "1タップで飛び越える、ネオン演出とパーティクルが光る軽量ミニゲーム",
+    "path": "apps/neon-dash/",
+    "icon": "⚡"
   }
 ]
