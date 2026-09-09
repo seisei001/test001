@@ -14,7 +14,8 @@
     arrowLeft: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
     arrowRight: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
     trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
-    edit: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+    edit: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    more: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>'
   };
 
   function escapeHtml(str) {
@@ -82,6 +83,23 @@
   const collapsedTimeline = new Set();
   let viewDate = new Date();
   let notifOpen = false;
+  let openMenuId = null;
+
+  function renderActions(task) {
+    const open = openMenuId === task.id;
+    return `
+      <div class="node-actions">
+        <button data-action="menu" data-id="${task.id}" title="操作メニュー">${icons.more}</button>
+        ${open ? `
+          <div class="action-menu" data-menu="${task.id}">
+            <button data-action="add-child" data-id="${task.id}">${icons.plus} サブタスク追加</button>
+            <button data-action="edit" data-id="${task.id}">${icons.edit} 編集</button>
+            <button data-action="delete" data-id="${task.id}" class="danger">${icons.trash} 削除</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
 
   function leafProgress(status) {
     if (status === 'done') return 100;
@@ -157,8 +175,19 @@
 
   const el = (id) => document.getElementById(id);
 
+  function positionTabIndicator() {
+    const activeEl = activeTab === 'tree' ? el('tab-tree') : el('tab-timeline');
+    const indicator = el('tab-indicator');
+    if (!activeEl || !indicator) return;
+    indicator.style.width = activeEl.offsetWidth + 'px';
+    indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`;
+  }
+
   function render() {
     renderProjectSelect();
+    el('tab-tree').classList.toggle('active', activeTab === 'tree');
+    el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
+    positionTabIndicator();
     const project = getProject();
     if (!project) {
       el('page-header').innerHTML = '';
@@ -185,8 +214,6 @@
     `;
     el('add-root-task').addEventListener('click', () => openTaskModal({ mode: 'create', parentId: null }));
 
-    el('tab-tree').classList.toggle('active', activeTab === 'tree');
-    el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
     el('tree-view').style.display = activeTab === 'tree' ? '' : 'none';
     el('timeline-view').style.display = activeTab === 'timeline' ? '' : 'none';
     el('month-nav').style.display = activeTab === 'timeline' ? 'flex' : 'none';
@@ -247,11 +274,7 @@
           <div class="progress-bar" style="width:76px;"><div class="progress-fill" style="width:${task.progress}%;"></div></div>
           <span class="progress-num">${task.progress}%</span>
           <span class="avatar-xs">${escapeHtml(initial(task.assignee))}</span>
-          <div class="node-actions">
-            <button data-action="add-child" data-id="${task.id}" title="サブタスク追加">${icons.plus}</button>
-            <button data-action="edit" data-id="${task.id}" title="編集">${icons.edit}</button>
-            <button data-action="delete" data-id="${task.id}" title="削除">${icons.trash}</button>
-          </div>
+          ${renderActions(task)}
         </div>
         ${task.blocked ? `<div class="phase-note">${icons.lock} 先行「${task.blockedBy.map((b) => escapeHtml(b.title)).join('、')}」完了後に着手</div>` : ''}
         ${hasChildren && isCollapsed ? `<div class="chip-collapsed" data-action="toggle" data-id="${task.id}">${kids.length}件のサブタスク</div>` : ''}
@@ -264,11 +287,7 @@
           </button>
           <span class="sub-title ${task.status === 'todo' ? 'dim' : ''}">${escapeHtml(task.title)}</span>
           <span class="avatar-xs">${escapeHtml(initial(task.assignee))}</span>
-          <div class="node-actions">
-            <button data-action="add-child" data-id="${task.id}" title="サブタスク追加">${icons.plus}</button>
-            <button data-action="edit" data-id="${task.id}" title="編集">${icons.edit}</button>
-            <button data-action="delete" data-id="${task.id}" title="削除">${icons.trash}</button>
-          </div>
+          ${renderActions(task)}
         </div>
         ${task.blocked ? `<div class="phase-note" style="margin-top:8px;">${icons.lock} 先行「${task.blockedBy.map((b) => escapeHtml(b.title)).join('、')}」完了後に着手</div>` : ''}
       `;
@@ -290,17 +309,34 @@
         if (action === 'toggle') {
           if (collapsedTree.has(id)) collapsedTree.delete(id); else collapsedTree.add(id);
           render();
+        } else if (action === 'menu') {
+          openMenuId = openMenuId === id ? null : id;
+          render();
         } else if (action === 'add-child') {
+          openMenuId = null;
           openTaskModal({ mode: 'create', parentId: id || null });
         } else if (action === 'edit') {
+          openMenuId = null;
           const task = DB.tasks.find((t) => t.id === id);
           openTaskModal({ mode: 'edit', task });
         } else if (action === 'delete') {
+          openMenuId = null;
           if (confirm('このタスクと配下のサブタスクを削除しますか？')) {
-            const removeIds = new Set(descendantIds(id, getProjectTasks()));
-            DB.tasks = DB.tasks.filter((t) => !removeIds.has(t.id));
-            DB.dependencies = DB.dependencies.filter((d) => !removeIds.has(d.predecessorId) && !removeIds.has(d.successorId));
-            saveDB(DB);
+            const finishDelete = () => {
+              const removeIds = new Set(descendantIds(id, getProjectTasks()));
+              DB.tasks = DB.tasks.filter((t) => !removeIds.has(t.id));
+              DB.dependencies = DB.dependencies.filter((d) => !removeIds.has(d.predecessorId) && !removeIds.has(d.successorId));
+              saveDB(DB);
+              render();
+            };
+            const cardEl = document.querySelector(`[data-card="${id}"]`);
+            if (cardEl) {
+              cardEl.classList.add('card-removing');
+              cardEl.addEventListener('animationend', finishDelete, { once: true });
+            } else {
+              finishDelete();
+            }
+          } else {
             render();
           }
         } else if (action === 'cycle-status') {
@@ -308,6 +344,11 @@
           task.status = task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo';
           saveDB(DB);
           render();
+          const dot = document.querySelector(`[data-action="cycle-status"][data-id="${id}"]`);
+          if (dot) {
+            dot.classList.add('pop');
+            dot.addEventListener('animationend', () => dot.classList.remove('pop'), { once: true });
+          }
         }
       });
     });
@@ -580,6 +621,29 @@
     });
   }
 
+  /* ---------- tap ripple feedback ---------- */
+  function spawnRipple(target, evt) {
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const size = Math.max(rect.width, rect.height) * 1.3;
+    const originX = evt.clientX ?? rect.left + rect.width / 2;
+    const originY = evt.clientY ?? rect.top + rect.height / 2;
+    const span = document.createElement('span');
+    span.className = 'ripple-wave';
+    span.style.width = span.style.height = size + 'px';
+    span.style.left = (originX - rect.left - size / 2) + 'px';
+    span.style.top = (originY - rect.top - size / 2) + 'px';
+    const cs = getComputedStyle(target);
+    if (cs.position === 'static') target.style.position = 'relative';
+    if (cs.overflow !== 'hidden') target.style.overflow = 'hidden';
+    target.appendChild(span);
+    span.addEventListener('animationend', () => span.remove(), { once: true });
+  }
+  document.addEventListener('pointerdown', (e) => {
+    const target = e.target.closest('.btn, .icon-btn, .tab, .node-actions > button, .action-menu button, .bar, .status-dot, .chip-collapsed');
+    if (target) spawnRipple(target, e);
+  });
+
   /* ---------- wiring ---------- */
   function init() {
     el('project-select').addEventListener('change', (e) => { currentProjectId = e.target.value; render(); });
@@ -595,9 +659,13 @@
     el('tab-tree').addEventListener('click', () => { activeTab = 'tree'; render(); });
     el('tab-timeline').addEventListener('click', () => { activeTab = 'timeline'; render(); });
     el('bell-btn').addEventListener('click', (e) => { e.stopPropagation(); notifOpen = !notifOpen; renderNotif(); });
-    document.addEventListener('click', () => { if (notifOpen) { notifOpen = false; renderNotif(); } });
+    document.addEventListener('click', () => {
+      if (notifOpen) { notifOpen = false; renderNotif(); }
+      if (openMenuId) { openMenuId = null; render(); }
+    });
     el('prev-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1); render(); });
     el('next-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1); render(); });
+    window.addEventListener('resize', positionTabIndicator);
     render();
   }
 
