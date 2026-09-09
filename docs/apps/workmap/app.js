@@ -175,8 +175,19 @@
 
   const el = (id) => document.getElementById(id);
 
+  function positionTabIndicator() {
+    const activeEl = activeTab === 'tree' ? el('tab-tree') : el('tab-timeline');
+    const indicator = el('tab-indicator');
+    if (!activeEl || !indicator) return;
+    indicator.style.width = activeEl.offsetWidth + 'px';
+    indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`;
+  }
+
   function render() {
     renderProjectSelect();
+    el('tab-tree').classList.toggle('active', activeTab === 'tree');
+    el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
+    positionTabIndicator();
     const project = getProject();
     if (!project) {
       el('page-header').innerHTML = '';
@@ -203,8 +214,6 @@
     `;
     el('add-root-task').addEventListener('click', () => openTaskModal({ mode: 'create', parentId: null }));
 
-    el('tab-tree').classList.toggle('active', activeTab === 'tree');
-    el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
     el('tree-view').style.display = activeTab === 'tree' ? '' : 'none';
     el('timeline-view').style.display = activeTab === 'timeline' ? '' : 'none';
     el('month-nav').style.display = activeTab === 'timeline' ? 'flex' : 'none';
@@ -313,17 +322,33 @@
         } else if (action === 'delete') {
           openMenuId = null;
           if (confirm('このタスクと配下のサブタスクを削除しますか？')) {
-            const removeIds = new Set(descendantIds(id, getProjectTasks()));
-            DB.tasks = DB.tasks.filter((t) => !removeIds.has(t.id));
-            DB.dependencies = DB.dependencies.filter((d) => !removeIds.has(d.predecessorId) && !removeIds.has(d.successorId));
-            saveDB(DB);
+            const finishDelete = () => {
+              const removeIds = new Set(descendantIds(id, getProjectTasks()));
+              DB.tasks = DB.tasks.filter((t) => !removeIds.has(t.id));
+              DB.dependencies = DB.dependencies.filter((d) => !removeIds.has(d.predecessorId) && !removeIds.has(d.successorId));
+              saveDB(DB);
+              render();
+            };
+            const cardEl = document.querySelector(`[data-card="${id}"]`);
+            if (cardEl) {
+              cardEl.classList.add('card-removing');
+              cardEl.addEventListener('animationend', finishDelete, { once: true });
+            } else {
+              finishDelete();
+            }
+          } else {
+            render();
           }
-          render();
         } else if (action === 'cycle-status') {
           const task = DB.tasks.find((t) => t.id === id);
           task.status = task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo';
           saveDB(DB);
           render();
+          const dot = document.querySelector(`[data-action="cycle-status"][data-id="${id}"]`);
+          if (dot) {
+            dot.classList.add('pop');
+            dot.addEventListener('animationend', () => dot.classList.remove('pop'), { once: true });
+          }
         }
       });
     });
@@ -596,6 +621,29 @@
     });
   }
 
+  /* ---------- tap ripple feedback ---------- */
+  function spawnRipple(target, evt) {
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const size = Math.max(rect.width, rect.height) * 1.3;
+    const originX = evt.clientX ?? rect.left + rect.width / 2;
+    const originY = evt.clientY ?? rect.top + rect.height / 2;
+    const span = document.createElement('span');
+    span.className = 'ripple-wave';
+    span.style.width = span.style.height = size + 'px';
+    span.style.left = (originX - rect.left - size / 2) + 'px';
+    span.style.top = (originY - rect.top - size / 2) + 'px';
+    const cs = getComputedStyle(target);
+    if (cs.position === 'static') target.style.position = 'relative';
+    if (cs.overflow !== 'hidden') target.style.overflow = 'hidden';
+    target.appendChild(span);
+    span.addEventListener('animationend', () => span.remove(), { once: true });
+  }
+  document.addEventListener('pointerdown', (e) => {
+    const target = e.target.closest('.btn, .icon-btn, .tab, .node-actions > button, .action-menu button, .bar, .status-dot, .chip-collapsed');
+    if (target) spawnRipple(target, e);
+  });
+
   /* ---------- wiring ---------- */
   function init() {
     el('project-select').addEventListener('change', (e) => { currentProjectId = e.target.value; render(); });
@@ -617,6 +665,7 @@
     });
     el('prev-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1); render(); });
     el('next-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1); render(); });
+    window.addEventListener('resize', positionTabIndicator);
     render();
   }
 
