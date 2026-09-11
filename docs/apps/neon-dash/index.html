@@ -12,12 +12,12 @@
 <style>
 :root{color-scheme:dark;--bg:#05060c;--text:#eaeaf2;--muted:#8b8ba0;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--text);overscroll-behavior:none;}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;overflow:hidden;height:100vh;height:100dvh;display:flex;flex-direction:column;}
+html{height:100%;overflow:hidden;background:var(--bg);}
+body{margin:0;padding:0;position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);overscroll-behavior:none;touch-action:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;display:flex;flex-direction:column;}
 header{position:absolute;top:0;left:0;right:0;z-index:2;padding:calc(env(safe-area-inset-top) + 10px) 14px 8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;}
 .back-link{pointer-events:auto;color:var(--muted);text-decoration:none;font-size:0.8rem;}
 .score{font-size:1.1rem;font-weight:700;text-shadow:0 0 8px rgba(120,200,255,0.8);}
-#stage{position:relative;flex:1;touch-action:none;}
+#stage{position:relative;flex:1;min-height:0;touch-action:none;}
 canvas{display:block;width:100%;height:100%;}
 .hint{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);text-align:center;color:var(--muted);font-size:0.8rem;z-index:2;pointer-events:none;}
 </style>
@@ -40,6 +40,12 @@ canvas{display:block;width:100%;height:100%;}
   const scoreLabel = document.getElementById('score-label');
   const hint = document.getElementById('hint');
 
+  // iOSのSafariはドラッグ操作でアドレスバーの表示/非表示が切り替わり、
+  // ページ全体が伸び縮みする(=ゲーム画面がズレて見える)ことがある。
+  // body を position:fixed で画面に固定し、さらにtouchmoveを止めることで
+  // ページ自体のスクロール・ラバーバンドを完全に無効化している。
+  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
   let W = 0, H = 0, dpr = 1;
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -50,6 +56,13 @@ canvas{display:block;width:100%;height:100%;}
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', resize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resize);
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(resize).observe(stage);
+  }
   resize();
 
   function loadBest() {
