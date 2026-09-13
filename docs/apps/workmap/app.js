@@ -183,7 +183,22 @@
     indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`;
   }
 
+  function getScrollLeft(selector) {
+    const node = document.querySelector(selector);
+    return node ? node.scrollLeft : 0;
+  }
+  function setScrollLeft(selector, value) {
+    const node = document.querySelector(selector);
+    if (node) node.scrollLeft = value;
+  }
+
   function render() {
+    // 再描画のたびにツリー/タイムラインのDOMを作り直すと、横スクロール中の
+    // 位置がリセットされて画面が一番左に飛んでしまう(iOS Safariで顕著)。
+    // 描画前に現在のスクロール位置を保存し、描画後に同じ位置へ戻す。
+    const treeScrollLeft = getScrollLeft('#tree-view .scroll-x');
+    const timelineScrollLeft = getScrollLeft('#timeline-view .scroll-x');
+
     renderProjectSelect();
     el('tab-tree').classList.toggle('active', activeTab === 'tree');
     el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
@@ -222,6 +237,9 @@
     else renderTimeline(enriched, deps);
 
     renderNotif();
+
+    setScrollLeft('#tree-view .scroll-x', treeScrollLeft);
+    setScrollLeft('#timeline-view .scroll-x', timelineScrollLeft);
   }
 
   function renderProjectSelect() {
