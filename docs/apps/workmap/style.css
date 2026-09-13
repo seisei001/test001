@@ -112,9 +112,12 @@ button{ font-family:inherit; }
 /* project header card */
 .page-header{
   background:var(--panel-bg); border:1px solid var(--border); border-radius:var(--radius); padding:16px;
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;
 }
-.page-header h2{ font-size:18px; font-weight:700; }
+.page-header .ph-main{ flex:1 1 240px; min-width:0; }
+.page-header .ph-title-row{ display:flex; align-items:center; gap:6px; min-width:0; }
+.page-header h2{ font-size:18px; font-weight:700; min-width:0; overflow-wrap:break-word; }
+.project-desc{ margin:4px 0 0; font-size:13px; color:var(--muted); line-height:1.5; white-space:pre-wrap; overflow-wrap:break-word; }
 .progress-wrap{ display:flex; align-items:center; gap:8px; }
 .progress-bar{ width:120px; height:7px; border-radius:4px; background:var(--neutral-bg); overflow:hidden; flex:none; }
 .progress-fill{ height:100%; border-radius:4px; background:var(--accent); transition:width 450ms cubic-bezier(.22,.9,.3,1); }
@@ -249,7 +252,8 @@ button{ font-family:inherit; }
 .modal h2{ font-size:16px; margin-bottom:14px; }
 .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
 .field label{ font-size:12px; font-weight:600; color:var(--muted); }
-.field input,.field select{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; font-size:16px; font-family:inherit; background:var(--panel-bg); color:var(--text); min-height:44px; }
+.field input,.field select,.field textarea{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; font-size:16px; font-family:inherit; background:var(--panel-bg); color:var(--text); min-height:44px; }
+.field textarea{ resize:vertical; line-height:1.5; }
 .field-row{ display:flex; gap:10px; }
 .field-row .field{ flex:1; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }

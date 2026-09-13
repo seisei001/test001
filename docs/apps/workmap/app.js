@@ -57,7 +57,13 @@
       { id: uid(), projectId, predecessorId: back, successorId: integ }
     ];
     return {
-      projects: [{ id: projectId, name: 'Webサイトリニューアル', color: '#2563eb', createdAt: today.toISOString() }],
+      projects: [{
+        id: projectId,
+        name: 'Webサイトリニューアル',
+        description: '9月末までに新デザインで公開し、問い合わせ経由のCVRを15%改善する。',
+        color: '#2563eb',
+        createdAt: today.toISOString()
+      }],
       tasks,
       dependencies
     };
@@ -216,18 +222,22 @@
     const { tasks: enriched, projectProgress } = buildView(tasks, deps);
 
     el('page-header').innerHTML = `
-      <div>
-        <h2>${escapeHtml(project.name)}</h2>
+      <div class="ph-main">
+        <div class="ph-title-row">
+          <h2>${escapeHtml(project.name)}</h2>
+          <button class="icon-btn" id="edit-project-btn" style="width:32px;height:32px;" title="プロジェクト名・説明を編集">${icons.edit}</button>
+        </div>
+        ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ''}
         <div class="progress-wrap" style="margin-top:6px;">
           <div class="progress-bar"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
           <span class="progress-num">${projectProgress}%</span>
           <span class="meta-item">全${tasks.length}タスク</span>
         </div>
       </div>
-      <div class="toolbar-spacer"></div>
       <button class="btn btn-ghost" id="add-root-task">${icons.plus} タスクを追加</button>
     `;
     el('add-root-task').addEventListener('click', () => openTaskModal({ mode: 'create', parentId: null }));
+    el('edit-project-btn').addEventListener('click', () => openProjectModal({ mode: 'edit', project }));
 
     el('tree-view').style.display = activeTab === 'tree' ? '' : 'none';
     el('timeline-view').style.display = activeTab === 'timeline' ? '' : 'none';
@@ -639,6 +649,50 @@
     });
   }
 
+  /* ---------- project modal ---------- */
+  function openProjectModal({ mode, project }) {
+    const isEdit = mode === 'edit';
+    const modalRoot = el('modal-root');
+    modalRoot.innerHTML = `
+      <div class="modal-backdrop" id="modal-backdrop">
+        <div class="modal">
+          <h2>${isEdit ? 'プロジェクトを編集' : '新規プロジェクト'}</h2>
+          <form id="project-form">
+            <div class="field"><label>プロジェクト名</label><input type="text" id="p-name" required value="${isEdit ? escapeHtml(project.name) : ''}"></div>
+            <div class="field">
+              <label>目的・完了の目標(任意)</label>
+              <textarea id="p-desc" rows="3" placeholder="例: 9月末までに新デザインで公開し、CVRを15%改善する">${isEdit ? escapeHtml(project.description || '') : ''}</textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-ghost" id="modal-cancel">キャンセル</button>
+              <button type="submit" class="btn btn-primary">${isEdit ? '保存' : '作成'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    el('modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'modal-backdrop') modalRoot.innerHTML = ''; });
+    el('modal-cancel').addEventListener('click', () => { modalRoot.innerHTML = ''; });
+    el('p-name').focus();
+    el('project-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = el('p-name').value.trim();
+      const description = el('p-desc').value.trim();
+      if (!name) return;
+      if (isEdit) {
+        project.name = name;
+        project.description = description;
+      } else {
+        const id = uid();
+        DB.projects.push({ id, name, description, color: '#2563eb', createdAt: new Date().toISOString() });
+        currentProjectId = id;
+      }
+      saveDB(DB);
+      modalRoot.innerHTML = '';
+      render();
+    });
+  }
+
   /* ---------- tap ripple feedback ---------- */
   function spawnRipple(target, evt) {
     const rect = target.getBoundingClientRect();
@@ -665,15 +719,7 @@
   /* ---------- wiring ---------- */
   function init() {
     el('project-select').addEventListener('change', (e) => { currentProjectId = e.target.value; render(); });
-    el('new-project-btn').addEventListener('click', () => {
-      const name = prompt('新規プロジェクト名を入力してください');
-      if (!name || !name.trim()) return;
-      const id = uid();
-      DB.projects.push({ id, name: name.trim(), color: '#2563eb', createdAt: new Date().toISOString() });
-      saveDB(DB);
-      currentProjectId = id;
-      render();
-    });
+    el('new-project-btn').addEventListener('click', () => openProjectModal({ mode: 'create' }));
     el('tab-tree').addEventListener('click', () => { activeTab = 'tree'; render(); });
     el('tab-timeline').addEventListener('click', () => { activeTab = 'timeline'; render(); });
     el('bell-btn').addEventListener('click', (e) => { e.stopPropagation(); notifOpen = !notifOpen; renderNotif(); });
