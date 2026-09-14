@@ -2,7 +2,8 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
-  const WINDOW_DAYS = 30;
+  const PAST_DAYS = 14;
+  const FUTURE_DAYS = 30;
   const STEP_DAYS = 14;
 
   const icons = {
@@ -97,6 +98,7 @@
   let notifOpen = false;
   let openMenuId = null;
   let tasklistCollapsed = false;
+  let timelineScrollX = null; // null = 未設定(基準日を左端に揃える)。手動スクロール後はその位置を保持する。
 
   function renderActions(task) {
     const open = openMenuId === task.id;
@@ -210,7 +212,10 @@
     // 位置がリセットされて画面が一番左に飛んでしまう(iOS Safariで顕著)。
     // 描画前に現在のスクロール位置を保存し、描画後に同じ位置へ戻す。
     const treeScrollLeft = getScrollLeft('#tree-view .scroll-x');
-    const timelineScrollLeft = getScrollLeft('#timeline-view .gantt');
+    // タイムラインのスクロール位置はscrollイベントでtimelineScrollXに常に
+    // 反映されている(手動スクロール分を尊重するため)。ナビゲーション操作
+    // (前へ/次へ/今日)はrender()を呼ぶ前にtimelineScrollXを明示的に
+    // 書き換えるので、ここでは何もしない。
 
     renderProjectSelect();
     el('tab-tree').classList.toggle('active', activeTab === 'tree');
@@ -256,7 +261,10 @@
     renderNotif();
 
     setScrollLeft('#tree-view .scroll-x', treeScrollLeft);
-    setScrollLeft('#timeline-view .gantt', timelineScrollLeft);
+    if (activeTab === 'timeline') {
+      if (timelineScrollX === null) timelineScrollX = PAST_DAYS * DAY_W;
+      setScrollLeft('#timeline-view .gantt', timelineScrollX);
+    }
   }
 
   function renderProjectSelect() {
@@ -413,11 +421,12 @@
   function pillColor(status) { return status === 'done' ? 'var(--success-text)' : status === 'in_progress' ? 'var(--accent)' : 'var(--muted)'; }
 
   function renderRangeLabel() {
-    const rangeEnd = addDaysDate(viewStart, WINDOW_DAYS - 1);
-    const sameYear = viewStart.getFullYear() === rangeEnd.getFullYear();
+    const rangeStart = addDaysDate(viewStart, -PAST_DAYS);
+    const rangeEnd = addDaysDate(viewStart, FUTURE_DAYS - 1);
+    const sameYear = rangeStart.getFullYear() === rangeEnd.getFullYear();
     el('month-label').textContent = sameYear
-      ? `${viewStart.getFullYear()}年 ${fmtMD(viewStart)} 〜 ${fmtMD(rangeEnd)}`
-      : `${viewStart.getFullYear()}年${fmtMD(viewStart)} 〜 ${rangeEnd.getFullYear()}年${fmtMD(rangeEnd)}`;
+      ? `${rangeStart.getFullYear()}年 ${fmtMD(rangeStart)} 〜 ${fmtMD(rangeEnd)}`
+      : `${rangeStart.getFullYear()}年${fmtMD(rangeStart)} 〜 ${rangeEnd.getFullYear()}年${fmtMD(rangeEnd)}`;
   }
 
   function renderTimeline(enriched, deps) {
@@ -429,9 +438,9 @@
       timelineEl.innerHTML = '<div class="empty-state">タスクがありません。タスク分解タブから追加してください。</div>';
       return;
     }
-    const monthStart = viewStart;
-    const monthEnd = addDaysDate(viewStart, WINDOW_DAYS - 1);
-    const daysInMonth = WINDOW_DAYS;
+    const monthStart = addDaysDate(viewStart, -PAST_DAYS);
+    const daysInMonth = PAST_DAYS + FUTURE_DAYS;
+    const monthEnd = addDaysDate(monthStart, daysInMonth - 1);
     const today = startOfDay(new Date());
     const isCurrentMonth = today >= monthStart && today <= monthEnd;
     const gridWidth = daysInMonth * DAY_W;
@@ -506,6 +515,10 @@
       </div>
     `;
     drawDependencies(deps);
+    const ganttEl = timelineEl.querySelector('.gantt');
+    if (ganttEl) {
+      ganttEl.addEventListener('scroll', () => { timelineScrollX = ganttEl.scrollLeft; }, { passive: true });
+    }
     el('tl-collapse-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       tasklistCollapsed = !tasklistCollapsed;
@@ -746,9 +759,9 @@
       if (notifOpen) { notifOpen = false; renderNotif(); }
       if (openMenuId) { openMenuId = null; render(); }
     });
-    el('prev-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, -STEP_DAYS); render(); });
-    el('next-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, STEP_DAYS); render(); });
-    el('today-btn').addEventListener('click', () => { viewStart = startOfDay(new Date()); render(); });
+    el('prev-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, -STEP_DAYS); timelineScrollX = null; render(); });
+    el('next-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, STEP_DAYS); timelineScrollX = null; render(); });
+    el('today-btn').addEventListener('click', () => { viewStart = startOfDay(new Date()); timelineScrollX = null; render(); });
     window.addEventListener('resize', positionTabIndicator);
     render();
   }
