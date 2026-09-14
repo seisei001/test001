@@ -33,5 +33,12 @@
     "description": "1タップで飛び越える、ネオン演出とパーティクルが光る軽量ミニゲーム",
     "path": "apps/neon-dash/",
     "icon": "⚡"
+  },
+  {
+    "id": "tax-office-pr",
+    "name": "税理士事務所PRサイト",
+    "description": "元国税調査官の強みを活かした税理士事務所向けの、診断コンテンツ付きインタラクティブPRホームページ",
+    "path": "apps/tax-office-pr/",
+    "icon": "⚖️"
   }
 ]
