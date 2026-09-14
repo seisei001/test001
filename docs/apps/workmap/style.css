@@ -160,7 +160,8 @@ button{ font-family:inherit; }
 .node{ background:var(--panel-bg); border:1px solid var(--border); border-radius:var(--radius); }
 .node-root{ width:230px; padding:18px; background:var(--accent); color:#fff; border:none; }
 .node-root .k{ font-size:11px; color:#dbe6ff; font-weight:600; letter-spacing:.04em; margin-bottom:6px; }
-.node-root h2{ font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; }
+.node-root h2{ font-size:17px; font-weight:700; color:#fff; margin-bottom:4px; }
+.node-root .project-desc{ color:#e4e9ff; opacity:.92; margin:4px 0 0; }
 .node-root .progress-bar{ background:rgba(255,255,255,.28); }
 .node-root .progress-fill{ background:#fff; }
 .node-root .progress-num{ color:#fff; }

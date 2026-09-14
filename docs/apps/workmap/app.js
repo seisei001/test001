@@ -270,7 +270,8 @@
           <div class="node node-root">
             <div class="k">プロジェクト</div>
             <h2>${escapeHtml(project.name)}</h2>
-            <div class="progress-bar"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
+            ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ''}
+            <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
             <div class="meta-item" style="color:#fff;opacity:.9;margin-top:8px;">${projectProgress}% ・ 全${enriched.length}タスク</div>
           </div>
           ${top.length ? `<div class="line-h"></div>
