@@ -2,9 +2,14 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
-  const PAST_DAYS = 14;
-  const FUTURE_DAYS = 30;
+  const MONTH_ROW_H = 20;
+  const INITIAL_PAST_DAYS = 14;
+  const INITIAL_FUTURE_DAYS = 30;
   const STEP_DAYS = 14;
+  const EXTEND_CHUNK_DAYS = 60;
+  const EXTEND_THRESHOLD_PX = DAY_W * 10;
+  const MAX_RANGE_DAYS = 3650;
+  const WEEKDAY_LETTERS = ['日', '月', '火', '水', '木', '金', '土'];
 
   const icons = {
     plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
@@ -94,6 +99,8 @@
   const collapsedTree = new Set();
   const collapsedTimeline = new Set();
   let viewStart = startOfDay(new Date());
+  let rangePast = INITIAL_PAST_DAYS;
+  let rangeFuture = INITIAL_FUTURE_DAYS;
   let notifOpen = false;
   let openMenuId = null;
   let tasklistCollapsed = false;
@@ -274,7 +281,7 @@
 
     setScrollLeft('#tree-view .scroll-x', treeScrollLeft);
     if (activeTab === 'timeline') {
-      if (timelineScrollX === null) timelineScrollX = PAST_DAYS * DAY_W;
+      if (timelineScrollX === null) timelineScrollX = rangePast * DAY_W;
       setScrollLeft('#timeline-view .gantt', timelineScrollX);
     }
   }
@@ -437,8 +444,8 @@
   function updateMonthLabel() {
     const labelEl = el('month-label');
     if (!labelEl) return;
-    const rangeStart = addDaysDate(viewStart, -PAST_DAYS);
-    const scrollLeft = timelineScrollX === null ? PAST_DAYS * DAY_W : timelineScrollX;
+    const rangeStart = addDaysDate(viewStart, -rangePast);
+    const scrollLeft = timelineScrollX === null ? rangePast * DAY_W : timelineScrollX;
     const visibleDate = addDaysDate(rangeStart, Math.round(scrollLeft / DAY_W));
     labelEl.textContent = `${visibleDate.getFullYear()}年${visibleDate.getMonth() + 1}月`;
   }
@@ -452,8 +459,8 @@
       timelineEl.innerHTML = '<div class="empty-state">タスクがありません。タスク分解タブから追加してください。</div>';
       return;
     }
-    const monthStart = addDaysDate(viewStart, -PAST_DAYS);
-    const daysInMonth = PAST_DAYS + FUTURE_DAYS;
+    const monthStart = addDaysDate(viewStart, -rangePast);
+    const daysInMonth = rangePast + rangeFuture;
     const monthEnd = addDaysDate(monthStart, daysInMonth - 1);
     const today = startOfDay(new Date());
     const isCurrentMonth = today >= monthStart && today <= monthEnd;
@@ -461,13 +468,25 @@
     const gridHeight = rows.length * ROW_H;
 
     let dayHeader = '', weekendLayer = '';
+    const monthSegments = [];
     for (let i = 0; i < daysInMonth; i++) {
       const date = addDaysDate(monthStart, i);
       const isToday = isSameDay(date, today);
-      dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : date.getDate()}</div>`;
+      const wd = WEEKDAY_LETTERS[date.getDay()];
+      dayHeader += `<div class="day-cell"><span class="day-wd">${wd}</span>${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : `<span class="day-num">${date.getDate()}</span>`}</div>`;
       if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${i * DAY_W}px;width:${DAY_W}px;"></div>`;
+      const segKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const lastSeg = monthSegments[monthSegments.length - 1];
+      if (lastSeg && lastSeg.key === segKey) lastSeg.count++;
+      else monthSegments.push({ key: segKey, year: date.getFullYear(), month: date.getMonth() + 1, count: 1 });
     }
+    const monthRowHtml = monthSegments.map((s, idx) => {
+      const showYear = idx === 0 || s.year !== monthSegments[idx - 1].year;
+      return `<div class="month-seg" style="width:${s.count * DAY_W}px;">${showYear ? s.year + '年' : ''}${s.month}月</div>`;
+    }).join('');
+
     let taskListHtml = `
+      <div class="tl-month-spacer"></div>
       <div class="tl-head">
         <button class="tl-toggle" id="tl-collapse-btn" title="${tasklistCollapsed ? 'タスク名を表示' : 'タスク名を折りたたむ'}">${tasklistCollapsed ? icons.arrowRight : icons.arrowLeft}</button>
         ${tasklistCollapsed ? '' : '<span>タスク</span>'}
@@ -503,7 +522,7 @@
     let todayLine = '';
     if (isCurrentMonth) {
       const x = Math.round((today - monthStart) / 86400000) * DAY_W + DAY_W / 2;
-      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
+      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H + MONTH_ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
     }
 
     timelineEl.innerHTML = `
@@ -511,6 +530,7 @@
         <div class="gantt">
           <div class="tasklist ${tasklistCollapsed ? 'collapsed' : ''}">${taskListHtml}</div>
           <div class="grid-wrap">
+            <div class="grid-month-row">${monthRowHtml}</div>
             <div class="grid-header">${dayHeader}</div>
             <div class="grid-body" id="grid-body" style="width:${gridWidth}px;height:${gridHeight}px;">
               ${weekendLayer}
@@ -531,8 +551,23 @@
     const ganttEl = timelineEl.querySelector('.gantt');
     if (ganttEl) {
       ganttEl.addEventListener('scroll', () => {
+        // render()で作り直された古い要素が、外れた後にscrollイベントを
+        // 発火させることがあるため、現在DOMに存在する要素かを確認する。
+        if (!document.body.contains(ganttEl)) return;
         timelineScrollX = ganttEl.scrollLeft;
         updateMonthLabel();
+        // 端に近づいたら範囲を広げて連続的にスクロールできるようにする(月で区切らない)
+        const nearLeft = ganttEl.scrollLeft < EXTEND_THRESHOLD_PX;
+        const nearRight = (ganttEl.scrollWidth - ganttEl.clientWidth - ganttEl.scrollLeft) < EXTEND_THRESHOLD_PX;
+        if (rangePast + rangeFuture >= MAX_RANGE_DAYS) return;
+        if (nearLeft) {
+          rangePast += EXTEND_CHUNK_DAYS;
+          timelineScrollX = ganttEl.scrollLeft + EXTEND_CHUNK_DAYS * DAY_W;
+          render();
+        } else if (nearRight) {
+          rangeFuture += EXTEND_CHUNK_DAYS;
+          render();
+        }
       }, { passive: true });
     }
     el('tl-collapse-btn').addEventListener('click', (e) => {
@@ -776,9 +811,20 @@
       if (openMenuId) { openMenuId = null; render(); }
       if (projectMenuOpen) { projectMenuOpen = false; render(); }
     });
-    el('prev-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, -STEP_DAYS); timelineScrollX = null; render(); });
-    el('next-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, STEP_DAYS); timelineScrollX = null; render(); });
-    el('today-btn').addEventListener('click', () => { viewStart = startOfDay(new Date()); timelineScrollX = null; render(); });
+    // 前へ/次へ/今日は、月区切りで再アンカーするのではなく、既存の連続した
+    // グリッドを滑らかにスクロールするだけ(端に近づけば自動で範囲が伸びる)。
+    el('prev-month').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollBy({ left: -STEP_DAYS * DAY_W, behavior: 'smooth' });
+    });
+    el('next-month').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollBy({ left: STEP_DAYS * DAY_W, behavior: 'smooth' });
+    });
+    el('today-btn').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollTo({ left: rangePast * DAY_W, behavior: 'smooth' });
+    });
     window.addEventListener('resize', positionTabIndicator);
     render();
   }
