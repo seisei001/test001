@@ -217,10 +217,18 @@ button{ font-family:inherit; }
 
 /* gantt */
 .gantt{ display:flex; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel-bg); width:max-content; max-width:100%; overflow-x:auto; overflow-y:hidden; }
-.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); position:sticky; left:0; z-index:6; background:var(--panel-bg); box-shadow:2px 0 5px rgba(0,0,0,.06); }
-.tl-head{ height:44px; display:flex; align-items:center; padding:0 12px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.04em; background:var(--panel-alt); border-bottom:1px solid var(--border); }
+.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); position:sticky; left:0; z-index:6; background:var(--panel-bg); box-shadow:2px 0 5px rgba(0,0,0,.06); transition:width 180ms ease; }
+.tasklist.collapsed{ width:40px; }
+.tl-head{ height:44px; display:flex; align-items:center; gap:6px; padding:0 12px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.04em; background:var(--panel-alt); border-bottom:1px solid var(--border); }
+.tl-toggle{ flex:none; width:24px; height:24px; min-width:0; min-height:0; border-radius:6px; border:none; background:none; color:var(--faint); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+.tl-toggle:hover{ background:var(--neutral-bg); color:var(--text); }
+.tasklist.collapsed .tl-head{ padding:0; justify-content:center; }
 .tl-row{ height:44px; display:flex; align-items:center; gap:6px; padding:0 12px; font-size:12px; background-image:repeating-linear-gradient(to bottom, var(--border-soft) 0 1px, transparent 1px 44px); }
 .tl-row.indent{ padding-left:32px; }
+.tasklist.collapsed .tl-row{ padding:0; justify-content:center; gap:0; }
+.tasklist.collapsed .tl-row.indent{ padding-left:0; }
+.tasklist.collapsed .tl-title,
+.tasklist.collapsed .pill-xs{ display:none; }
 .tl-title{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
 .tl-title.dim{ color:var(--faint); font-weight:500; }
 .tl-title.phase{ font-weight:700; }

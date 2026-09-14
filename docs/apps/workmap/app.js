@@ -90,6 +90,7 @@
   let viewDate = new Date();
   let notifOpen = false;
   let openMenuId = null;
+  let tasklistCollapsed = false;
 
   function renderActions(task) {
     const open = openMenuId === task.id;
@@ -203,7 +204,7 @@
     // 位置がリセットされて画面が一番左に飛んでしまう(iOS Safariで顕著)。
     // 描画前に現在のスクロール位置を保存し、描画後に同じ位置へ戻す。
     const treeScrollLeft = getScrollLeft('#tree-view .scroll-x');
-    const timelineScrollLeft = getScrollLeft('#timeline-view .scroll-x');
+    const timelineScrollLeft = getScrollLeft('#timeline-view .gantt');
 
     renderProjectSelect();
     el('tab-tree').classList.toggle('active', activeTab === 'tree');
@@ -249,7 +250,7 @@
     renderNotif();
 
     setScrollLeft('#tree-view .scroll-x', treeScrollLeft);
-    setScrollLeft('#timeline-view .scroll-x', timelineScrollLeft);
+    setScrollLeft('#timeline-view .gantt', timelineScrollLeft);
   }
 
   function renderProjectSelect() {
@@ -436,15 +437,19 @@
       if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${(d - 1) * DAY_W}px;width:${DAY_W}px;"></div>`;
     }
 
-    let taskListHtml = '<div class="tl-head">タスク</div>';
+    let taskListHtml = `
+      <div class="tl-head">
+        <button class="tl-toggle" id="tl-collapse-btn" title="${tasklistCollapsed ? 'タスク名を表示' : 'タスク名を折りたたむ'}">${tasklistCollapsed ? icons.arrowRight : icons.arrowLeft}</button>
+        ${tasklistCollapsed ? '' : '<span>タスク</span>'}
+      </div>`;
     let barsHtml = '';
     rows.forEach((row, i) => {
       const t = row.task;
       const meta = statusMeta(t.status);
       const top = i * ROW_H;
       taskListHtml += `
-        <div class="tl-row ${row.depth > 0 ? 'indent' : ''}">
-          ${row.hasChildren ? `<button class="chev" style="width:12px;height:12px;" data-action="toggle-tl" data-id="${t.id}">${collapsedTimeline.has(t.id) ? icons.chevronRight : icons.chevronDown}</button>` : (row.depth === 0 ? '<span style="width:12px;"></span>' : statusGlyph(t))}
+        <div class="tl-row ${row.depth > 0 ? 'indent' : ''}" title="${escapeHtml(t.title)}">
+          ${row.hasChildren ? `<button class="chev" style="width:12px;height:12px;" data-action="toggle-tl" data-id="${t.id}">${collapsedTimeline.has(t.id) ? icons.chevronRight : icons.chevronDown}</button>` : statusGlyph(t)}
           <span class="tl-title ${row.depth === 0 ? 'phase' : ''} ${t.status === 'todo' ? 'dim' : ''}">${escapeHtml(t.title)}</span>
           <span class="pill-xs" style="background:${t.blocked ? 'var(--warn-bg)' : pillBg(t.status)};color:${t.blocked ? 'var(--warn-text)' : pillColor(t.status)};">${t.blocked ? 'ブロック中' : meta.label}</span>
         </div>`;
@@ -474,7 +479,7 @@
     timelineEl.innerHTML = `
       <div class="scroll-x">
         <div class="gantt">
-          <div class="tasklist">${taskListHtml}</div>
+          <div class="tasklist ${tasklistCollapsed ? 'collapsed' : ''}">${taskListHtml}</div>
           <div class="grid-wrap">
             <div class="grid-header">${dayHeader}</div>
             <div class="grid-body" id="grid-body" style="width:${gridWidth}px;height:${gridHeight}px;">
@@ -493,6 +498,11 @@
       </div>
     `;
     drawDependencies(deps);
+    el('tl-collapse-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      tasklistCollapsed = !tasklistCollapsed;
+      render();
+    });
     timelineEl.querySelectorAll('[data-action="toggle-tl"]').forEach((elm) => {
       elm.addEventListener('click', (e) => {
         e.stopPropagation();
