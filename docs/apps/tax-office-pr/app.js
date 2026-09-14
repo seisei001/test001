@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  // ---------- 数字カウントアップ ----------
-  const stats = document.querySelectorAll('.stat');
+  // ---------- 数字カウントアップ(静的な実績バッジは対象外) ----------
+  const stats = document.querySelectorAll('.stat:not(.stat--static)');
   if (stats.length) {
     const animateStat = (el) => {
       const target = Number(el.dataset.target || 0);
@@ -45,18 +45,18 @@
     });
   }
 
-  // ---------- 経歴タイムライン(スクロール表示) ----------
-  const timelineItems = document.querySelectorAll('.timeline-item');
-  if (timelineItems.length) {
-    const tlObserver = new IntersectionObserver((entries) => {
+  // ---------- 経歴タイムライン・専門家カード(スクロール表示) ----------
+  const revealItems = document.querySelectorAll('.timeline-item, .team-card');
+  if (revealItems.length) {
+    const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-visible');
-          tlObserver.unobserve(entry.target);
+          revealObserver.unobserve(entry.target);
         }
       });
     }, { threshold: 0.2 });
-    timelineItems.forEach((el) => tlObserver.observe(el));
+    revealItems.forEach((el) => revealObserver.observe(el));
   }
 
   // ---------- 事業再生ステッパー ----------
@@ -199,11 +199,11 @@
       } else if (total <= 7) {
         level = 'リスク傾向: 中程度';
         badgeClass = 'mid';
-        message = 'いくつか、調査官が着目しやすいポイントが見られます。決算前のタイミングで一度、専門家によるセルフチェックを受けておくと安心です。';
+        message = 'いくつか、調査官が着目しやすいポイントが見られます。決算前のタイミングで一度、国税局出身の税理士 坂口誠によるセルフチェックを受けておくと安心です。';
       } else {
         level = 'リスク傾向: 高め';
         badgeClass = 'high';
-        message = '複数の項目で、税務調査時に指摘を受けやすい傾向が見られます。早めに顧問税理士と一緒に、記帳内容や申告内容の見直しをおすすめします。';
+        message = '複数の項目で、税務調査時に指摘を受けやすい傾向が見られます。査察部の調査対応まで経験した坂口誠が、早めの記帳・申告内容の見直しをサポートします。';
       }
       resultWrap.hidden = false;
       resultWrap.innerHTML = `

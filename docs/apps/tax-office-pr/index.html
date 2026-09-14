@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f2942">
+<meta name="theme-color" content="#173a52">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="【事務所名】税理士事務所">
-<meta name="description" content="元国税調査官の税理士が、税務調査に強い経営支援と事業再生をサポートします。">
-<title>【事務所名】税理士事務所 | 元国税調査官の視点で守る経営</title>
+<meta name="apple-mobile-web-app-title" content="坂口誠税理士事務所">
+<meta name="description" content="国税局在籍37年、国際税務調査・査察部国際専門官を歴任した税理士 坂口誠と、事業再生を専門とする公認会計士 上原祐介のパートナー事務所。税務調査に強い顧問と事業再生支援を行います。">
+<title>坂口誠税理士事務所 × 上原祐介公認会計士事務所 | 税務調査に強い顧問と事業再生支援</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,8 +17,9 @@
 <header class="site-header" id="top">
   <div class="header-inner">
     <a class="back-link" href="../../">← ハブに戻る</a>
-    <a class="brand" href="#top">【事務所名】税理士事務所</a>
+    <a class="brand" href="#top">坂口誠税理士事務所 <span class="brand-x">×</span> 上原祐介公認会計士事務所</a>
     <nav class="site-nav" aria-label="サイト内ナビゲーション">
+      <a href="#team">専門家紹介</a>
       <a href="#strengths">強み</a>
       <a href="#timeline">経歴</a>
       <a href="#diagnosis">調査リスク診断</a>
@@ -33,12 +34,14 @@
 
   <!-- Hero -->
   <section class="hero">
+    <div class="hero-blob hero-blob--a" aria-hidden="true"></div>
+    <div class="hero-blob hero-blob--b" aria-hidden="true"></div>
     <div class="hero-inner">
-      <p class="eyebrow">元国税調査官 × 中小企業・事業再生支援</p>
-      <h1>税務調査に「入られてから」ではなく、<br>「入られる前」から守る顧問税理士。</h1>
+      <p class="eyebrow">国税局 37年のキャリア × 事業再生のプロフェッショナル</p>
+      <h1>税務調査への「備え」も、<br>事業の「立て直し」も。<br>ふたりの専門家が力になります。</h1>
       <p class="hero-lead">
-        国税局で中小企業から大企業まで数百社の税務調査・システム監査を担当してきた経験を活かし、
-        経営者の立場に立った税務顧問・事業再生支援を行っています。
+        国際税務調査・査察部国際専門官を歴任した税理士 坂口誠と、商工会議所等からの依頼で事業再生に取り組む
+        公認会計士 上原祐介。ひとつの事務所で、経営者の「守り」と「立て直し」の両方を支えます。
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="#diagnosis">無料の税務調査リスク診断を試す</a>
@@ -46,35 +49,80 @@
       </div>
     </div>
     <div class="stat-row" id="stat-row">
-      <div class="stat" data-target="300" data-suffix="社以上">
+      <div class="stat" data-target="37" data-suffix="年">
+        <span class="stat-icon" aria-hidden="true">🏛️</span>
         <span class="stat-num" data-count>0</span>
-        <span class="stat-label">税務調査を担当</span>
+        <span class="stat-label">国税局でのキャリア(調査官・SE・国際専門官等)</span>
       </div>
-      <div class="stat" data-target="15" data-suffix="年+">
+      <div class="stat" data-target="100" data-suffix="%">
+        <span class="stat-icon" aria-hidden="true">📄</span>
         <span class="stat-num" data-count>0</span>
-        <span class="stat-label">国税局での実務経験(目安)</span>
+        <span class="stat-label">税理士登録後に対応した税務調査の申告是認率</span>
       </div>
-      <div class="stat" data-target="2" data-suffix="つの視点">
-        <span class="stat-num" data-count>0</span>
-        <span class="stat-label">調査官視点 × AI・システム視点</span>
+      <div class="stat stat--static">
+        <span class="stat-icon" aria-hidden="true">🛡️</span>
+        <span class="stat-num">不起訴</span>
+        <span class="stat-label">最も厳しい査察部の調査にも対応した実績</span>
       </div>
     </div>
-    <p class="hero-note">※ 経験年数・件数は【実際の数値に差し替えてください】。事務所プロフィールをご確認のうえ調整をお願いします。</p>
+  </section>
+
+  <!-- 専門家紹介 -->
+  <section class="section" id="team">
+    <h2 class="section-title">二人の専門家がいます</h2>
+    <p class="section-lead">
+      坂口誠税理士事務所は、上原祐介公認会計士事務所・上原祐介税理士事務所と同じ事務所で、パートナーとして活動しています。
+    </p>
+
+    <div class="team-grid">
+      <article class="team-card reveal">
+        <div class="team-avatar team-avatar--navy" aria-hidden="true">誠</div>
+        <p class="team-role">税理士</p>
+        <h3 class="team-name">坂口 誠</h3>
+        <p class="team-desc">
+          昭和61年、大阪国税局に入庁。中小企業の税務調査、国税局大型コンピュータのプログラマー・システムエンジニア、
+          システム監査手法を用いた大規模法人調査、国際税務調査、査察部国際専門官などを歴任し、
+          令和5年7月より税理士として当事務所で活動。税理士登録後に対応した税務調査は、査察部の案件も含め
+          すべて申告是認、査察部案件では不起訴を獲得している。
+        </p>
+        <ul class="team-tags">
+          <li>税務調査・査察対応</li>
+          <li>国際税務</li>
+          <li>システム監査</li>
+          <li>公益法人会計</li>
+        </ul>
+      </article>
+
+      <article class="team-card reveal">
+        <div class="team-avatar team-avatar--coral" aria-hidden="true">祐</div>
+        <p class="team-role">公認会計士・当事務所 主宰</p>
+        <h3 class="team-name">上原 祐介</h3>
+        <p class="team-desc">
+          商工会議所をはじめとする各種機関からの依頼を中心に、中小企業の事業再生に取り組む公認会計士。
+          当事務所の主宰者。
+        </p>
+        <p class="team-desc team-desc--muted">詳しいプロフィールは近日公開予定です。</p>
+        <ul class="team-tags">
+          <li>事業再生</li>
+          <li>商工会議所案件</li>
+        </ul>
+      </article>
+    </div>
   </section>
 
   <!-- 強み比較 -->
-  <section class="section" id="strengths">
-    <h2 class="section-title">元国税OB税理士だからできること</h2>
+  <section class="section section--alt" id="strengths">
+    <h2 class="section-title">この事務所ならではの強み</h2>
     <p class="section-lead">
-      「調査する側」を数百社分経験してきたからこそ見える、リスクの芽。タブを切り替えて違いを確認してください。
+      国税局で数々の専門ポジションを歴任した税理士と、事業再生を専門とする公認会計士。タブを切り替えて違いを確認してください。
     </p>
 
     <div class="compare" id="compare">
       <div class="compare-tabs" role="tablist" aria-label="比較する観点">
-        <button class="compare-tab is-active" role="tab" aria-selected="true" data-target="c-audit">税務調査対応</button>
-        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-system">IT・AI活用</button>
-        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-revival">事業再生</button>
-        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-npo">公益法人対応</button>
+        <button class="compare-tab is-active" role="tab" aria-selected="true" data-target="c-audit"><span class="tab-icon">🔍</span>税務調査対応</button>
+        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-system"><span class="tab-icon">🖥️</span>システム・IT</button>
+        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-revival"><span class="tab-icon">📈</span>事業再生</button>
+        <button class="compare-tab" role="tab" aria-selected="false" data-target="c-npo"><span class="tab-icon">🏢</span>公益法人対応</button>
       </div>
 
       <div class="compare-panels">
@@ -84,8 +132,8 @@
             <p>調査の連絡が来てから資料をそろえ、当日は調査官の質問に受け身で対応することが多い。</p>
           </div>
           <div class="compare-col compare-col--us">
-            <h3>元国税OB税理士</h3>
-            <p>調査官が「どこを・なぜ」見るかを熟知。日頃の記帳・申告の段階で弱点を洗い出し、指摘されにくい体制をつくる。</p>
+            <h3>坂口誠税理士事務所</h3>
+            <p>国税局で税務調査官・国際税務調査・査察部国際専門官などを歴任。税理士登録後に対応した調査は査察部の案件を含め全て申告是認、査察部案件では不起訴を獲得している。</p>
           </div>
         </div>
         <div class="compare-panel" id="c-system">
@@ -94,8 +142,8 @@
             <p>紙の資料や手作業でのチェックが中心で、システム面の相談までは踏み込みにくい。</p>
           </div>
           <div class="compare-col compare-col--us">
-            <h3>元国税OB税理士</h3>
-            <p>中小企業から大規模法人まで、様々な会計システムの内部を監査してきた経験を活かし、AIを使った業務効率化・記帳自動化も提案。</p>
+            <h3>坂口誠税理士事務所</h3>
+            <p>国税局の大型コンピュータのプログラマー・システムエンジニアを経験し、システム監査手法を用いた大規模法人の調査も担当。システムの構造を理解したうえでの記帳・会計運用の相談ができる。</p>
           </div>
         </div>
         <div class="compare-panel" id="c-revival">
@@ -104,8 +152,8 @@
             <p>申告業務が中心で、金融機関との交渉や再生計画づくりは専門外としていることが多い。</p>
           </div>
           <div class="compare-col compare-col--us">
-            <h3>元国税OB税理士</h3>
-            <p>債務免除益や欠損金の扱いなど税務論点を踏まえながら、再生計画の策定から金融機関対応まで伴走支援。</p>
+            <h3>上原祐介公認会計士事務所</h3>
+            <p>商工会議所等からの依頼を中心に、事業再生を専門に手がける公認会計士 上原祐介がパートナーとして在籍。再生計画の策定から実行まで伴走する。</p>
           </div>
         </div>
         <div class="compare-panel" id="c-npo">
@@ -114,8 +162,8 @@
             <p>公益法人特有の会計基準や認定事務に対応できる事務所は限られている。</p>
           </div>
           <div class="compare-col compare-col--us">
-            <h3>元国税OB税理士</h3>
-            <p>公益法人会計基準の改正対応や認定関連の事務経験があり、一般企業とは異なる会計処理にも対応可能。</p>
+            <h3>坂口誠税理士事務所</h3>
+            <p>国税局在籍時に公益法人の申請承認、新会計基準への移行に関する事務に携わった経験があり、一般企業とは異なる会計処理にも対応可能。</p>
           </div>
         </div>
       </div>
@@ -123,75 +171,85 @@
   </section>
 
   <!-- 経歴タイムライン -->
-  <section class="section section--alt" id="timeline">
-    <h2 class="section-title">経歴</h2>
-    <p class="section-lead">「調査する側」としての経験が、今の税務顧問業務のベースになっています。</p>
+  <section class="section" id="timeline">
+    <h2 class="section-title">坂口誠の経歴</h2>
+    <p class="section-lead">「調査する側」としての37年間が、今の税務顧問業務のベースになっています。</p>
 
     <ol class="timeline" id="timeline-list">
       <li class="timeline-item">
-        <div class="timeline-dot"></div>
+        <div class="timeline-dot" aria-hidden="true">🏛️</div>
         <div class="timeline-body">
-          <p class="timeline-when">【入局年】</p>
-          <h3>国税局に入局</h3>
-          <p>法人税・消費税の調査担当として、中小企業から大企業まで幅広い規模の税務調査に従事。</p>
+          <p class="timeline-when">昭和61年(1986年)4月1日</p>
+          <h3>大阪国税局に入庁</h3>
+          <p>その後4年間、中小企業の税務調査を担当。</p>
         </div>
       </li>
       <li class="timeline-item">
-        <div class="timeline-dot"></div>
+        <div class="timeline-dot" aria-hidden="true">🖥️</div>
         <div class="timeline-body">
           <p class="timeline-when">在職中</p>
-          <h3>数百社規模の税務調査・システム監査を担当</h3>
-          <p>業種・規模を問わず、会計システムや記帳の実態を数多く確認。指摘されやすい処理・体制のパターンを把握。</p>
+          <h3>国税局の大型コンピュータのプログラマー・システムエンジニアに</h3>
+          <p>その後、システム監査手法を用いた大規模法人の税務調査を担当。</p>
         </div>
       </li>
       <li class="timeline-item">
-        <div class="timeline-dot"></div>
+        <div class="timeline-dot" aria-hidden="true">🌏</div>
         <div class="timeline-body">
           <p class="timeline-when">在職中</p>
-          <h3>公益法人の新会計基準対応を経験</h3>
-          <p>制度改正に伴う会計処理・認定関連事務に携わり、一般企業とは異なる会計・税務の知見を蓄積。</p>
+          <h3>国際税務調査、査察部国際専門官などを歴任</h3>
+          <p>あわせて、公益法人の申請承認・新会計基準への移行に関する事務にも従事。</p>
         </div>
       </li>
       <li class="timeline-item">
-        <div class="timeline-dot"></div>
+        <div class="timeline-dot" aria-hidden="true">📇</div>
         <div class="timeline-body">
-          <p class="timeline-when">【開業年】</p>
-          <h3>税理士として独立</h3>
-          <p>調査官時代の知見とAI・システムの知識を活かし、中小企業の経営支援・事業再生支援を専門とする事務所を開業。</p>
+          <p class="timeline-when">令和5年(2023年)7月</p>
+          <h3>税理士として当事務所で活動開始</h3>
+          <p>上原祐介公認会計士事務所とパートナーとして、同じ事務所で活動をスタート。</p>
+        </div>
+      </li>
+      <li class="timeline-item">
+        <div class="timeline-dot" aria-hidden="true">✅</div>
+        <div class="timeline-body">
+          <p class="timeline-when">税理士登録後の実績</p>
+          <h3>査察部の厳しい調査にも対応、不起訴・全案件申告是認</h3>
+          <p>自身の案件に加え他二社の調査対応も経験。対応した税務調査はすべて申告是認となっている。あわせて、中小企業の設立支援(記帳〜決算書〜申告書まで一貫対応)、相続税申告(数件)、個人所得税申告(数十件)、法人税申告(数十件)を担当。</p>
         </div>
       </li>
     </ol>
   </section>
 
   <!-- ターゲット層 -->
-  <section class="section" id="clients">
+  <section class="section section--alt" id="clients">
     <h2 class="section-title">こんな方をサポートしています</h2>
     <div class="client-cards">
-      <div class="client-card">
-        <p class="client-icon">🏢</p>
+      <div class="client-card client-card--navy">
+        <p class="client-icon" aria-hidden="true">🏢</p>
         <h3>中小企業の経営者の方</h3>
         <ul>
           <li>税務調査で指摘を受けないか不安がある</li>
           <li>顧問税理士に相談しても、申告書の作成以上のことをしてくれない</li>
-          <li>会計・経理業務をもっと効率化したい(AI・クラウド活用)</li>
+          <li>システムや記帳の仕組みから見直したい</li>
         </ul>
+        <p class="client-owner">担当：税理士 坂口誠</p>
       </div>
-      <div class="client-card">
-        <p class="client-icon">🔄</p>
+      <div class="client-card client-card--coral">
+        <p class="client-icon" aria-hidden="true">📈</p>
         <h3>事業再生に取り組む企業の方</h3>
         <ul>
           <li>資金繰りが厳しく、金融機関との交渉方法が分からない</li>
-          <li>債務免除・欠損金など再生特有の税務論点を整理したい</li>
+          <li>商工会議所等から再生支援の専門家を紹介してほしいと言われた</li>
           <li>再生計画の策定から実行まで一緒に伴走してほしい</li>
         </ul>
+        <p class="client-owner">担当：公認会計士 上原祐介</p>
       </div>
     </div>
   </section>
 
   <!-- 事業再生支援フロー -->
-  <section class="section section--alt" id="revival">
+  <section class="section" id="revival">
     <h2 class="section-title">事業再生支援の進め方</h2>
-    <p class="section-lead">ステップをクリックすると詳しい内容が確認できます。</p>
+    <p class="section-lead">公認会計士 上原祐介を中心に進める、事業再生支援の流れです。ステップをクリックすると詳しい内容が確認できます。</p>
 
     <div class="stepper" id="stepper">
       <div class="stepper-nav" role="tablist" aria-label="事業再生支援のステップ">
@@ -207,7 +265,7 @@
   </section>
 
   <!-- 税務調査リスク診断 -->
-  <section class="section" id="diagnosis">
+  <section class="section section--alt" id="diagnosis">
     <h2 class="section-title">簡易・税務調査リスク診断</h2>
     <p class="section-lead">
       6つの質問に答えると、調査対象になりやすい傾向を簡易チェックできます。
@@ -224,7 +282,7 @@
   </section>
 
   <!-- FAQ -->
-  <section class="section section--alt" id="faq">
+  <section class="section" id="faq">
     <h2 class="section-title">よくあるご質問</h2>
     <div class="faq" id="faq-list">
       <div class="faq-item">
@@ -237,17 +295,17 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">事業再生の相談も初回無料ですか？</button>
-        <div class="faq-a"><p>はい、初回のご相談は無料で承っています。現状をお伺いしたうえで、支援内容をご提案します。</p></div>
+        <div class="faq-a"><p>はい、初回のご相談は無料で承っています。現状をお伺いしたうえで、上原祐介より支援内容をご提案します。</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">個人の確定申告も依頼できますか？</button>
-        <div class="faq-a"><p>対応可能です。事業所得だけでなく、不動産所得や譲渡所得などのご相談も承っています。</p></div>
+        <div class="faq-a"><p>対応可能です。相続税申告・個人の所得税申告の実績もございます。</p></div>
       </div>
     </div>
   </section>
 
   <!-- お問い合わせ -->
-  <section class="section" id="contact">
+  <section class="section section--alt" id="contact">
     <h2 class="section-title">お問い合わせ</h2>
     <p class="section-lead">まずは無料相談から。フォーム送信で入力内容をメール下書きとして開きます。</p>
 
@@ -264,9 +322,9 @@
         <label>
           ご相談内容
           <select name="topic">
-            <option>税務顧問について</option>
-            <option>税務調査対応について</option>
-            <option>事業再生について</option>
+            <option>税務顧問について(坂口誠)</option>
+            <option>税務調査対応について(坂口誠)</option>
+            <option>事業再生について(上原祐介)</option>
             <option>その他</option>
           </select>
         </label>
@@ -281,9 +339,11 @@
         <h3>直接のお問い合わせ</h3>
         <dl>
           <dt>事務所名</dt>
-          <dd>【事務所名】税理士事務所</dd>
-          <dt>代表</dt>
-          <dd>税理士 【代表者名】(税理士登録番号【登録番号】)</dd>
+          <dd>坂口誠税理士事務所 / 上原祐介公認会計士事務所・上原祐介税理士事務所</dd>
+          <dt>税理士</dt>
+          <dd>坂口 誠(税理士登録番号【登録番号】)</dd>
+          <dt>主宰</dt>
+          <dd>上原 祐介(公認会計士・税理士)</dd>
           <dt>電話</dt>
           <dd><button class="copy-btn" data-copy="【電話番号】">【電話番号】<span class="copy-hint">タップでコピー</span></button></dd>
           <dt>メール</dt>
@@ -298,7 +358,7 @@
 </main>
 
 <footer class="site-footer">
-  <p>© 【事務所名】税理士事務所</p>
+  <p>© 坂口誠税理士事務所 / 上原祐介公認会計士事務所・上原祐介税理士事務所(パートナー事務所)</p>
   <a href="../../">← ハブに戻る</a>
 </footer>
 
