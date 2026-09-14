@@ -2,7 +2,6 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
-  const MONTH_ROW_H = 20;
   const PAST_DAYS = 14;
   const FUTURE_DAYS = 30;
   const STEP_DAYS = 14;
@@ -33,7 +32,6 @@
   function startOfDay(base) { const d = new Date(base); d.setHours(0, 0, 0, 0); return d; }
   function addDaysDate(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }
   function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
-  function fmtMD(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
   function statusMeta(status) {
     if (status === 'done') return { label: '完了', pillClass: 'pill-done' };
     if (status === 'in_progress') return { label: '進行中', pillClass: 'pill-progress' };
@@ -434,17 +432,19 @@
   function pillBg(status) { return status === 'done' ? 'var(--success-bg)' : status === 'in_progress' ? 'var(--accent-soft)' : 'var(--neutral-bg)'; }
   function pillColor(status) { return status === 'done' ? 'var(--success-text)' : status === 'in_progress' ? 'var(--accent)' : 'var(--muted)'; }
 
-  function renderRangeLabel() {
+  // ヘッダーに表示する年月は「現在スクロールして見えている位置」を反映する。
+  // グリッド左端の日付が何年何月かを、スクロール位置から逆算する。
+  function updateMonthLabel() {
+    const labelEl = el('month-label');
+    if (!labelEl) return;
     const rangeStart = addDaysDate(viewStart, -PAST_DAYS);
-    const rangeEnd = addDaysDate(viewStart, FUTURE_DAYS - 1);
-    const sameYear = rangeStart.getFullYear() === rangeEnd.getFullYear();
-    el('month-label').textContent = sameYear
-      ? `${rangeStart.getFullYear()}年 ${fmtMD(rangeStart)} 〜 ${fmtMD(rangeEnd)}`
-      : `${rangeStart.getFullYear()}年${fmtMD(rangeStart)} 〜 ${rangeEnd.getFullYear()}年${fmtMD(rangeEnd)}`;
+    const scrollLeft = timelineScrollX === null ? PAST_DAYS * DAY_W : timelineScrollX;
+    const visibleDate = addDaysDate(rangeStart, Math.round(scrollLeft / DAY_W));
+    labelEl.textContent = `${visibleDate.getFullYear()}年${visibleDate.getMonth() + 1}月`;
   }
 
   function renderTimeline(enriched, deps) {
-    renderRangeLabel();
+    updateMonthLabel();
     const map = childrenMap(enriched);
     const rows = flattenVisible(map);
     const timelineEl = el('timeline-view');
@@ -467,10 +467,7 @@
       dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : date.getDate()}</div>`;
       if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${i * DAY_W}px;width:${DAY_W}px;"></div>`;
     }
-    const anchorMonthLabel = `${viewStart.getFullYear()}年${viewStart.getMonth() + 1}月`;
-
     let taskListHtml = `
-      <div class="tl-month-spacer">${tasklistCollapsed ? '' : anchorMonthLabel}</div>
       <div class="tl-head">
         <button class="tl-toggle" id="tl-collapse-btn" title="${tasklistCollapsed ? 'タスク名を表示' : 'タスク名を折りたたむ'}">${tasklistCollapsed ? icons.arrowRight : icons.arrowLeft}</button>
         ${tasklistCollapsed ? '' : '<span>タスク</span>'}
@@ -506,7 +503,7 @@
     let todayLine = '';
     if (isCurrentMonth) {
       const x = Math.round((today - monthStart) / 86400000) * DAY_W + DAY_W / 2;
-      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H + MONTH_ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
+      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
     }
 
     timelineEl.innerHTML = `
@@ -514,7 +511,6 @@
         <div class="gantt">
           <div class="tasklist ${tasklistCollapsed ? 'collapsed' : ''}">${taskListHtml}</div>
           <div class="grid-wrap">
-            <div class="grid-month-row"></div>
             <div class="grid-header">${dayHeader}</div>
             <div class="grid-body" id="grid-body" style="width:${gridWidth}px;height:${gridHeight}px;">
               ${weekendLayer}
@@ -534,7 +530,10 @@
     drawDependencies(deps);
     const ganttEl = timelineEl.querySelector('.gantt');
     if (ganttEl) {
-      ganttEl.addEventListener('scroll', () => { timelineScrollX = ganttEl.scrollLeft; }, { passive: true });
+      ganttEl.addEventListener('scroll', () => {
+        timelineScrollX = ganttEl.scrollLeft;
+        updateMonthLabel();
+      }, { passive: true });
     }
     el('tl-collapse-btn').addEventListener('click', (e) => {
       e.stopPropagation();
