@@ -80,10 +80,18 @@
         <h3>国税の内部構造を理解している税理士</h3>
         <p>調査官の思考パターン、勘定科目の着眼点、資料の評価基準を熟知。国税内部のシステム・データ構造についても深い理解を持つ。</p>
       </div>
-      <div class="core-card">
+      <div class="core-card core-card--wide">
         <p class="core-icon" aria-hidden="true">🤖</p>
         <h3>AIを税務実務に統合できる技術者</h3>
-        <p>Transformerや重み行列などAIの構造を研究者レベルで理解。対話型AI(RAG)ソフトの開発に現在取り組んでおり、条文ベースのRAGなど、税務×AIの実務への応用を目指している。</p>
+        <p>Transformerや重み行列などAIの構造を研究者レベルで理解。現在、複数のAIプロバイダを横断利用できる
+        会話ログ×RAG基盤「raglog」(開発中・コンセプト)を構築している。</p>
+        <ul class="core-tech-list">
+          <li>Gemini・Claude・ChatGPTを横断利用できるプロバイダ抽象化層(providers.py)</li>
+          <li>Gemini Embeddingsによるベクトル化 + コサイン類似度によるセマンティック検索(embeddings.py / similarity.py)</li>
+          <li>長文の自動チャンキング(chunking.py)、URLからの本文抽出(webfetch.py)</li>
+          <li>Flask + SQLiteによる会話エントリ・設定管理(app.py / db.py / settings.py)</li>
+        </ul>
+        <p>将来的には条文ベースのRAGなど、税務実務への応用を目指している。</p>
       </div>
       <div class="core-card">
         <p class="core-icon" aria-hidden="true">🔍</p>
@@ -132,7 +140,8 @@
         </p>
         <p class="team-desc">
           近年はAI領域にも取り組み、Transformerや重み行列などの構造について研究者レベルの理解を持つ。現在、
-          対話をRAG化するソフトの開発に着手しており、将来的には条文ベースのRAGなど、税務実務への応用も目指している。
+          Gemini・Claude・ChatGPTを横断利用できる会話ログ×RAG基盤「raglog」(開発中)を構築しており、
+          将来的には条文ベースのRAGなど、税務実務への応用も目指している。詳しくは「坂口誠の専門性」の項をご覧ください。
         </p>
         <ul class="team-tags">
           <li>税務調査対応</li>
@@ -194,7 +203,7 @@
           </div>
           <div class="compare-col compare-col--us">
             <h3>坂口誠税理士事務所</h3>
-            <p>国税局の大型コンピュータのプログラマー・システムエンジニアを経験し、システム監査手法を用いた大規模法人の調査も担当。近年はTransformerや重み行列などAIの構造についても研究者レベルの理解を深め、対話をRAG化するソフトの開発に現在取り組んでいる。</p>
+            <p>国税局の大型コンピュータのプログラマー・システムエンジニアを経験し、システム監査手法を用いた大規模法人の調査も担当。近年はTransformerや重み行列などAIの構造についても研究者レベルの理解を深め、Gemini・Claude・ChatGPTを横断利用できるRAG基盤「raglog」(Flask+SQLite、Embeddingsによるセマンティック検索)を開発中。</p>
           </div>
         </div>
         <div class="compare-panel" id="c-revival">
@@ -272,7 +281,7 @@
         <div class="timeline-body">
           <p class="timeline-when">現在</p>
           <h3>AIを活用した業務効率化にも取り組む</h3>
-          <p>Transformerや重み行列などAIの構造について研究者レベルの理解を持ち、対話をRAG化するソフトの開発に現在取り組む。将来的には条文ベースのRAGなど、税務実務への応用も目指している。</p>
+          <p>Transformerや重み行列などAIの構造について研究者レベルの理解を持ち、Gemini・Claude・ChatGPTを横断利用できる会話ログ×RAG基盤「raglog」(開発中)を構築。将来的には条文ベースのRAGなど、税務実務への応用も目指している。</p>
         </div>
       </li>
       <li class="timeline-item">

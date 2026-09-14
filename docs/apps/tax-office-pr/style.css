@@ -131,14 +131,26 @@ ul{ margin: 0; padding-left: 1.2em; }
 
 /* ---------- Core(三位一体の専門性) ---------- */
 .core-grid{ display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 22px; }
-@media (min-width: 760px){ .core-grid{ grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 760px){
+  .core-grid{ grid-template-columns: repeat(3, 1fr); grid-auto-flow: dense; }
+  .core-card--wide{ grid-column: 1 / -1; }
+}
 .core-card{
   background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 22px; text-align: left;
 }
 .core-icon{ font-size: 1.8rem; margin: 0 0 10px; }
 .core-card h3{ font-size: 1rem; color: var(--navy); }
-.core-card p{ color: var(--muted); margin: 0; font-size: 0.9rem; }
+.core-card p{ color: var(--muted); margin: 0 0 10px; font-size: 0.9rem; }
+.core-card p:last-child{ margin-bottom: 0; }
+.core-tech-list{
+  list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 7px;
+}
+.core-tech-list li{
+  padding-left: 20px; position: relative; font-size: 0.82rem; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+.core-tech-list li::before{ content: "▹"; position: absolute; left: 0; color: var(--teal); font-family: inherit; }
 .value-box{
   margin-top: 18px; background: linear-gradient(135deg, var(--navy), var(--navy-deep));
   color: #fff; border-radius: var(--radius); padding: 22px;
