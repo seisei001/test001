@@ -2,6 +2,7 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
+  const MONTH_ROW_H = 20;
   const PAST_DAYS = 14;
   const FUTURE_DAYS = 30;
   const STEP_DAYS = 14;
@@ -98,6 +99,7 @@
   let notifOpen = false;
   let openMenuId = null;
   let tasklistCollapsed = false;
+  let projectMenuOpen = false;
   let timelineScrollX = null; // null = 未設定(基準日を左端に揃える)。手動スクロール後はその位置を保持する。
 
   function renderActions(task) {
@@ -234,22 +236,34 @@
     const { tasks: enriched, projectProgress } = buildView(tasks, deps);
 
     el('page-header').innerHTML = `
-      <div class="ph-main">
-        <div class="ph-title-row">
-          <h2>${escapeHtml(project.name)}</h2>
-          <button class="icon-btn" id="edit-project-btn" style="width:32px;height:32px;" title="プロジェクト名・説明を編集">${icons.edit}</button>
-        </div>
+      <div class="ph-bar" id="ph-toggle-btn">
+        <h2>${escapeHtml(project.name)}</h2>
+        <span class="ph-mini-progress">${projectProgress}%</span>
+        <span class="chev">${projectMenuOpen ? icons.chevronDown : icons.chevronRight}</span>
+      </div>
+      ${projectMenuOpen ? `
+      <div class="ph-dropdown">
         ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ''}
-        <div class="progress-wrap" style="margin-top:6px;">
+        <div class="progress-wrap">
           <div class="progress-bar"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
           <span class="progress-num">${projectProgress}%</span>
           <span class="meta-item">全${tasks.length}タスク</span>
         </div>
-      </div>
-      <button class="btn btn-ghost" id="add-root-task">${icons.plus} タスクを追加</button>
+        <div class="ph-actions">
+          <button class="btn btn-ghost" id="edit-project-btn">${icons.edit} 編集</button>
+          <button class="btn btn-primary" id="add-root-task">${icons.plus} タスクを追加</button>
+        </div>
+      </div>` : ''}
     `;
-    el('add-root-task').addEventListener('click', () => openTaskModal({ mode: 'create', parentId: null }));
-    el('edit-project-btn').addEventListener('click', () => openProjectModal({ mode: 'edit', project }));
+    el('ph-toggle-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      projectMenuOpen = !projectMenuOpen;
+      render();
+    });
+    if (projectMenuOpen) {
+      el('add-root-task').addEventListener('click', (e) => { e.stopPropagation(); openTaskModal({ mode: 'create', parentId: null }); });
+      el('edit-project-btn').addEventListener('click', (e) => { e.stopPropagation(); openProjectModal({ mode: 'edit', project }); });
+    }
 
     el('tree-view').style.display = activeTab === 'tree' ? '' : 'none';
     el('timeline-view').style.display = activeTab === 'timeline' ? '' : 'none';
@@ -453,8 +467,10 @@
       dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : date.getDate()}</div>`;
       if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${i * DAY_W}px;width:${DAY_W}px;"></div>`;
     }
+    const anchorMonthLabel = `${viewStart.getFullYear()}年${viewStart.getMonth() + 1}月`;
 
     let taskListHtml = `
+      <div class="tl-month-spacer">${tasklistCollapsed ? '' : anchorMonthLabel}</div>
       <div class="tl-head">
         <button class="tl-toggle" id="tl-collapse-btn" title="${tasklistCollapsed ? 'タスク名を表示' : 'タスク名を折りたたむ'}">${tasklistCollapsed ? icons.arrowRight : icons.arrowLeft}</button>
         ${tasklistCollapsed ? '' : '<span>タスク</span>'}
@@ -490,7 +506,7 @@
     let todayLine = '';
     if (isCurrentMonth) {
       const x = Math.round((today - monthStart) / 86400000) * DAY_W + DAY_W / 2;
-      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
+      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H + MONTH_ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
     }
 
     timelineEl.innerHTML = `
@@ -498,6 +514,7 @@
         <div class="gantt">
           <div class="tasklist ${tasklistCollapsed ? 'collapsed' : ''}">${taskListHtml}</div>
           <div class="grid-wrap">
+            <div class="grid-month-row"></div>
             <div class="grid-header">${dayHeader}</div>
             <div class="grid-body" id="grid-body" style="width:${gridWidth}px;height:${gridHeight}px;">
               ${weekendLayer}
@@ -758,6 +775,7 @@
     document.addEventListener('click', () => {
       if (notifOpen) { notifOpen = false; renderNotif(); }
       if (openMenuId) { openMenuId = null; render(); }
+      if (projectMenuOpen) { projectMenuOpen = false; render(); }
     });
     el('prev-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, -STEP_DAYS); timelineScrollX = null; render(); });
     el('next-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, STEP_DAYS); timelineScrollX = null; render(); });
