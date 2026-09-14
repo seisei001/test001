@@ -2,6 +2,8 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
+  const WINDOW_DAYS = 30;
+  const STEP_DAYS = 14;
 
   const icons = {
     plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
@@ -26,6 +28,10 @@
   function uid() { return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
   function initial(name) { return (name || '?').trim().slice(0, 1); }
   function addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
+  function startOfDay(base) { const d = new Date(base); d.setHours(0, 0, 0, 0); return d; }
+  function addDaysDate(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }
+  function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function fmtMD(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
   function statusMeta(status) {
     if (status === 'done') return { label: '完了', pillClass: 'pill-done' };
     if (status === 'in_progress') return { label: '進行中', pillClass: 'pill-progress' };
@@ -87,7 +93,7 @@
   let activeTab = 'tree';
   const collapsedTree = new Set();
   const collapsedTimeline = new Set();
-  let viewDate = new Date();
+  let viewStart = startOfDay(new Date());
   let notifOpen = false;
   let openMenuId = null;
   let tasklistCollapsed = false;
@@ -406,13 +412,16 @@
   function pillBg(status) { return status === 'done' ? 'var(--success-bg)' : status === 'in_progress' ? 'var(--accent-soft)' : 'var(--neutral-bg)'; }
   function pillColor(status) { return status === 'done' ? 'var(--success-text)' : status === 'in_progress' ? 'var(--accent)' : 'var(--muted)'; }
 
-  function renderMonthNav() {
-    const y = viewDate.getFullYear(), m = viewDate.getMonth();
-    el('month-label').textContent = `${y}年${m + 1}月`;
+  function renderRangeLabel() {
+    const rangeEnd = addDaysDate(viewStart, WINDOW_DAYS - 1);
+    const sameYear = viewStart.getFullYear() === rangeEnd.getFullYear();
+    el('month-label').textContent = sameYear
+      ? `${viewStart.getFullYear()}年 ${fmtMD(viewStart)} 〜 ${fmtMD(rangeEnd)}`
+      : `${viewStart.getFullYear()}年${fmtMD(viewStart)} 〜 ${rangeEnd.getFullYear()}年${fmtMD(rangeEnd)}`;
   }
 
   function renderTimeline(enriched, deps) {
-    renderMonthNav();
+    renderRangeLabel();
     const map = childrenMap(enriched);
     const rows = flattenVisible(map);
     const timelineEl = el('timeline-view');
@@ -420,21 +429,20 @@
       timelineEl.innerHTML = '<div class="empty-state">タスクがありません。タスク分解タブから追加してください。</div>';
       return;
     }
-    const year = viewDate.getFullYear(), month = viewDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month, daysInMonth);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+    const monthStart = viewStart;
+    const monthEnd = addDaysDate(viewStart, WINDOW_DAYS - 1);
+    const daysInMonth = WINDOW_DAYS;
+    const today = startOfDay(new Date());
+    const isCurrentMonth = today >= monthStart && today <= monthEnd;
     const gridWidth = daysInMonth * DAY_W;
     const gridHeight = rows.length * ROW_H;
 
     let dayHeader = '', weekendLayer = '';
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d);
-      const isToday = isCurrentMonth && d === today.getDate();
-      dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${d}</span>` : d}</div>`;
-      if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${(d - 1) * DAY_W}px;width:${DAY_W}px;"></div>`;
+    for (let i = 0; i < daysInMonth; i++) {
+      const date = addDaysDate(monthStart, i);
+      const isToday = isSameDay(date, today);
+      dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : date.getDate()}</div>`;
+      if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${i * DAY_W}px;width:${DAY_W}px;"></div>`;
     }
 
     let taskListHtml = `
@@ -472,7 +480,7 @@
 
     let todayLine = '';
     if (isCurrentMonth) {
-      const x = (today.getDate() - 1) * DAY_W + DAY_W / 2;
+      const x = Math.round((today - monthStart) / 86400000) * DAY_W + DAY_W / 2;
       todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
     }
 
@@ -738,8 +746,9 @@
       if (notifOpen) { notifOpen = false; renderNotif(); }
       if (openMenuId) { openMenuId = null; render(); }
     });
-    el('prev-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1); render(); });
-    el('next-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1); render(); });
+    el('prev-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, -STEP_DAYS); render(); });
+    el('next-month').addEventListener('click', () => { viewStart = addDaysDate(viewStart, STEP_DAYS); render(); });
+    el('today-btn').addEventListener('click', () => { viewStart = startOfDay(new Date()); render(); });
     window.addEventListener('resize', positionTabIndicator);
     render();
   }
