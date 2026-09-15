@@ -151,17 +151,6 @@ ul{ margin: 0; padding-left: 1.2em; }
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 .core-tech-list li::before{ content: "▹"; position: absolute; left: 0; color: var(--teal); font-family: inherit; }
-.ai-review{
-  margin-top: 18px; background: var(--panel-bg); border: 1.5px dashed var(--teal);
-  border-radius: var(--radius); padding: 20px 22px;
-}
-.ai-review-badge{
-  display: inline-block; background: var(--teal-soft); color: var(--ok);
-  font-weight: 700; font-size: 0.78rem; padding: 5px 12px; border-radius: 999px; margin: 0 0 10px;
-}
-.ai-review p{ font-size: 0.86rem; color: var(--muted); margin: 0 0 10px; }
-.ai-review p:nth-of-type(2){ font-style: italic; }
-.ai-review p:last-child{ margin-bottom: 0; color: var(--text); }
 .value-box{
   margin-top: 18px; background: linear-gradient(135deg, var(--navy), var(--navy-deep));
   color: #fff; border-radius: var(--radius); padding: 22px;
