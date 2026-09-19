@@ -40,5 +40,12 @@
     "description": "元国税調査官の強みを活かした税理士事務所向けの、診断コンテンツ付きインタラクティブPRホームページ",
     "path": "apps/tax-office-pr/",
     "icon": "⚖️"
+  },
+  {
+    "id": "smart-box",
+    "name": "賢い箱",
+    "description": "会話するたびにLoRAとRAGで賢くなっていく、ブラウザ完結の小さな会話AI(開発中・公開準備段階)",
+    "path": "apps/smart-box/src/ui/",
+    "icon": "🎙️"
   }
 ]
