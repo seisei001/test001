@@ -3,16 +3,15 @@
   "embedding": {
     "compressedDim": 64,
     "compressionMethod": "pca",
-    "pcaMatrixUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/pca-projection-768x64.json",
-    "pcaFittedOn": "JGLUE系日本語コーパスサンプルからBERT-base-japanese embeddingを抽出し、Phase 0/1準備段階でオフラインfit(1回きり、モデル更新時のみ再計算)。DESIGN.md 8.3節: このファイルはまだ生成されていない。",
-    "note": "決定: PCA固定射影を採用(コールドスタート問題を回避、RAGは補助的役割のため精度要求は中程度でよい)。128次元への拡張はPhase1.5のRAG品質メトリクス次第で再検討。"
+    "pcaMatrixUrl": "PLACEHOLDER_未確定。DESIGN.md 5.1節参照",
+    "pcaFittedOn": "CoreModelのembeddingを日本語コーパスサンプルに通して抽出し、オフラインでPCAをfit(1回きり、モデル更新時のみ再計算)。DESIGN.md 8.1節: このファイルはまだ生成されていない。",
+    "note": "決定: PCA固定射影を採用(コールドスタート問題を回避)。embedding元は CoreModel.embed()(旧BERTInference.classify()から変更)。"
   },
   "search": {
     "topK": 5,
     "similarityMetric": "cosine",
     "minSimilarityThreshold": 0.3,
-    "maxSearchLatencyMs": 20,
-    "note": "この閾値はRAGヒット判定だけでなく、DESIGN.md 1.4節の confidence 判定境界も兼ねる(RAGSearch.search()が返す最上位類似度がそのままconfidenceになる)。"
+    "maxSearchLatencyMs": 20
   },
   "contextWindow": {
     "recentTurnsAlwaysIncluded": 3,
@@ -25,7 +24,7 @@
     "estimatedSizePerTurnKB": 10
   },
   "metaTracking": {
-    "trackQuestionEffectiveness": true,
-    "trackWhichQuestionsWorked": true
+    "trackDistillationEffectiveness": true,
+    "trackImplicitFeedback": true
   }
 }
