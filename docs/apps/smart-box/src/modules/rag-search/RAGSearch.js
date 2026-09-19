@@ -1,7 +1,10 @@
 /**
- * RAGSearch — クエリembeddingと過去ターンとのコサイン類似度検索。
- * DESIGN.md 5.3節を参照。1000ターン規模までは総当たりで十分高速
+ * RAGSearch — クエリembeddingと過去エントリとのコサイン類似度検索。
+ * DESIGN.md 5.3節を参照。1000エントリ規模までは総当たりで十分高速
  * (シミュレーション実測18ms)なためANNインデックスは使わない。
+ *
+ * 2026-09-19改訂: search()が返す最上位類似度が、そのままTurnControllerの
+ * confidence判定(DESIGN.md 1.4節)に使われる。
  */
 export class RAGSearch {
   /**
@@ -18,13 +21,25 @@ export class RAGSearch {
    * @param {number} [topK] - 省略時は config.topK (デフォルト5)
    * @param {number} [minSimilarity] - 省略時は config.minSimilarityThreshold (デフォルト0.3)
    * @returns {Promise<{
-   *   retrievedTurns: object[],
+   *   retrievedEntries: object[],
    *   similarities: number[],
-   *   totalTurnsSearched: number,
+   *   confidence: number,       // = similarities[0]。ヒット無しの場合は0
+   *   totalEntriesSearched: number,
    *   latencyMs: number
    * }>}
    */
   async search(queryEmbedding, topK, minSimilarity) {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * LoRAForward.rerankScore() を使って検索結果を並べ替える(Phase 2)。
+   * Phase 1ではLoRAForwardが常に0を返すため、実質的に元の類似度順を維持する。
+   * @param {object[]} candidates - search() の retrievedEntries
+   * @param {import('../lora-training/LoRAForward.js').LoRAForward} loraForward
+   * @returns {object[]} 並べ替え後のcandidates
+   */
+  rerank(candidates, loraForward) {
     throw new Error('not implemented');
   }
 
