@@ -1,16 +1,18 @@
 /**
- * FeedbackProcessor — ユーザーのengagement(質問後に続けて書いた文字数・経過時間)を
- * 学習信号に変換する。DESIGN.md 5.6節・8.1節・8.2節を参照。Phase 2で実装対象。
+ * FeedbackProcessor — 本体AIを賢くするための損失を計算する。DESIGN.md 1.4節・5.5節・
+ * 8.1節・8.4節を参照。
  *
- * 2026-09-19改訂: 日記アプリには明示的な訂正/評価が基本無いため、旧版のexplicit
- * feedback前提をやめ、implicitのengagementScoreのみを信号源とする(DESIGN.md 4.4節)。
+ * 2つのモードを持つ:
+ *   1. distillation(LLM連携時): 本体AIの回答をLLMの回答に近づける教師あり損失
+ *      (LLMの回答文をターゲットとしたteacher-forcing)
+ *   2. implicit(単体時): 質問への反応等のimplicit signalから損失を計算(旧設計を流用)
  *
- * ここで生成された信号を使い、LoRAForward の A/B 行列のみを対象に手動で
- * 勾配を計算・更新する(BERT本体はfreezeし逆伝播しない)。
+ * どちらの場合も、勾配の更新対象は **LoRAForward の A/B 行列のみ**
+ * (DESIGN.md 1.3節。base modelは常にfreeze)。
  */
 export class FeedbackProcessor {
   /**
-   * @param {object} loraConfig - lora.config.json (feedback, lossWeights, training を使用)
+   * @param {object} loraConfig - lora.config.json (training, lossWeights を使用)
    */
   constructor(loraConfig) {
     this.config = loraConfig;
@@ -19,32 +21,29 @@ export class FeedbackProcessor {
   }
 
   /**
-   * 質問を出した次のエントリとの時間差・文字数からengagementを推定する。
-   * @param {{ nextEntryDelaySec: number, nextEntryLength: number }} timingAndLength
-   * @param {object} turnData - DESIGN.md 6節のターンデータ(response.type === 'question' の場合のみ意味を持つ)
-   * @returns {{
-   *   engagementScore: number,   // 0〜1。高いほど質問が効果的だった
-   *   trainingLabel: object
-   * }}
+   * 本体AIの回答とLLMの回答から蒸留損失を計算する(LLM連携時)。
+   * @param {string} ownAnswer - CoreModel.generate() の出力
+   * @param {string} llmAnswer - LLMTeacher.ask() の出力
+   * @returns {{ loss: number, trainingLabel: object }}
    */
-  process(timingAndLength, turnData) {
+  computeDistillationLoss(ownAnswer, llmAnswer) {
     throw new Error('not implemented');
   }
 
   /**
-   * Three-Way Fan-In Loss を計算する(DESIGN.md 8.2節)。
-   * loss = feedback*Lf + trajectory*Lt + question*Lq(engagementScoreから算出) + proximalReg*Lp
-   * @param {object} trainingLabel
-   * @param {object} loraWeights - LoRAForward.weights
-   * @returns {number} loss
+   * ユーザーの反応(implicit signal)から損失を計算する(単体時のフォールバック)。
+   * @param {object} feedback - 例: { type: 'implicit', signals: {...} }
+   * @param {object} turnData - DESIGN.md 6節のターンデータ
+   * @returns {{ loss: number, trainingLabel: object }}
    */
-  computeLoss(trainingLabel, loraWeights) {
+  computeImplicitLoss(feedback, turnData) {
     throw new Error('not implemented');
   }
 
   /**
-   * computeLoss() の勾配を手動で導出し、Adam的な更新(lora.config.jsonの
-   * optimization相当)でLoRAForwardのA/B行列を書き換える。
+   * computeDistillationLoss() / computeImplicitLoss() の勾配を、LoRAForwardの
+   * A/B行列のみを対象に逆伝播で計算し、Adam的な更新(lora.config.jsonの
+   * optimization相当)で書き換える。base modelは一切触らない(DESIGN.md 1.3節)。
    * @param {import('./LoRAForward.js').LoRAForward} loraForward
    * @param {object} trainingLabel
    * @returns {{ lossBefore: number, lossAfter: number }}
