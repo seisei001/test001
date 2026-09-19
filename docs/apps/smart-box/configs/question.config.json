@@ -1,0 +1,30 @@
+{
+  "$schema": "./schemas/question.schema.json",
+  "strategies": {
+    "available": ["direct", "contrastive", "clarification", "probing"],
+    "selectionMethod": "confidence-based",
+    "confidenceThresholds": {
+      "direct": 0.8,
+      "clarification": 0.5,
+      "probing": 0.0
+    },
+    "note": "confidence >= direct閾値 → directを使わず素通し。clarification〜direct間はclarification。probing〜clarification間はprobing。"
+  },
+  "templates": {
+    "direct": ["{topic}について、もう少し詳しく教えてください"],
+    "contrastive": ["前回は{previousChoice}でしたが、今回もそれでよいですか?それとも{alternative}の方が近いですか?"],
+    "clarification": ["{ambiguousDimension}について、{optionA}と{optionB}のどちらに近いですか?"],
+    "probing": ["定義や定理を使った形式的な説明が欲しいですか?それとも具体例を使った説明がよいですか?"],
+    "note": "テンプレートは初期セットのみ。運用しながらWeekly iteration cycleで拡充する想定。"
+  },
+  "frequency": {
+    "maxQuestionsPerSession": 5,
+    "minTurnsBetweenQuestions": 2,
+    "skipIfConfidenceAbove": 0.8
+  },
+  "informationGain": {
+    "measureMethod": "prediction-gap",
+    "highGapMeansAmbiguous": true,
+    "lowGapMeansEffective": true
+  }
+}
