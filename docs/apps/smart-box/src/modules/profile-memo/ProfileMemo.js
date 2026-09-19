@@ -7,19 +7,21 @@
  * 静的な人物像である。RAGの検索対象に混ぜると検索ノイズ・重複保存による肥大化を
  * 招くため、常に一定サイズの固定コンテキストとして直接注入する。
  *
+ * 質問機構は2つ併用する(DESIGN.md 1.6節、第6版で確定):
+ *   (a) セッション開始の固定質問2問 — 安価・即効性・コールドスタートに強い
+ *   (b) 確信度ベースの補助質問 — 固定質問では拾えない細かい傾向を継続的に拾う
+ * 第5版で(b)を「非効率」と誤って削除したが、(a)(b)はどちらもRAG/LoRAという
+ * 重い仕組みを介さない軽量な手段という共通点を持つ、互いに補完し合う仕組みであり、
+ * 第6版で(b)を復活させた(DESIGN.md 付録B参照)。
+ *
  * メモの構造(例):
  * {
- *   profile: { notes: string[] },
+ *   profile: { notes: string[], confidence: Record<string, number> },
  *   questionIntentPatterns: string[],
  *   sessionHistory: { topic: string, approach: string, date: string }[],
  *   lastUpdated: string,
  *   lastLlmConsolidation: string | null
  * }
- *
- * 第5版での変更: 次元ごとの確信度を追跡し閾値未満で質問を発火する仕組み
- * (getLowConfidenceDimensions())は削除した。セッション開始時の固定質問2問
- * (DESIGN.md 1.6節)に置き換えたため不要になった — 実装が複雑な割に収束が遅く、
- * コールドスタート(会話1回目)にも弱いという弱点があったため。
  */
 export class ProfileMemo {
   /**
@@ -51,15 +53,37 @@ export class ProfileMemo {
   }
 
   /**
-   * セッション開始時の固定質問2問(`profile.config.json`の
+   * (a) セッション開始時の固定質問2問(`profile.config.json`の
    * `sessionOpeningQuestions`)への回答を `sessionHistory` に記録する。
-   * DESIGN.md 1.6節: 最も強く・最も安価な情報源であり、コールドスタート
+   * DESIGN.md 1.6節a: 最も強く・最も安価な情報源であり、コールドスタート
    * (会話1回目)でも同じ強さの手がかりが得られる。
    * @param {string} sessionTopic - 「今日はどんな話題ですか?」への回答
    * @param {string} sessionApproach - 「その話題をどのように詰めたいですか?」への回答
    * @returns {Promise<void>}
    */
   async recordSessionOpening(sessionTopic, sessionApproach) {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * (b) 確信度が `confidenceThresholdForClarifyingQuestion` 未満の次元
+   * (`profile.config.json`の`trackedDimensions`)を返す。TurnController側で、
+   * この次元を埋めるための短い補助質問を回答に添えるかどうかの判定に使う
+   * (DESIGN.md 1.6節b)。
+   * @returns {string[]}
+   */
+  getLowConfidenceDimensions() {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * (b) 確信度ベースの補助質問への回答を `profile.confidence` の該当次元に
+   * 反映する。
+   * @param {string} dimension - trackedDimensionsのいずれか
+   * @param {string} answer - ユーザーの回答
+   * @returns {Promise<void>}
+   */
+  async recordConfidenceAnswer(dimension, answer) {
     throw new Error('not implemented');
   }
 
