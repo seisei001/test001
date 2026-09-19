@@ -43,14 +43,27 @@ export class CoreModel {
   }
 
   /**
-   * プロンプトとRAGコンテキストから、LoRA適用込みで本体AI自身の回答を生成する。
+   * プロンプト・RAGコンテキスト・ProfileMemoのコンテキストから、LoRA適用込みで
+   * 本体AI自身の回答を生成する。
    * @param {string} prompt - ユーザーの入力
    * @param {object} ragContext - RAGSearch.search() の結果
+   * @param {string} profileContext - ProfileMemo.getContext() の結果
+   *   (DESIGN.md 1.5節。検索なしで常時注入される固定コンテキスト)
    * @param {import('../lora-training/LoRAForward.js').LoRAForward} loraForward -
    *   生成の各層(query/value射影)にLoRA補正を注入する
    * @returns {Promise<{ text: string, latencyMs: number }>}
    */
-  async generate(prompt, ragContext, loraForward) {
+  async generate(prompt, ragContext, profileContext, loraForward) {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * 今回のターンの内容から、ProfileMemoに追記・修正すべき点を安価に要約する
+   * (ProfileMemo.update() から呼ばれる、毎ターンの軽量な差分生成用)。
+   * @param {object} turnData - DESIGN.md 6節のターンデータ
+   * @returns {Promise<{ profileDelta: object }>}
+   */
+  async summarizeForProfile(turnData) {
     throw new Error('not implemented');
   }
 
