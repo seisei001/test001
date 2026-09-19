@@ -1,23 +1,24 @@
 {
   "$schema": "./schemas/lora.schema.json",
+  "note": "DESIGN.md 5.5節: 旧版は「応答生成のトーンを変える」ことを想定していたが、生成モデルが無いため成立しなかった。適用対象を「RAG検索結果の再ランキング」「質問を出す閾値のパーソナライズ」に限定して再設計した。",
   "layers": {
     "global": {
       "rank": 4,
       "targetModules": ["query", "value"],
       "learningRate": 0.0005,
-      "description": "ユーザー全体の好み(技術深度、形式度など)。ゆっくり更新。"
+      "description": "質問される頻度への耐性など、ユーザー全体の傾向。ゆっくり更新。"
     },
     "topic": {
       "rank": 2,
       "targetModules": ["value"],
       "learningRate": 0.001,
-      "description": "特定トピック・ドメインでの傾向。中速更新。"
+      "description": "話題ジャンルごとの検索(RAG再ランキング)重視度。中速更新。"
     },
     "style": {
       "rank": 1,
       "targetModules": ["query"],
       "learningRate": 0.002,
-      "description": "tone/formalityの微調整。最速更新。"
+      "description": "質問戦略(direct/contrastive/clarification/probing)の好み。最速更新。"
     },
     "totalParamsEstimate": 7000
   },
@@ -27,23 +28,21 @@
     "updateFrequency": "per-turn",
     "experienceReplayBufferSize": 50,
     "catastrophicForgettingGuard": "proximal-regularizer",
-    "note": "決定: learningRate/proximalLambdaはPESO論文の正確な推奨値が未確認のため仮値のまま固定しない。ABTestRunnerを使いPhase 1.5のβテストで実測調整する運用とする(config駆動設計の趣旨通り、コード変更なしでconfigのみ変更して検証)。DESIGN.md 8.1節: Phase 1ではLoRAForwardは順伝播のみのスタブとし、学習(勾配計算)自体はPhase 2で実装する。"
+    "note": "決定: learningRate/proximalLambdaはPESO論文の正確な推奨値が未確認のため仮値のまま固定しない。ABTestRunnerを使いPhase 1.5のβテストで実測調整する運用とする。DESIGN.md 8.1節: Phase 1ではLoRAForwardは常にスコア0(補正なし)を返すスタブとし、学習自体はPhase 2で実装する。"
   },
   "feedback": {
-    "mode": "implicit-primary",
+    "mode": "implicit-only",
     "implicit": {
-      "noCorrectionConfidenceDelta": 1,
-      "explicitCorrectionConfidenceDelta": -2
+      "engagementFollowUpConfidenceDelta": 1,
+      "ignoredQuestionConfidenceDelta": -1
     },
-    "explicit": {
-      "confidence": 1.0
-    }
+    "note": "日記アプリには明示的な訂正/評価が基本無いため、旧版のexplicit feedbackは廃止しimplicitのみとした(DESIGN.md 4.4節)。信号はDESIGN.md 5.6節のengagementScore(質問後に続けて書いた文字数・経過時間)から得る。"
   },
   "lossWeights": {
     "feedback": 0.5,
     "trajectory": 0.2,
     "question": 0.2,
     "proximalReg": 0.1,
-    "note": "dynamic更新の初期値。合計1.0で正規化。"
+    "note": "dynamic更新の初期値。合計1.0で正規化。question成分はDESIGN.md 5.6節のengagementScoreから算出する(DESIGN.md 8.2節)。"
   }
 }
