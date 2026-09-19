@@ -1,8 +1,9 @@
 {
+  "sessionOpeningQuestions": {
+    "topic": "今日はどんな話題ですか?",
+    "approach": "その話題をどのように詰めたいですか?"
+  },
   "updateEveryTurn": true,
   "llmConsolidationIntervalTurns": 20,
-  "confidenceThresholdForClarifyingQuestion": 0.4,
-  "maxClarifyingQuestionsPerSession": 3,
-  "trackedDimensions": ["formality", "depth", "exampleUsage", "codeInclusion"],
-  "note": "profile/questionIntentPatternsの構造は DESIGN.md 1.5節を参照。RAGとは独立した軽量メモとして持つ(RAGに混ぜると検索ノイズ・重複保存で肥大化するため。ユーザー指摘のとおりメモの方がRAGより効率的)。llmConsolidationIntervalTurnsはllm.config.jsonのenabledがtrueの場合のみ有効。"
+  "note": "profile/questionIntentPatterns/sessionHistoryの構造は DESIGN.md 1.5節を参照。RAGとは独立した軽量メモとして持つ(RAGに混ぜると検索ノイズ・重複保存で肥大化するため)。第5版: 次元ごとの確信度トラッキング(confidenceThresholdForClarifyingQuestion等)は廃止し、セッション開始の固定質問2問に置き換えた(DESIGN.md 1.6節)。"
 }
