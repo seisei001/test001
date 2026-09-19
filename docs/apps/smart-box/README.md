@@ -1,19 +1,20 @@
-# 賢い箱 (smart-box / conversation-rag-app)
+# 賢い箱 (smart-box)
 
-**パーソナル対話日記アシスタント**。今日あったこと・考えていることを書き込むと、過去の
-関連する記録をそのまま思い出させてくれたり(要約・解釈はしない)、初めての話題なら深掘りする
-質問を投げかけてくれたりする。軽量BERT(embedding抽出) + RAG(履歴検索) + LoRA(検索の
-再ランキング・質問頻度のパーソナライズ)で構成される、ブラウザ完結型・サーバー不要のアプリ。
+ポッドキャストアプリ風の汎用UIをまとった、パーソナルな会話AIウィジェット。中身は
+ブラウザ内で完結する極小の量子化生成モデル(「本体AI」、CoreModel)+LoRA+RAG。
+会話するたびにLoRAが更新され、そのユーザーに合わせて賢くなっていく。
 
-**現在の状態**: 設計フェーズ完了。各モジュールはJSDocインターフェースのみのスタブ
-(`throw new Error('not implemented')`)で、動作するUIはまだ無い。そのため
+外部LLM(例: Claude API)を任意で設定すると、ユーザー・LLM・本体AIの三者の会話を使い、
+LLMの回答を教師信号として本体AIのLoRAを更新する(蒸留)。LLM未設定でも本体AI単体で
+動作する(自己完結)。**本体AIの生の重みは常にfreezeし、LoRAアダプタのみを更新する**
+(フルファインチューニングはモデルが破綻するため採用しない)。
+
+**現在の状態**: 設計フェーズ完了(第3版)。各モジュールはJSDocインターフェースのみの
+スタブ(`throw new Error('not implemented')`)で、動作するUIはまだ無い。そのため
 `docs/apps.json`(ハブ一覧)には未登録。
 
-詳しくは [`DESIGN.md`](./DESIGN.md) を参照してください。当初はGoogle Drive上の設計資料
-(00_README〜07_COWORK_SESSION_HANDOFF)を統合しただけでしたが、2026-09-19のレビューで
-「応答生成方式が未定義」「LoRAの適用対象が生成モデル不在と矛盾」という構造的な欠落が
-見つかり、ドメインを「パーソナル対話日記」に確定した上で全面的に設計し直しています
-(DESIGN.md 付録B参照)。
+詳しくは [`DESIGN.md`](./DESIGN.md) を参照してください。このドキュメントは2回の
+コンセプト修正を経ています(付録B相当の改訂履歴はDESIGN.md 0節を参照)。
 
 ## クイックスタート(開発時)
 
@@ -28,13 +29,9 @@ npm run test:unit
 
 ## 次にやること
 
-[`DESIGN.md`](./DESIGN.md) の「12. 次にやること」を参照。優先度順に:
+[`DESIGN.md`](./DESIGN.md) の「12. 次にやること」を参照。最優先は2点:
 
-1. PCA射影行列・BERTモデルの配置([`models/README.md`](./models/README.md))
-2. 日記UI(`src/ui/`)の実装(テキスト入力→保存→3種類の応答のいずれかを表示)
-3. `BERTInference.embed()` → `RAGSearch.search()`(confidence算出込み) →
-   `QuestionGenerator` → `TurnController` の順に実装し、Core loop(surface_related /
-   question / acknowledge の3分岐)を動かす
-4. Core loopが動いたら `docs/apps.json` に登録してハブに公開する
+1. 生成モデル候補(Qwen2.5-0.5B-Instruct級)の実機検証(ブラウザでロード・推論できるか)
+2. LoRA部分のみを対象にした逆伝播が技術的に実現できるかの検証
 
-LoRAによるパーソナライズ(検索結果の再ランキング・質問頻度の調整)はPhase 2。
+この2つが検証できてから `CoreModel.js` 等の実装に着手する。
