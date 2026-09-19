@@ -4,14 +4,15 @@
  * ライフサイクル全体をオーケストレーションする。DESIGN.md 2.2節(シーケンス)・
  * 5.6節を参照。
  *
- * 質問機構は2つ併用する(DESIGN.md 1.6節):
- *   (a) セッション開始時の固定質問2問(「今日はどんな話題ですか?」「その話題を
- *       どのように詰めたいですか?」) — startSession() で発火
- *   (b) 確信度ベースの補助質問(ProfileMemo.getLowConfidenceDimensions()が
- *       対象を返した場合) — processTurn() の応答生成後に発火
+ * 質問機構は3つある(DESIGN.md 1.6節・1.8節):
+ *   (a) セッション開始時の固定質問2問 — startSession() で発火
+ *   (b) 確信度ベースの補助質問(固定テンプレート) — LLM未接続時、processTurn()の
+ *       応答生成後に発火
+ *   (c) LLM生成の高度な質問 — LLM接続時、(b)の代わりに発火(LLMTeacher.generateQuestion()。
+ *       DESIGN.md 1.7節の質問設計原則に従う)
  *
  * 通常フロー: CoreModel.embed() → RAGSearch.search() と ProfileMemo.getContext() を
- * 並行取得 → CoreModel.generate()(本体AI自身の回答) → (b)の確認 →
+ * 並行取得 → CoreModel.generate()(本体AI自身の回答) → (b)/(c)の確認 →
  * [llm.config.jsonが有効なら] LLMTeacher.ask() →
  * FeedbackProcessor で蒸留損失(LLM連携時)またはimplicit損失(単体時)を計算 →
  * LoRAForward を更新(base modelは不変) → ProfileMemo.update() で差分更新。
@@ -30,7 +31,8 @@ export class TurnController {
    * @param {import('../lora-training/FeedbackProcessor.js').FeedbackProcessor} feedbackProcessor
    * @param {object} config - system.config.json 全体
    * @param {object} profileConfig - profile.config.json
-   *   (sessionOpeningQuestions, confidenceThresholdForClarifyingQuestion等を使用)
+   *   (sessionOpeningQuestions, confidenceThresholdForClarifyingQuestion,
+   *   questionDesignPrinciples等を使用)
    */
   constructor(coreModel, rag, profileMemo, llmTeacher, lora, feedbackProcessor, config, profileConfig) {
     this.coreModel = coreModel;
@@ -79,13 +81,16 @@ export class TurnController {
   /**
    * DESIGN.md 2.2節の通常ターンのシーケンスを実行する(startSession()呼び出し後)。
    * 応答生成後、ProfileMemo.getLowConfidenceDimensions() を確認し、対象があれば
-   * (b) 確信度ベースの補助質問を`clarifyingQuestion`として添える
+   * `clarifyingQuestion` を組み立てる:
+   *   - LLMTeacherが利用可能(llm.config.json enabled)なら
+   *     (c) `this.llmTeacher.generateQuestion(dimension, ...)` を呼ぶ
+   *   - 利用不可なら (b) `profile.config.json` の固定テンプレートを使う
    * (profile.config.json の maxClarifyingQuestionsPerSession で頻度制御)。
    * @param {string} userPrompt
    * @returns {Promise<{
    *   ownAnswer: string,
    *   llmAnswer: string | null,
-   *   clarifyingQuestion: { dimension: string, text: string } | null,
+   *   clarifyingQuestion: { dimension: string, text: string, source: 'template'|'llm' } | null,
    *   turnData: object   // DESIGN.md 6節のスキーマ
    * }>}
    */
@@ -94,7 +99,7 @@ export class TurnController {
   }
 
   /**
-   * (b) 確信度ベースの補助質問への回答を受け取り、
+   * (b)(c)いずれの確認質問への回答を受け取り、
    * ProfileMemo.recordConfidenceAnswer() に渡す。
    * @param {string} dimension
    * @param {string} answer
