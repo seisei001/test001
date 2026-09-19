@@ -229,6 +229,31 @@ button.primary:disabled {
   display: none !important;
 }
 
+.notice-banner {
+  background: #fffbeb;
+  border: 1px solid #f5d78a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: #7a5b00;
+}
+
+.notice-banner p {
+  margin: 4px 0;
+}
+
+.notice-title {
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notice-banner {
+    background: #332b12;
+    border-color: #6b5518;
+    color: #f0d580;
+  }
+}
+
 .settings-panel {
   background: var(--panel-bg);
   border: 1px solid var(--border);
