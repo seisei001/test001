@@ -1,0 +1,49 @@
+{
+  "$schema": "./schemas/lora.schema.json",
+  "layers": {
+    "global": {
+      "rank": 4,
+      "targetModules": ["query", "value"],
+      "learningRate": 0.0005,
+      "description": "ユーザー全体の好み(技術深度、形式度など)。ゆっくり更新。"
+    },
+    "topic": {
+      "rank": 2,
+      "targetModules": ["value"],
+      "learningRate": 0.001,
+      "description": "特定トピック・ドメインでの傾向。中速更新。"
+    },
+    "style": {
+      "rank": 1,
+      "targetModules": ["query"],
+      "learningRate": 0.002,
+      "description": "tone/formalityの微調整。最速更新。"
+    },
+    "totalParamsEstimate": 7000
+  },
+  "training": {
+    "proximalLambda": 0.01,
+    "batchSize": 1,
+    "updateFrequency": "per-turn",
+    "experienceReplayBufferSize": 50,
+    "catastrophicForgettingGuard": "proximal-regularizer",
+    "note": "決定: learningRate/proximalLambdaはPESO論文の正確な推奨値が未確認のため仮値のまま固定しない。ABTestRunnerを使いPhase 1.5のβテストで実測調整する運用とする(config駆動設計の趣旨通り、コード変更なしでconfigのみ変更して検証)。DESIGN.md 8.1節: Phase 1ではLoRAForwardは順伝播のみのスタブとし、学習(勾配計算)自体はPhase 2で実装する。"
+  },
+  "feedback": {
+    "mode": "implicit-primary",
+    "implicit": {
+      "noCorrectionConfidenceDelta": 1,
+      "explicitCorrectionConfidenceDelta": -2
+    },
+    "explicit": {
+      "confidence": 1.0
+    }
+  },
+  "lossWeights": {
+    "feedback": 0.5,
+    "trajectory": 0.2,
+    "question": 0.2,
+    "proximalReg": 0.1,
+    "note": "dynamic更新の初期値。合計1.0で正規化。"
+  }
+}
