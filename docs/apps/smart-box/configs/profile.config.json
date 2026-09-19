@@ -8,5 +8,10 @@
   "trackedDimensions": ["formality", "depth", "exampleUsage", "codeInclusion"],
   "confidenceThresholdForClarifyingQuestion": 0.4,
   "maxClarifyingQuestionsPerSession": 3,
-  "note": "DESIGN.md 1.6節: (a)セッション開始の固定質問と(b)確信度ベースの補助質問は併用する。どちらもRAG/LoRAを介さない軽量な仕組み。第5版で(b)を誤って削除したが第6版で復活させた。"
+  "questionDesignPrinciples": {
+    "onePerQuestion": "1問につき1つの不確実な次元だけを狙う",
+    "highInformationGain": "後続の判断が変わる質問を優先する(prediction-gapの考え方)",
+    "purity": "前置き無しで本質だけを聞く、短い質問文にする"
+  },
+  "note": "DESIGN.md 1.6〜1.8節を参照。(a)固定質問・(b)確信度ベース補助質問・(c)LLM連携時の高度化質問の3モードがある。questionDesignPrinciplesは(a)(b)のテンプレート文言レビューと(c)のLLMプロンプト設計の両方に適用する共通基準(第7版で追加)。"
 }
