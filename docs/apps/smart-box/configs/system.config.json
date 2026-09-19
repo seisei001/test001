@@ -1,22 +1,21 @@
 {
   "$schema": "./schemas/system.schema.json",
   "model": {
-    "bertModelUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/bert-base-ja-int8.onnx",
-    "tokenizerUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/tokenizer.json",
-    "quantization": "int8",
+    "coreModelUrl": "PLACEHOLDER_未確定。DESIGN.md 5.1節・8.2節参照(Qwen2.5-0.5B-Instruct級を第一候補としてPhase 0で実機検証要)",
+    "quantization": "int4",
     "rawEmbeddingDim": 768,
     "maxSequenceLength": 128,
-    "expectedSizeMB": 30,
-    "note": "分類ヘッドは使わない。embedding抽出専用(DESIGN.md 1.4節・5.1節)。"
+    "expectedSizeMB": "未確定(Phase 0で検証)",
+    "note": "embedding抽出と文章生成の両方をこの1モデルで兼ねる。base weightsは常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節)。"
   },
   "runtime": {
-    "backend": "wasm",
-    "executionProviders": ["wasm"],
+    "backend": "webgpu",
+    "fallbackBackend": "wasm",
     "numThreads": 4,
     "warmupOnLoad": true
   },
   "storage": {
-    "indexedDBName": "conversation-rag-db",
+    "indexedDBName": "smart-box-db",
     "indexedDBVersion": 1,
     "maxTurnsStored": 1000,
     "compressAfterTurns": 100,
@@ -34,8 +33,8 @@
     "stickyAssignment": true
   },
   "targets": {
-    "note": "旧版のminIntentAccuracy/minEntityF1/minContextUnderstandingは意図分類ヘッド前提の指標だったため削除(DESIGN.md 8.5節)。代わりの指標はDESIGN.md 8.5節を参照(engagementScore等、Phase 1.5で計測)。",
-    "maxInferenceLatencyMs": 500,
-    "maxTotalTurnLatencyMs": 1000
+    "note": "生成モデルへの変更に伴い目標値は未確定(Phase 0で実機検証してから設定する)。",
+    "maxInferenceLatencyMs": "TBD",
+    "maxTotalTurnLatencyMs": "TBD"
   }
 }
