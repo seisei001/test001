@@ -7,6 +7,10 @@ import { ProbingStrategy } from './strategies/probing.js';
  * QuestionGenerator — question.config.json の confidenceThresholds に基づき戦略を選び、
  * frequency制御(maxQuestionsPerSession, minTurnsBetweenQuestions, skipIfConfidenceAbove)
  * を適用してから質問文を生成する。DESIGN.md 5.4節を参照。
+ *
+ * 2026-09-19改訂: confidence は BERT分類確信度ではなく RAGSearch.search() が返す
+ * 最上位類似度(DESIGN.md 1.4節)。intent引数は廃止した(BERTInferenceが分類ヘッドを
+ * 持たなくなったため。DESIGN.md 5.1節)。
  */
 export class QuestionGenerator {
   /**
@@ -25,15 +29,14 @@ export class QuestionGenerator {
   }
 
   /**
-   * @param {string} intent - BERTInference.classify() の intent
-   * @param {number} confidence - BERTInference.classify() の confidence
-   * @param {object} ragContext - RAGSearch.search() の結果
-   * @param {object} userModel - 好みベクトル・確信度スコア
-   * @returns {Promise<{questionText: string, strategy: string, dimension: string} | null>}
+   * @param {number} confidence - RAGSearch.search() が返す最上位類似度
+   *   (LoRAForward.thresholdBias() 適用後の値。DESIGN.md 1.4節・5.5節)
+   * @param {object} ragContext - RAGSearch.search() の結果(retrievedEntries等)
+   * @returns {Promise<{questionText: string, strategy: string} | null>}
    *   confidenceThresholds.direct 以上、またはfrequency制御に引っかかった場合は null
-   *   (=質問せず直接応答)
+   *   (=質問せず surface_related または acknowledge を返す。判断はTurnController側)
    */
-  async generateQuestion(intent, confidence, ragContext, userModel) {
+  async generateQuestion(confidence, ragContext) {
     throw new Error('not implemented');
   }
 
@@ -45,16 +48,6 @@ export class QuestionGenerator {
    * @returns {string | null}
    */
   selectStrategy(confidence) {
-    throw new Error('not implemented');
-  }
-
-  /**
-   * userModel.confidenceScores の中で最も確信度が低い次元(examples_count等)を返す。
-   * @param {object} userModel
-   * @param {object} ragContext
-   * @returns {string}
-   */
-  selectDimension(userModel, ragContext) {
     throw new Error('not implemented');
   }
 }
