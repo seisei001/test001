@@ -512,10 +512,35 @@ ProfileMemoの更新とは独立した仕組みである点に注意)
 これらはPhase 0で着手し、うまくいかない場合のみ第7版までの記述にあった代替案
 (候補生成→選好データとして蓄積→バッチ更新)を検討する。
 
+**Phase 0スパイクの実施結果(`docs/apps/smart-box/research/`、2026-09-19)**: 上記タスク1・2
+のメカニズムをPythonで実際に検証した。ただし、このセッションの開発環境は
+`huggingface.co`(モデルのダウンロード元)へのネットワークアクセスが組織ポリシーで
+遮断されており、実際のQwen2.5-0.5B-Instructモデルは取得できなかった。そのため、
+CoreModel+LoRAForwardと同じ構造(frozen base forward + LoRA A/B残差)を持つ**最小の
+ダミーONNXモデル**でメカニズムを検証した:
+
+- `onnxruntime.training.artifacts.generate_artifacts(model, requires_grad=["LoRA_A","LoRA_B"], frozen_params=["W0"], loss=MSELoss, optimizer=AdamW)`
+  で学習用artifact(training/eval/optimizer/checkpoint)の生成に成功
+- `onnxruntime.training.api`(`Module`/`Optimizer`/`CheckpointState`)でartifactをロードし、
+  実際に5ステップの学習ループを実行 → **lossが単調減少し、LoRA_A/LoRA_Bの値が実際に
+  変化することを確認**。base weights(W0)はそもそも学習対象のパラメータ集合に含まれず、
+  「更新されようがない」ことがAPIレベルで保証されていることも確認した
+
+これにより、DESIGN.md 1.3節の核心原則(base modelはfreeze、LoRAのA/B行列のみ学習)が
+実際に機能するメカニズムであることが、縮小版ではあるが実証された。**残っているのは
+「実際のQwenモデルに同じ手順を適用する」という、ネットワークアクセスさえあれば
+遂行できる作業**であり、研究課題ではなく、環境制約の解消待ちの実装タスクである。
+詳細は`docs/apps/smart-box/research/README.md`を参照。
+
 ### 8.2 モデル選定
 Qwen2.5-0.5B-Instruct級モデルのONNXエクスポート(int4量子化)版が公開されているか、
 無ければ自前でエクスポートする必要がある。ブラウザ内(WebGPU/wasm)実行速度・メモリ・
 ロード時間、および第8.1節の学習用グラフのエクスポート可否の実機検証がPhase 0のタスク。
+
+**環境制約**: このセッションのサンドボックスからは`huggingface.co`にアクセスできず、
+実モデルでの検証は実施できていない(第8.1節参照)。huggingface.coへのアクセスが
+許可された環境(別セッション、またはユーザーの手元環境)で、`docs/apps/smart-box/research/`
+のスパイクスクリプトと同じ手順を実際のモデルに適用する必要がある。
 
 ### 8.3 LLM APIキーの扱い
 ブラウザのIndexedDB/localStorageにのみ保存し、サーバー(存在しない)には送信しない。
