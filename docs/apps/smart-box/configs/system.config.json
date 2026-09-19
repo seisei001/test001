@@ -6,7 +6,8 @@
     "quantization": "int8",
     "rawEmbeddingDim": 768,
     "maxSequenceLength": 128,
-    "expectedSizeMB": 30
+    "expectedSizeMB": 30,
+    "note": "分類ヘッドは使わない。embedding抽出専用(DESIGN.md 1.4節・5.1節)。"
   },
   "runtime": {
     "backend": "wasm",
@@ -33,11 +34,8 @@
     "stickyAssignment": true
   },
   "targets": {
-    "note": "Phase 0で確認済みの実用基準(Coworkセッション内シミュレーション値)。実測値がこれを下回ったらアラート。Phase 1で実機検証すること。",
+    "note": "旧版のminIntentAccuracy/minEntityF1/minContextUnderstandingは意図分類ヘッド前提の指標だったため削除(DESIGN.md 8.5節)。代わりの指標はDESIGN.md 8.5節を参照(engagementScore等、Phase 1.5で計測)。",
     "maxInferenceLatencyMs": 500,
-    "maxTotalTurnLatencyMs": 1000,
-    "minIntentAccuracy": 0.85,
-    "minEntityF1": 0.70,
-    "minContextUnderstanding": 0.70
+    "maxTotalTurnLatencyMs": 1000
   }
 }
