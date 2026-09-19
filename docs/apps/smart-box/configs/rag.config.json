@@ -1,0 +1,30 @@
+{
+  "$schema": "./schemas/rag.schema.json",
+  "embedding": {
+    "compressedDim": 64,
+    "compressionMethod": "pca",
+    "pcaMatrixUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/pca-projection-768x64.json",
+    "pcaFittedOn": "JGLUE系日本語コーパスサンプルからBERT-base-japanese embeddingを抽出し、Phase 0/1準備段階でオフラインfit(1回きり、モデル更新時のみ再計算)。DESIGN.md 8.3節: このファイルはまだ生成されていない。",
+    "note": "決定: PCA固定射影を採用(コールドスタート問題を回避、RAGは補助的役割のため精度要求は中程度でよい)。128次元への拡張はPhase1.5のRAG品質メトリクス次第で再検討。"
+  },
+  "search": {
+    "topK": 5,
+    "similarityMetric": "cosine",
+    "minSimilarityThreshold": 0.3,
+    "maxSearchLatencyMs": 20
+  },
+  "contextWindow": {
+    "recentTurnsAlwaysIncluded": 3,
+    "retrievedTurnsMax": 5,
+    "compressionStrategy": "semantic-summary-after-threshold"
+  },
+  "storage": {
+    "maxTurnsPerUser": 1000,
+    "summaryTriggerTurnCount": 100,
+    "estimatedSizePerTurnKB": 10
+  },
+  "metaTracking": {
+    "trackQuestionEffectiveness": true,
+    "trackWhichQuestionsWorked": true
+  }
+}
