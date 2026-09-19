@@ -11,7 +11,8 @@
     "topK": 5,
     "similarityMetric": "cosine",
     "minSimilarityThreshold": 0.3,
-    "maxSearchLatencyMs": 20
+    "maxSearchLatencyMs": 20,
+    "note": "この閾値はRAGヒット判定だけでなく、DESIGN.md 1.4節の confidence 判定境界も兼ねる(RAGSearch.search()が返す最上位類似度がそのままconfidenceになる)。"
   },
   "contextWindow": {
     "recentTurnsAlwaysIncluded": 3,
