@@ -10,9 +10,6 @@
  * 質問機構は2つ併用する(DESIGN.md 1.6節、第6版で確定):
  *   (a) セッション開始の固定質問2問 — 安価・即効性・コールドスタートに強い
  *   (b) 確信度ベースの補助質問 — 固定質問では拾えない細かい傾向を継続的に拾う
- * 第5版で(b)を「非効率」と誤って削除したが、(a)(b)はどちらもRAG/LoRAという
- * 重い仕組みを介さない軽量な手段という共通点を持つ、互いに補完し合う仕組みであり、
- * 第6版で(b)を復活させた(DESIGN.md 付録B参照)。
  *
  * メモの構造(例):
  * {
@@ -20,9 +17,28 @@
  *   questionIntentPatterns: string[],
  *   sessionHistory: { topic: string, approach: string, date: string }[],
  *   lastUpdated: string,
- *   lastLlmConsolidation: string | null
+ *   lastLlmConsolidation: string | null,
+ *   turnsSinceLastConsolidation: number
  * }
  */
+
+const METADATA_KEY = 'profileMemo';
+
+function emptyMemo(trackedDimensions) {
+  const confidence = {};
+  for (const dim of trackedDimensions) {
+    confidence[dim] = 0;
+  }
+  return {
+    profile: { notes: [], confidence },
+    questionIntentPatterns: [],
+    sessionHistory: [],
+    lastUpdated: null,
+    lastLlmConsolidation: null,
+    turnsSinceLastConsolidation: 0,
+  };
+}
+
 export class ProfileMemo {
   /**
    * @param {object} profileConfig - profile.config.json の内容
@@ -31,7 +47,7 @@ export class ProfileMemo {
   constructor(profileConfig, db) {
     this.config = profileConfig;
     this.db = db;
-    /** @type {object} 上記の構造。初回はinitialize()でIndexedDBから読み込むか初期値を作る */
+    /** @type {object} */
     this.memo = null;
   }
 
@@ -40,7 +56,8 @@ export class ProfileMemo {
    * @returns {Promise<void>}
    */
   async initialize() {
-    throw new Error('not implemented');
+    const stored = await this.db.getMetadata(METADATA_KEY);
+    this.memo = stored || emptyMemo(this.config.trackedDimensions);
   }
 
   /**
@@ -49,31 +66,61 @@ export class ProfileMemo {
    * @returns {Promise<string>}
    */
   async getContext() {
-    throw new Error('not implemented');
+    const lines = [];
+
+    if (this.memo.profile.notes.length > 0) {
+      lines.push('ユーザーについて分かっていること:');
+      for (const note of this.memo.profile.notes) {
+        lines.push(`- ${note}`);
+      }
+    }
+
+    if (this.memo.questionIntentPatterns.length > 0) {
+      lines.push('よくある質問の傾向:');
+      for (const pattern of this.memo.questionIntentPatterns) {
+        lines.push(`- ${pattern}`);
+      }
+    }
+
+    const recentSessions = this.memo.sessionHistory.slice(-3);
+    if (recentSessions.length > 0) {
+      lines.push('直近のセッション:');
+      for (const session of recentSessions) {
+        lines.push(`- ${session.date}: ${session.topic}(${session.approach})`);
+      }
+    }
+
+    return lines.join('\n');
   }
 
   /**
    * (a) セッション開始時の固定質問2問(`profile.config.json`の
    * `sessionOpeningQuestions`)への回答を `sessionHistory` に記録する。
-   * DESIGN.md 1.6節a: 最も強く・最も安価な情報源であり、コールドスタート
-   * (会話1回目)でも同じ強さの手がかりが得られる。
+   * DESIGN.md 1.6節a。
    * @param {string} sessionTopic - 「今日はどんな話題ですか?」への回答
    * @param {string} sessionApproach - 「その話題をどのように詰めたいですか?」への回答
    * @returns {Promise<void>}
    */
   async recordSessionOpening(sessionTopic, sessionApproach) {
-    throw new Error('not implemented');
+    this.memo.sessionHistory.push({
+      topic: sessionTopic,
+      approach: sessionApproach,
+      date: new Date().toISOString(),
+    });
+    this._touch();
+    await this.save();
   }
 
   /**
    * (b) 確信度が `confidenceThresholdForClarifyingQuestion` 未満の次元
-   * (`profile.config.json`の`trackedDimensions`)を返す。TurnController側で、
-   * この次元を埋めるための短い補助質問を回答に添えるかどうかの判定に使う
-   * (DESIGN.md 1.6節b)。
+   * (`profile.config.json`の`trackedDimensions`)を返す。DESIGN.md 1.6節b。
    * @returns {string[]}
    */
   getLowConfidenceDimensions() {
-    throw new Error('not implemented');
+    const threshold = this.config.confidenceThresholdForClarifyingQuestion;
+    return this.config.trackedDimensions.filter(
+      (dim) => (this.memo.profile.confidence[dim] ?? 0) < threshold
+    );
   }
 
   /**
@@ -84,7 +131,13 @@ export class ProfileMemo {
    * @returns {Promise<void>}
    */
   async recordConfidenceAnswer(dimension, answer) {
-    throw new Error('not implemented');
+    if (!this.config.trackedDimensions.includes(dimension)) {
+      throw new Error(`Unknown dimension: ${dimension}`);
+    }
+    this.memo.profile.confidence[dimension] = 1.0;
+    this.memo.profile.notes.push(`${dimension}: ${answer}`);
+    this._touch();
+    await this.save();
   }
 
   /**
@@ -95,7 +148,30 @@ export class ProfileMemo {
    * @returns {Promise<void>}
    */
   async update(turnData, coreModel) {
-    throw new Error('not implemented');
+    if (!this.config.updateEveryTurn) return;
+
+    const { profileDelta } = await coreModel.summarizeForProfile(turnData);
+    if (profileDelta) {
+      if (Array.isArray(profileDelta.notes)) {
+        this.memo.profile.notes.push(...profileDelta.notes);
+      }
+      if (Array.isArray(profileDelta.questionIntentPatterns)) {
+        this.memo.questionIntentPatterns.push(...profileDelta.questionIntentPatterns);
+      }
+    }
+
+    this.memo.turnsSinceLastConsolidation += 1;
+    this._touch();
+    await this.save();
+  }
+
+  /**
+   * `llmConsolidationIntervalTurns` に達したかどうかを返す(TurnController側で
+   * consolidateWithLLM() を呼ぶかどうかの判定に使う)。
+   * @returns {boolean}
+   */
+  shouldConsolidate() {
+    return this.memo.turnsSinceLastConsolidation >= this.config.llmConsolidationIntervalTurns;
   }
 
   /**
@@ -105,14 +181,30 @@ export class ProfileMemo {
    * @returns {Promise<void>}
    */
   async consolidateWithLLM(llmTeacher) {
-    throw new Error('not implemented');
+    const recentTurns = await this.db.getAllTurns();
+    const { consolidatedMemo } = await llmTeacher.consolidateProfile(this.memo, recentTurns.slice(-20));
+
+    this.memo = {
+      ...consolidatedMemo,
+      turnsSinceLastConsolidation: 0,
+      lastLlmConsolidation: new Date().toISOString(),
+    };
+    this._touch();
+    await this.save();
   }
 
   /**
    * @returns {Promise<void>}
    */
   async save() {
-    throw new Error('not implemented');
+    await this.db.setMetadata(METADATA_KEY, this.memo);
+  }
+
+  /**
+   * @private
+   */
+  _touch() {
+    this.memo.lastUpdated = new Date().toISOString();
   }
 }
 

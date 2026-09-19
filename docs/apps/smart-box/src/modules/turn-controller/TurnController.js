@@ -44,18 +44,23 @@ export class TurnController {
     this.config = config;
     this.profileConfig = profileConfig;
     this.sessionStarted = false;
+    this.clarifyingQuestionsAskedThisSession = 0;
+    this.lastTurnData = null;
     /** @type {Record<string, Function[]>} */
     this.listeners = { turn_complete: [], lora_update: [], profile_updated: [] };
   }
 
   /** @param {string} event @param {Function} callback */
   on(event, callback) {
-    throw new Error('not implemented');
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event].push(callback);
   }
 
   /** @param {string} event @param {object} data */
   emit(event, data) {
-    throw new Error('not implemented');
+    for (const callback of this.listeners[event] || []) {
+      callback(data);
+    }
   }
 
   /**
@@ -64,7 +69,7 @@ export class TurnController {
    * @returns {{ topic: string, approach: string }} 質問文言(テンプレート固定)
    */
   getSessionOpeningQuestions() {
-    throw new Error('not implemented');
+    return this.profileConfig.sessionOpeningQuestions;
   }
 
   /**
@@ -75,7 +80,13 @@ export class TurnController {
    * @returns {Promise<void>}
    */
   async startSession(sessionTopicAnswer, sessionApproachAnswer) {
-    throw new Error('not implemented');
+    this.sessionTopic = sessionTopicAnswer;
+    this.sessionApproach = sessionApproachAnswer;
+    this.sessionId = `session_${Date.now()}`;
+    this.clarifyingQuestionsAskedThisSession = 0;
+
+    await this.profileMemo.recordSessionOpening(sessionTopicAnswer, sessionApproachAnswer);
+    this.sessionStarted = true;
   }
 
   /**
@@ -95,7 +106,117 @@ export class TurnController {
    * }>}
    */
   async processTurn(userPrompt) {
-    throw new Error('not implemented');
+    if (!this.sessionStarted) {
+      throw new Error('TurnController: startSession() must be called before processTurn()');
+    }
+
+    const turnId = this.generateTurnId();
+
+    // Step 1: embedding抽出
+    const { embedding } = await this.coreModel.embed(userPrompt);
+
+    // Step 2 / 2': RAG検索とProfileMemoコンテキストを並行取得
+    const [ragContext, profileContext] = await Promise.all([
+      this.rag.search(embedding),
+      this.profileMemo.getContext(),
+    ]);
+
+    // Step 3: 本体AI自身の回答を生成
+    const { text: ownAnswer } = await this.coreModel.generate(userPrompt, ragContext, profileContext, this.lora);
+
+    // 確信度が低い次元があれば、確認質問を組み立てる((b)または(c))
+    const clarifyingQuestion = await this._maybeBuildClarifyingQuestion(profileContext, ragContext);
+
+    // Step 4: LLM連携時は同じプロンプトをLLMにも送る
+    let llmAnswer = null;
+    if (this.llmTeacher) {
+      try {
+        const result = await this.llmTeacher.ask(userPrompt, ragContext);
+        llmAnswer = result.text;
+      } catch (error) {
+        console.warn('TurnController: LLMTeacher.ask() failed, falling back to own answer only', error);
+      }
+    }
+
+    const turnData = {
+      turn_id: turnId,
+      session_id: this.sessionId,
+      is_session_opening: false,
+      timestamp: new Date().toISOString(),
+      input: { user_prompt: userPrompt, embedding: Array.from(embedding) },
+      rag: {
+        retrieved_turns: ragContext.retrievedTurns.length,
+        top_similarities: ragContext.similarities,
+      },
+      profile_memo: {
+        context_used: profileContext,
+        updated_this_turn: false,
+        llm_consolidated_this_turn: false,
+        clarifying_question: clarifyingQuestion,
+      },
+      response: {
+        own_answer: ownAnswer,
+        llm_answer: llmAnswer,
+        llm_used: llmAnswer !== null,
+      },
+      learning: { mode: llmAnswer !== null ? 'distillation' : 'implicit', loss_before: null, loss_after: null },
+    };
+
+    await this.rag.db.addTurn(turnData);
+
+    this.lastTurnData = turnData;
+    this.emit('turn_complete', turnData);
+
+    return { ownAnswer, llmAnswer, clarifyingQuestion, turnData };
+  }
+
+  /**
+   * @param {string} profileContext
+   * @param {object} ragContext
+   * @returns {Promise<{ dimension: string, text: string, source: 'template'|'llm' } | null>}
+   * @private
+   */
+  async _maybeBuildClarifyingQuestion(profileContext, ragContext) {
+    if (this.clarifyingQuestionsAskedThisSession >= this.profileConfig.maxClarifyingQuestionsPerSession) {
+      return null;
+    }
+
+    const lowConfidenceDimensions = this.profileMemo.getLowConfidenceDimensions();
+    if (lowConfidenceDimensions.length === 0) {
+      return null;
+    }
+
+    const dimension = lowConfidenceDimensions[0];
+
+    if (this.llmTeacher) {
+      try {
+        const { text } = await this.llmTeacher.generateQuestion(dimension, profileContext, ragContext);
+        this.clarifyingQuestionsAskedThisSession += 1;
+        return { dimension, text, source: 'llm' };
+      } catch (error) {
+        console.warn('TurnController: LLMTeacher.generateQuestion() failed, falling back to template', error);
+      }
+    }
+
+    // (b) 固定テンプレートへのフォールバック(DESIGN.md 1.6節b)
+    const template = this._templateForDimension(dimension);
+    this.clarifyingQuestionsAskedThisSession += 1;
+    return { dimension, text: template, source: 'template' };
+  }
+
+  /**
+   * @param {string} dimension
+   * @returns {string}
+   * @private
+   */
+  _templateForDimension(dimension) {
+    const templates = {
+      formality: 'かしこまった話し方と、くだけた話し方、どちらが好みですか?',
+      depth: '説明は、要点だけの方がいいですか、それとも詳しく知りたいですか?',
+      exampleUsage: '説明には具体例をどのくらい入れてほしいですか?',
+      codeInclusion: 'コード例は必要ですか?',
+    };
+    return templates[dimension] || `${dimension}について、もう少し教えてください`;
   }
 
   /**
@@ -106,7 +227,7 @@ export class TurnController {
    * @returns {Promise<void>}
    */
   async answerClarifyingQuestion(dimension, answer) {
-    throw new Error('not implemented');
+    await this.profileMemo.recordConfidenceAnswer(dimension, answer);
   }
 
   /**
@@ -118,14 +239,50 @@ export class TurnController {
    * @returns {Promise<void>}
    */
   async learnFromTurn(turnData, implicitSignal) {
-    throw new Error('not implemented');
+    let lossResult;
+
+    if (turnData.response.llm_used) {
+      const [{ embedding: ownEmbedding }, { embedding: llmEmbedding }] = await Promise.all([
+        this.coreModel.embed(turnData.response.own_answer),
+        this.coreModel.embed(turnData.response.llm_answer),
+      ]);
+      const { trainingLabel } = this.feedbackProcessor.computeDistillationLoss(
+        turnData.response.own_answer,
+        turnData.response.llm_answer,
+        ownEmbedding,
+        llmEmbedding
+      );
+      lossResult = this.feedbackProcessor.updateWeights(this.lora, trainingLabel);
+    } else {
+      const { trainingLabel } = this.feedbackProcessor.computeImplicitLoss(
+        { type: 'implicit', signals: implicitSignal || {} },
+        turnData
+      );
+      lossResult = this.feedbackProcessor.updateWeights(this.lora, trainingLabel);
+    }
+
+    turnData.learning.loss_before = lossResult.lossBefore;
+    turnData.learning.loss_after = lossResult.lossAfter;
+
+    await this.lora.saveWeights();
+    this.emit('lora_update', { turnId: turnData.turn_id, ...lossResult });
+
+    await this.profileMemo.update(turnData, this.coreModel);
+    turnData.profile_memo.updated_this_turn = true;
+
+    if (this.llmTeacher && this.profileMemo.shouldConsolidate()) {
+      await this.profileMemo.consolidateWithLLM(this.llmTeacher);
+      turnData.profile_memo.llm_consolidated_this_turn = true;
+    }
+
+    this.emit('profile_updated', { turnId: turnData.turn_id });
   }
 
   /**
    * @returns {string} `turn_<timestamp>_<random>` 形式
    */
   generateTurnId() {
-    throw new Error('not implemented');
+    return `turn_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
 

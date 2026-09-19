@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="賢い箱">
+<title>賢い箱</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header>
+<a class="back-link" href="../../../">← ハブに戻る</a>
+<button class="settings-btn" id="settings-toggle" type="button" title="設定" aria-label="設定">⚙️</button>
+</header>
+<main>
+  <section class="settings-panel hidden" id="settings-panel">
+    <div>
+      <label for="llm-enabled">LLM連携(任意)</label>
+      <div class="settings-row">
+        <input type="checkbox" id="llm-enabled">
+        <span class="muted-note">外部LLM(Claude API)を先生役として使う</span>
+      </div>
+    </div>
+    <div>
+      <label for="llm-api-key">Claude APIキー</label>
+      <input type="text" id="llm-api-key" placeholder="sk-ant-...">
+      <p class="muted-note">このブラウザのIndexedDBにのみ保存されます。サーバーには送信されません。</p>
+    </div>
+    <button class="primary" id="settings-save" type="button">保存</button>
+  </section>
+
+  <section class="episode-card" id="opening-screen">
+    <div class="episode-art">🎙️</div>
+    <p class="episode-title">賢い箱</p>
+    <p class="episode-subtitle">新しいエピソードを始めましょう</p>
+
+    <div class="opening-question hidden" id="question-topic-block">
+      <label id="question-topic-label"></label>
+      <input type="text" id="question-topic-input" placeholder="回答を入力...">
+    </div>
+    <div class="opening-question hidden" id="question-approach-block">
+      <label id="question-approach-label"></label>
+      <input type="text" id="question-approach-input" placeholder="回答を入力...">
+    </div>
+    <button class="primary" id="opening-next-btn" type="button">はじめる</button>
+  </section>
+
+  <section class="hidden" id="chat-screen">
+    <div class="transcript" id="transcript"></div>
+    <div class="composer">
+      <textarea id="composer-input" placeholder="話しかけてみてください..." rows="1"></textarea>
+      <button class="primary" id="composer-send" type="button">送信</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

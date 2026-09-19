@@ -1,7 +1,7 @@
 {
   "enabled": false,
   "provider": "anthropic",
-  "model": "claude-sonnet",
+  "model": "claude-sonnet-5",
   "apiKeyStorage": "indexeddb-local-only",
   "note": "APIキーはユーザーがUIから入力し、ブラウザのIndexedDB/localStorageにのみ保存する。このconfigファイル自体にキーを書かない。賢い箱側のサーバー(存在しない)や第三者には一切送信しない(DESIGN.md 8.3節)。enabled=falseの間、TurnControllerはLLMTeacherを呼ばず、本体AI(CoreModel)単体で動作する(DESIGN.md 1.3節)。"
 }

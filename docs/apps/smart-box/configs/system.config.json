@@ -6,7 +6,8 @@
     "rawEmbeddingDim": 768,
     "maxSequenceLength": 128,
     "expectedSizeMB": "未確定(Phase 0で検証)",
-    "note": "embedding抽出と文章生成の両方をこの1モデルで兼ねる。base weightsは常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節)。"
+    "mockMode": true,
+    "note": "embedding抽出と文章生成の両方をこの1モデルで兼ねる。base weightsは常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節)。mockModeがtrueの間、CoreModelはネットワーク不要な決定論的スタブで動作する(huggingface.co/cdn.jsdelivr.netへのアクセスが無い開発環境でもパイプライン全体を検証できるようにするため)。coreModelUrlが確定しモデルの実機検証が済んだらfalseにする。"
   },
   "runtime": {
     "backend": "webgpu",

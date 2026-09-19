@@ -4,24 +4,36 @@
  *
  * **base weightsは永久にfreezeし、一切更新しない。** 会話ごとの学習は常に
  * LoRAアダプタ(数千パラメータ)のみに対して行う(DESIGN.md 1.3節)。
- * 理由: 極小モデルをフルファインチューニングするとデータ量的にもモデルが破綻し
- * 実用に耐えない。LoRAという小さな可逆的な変更に限定することで実用レベルを保つ。
  *
- * モデル候補(未確定・Phase 0で実機検証要。DESIGN.md 5.1節・8.2節):
- * Qwen2.5-0.5B-Instruct級の小型多言語モデルをint4量子化し、WebGPU(transformers.js等)
- * で実行、非対応環境はwasm CPUにフォールバックする案を第一候補とする。
+ * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定): 推論は `transformers.js` を使う。
+ * feature-extractionパイプラインとtext-generationパイプラインを同一モデルに対して
+ * 両方使うことで、1モデルでembed+generateを兼ねる。CDN経由の動的importで読み込む
+ * (`index.html`のimport mapではなく、モデル未確定のうちは実行時分岐したいため
+ * dynamic import を使う)。
+ *
+ * **このセッションでの制約**: 開発サンドボックスからhuggingface.co/cdn.jsdelivr.net への
+ * アクセスが組織ポリシーで遮断されているため、実モデルでの動作確認ができていない
+ * (DESIGN.md 8.1節・8.2節の研究ノート参照)。そのため `config.model.mockMode` が
+ * true の場合は、ネットワーク接続不要な決定論的スタブ(ハッシュベースのembedding・
+ * テンプレート応答)で動作し、CoreModel以外のパイプライン全体(RAG/ProfileMemo/
+ * TurnController/UI)を実ブラウザで検証できるようにしてある。実モデルが用意でき次第
+ * mockModeをfalseにして差し替える。
  */
 export class CoreModel {
   /**
-   * @param {object} config - system.config.json の `model` / `runtime` セクション
-   * @param {Float32Array[]} pcaMatrix - rag.config.json の pcaMatrixUrl から
-   *   読み込んだ 768×64 のPCA射影行列(compress()で使用)
+   * @param {object} config - system.config.json の内容全体(`model` / `runtime` を使用)
+   * @param {Float32Array[]|null} pcaMatrix - rag.config.json の pcaMatrixUrl から
+   *   読み込んだ 768×64 のPCA射影行列(compress()で使用)。未取得ならnull(その場合
+   *   compress()は単純な等間隔ダウンサンプリングにフォールバックする)。
    */
   constructor(config, pcaMatrix) {
     this.config = config;
     this.pcaMatrix = pcaMatrix;
     this.session = null;
     this.tokenizer = null;
+    this.featureExtractor = null;
+    this.generator = null;
+    this.ready = false;
   }
 
   /**
@@ -30,7 +42,24 @@ export class CoreModel {
    * @throws ロード失敗時(呼び出し側でユーザーにエラー表示する設計とする)
    */
   async initialize() {
-    throw new Error('not implemented');
+    if (this.config.model.mockMode) {
+      this.ready = true;
+      return;
+    }
+
+    // transformers.js を CDN から動的 import する(未確定のモデルURLを
+    // system.config.json の model.coreModelUrl で切り替えられるようにするため)。
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.min.js');
+
+    env.backends.onnx.wasm.proxy = false;
+    if (this.config.runtime.backend === 'webgpu' && !navigator.gpu) {
+      console.warn('CoreModel: WebGPU not available, falling back to wasm');
+    }
+    const device = navigator.gpu ? this.config.runtime.backend : this.config.runtime.fallbackBackend;
+
+    this.featureExtractor = await pipeline('feature-extraction', this.config.model.coreModelUrl, { device });
+    this.generator = await pipeline('text-generation', this.config.model.coreModelUrl, { device });
+    this.ready = true;
   }
 
   /**
@@ -39,22 +68,59 @@ export class CoreModel {
    * @returns {Promise<{ embedding: Float32Array, rawEmbedding: Float32Array, latencyMs: number }>}
    */
   async embed(text) {
-    throw new Error('not implemented');
+    this._assertReady();
+    const startTime = performance.now();
+
+    if (this.config.model.mockMode) {
+      const rawEmbedding = this._mockEmbedding(text, this.config.model.rawEmbeddingDim || 768);
+      const embedding = this.compress(rawEmbedding);
+      return { embedding, rawEmbedding, latencyMs: performance.now() - startTime };
+    }
+
+    const output = await this.featureExtractor(text, { pooling: 'mean', normalize: true });
+    const rawEmbedding = Float32Array.from(output.data);
+    const embedding = this.compress(rawEmbedding);
+
+    return { embedding, rawEmbedding, latencyMs: performance.now() - startTime };
   }
 
   /**
    * プロンプト・RAGコンテキスト・ProfileMemoのコンテキストから、LoRA適用込みで
    * 本体AI自身の回答を生成する。
+   *
+   * **注記(Phase 1のスコープ)**: LoRAForwardによる実際の重み適用は、
+   * onnxruntime-web training版のセッションに本体AIモデルを載せ替えてから
+   * (DESIGN.md 8.1節のPhase 0検証の先)有効になる。transformers.jsパイプライン
+   * 経由の生成では、現時点ではLoRAの学習済み補正はまだ反映されない
+   * (Phase 2で本結線する。ここでは引数として受け取るのみ)。
+   *
    * @param {string} prompt - ユーザーの入力
    * @param {object} ragContext - RAGSearch.search() の結果
    * @param {string} profileContext - ProfileMemo.getContext() の結果
    *   (DESIGN.md 1.5節。検索なしで常時注入される固定コンテキスト)
    * @param {import('../lora-training/LoRAForward.js').LoRAForward} loraForward -
-   *   生成の各層(query/value射影)にLoRA補正を注入する
+   *   生成の各層(query/value射影)にLoRA補正を注入する(Phase 2で本結線)
    * @returns {Promise<{ text: string, latencyMs: number }>}
    */
   async generate(prompt, ragContext, profileContext, loraForward) {
-    throw new Error('not implemented');
+    this._assertReady();
+    const startTime = performance.now();
+
+    const fullPrompt = this._buildPrompt(prompt, ragContext, profileContext);
+
+    if (this.config.model.mockMode) {
+      const text = this._mockGenerate(prompt, ragContext, profileContext);
+      return { text, latencyMs: performance.now() - startTime };
+    }
+
+    const output = await this.generator(fullPrompt, {
+      max_new_tokens: 256,
+      temperature: 0.7,
+      do_sample: true,
+    });
+    const generatedText = output[0].generated_text.slice(fullPrompt.length).trim();
+
+    return { text: generatedText, latencyMs: performance.now() - startTime };
   }
 
   /**
@@ -64,16 +130,119 @@ export class CoreModel {
    * @returns {Promise<{ profileDelta: object }>}
    */
   async summarizeForProfile(turnData) {
-    throw new Error('not implemented');
+    this._assertReady();
+
+    // Phase 1では、本体AIによる高度な要約ではなく軽量なヒューリスティックで
+    // profileDeltaを作る(本体AI自身に要約させる高度化はPhase 2)。
+    const userPrompt = turnData.input?.user_prompt || '';
+    const notes = [];
+
+    if (userPrompt.includes('```') || /`[^`]+`/.test(userPrompt)) {
+      notes.push('コードを含むやり取りをした');
+    }
+    if (userPrompt.length > 200) {
+      notes.push('長い文章で質問する傾向がある');
+    }
+
+    return { profileDelta: { notes, questionIntentPatterns: [] } };
   }
 
   /**
-   * 768次元embeddingをPCA固定射影で64次元に圧縮する(行列積で実装すること)。
+   * 768次元embeddingをPCA固定射影で64次元に圧縮する(行列積で実装)。
+   * pcaMatrixが未取得の場合は等間隔ダウンサンプリングにフォールバックする
+   * (DESIGN.md 8.1節: PCA行列はまだ生成されていないため、実運用までの暫定措置)。
    * @param {Float32Array} embedding768
    * @returns {Float32Array} 64次元
    */
   compress(embedding768) {
-    throw new Error('not implemented');
+    const targetDim = 64;
+
+    if (this.pcaMatrix) {
+      // pcaMatrix: [rawDim][targetDim] の行列。out[j] = sum_i embedding768[i] * pcaMatrix[i][j]
+      const out = new Float32Array(targetDim);
+      for (let j = 0; j < targetDim; j++) {
+        let sum = 0;
+        for (let i = 0; i < embedding768.length; i++) {
+          sum += embedding768[i] * this.pcaMatrix[i][j];
+        }
+        out[j] = sum;
+      }
+      return out;
+    }
+
+    // フォールバック: 等間隔ダウンサンプリング(PCA未生成の間の暫定実装)
+    const out = new Float32Array(targetDim);
+    const step = embedding768.length / targetDim;
+    for (let j = 0; j < targetDim; j++) {
+      let sum = 0;
+      const start = Math.floor(j * step);
+      const end = Math.floor((j + 1) * step);
+      for (let i = start; i < end; i++) {
+        sum += embedding768[i];
+      }
+      out[j] = sum / Math.max(1, end - start);
+    }
+    return out;
+  }
+
+  /**
+   * @private
+   */
+  _assertReady() {
+    if (!this.ready) {
+      throw new Error('CoreModel: initialize() must be called before use');
+    }
+  }
+
+  /**
+   * RAG文脈・ProfileMemo文脈を組み込んだプロンプトを組み立てる。
+   * @private
+   */
+  _buildPrompt(prompt, ragContext, profileContext) {
+    const parts = [];
+    if (profileContext) {
+      parts.push(profileContext);
+    }
+    if (ragContext && ragContext.retrievedTurns && ragContext.retrievedTurns.length > 0) {
+      const history = ragContext.retrievedTurns
+        .map((t) => `過去: ${t.input?.user_prompt} → ${t.response?.own_answer}`)
+        .join('\n');
+      parts.push(history);
+    }
+    parts.push(`ユーザー: ${prompt}`);
+    parts.push('本体AI:');
+    return parts.join('\n\n');
+  }
+
+  /**
+   * ネットワーク不要な決定論的embedding(テキストのハッシュから疑似ベクトルを生成)。
+   * mockMode専用。実際の意味的な類似度は再現しないが、パイプライン全体の
+   * 動作確認(同じテキストは同じembeddingになる・異なるテキストは異なる)には十分。
+   * @private
+   */
+  _mockEmbedding(text, dim) {
+    const out = new Float32Array(dim);
+    let seed = 0;
+    for (let i = 0; i < text.length; i++) {
+      seed = (seed * 31 + text.charCodeAt(i)) >>> 0;
+    }
+    for (let i = 0; i < dim; i++) {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      out[i] = (seed / 0xffffffff) * 2 - 1;
+    }
+    return out;
+  }
+
+  /**
+   * mockMode専用のテンプレート応答生成。
+   * @private
+   */
+  _mockGenerate(prompt, ragContext, profileContext) {
+    const hasHistory = ragContext && ragContext.retrievedTurns && ragContext.retrievedTurns.length > 0;
+    if (hasHistory) {
+      return `(mock応答) 「${prompt}」について、過去に似た話がありましたね。もう少し詳しく聞かせてください。`;
+    }
+    return `(mock応答) 「${prompt}」について、承知しました。`;
   }
 }
 

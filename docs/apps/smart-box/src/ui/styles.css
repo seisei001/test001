@@ -1,0 +1,268 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f8;
+  --panel-bg: #fff;
+  --border: #dcdce0;
+  --text: #1c1c1f;
+  --muted: #6b6b73;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --bubble-own: #ede9fe;
+  --bubble-llm: #e0f2fe;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+header {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.settings-btn {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- ポッドキャスト風「エピソード」カード --- */
+.episode-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.episode-art {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+}
+
+.episode-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.episode-subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.opening-question {
+  width: 100%;
+  text-align: left;
+}
+
+.opening-question label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+input[type="text"], textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+button.primary {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+}
+
+button.primary:hover {
+  background: var(--accent-hover);
+}
+
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- チャット(会話ログ)画面。ポッドキャストの「トランスクリプト」風 --- */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble {
+  border-radius: 14px;
+  padding: 10px 14px;
+  max-width: 88%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+
+.bubble.own {
+  align-self: flex-start;
+  background: var(--bubble-own);
+}
+
+.bubble.llm {
+  align-self: flex-start;
+  background: var(--bubble-llm);
+  font-size: 0.9rem;
+}
+
+.bubble-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.clarifying-question {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  padding: 10px 14px;
+  max-width: 88%;
+  font-size: 0.85rem;
+}
+
+.clarifying-question form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.clarifying-question input {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.composer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  background: var(--bg);
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.settings-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.muted-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181c;
+    --panel-bg: #1f2024;
+    --border: #303136;
+    --text: #eaeaec;
+    --muted: #9a9aa2;
+    --bubble-own: #2e2a4a;
+    --bubble-llm: #1e3a4a;
+  }
+}

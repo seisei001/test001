@@ -8,8 +8,16 @@
  *
  * セキュリティ: APIキーはブラウザのIndexedDB/localStorageにのみ保存し、賢い箱側の
  * サーバー(存在しない)や第三者には一切送信しない。LLM APIへはブラウザから直接
- * リクエストする。
+ * リクエストする(Anthropic APIをブラウザから直接呼ぶため
+ * `anthropic-dangerous-direct-browser-access` ヘッダを付与する。この方式は
+ * ユーザー自身のAPIキーがそのユーザーのブラウザ内でのみ使われる、という前提で
+ * 許容している。DESIGN.md 8.3節)。
  */
+
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_VERSION = '2023-06-01';
+const MAX_TOKENS = 1024;
+
 export class LLMTeacher {
   /**
    * @param {object} llmConfig - llm.config.json の内容(enabled, provider, model等)
@@ -28,7 +36,12 @@ export class LLMTeacher {
    * @throws API呼び出し失敗時(TurnController側でLLM無しのフローにフォールバックする設計とする)
    */
   async ask(prompt, ragContext) {
-    throw new Error('not implemented');
+    const contextText = this._formatRagContext(ragContext);
+    const userMessage = contextText ? `${contextText}\n\n${prompt}` : prompt;
+    return this._callAnthropic({
+      system: 'あなたはユーザーの会話相手です。簡潔に、要点を押さえて答えてください。',
+      userMessage,
+    });
   }
 
   /**
@@ -38,7 +51,37 @@ export class LLMTeacher {
    * @returns {Promise<{ consolidatedMemo: object }>}
    */
   async consolidateProfile(currentMemo, recentTurns) {
-    throw new Error('not implemented');
+    const recentSummaries = recentTurns
+      .map((t) => t.input?.user_prompt)
+      .filter(Boolean)
+      .join('\n- ');
+
+    const systemPrompt = [
+      'あなたはユーザーのプロフィールメモを整理する担当です。',
+      '現在のメモ(JSON)と直近の会話を見て、冗長な記述をまとめ、矛盾を解消し、',
+      '簡潔化したメモを同じJSON構造(profile.notes, profile.confidence,',
+      'questionIntentPatterns, sessionHistory)で返してください。',
+      'JSON以外の文字列は一切含めないこと。',
+    ].join('\n');
+
+    const userMessage = [
+      '現在のメモ:',
+      JSON.stringify(currentMemo, null, 2),
+      '',
+      '直近の会話:',
+      `- ${recentSummaries}`,
+    ].join('\n');
+
+    const { text } = await this._callAnthropic({ system: systemPrompt, userMessage });
+
+    let consolidatedMemo;
+    try {
+      consolidatedMemo = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`consolidateProfile: failed to parse LLM response as JSON: ${error.message}`);
+    }
+
+    return { consolidatedMemo };
   }
 
   /**
@@ -60,7 +103,86 @@ export class LLMTeacher {
    *   フォールバックする設計とする)
    */
   async generateQuestion(dimension, profileContext, ragContext) {
-    throw new Error('not implemented');
+    const contextText = this._formatRagContext(ragContext);
+
+    const systemPrompt = [
+      `あなたはユーザーに"${dimension}"という観点について尋ねる、短い質問を1つだけ作ります。`,
+      '以下の基準を必ず満たすこと(DESIGN.md 1.7節の質問設計原則):',
+      `- 1問1次元: ${dimension}についての不確実性だけを埋める質問にする。他の話題を混ぜない`,
+      '- 高情報利得: 「はい/いいえ」で終わらず、回答の幅によって後続の対応が変わる質問にする',
+      '- 純度: 前置きなしで本質だけを聞く。1文、短く',
+      '質問文のみを出力し、それ以外の文字列(引用符・説明・前置き)は一切含めないこと。',
+    ].join('\n');
+
+    const userMessage = [
+      'ユーザーについて分かっていること:',
+      profileContext || '(まだ情報なし)',
+      contextText ? `\n直近の会話の文脈:\n${contextText}` : '',
+    ].join('\n');
+
+    return this._callAnthropic({ system: systemPrompt, userMessage });
+  }
+
+  /**
+   * Anthropic Messages APIを直接呼び出す共通処理。
+   * @param {{ system: string, userMessage: string }} params
+   * @returns {Promise<{ text: string, latencyMs: number }>}
+   * @private
+   */
+  async _callAnthropic({ system, userMessage }) {
+    if (!this.config.enabled) {
+      throw new Error('LLMTeacher: llm.config.json is disabled');
+    }
+    if (!this.apiKey) {
+      throw new Error('LLMTeacher: API key is not set');
+    }
+
+    const startTime = performance.now();
+
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': this.apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        max_tokens: MAX_TOKENS,
+        system,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`LLMTeacher: Anthropic API request failed (${response.status}): ${errorBody}`);
+    }
+
+    const data = await response.json();
+    const text = (data.content || [])
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+
+    return { text, latencyMs: performance.now() - startTime };
+  }
+
+  /**
+   * @param {object} [ragContext]
+   * @returns {string}
+   * @private
+   */
+  _formatRagContext(ragContext) {
+    if (!ragContext || !ragContext.retrievedTurns || ragContext.retrievedTurns.length === 0) {
+      return '';
+    }
+    const lines = ragContext.retrievedTurns
+      .map((turn) => turn.input?.user_prompt)
+      .filter(Boolean)
+      .map((text) => `- ${text}`);
+    return lines.length > 0 ? `関連する過去のやり取り:\n${lines.join('\n')}` : '';
   }
 }
 

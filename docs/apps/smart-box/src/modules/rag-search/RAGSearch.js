@@ -26,7 +26,47 @@ export class RAGSearch {
    * }>}
    */
   async search(queryEmbedding, topK, minSimilarity) {
-    throw new Error('not implemented');
+    const startTime = performance.now();
+    const k = topK ?? this.config.topK;
+    const threshold = minSimilarity ?? this.config.minSimilarityThreshold;
+
+    const allTurns = await this.db.getAllTurns();
+    const withEmbedding = allTurns.filter((turn) => turn.input && turn.input.embedding);
+
+    if (withEmbedding.length === 0) {
+      return {
+        retrievedTurns: [],
+        similarities: [],
+        totalTurnsSearched: 0,
+        latencyMs: performance.now() - startTime,
+      };
+    }
+
+    const scored = withEmbedding.map((turn) => ({
+      turn,
+      similarity: this.cosineSimilarity(queryEmbedding, this._asFloat32(turn.input.embedding)),
+    }));
+
+    scored.sort((a, b) => b.similarity - a.similarity);
+
+    const filtered = scored.filter((s) => s.similarity >= threshold).slice(0, k);
+
+    return {
+      retrievedTurns: filtered.map((s) => s.turn),
+      similarities: filtered.map((s) => s.similarity),
+      totalTurnsSearched: withEmbedding.length,
+      latencyMs: performance.now() - startTime,
+    };
+  }
+
+  /**
+   * IndexedDBから読み出した配列(プレーンArrayの場合もある)をFloat32Arrayに揃える。
+   * @param {Float32Array|number[]} embedding
+   * @returns {Float32Array}
+   * @private
+   */
+  _asFloat32(embedding) {
+    return embedding instanceof Float32Array ? embedding : Float32Array.from(embedding);
   }
 
   /**
@@ -36,7 +76,28 @@ export class RAGSearch {
    * @throws a, b の次元が一致しない場合
    */
   cosineSimilarity(a, b) {
-    throw new Error('not implemented');
+    if (a.length !== b.length) {
+      throw new Error(`Embedding dimensions mismatch: ${a.length} !== ${b.length}`);
+    }
+
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+
+    if (normA === 0 || normB === 0) {
+      return 0;
+    }
+
+    return dotProduct / (normA * normB);
   }
 }
 
