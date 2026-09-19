@@ -5,7 +5,7 @@
 アシスタントである。外部LLM(ユーザーが任意でAPIキーを設定)を「先生役」として併用でき、
 その場合はユーザー・LLM・本体AI自身の三者の会話を使って本体AIを賢くしていく。
 
-このドキュメントは7段階の改訂を経ている:
+このドキュメントは8段階の改訂を経ている:
 
 1. **初版**: Google Drive上の資料(`conversation-rag-app` フォルダ、00〜07)を統合。
    BERT+RAG+LoRAのアーキテクチャのみが決まっていて、ドメイン(何をするアプリか)は
@@ -30,6 +30,12 @@
    システムは、より純度の高い質問によって会話の質を高める構成であるべき」という指摘を
    受け、(1)質問の情報効率・純度を設計基準として明文化し(第1.7節)、(2)LLM連携時に
    質問文自体をLLMに生成させ高度化する第3の質問モード(c)を追加した(第1.8節)。
+8. **本版(第8版)**: ユーザーから「小チビAI(本体AI)の実装は可能なのか」と問われ、
+   第7版までの8.1節の「実現できるか未検証の研究課題」という書き方が不正確だったと
+   判明。実際には推論(`transformers.js`/WebLLM)・LoRA学習(`onnxruntime-web`の
+   training機能)ともに確立された実装手段があるため、「研究課題」から「具体的な
+   ライブラリを使ったエンジニアリングタスク」に位置づけを訂正した(第5.1節・8.1節・
+   8.2節)。
 
 ---
 
@@ -359,9 +365,17 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   - `async summarizeForProfile(turnData): Promise<{ profileDelta: object }>` —
     毎ターンの安価な差分更新用に、CoreModel自身で短い要約を生成する(ProfileMemoから
     呼ばれる)
-- **モデル候補(未確定・Phase 0で検証要)**: Qwen2.5-0.5B-Instruct級の小型多言語モデルを
-  int4量子化し、`transformers.js`(WebGPU対応)または`onnxruntime-web`で実行する案を
-  第一候補とする。実機でのロード時間・推論速度・メモリ使用量の検証がPhase 0のタスク。
+- **実装基盤(第8版で確定)**: 推論(embed/generate)は **transformers.js**
+  (Hugging Face製、WebGPU対応)を使う。feature-extractionパイプラインとtext-generation
+  パイプラインを同一モデルインスタンスに対して両方使えるため、「1モデルでembed+generate
+  を兼ねる」という第1.3節の要件に合う。モデル候補はQwen2.5-0.5B-Instruct級の小型多言語
+  ONNXモデル(第8.2節)。
+- **LoRA学習の実装基盤**: **ONNX Runtime Web の training機能**
+  (`onnxruntime-web`のtraining版、`onnxruntime-training-web`)を使う。LoRAのA/B行列
+  だけをtrainableに指定した学習用ONNXグラフ(training artifact)をブラウザ内でロードし、
+  forward→backward→optimizer stepを実行できる。この学習用グラフ自体は、モデル準備段階で
+  Python側(`onnxruntime.training`のツール)を使い**開発時に1回だけ**エクスポートして
+  おく(ユーザーの端末上で毎回行う作業ではない)。詳細は第8.1節を参照。
 
 ### 5.2 RAGSearch / IndexedDBManager
 - RAGSearchはembedding類似検索(旧版と同じ)。sessionTopicをクエリの種として使える
@@ -475,14 +489,33 @@ ProfileMemoの更新とは独立した仕組みである点に注意)
 
 ## 8. 技術的リスクと対応方針
 
-### 8.1 ブラウザ内生成モデル + LoRA学習の実現可能性(最重要・未検証)
-base modelは常にfreezeし、勾配計算・更新対象は**LoRAのA/B行列のみ**に限定する
-(第1.3節)。実装には生成モデルのforwardを自動微分できるランタイムが必要で、
-**この技術検証はPhase 0で最優先に行うべき未解決事項**である。
+### 8.1 ブラウザ内生成モデル + LoRA学習の実現可能性(第8版で再評価: 実現手段あり)
+**旧版の訂正**: 第7版まで「実現できるか未検証の研究課題」という悲観的な書き方をして
+いたが、これは不正確だった。実際には確立された手段がある:
+
+- **推論(embed/generate)**: `transformers.js`や`WebLLM`(MLC-AI)等、ブラウザで
+  小型量子化モデルをWebGPU実行するライブラリは既に実用段階にあり、Qwen2.5-0.5B級の
+  モデルを動かすこと自体は目新しい研究課題ではない(第5.1節)。
+- **LoRA学習**: `onnxruntime-web`のtraining機能を使えば、LoRAのA/B行列だけを
+  trainableに指定した学習用グラフをブラウザ内でforward→backward→重み更新できる
+  (第5.1節)。base modelは常にfreezeし、勾配計算・更新対象は**LoRAのA/B行列のみ**に
+  限定する(第1.3節)という設計は、この仕組みとそのまま合致する。
+
+**残る実装タスク(研究課題ではなくエンジニアリングタスク)**:
+1. 選定したモデル+LoRA構成(第4.5節の3階層)に対し、Python側で
+   `onnxruntime.training`を使った学習用グラフ(training artifact)を実際に
+   エクスポートできるか試す(モデル準備段階の1回きりの作業)
+2. エクスポートしたartifactを`onnxruntime-web` training版でブラウザ内ロードし、
+   実際にforward→backward→重み更新の1サイクルが動くことを確認する
+3. 精度・速度がPhase 1の目標値(第4.1節)に収まるか実機計測する
+
+これらはPhase 0で着手し、うまくいかない場合のみ第7版までの記述にあった代替案
+(候補生成→選好データとして蓄積→バッチ更新)を検討する。
 
 ### 8.2 モデル選定
-Qwen2.5-0.5B-Instruct級モデルのブラウザ内(WebGPU/wasm)実行速度・メモリ・ロード時間の
-実機検証がPhase 0のタスク。
+Qwen2.5-0.5B-Instruct級モデルのONNXエクスポート(int4量子化)版が公開されているか、
+無ければ自前でエクスポートする必要がある。ブラウザ内(WebGPU/wasm)実行速度・メモリ・
+ロード時間、および第8.1節の学習用グラフのエクスポート可否の実機検証がPhase 0のタスク。
 
 ### 8.3 LLM APIキーの扱い
 ブラウザのIndexedDB/localStorageにのみ保存し、サーバー(存在しない)には送信しない。
@@ -512,9 +545,12 @@ LLM連携時の定期的な「まとめ直し」(第1.5節)はこれを防ぐ主
 
 ## 12. 次にやること(直近アクション)
 
-1. **(最優先)** 生成モデル候補(第5.1節)の実機検証
-2. **(最優先)** LoRA部分のみを対象にした逆伝播が技術的に実現できるかの検証(第8.1節)
-3. `CoreModel.js` の実装(embed + generate + summarizeForProfile)
+1. **(最優先)** モデル準備: Qwen2.5-0.5B-Instruct級モデルのONNX(int4量子化)版を
+   用意し、`onnxruntime.training`でLoRA学習用グラフをエクスポートできるか試す
+   (第8.1節・8.2節。研究課題ではなくエンジニアリングタスクとして着手する)
+2. **(最優先)** `transformers.js`でモデルをロードし、embed/generateの実機動作・速度を
+   確認する(第5.1節)
+3. `CoreModel.js` の実装(embed + generate + summarizeForProfile。transformers.js基盤)
 4. `ProfileMemo.js` の実装((a)固定質問の記録 + (b)確信度ベース補助質問 + 毎ターンの
    差分更新。LLMまとめ直し・(c)はPhase 2)
 5. `LLMTeacher.js` の実装(蒸留・ProfileMemoまとめ直し・(c)高度な質問生成・APIキーの
