@@ -1,14 +1,18 @@
 /**
  * TurnController — CoreModel / RAGSearch / ProfileMemo / LLMTeacher(任意) /
- * LoRAForward / FeedbackProcessor をDIで受け取り、1ターンのライフサイクル全体を
- * オーケストレーションする。DESIGN.md 2.2節(シーケンス)・5.6節を参照。
+ * LoRAForward / FeedbackProcessor をDIで受け取り、1セッション・1ターンの
+ * ライフサイクル全体をオーケストレーションする。DESIGN.md 2.2節(シーケンス)・
+ * 5.6節を参照。
  *
- * フロー: CoreModel.embed() → RAGSearch.search() と ProfileMemo.getContext() を
+ * セッションの最初のユーザー操作時、固定質問2問(DESIGN.md 1.6節: 「今日はどんな
+ * 話題ですか?」「その話題をどのように詰めたいですか?」)を発火し、回答を
+ * ProfileMemo.recordSessionOpening() に渡してから、通常のターン処理フローに入る。
+ *
+ * 通常フロー: CoreModel.embed() → RAGSearch.search() と ProfileMemo.getContext() を
  * 並行取得 → CoreModel.generate()(本体AI自身の回答) →
  * [llm.config.jsonが有効なら] LLMTeacher.ask() →
  * FeedbackProcessor で蒸留損失(LLM連携時)またはimplicit損失(単体時)を計算 →
- * LoRAForward を更新(base modelは不変) → ProfileMemo.update() で差分更新
- * (一定間隔でLLM連携時は consolidateWithLLM() も実行)。
+ * LoRAForward を更新(base modelは不変) → ProfileMemo.update() で差分更新。
  *
  * 設計パターン: Dependency Injection(テスト時にモック注入可) +
  * Observer/Event('turn_complete'等でLogger/MetricCollectorを疎結合に接続)
@@ -23,8 +27,9 @@ export class TurnController {
    * @param {import('../lora-training/LoRAForward.js').LoRAForward} lora
    * @param {import('../lora-training/FeedbackProcessor.js').FeedbackProcessor} feedbackProcessor
    * @param {object} config - system.config.json 全体
+   * @param {object} profileConfig - profile.config.json (sessionOpeningQuestionsを使用)
    */
-  constructor(coreModel, rag, profileMemo, llmTeacher, lora, feedbackProcessor, config) {
+  constructor(coreModel, rag, profileMemo, llmTeacher, lora, feedbackProcessor, config, profileConfig) {
     this.coreModel = coreModel;
     this.rag = rag;
     this.profileMemo = profileMemo;
@@ -32,6 +37,8 @@ export class TurnController {
     this.lora = lora;
     this.feedbackProcessor = feedbackProcessor;
     this.config = config;
+    this.profileConfig = profileConfig;
+    this.sessionStarted = false;
     /** @type {Record<string, Function[]>} */
     this.listeners = { turn_complete: [], lora_update: [], profile_updated: [] };
   }
@@ -47,12 +54,31 @@ export class TurnController {
   }
 
   /**
-   * DESIGN.md 2.2節のシーケンスを実行する。
+   * セッション開始時に固定質問2問(profile.config.json の sessionOpeningQuestions)を
+   * 返す。UI側はこれを表示し、ユーザーの回答を startSession() に渡す。
+   * @returns {{ topic: string, approach: string }} 質問文言(テンプレート固定)
+   */
+  getSessionOpeningQuestions() {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * 固定質問2問への回答を受け取り、ProfileMemo.recordSessionOpening() に渡して
+   * セッションを開始する。DESIGN.md 1.6節。
+   * @param {string} sessionTopicAnswer
+   * @param {string} sessionApproachAnswer
+   * @returns {Promise<void>}
+   */
+  async startSession(sessionTopicAnswer, sessionApproachAnswer) {
+    throw new Error('not implemented');
+  }
+
+  /**
+   * DESIGN.md 2.2節の通常ターンのシーケンスを実行する(startSession()呼び出し後)。
    * @param {string} userPrompt
    * @returns {Promise<{
    *   ownAnswer: string,
    *   llmAnswer: string | null,
-   *   clarifyingQuestion: string | null,  // ProfileMemo.getLowConfidenceDimensions()に基づく(DESIGN.md 1.6節)
    *   turnData: object   // DESIGN.md 6節のスキーマ
    * }>}
    */
