@@ -1,0 +1,15 @@
+{
+  "name": "smart-box",
+  "version": "0.1.0",
+  "private": true,
+  "description": "賢い箱 (conversation-rag-app) — test001アプリハブ内サブアプリ。DESIGN.mdを参照。本番実行はビルド不要(ブラウザネイティブESM)。このpackage.jsonは開発時のテスト実行にのみ使う。",
+  "type": "module",
+  "scripts": {
+    "test:unit": "vitest run tests/unit",
+    "test:int": "vitest run tests/integration",
+    "test:all": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
+}
