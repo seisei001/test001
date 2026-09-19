@@ -5,5 +5,8 @@
   },
   "updateEveryTurn": true,
   "llmConsolidationIntervalTurns": 20,
-  "note": "profile/questionIntentPatterns/sessionHistoryの構造は DESIGN.md 1.5節を参照。RAGとは独立した軽量メモとして持つ(RAGに混ぜると検索ノイズ・重複保存で肥大化するため)。第5版: 次元ごとの確信度トラッキング(confidenceThresholdForClarifyingQuestion等)は廃止し、セッション開始の固定質問2問に置き換えた(DESIGN.md 1.6節)。"
+  "trackedDimensions": ["formality", "depth", "exampleUsage", "codeInclusion"],
+  "confidenceThresholdForClarifyingQuestion": 0.4,
+  "maxClarifyingQuestionsPerSession": 3,
+  "note": "DESIGN.md 1.6節: (a)セッション開始の固定質問と(b)確信度ベースの補助質問は併用する。どちらもRAG/LoRAを介さない軽量な仕組み。第5版で(b)を誤って削除したが第6版で復活させた。"
 }
