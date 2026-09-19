@@ -5,7 +5,7 @@
 アシスタントである。外部LLM(ユーザーが任意でAPIキーを設定)を「先生役」として併用でき、
 その場合はユーザー・LLM・本体AI自身の三者の会話を使って本体AIを賢くしていく。
 
-このドキュメントは4段階の改訂を経ている:
+このドキュメントは5段階の改訂を経ている:
 
 1. **初版**: Google Drive上の資料(`conversation-rag-app` フォルダ、00〜07)を統合。
    BERT+RAG+LoRAのアーキテクチャのみが決まっていて、ドメイン(何をするアプリか)は
@@ -13,20 +13,18 @@
 2. **第2版**: ドメインを「パーソナル対話日記」と誤って推測し、応答を「過去エントリの
    提示・テンプレート質問・固定確認文」の3類型に限定、生成モデルを排除する設計にした。
    →ユーザーから「勝手に別のアプリになっている」と指摘され誤りと判明。
-3. **第3版**: ユーザーとの対話で判明した正しいコンセプトに基づき全面改訂。
-   - UI: ポッドキャストアプリ風の汎用デザイン(他アプリにも転用できる見た目)
-   - 中身: 本体AI自身が量子化された小さな生成モデル+LoRA+RAGを持ち、会話するたびに
-     賢くなる。外部LLM無しでも単体で動作する(自己完結)
-   - 任意でLLM API連携: ユーザー・LLM・本体AIの三者の会話を使い、LLMの回答を
-     教師信号としてLoRAを更新する(蒸留)
-   - **本体AIの生の重みは絶対にファインチューニングしない**。フルファインチューニングは
-     データ量的にもモデルが破綻するリスク的にも実用にならないため、常にLoRAアダプタ
-     (数千パラメータ)のみを更新する。これはユーザーが明示した核心的な設計原則である。
-4. **本版(第4版)**: 「賢くなる仕組み」がLoRAとRAGの2本柱だけでは不足しており、
-   ユーザーのプロフィールや質問意図の傾向をAIが継続的にまとめる**プロフィール・意図メモ**
-   を3本目の柱として追加する予定だった、というユーザーからの指摘を反映。この情報は
-   RAGの検索対象に混ぜると肥大化するだけで非効率なため、RAGとは独立した軽量な
-   要約メモとして持つ設計にした(第1.5節・1.6節)。
+3. **第3版**: ユーザーとの対話で判明した正しいコンセプトに基づき全面改訂(生成モデル+
+   LoRA+RAG、ポッドキャスト風UI、LLM任意連携による蒸留)。
+4. **第4版**: 「賢くなる仕組み」の3本目の柱として、ユーザーのプロフィールや質問意図の
+   傾向をAIが継続的にまとめる**プロフィール・意図メモ**を追加。RAGとは独立した軽量メモ
+   として持つ設計にした(第1.5節)。
+5. **本版(第5版)**: 第4版のプロフィールメモで導入した「確信度が低い次元を検出して
+   都度質問する」仕組みは、実装が複雑な割に収束が遅く、会話1回目(コールドスタート)にも
+   弱いという弱点があった。ユーザーから「セッション開始時に固定で2問だけ聞く方が
+   むしろ効率的では」という指摘があり、採用した。「今日はどんな話題ですか?」
+   「その話題をどのように詰めたいですか?」という、ポッドキャストの冒頭のような固定質問
+   2つに置き換えることで、複雑な確信度トラッキングを排除しつつ、初回からでも強い
+   手がかりを得られる設計にした(第1.6節)。
 
 ---
 
@@ -45,6 +43,9 @@
 として実装し、将来的に別アプリの「対話パーツ」として使い回せることを意図する。
 音声入出力(録音・読み上げ)は現時点のスコープには含まない(将来拡張の余地として
 第12節に記載)。
+
+「ポッドキャストのエピソード」というメタファーは見た目だけでなく、第1.6節の
+セッション開始の固定質問という**機能面のメタファー**としても効いている。
 
 ### 1.3 本体AIのアーキテクチャ原則(最重要)
 - 本体AIは **1つの小型量子化生成モデル**(base model)を持つ。このモデルは
@@ -80,7 +81,7 @@ LLM APIキーが未設定の場合、本体AIは単体で回答を生成する�
 - 本体AIの回答(および、LLM連携時はLLMの回答)をポッドキャスト風の画面に表示する
 - LLM連携時は、ユーザーのプロンプト(および必要な文脈)をLLM APIへ送信する
 
-### 1.5 プロフィール・意図メモ(3本目の柱、新規)
+### 1.5 プロフィール・意図メモ(3本目の柱)
 「賢くなる仕組み」はLoRA(生成スタイルの重み調整)とRAG(個別の過去ターンの検索)
 だけでなく、**ユーザーの人物像(好み・専門性など)と、ユーザーが繰り返し尋ねる質問の
 意図・傾向**を、AIが継続的に要約・更新していく**コンパクトなメモ**を3本目の柱として
@@ -97,33 +98,50 @@ LLM APIキーが未設定の場合、本体AIは単体で回答を生成する�
 ```json
 {
   "profile": {
-    "notes": ["技術的な話題を好む", "簡潔な説明を好み、長い前置きを嫌う", "..."],
-    "confidence": { "formality": 0.8, "depth": 0.4, "...": "..." }
+    "notes": ["技術的な話題を好む", "簡潔な説明を好み、長い前置きを嫌う", "..."]
   },
   "questionIntentPatterns": [
     "デバッグ・具体的なコード修正についての質問が多い",
     "抽象的な概念より実例を伴う説明を求める傾向"
   ],
+  "sessionHistory": [
+    { "topic": "転職の相談", "approach": "選択肢を整理したい", "date": "2026-09-18" }
+  ],
   "lastUpdated": "2026-09-19T10:00:00Z",
   "lastLlmConsolidation": "2026-09-19T09:00:00Z | null"
 }
 ```
+(第4版にあった次元ごとの`confidence`数値トラッキングは、第1.6節の固定質問方式への
+置き換えに伴い廃止した。メモは自由記述ノートの蓄積で十分とする)
 
 **更新の仕組み**:
-- 毎ターン、本体AI(CoreModel)自身が安価に「今回のやり取りでメモに追記・修正すべき
-  点があるか」を短く生成し、メモへ差分反映する(コストの低い軽量な更新)
+- セッション開始時の固定質問(第1.6節)への回答は、`sessionHistory`に直接記録される
+  (最も強く・最も安価な情報源)
+- 加えて、毎ターン、本体AI(CoreModel)自身が安価に「今回のやり取りでメモに追記・修正
+  すべき点があるか」を短く生成し、`profile.notes`/`questionIntentPatterns`へ差分反映する
 - LLM連携時は、一定ターン数ごと(`profile.config.json`の`llmConsolidationIntervalTurns`。
   既定20ターン)に、外部LLMを使ってメモ全体を整理・圧縮する「まとめ直し」を行う
-  (差分更新で冗長化したメモを、LLMの要約能力で簡潔に保つ)
-- メモの各項目には確信度(confidence)を持たせ、確信度が低い項目があれば、
-  ユーザーに直接確認する質問を投げかけてメモを育てる(第1.6節)
 
-### 1.6 プロフィール確認の質問(目的を限定した質問機構)
-第2版で削除した「質問駆動」の仕組みを、**プロフィール・意図メモの空白を埋める目的に
-限定して**復活させる。第2版の汎用的な「深掘り質問」とは異なり、メモの特定の次元
-(例: フォーマル度の確信度が低い)がある時にだけ、その次元を埋めるための短い確認質問を
-本体AIの回答に添えて発火させる。頻度は`profile.config.json`で制御する(セッションあたり
-上限あり)。
+### 1.6 セッション開始時の固定質問(効率的な入り口)
+各セッション(ポッドキャストの「エピソード」に相当)の冒頭で、AIは固定の2問を尋ねる:
+
+1. 「今日はどんな話題ですか?」 → 回答は `sessionTopic` として記録され、(a) RAGSearchの
+   検索クエリの種、(b) ProfileMemoの`sessionHistory`への記録、に使われる
+2. 「その話題をどのように詰めたいですか?」 → 回答は `sessionApproach` として記録され、
+   (a) このセッション中のCoreModel.generate()のスタイル(深さ・ブレインストーミングか
+   結論を求めているか等)に直接反映、(b) ProfileMemoの`profile.notes`蓄積に使われる
+
+**第4版からの変更(重要)**: 第4版では「メモの次元ごとの確信度を追跡し、低い項目があれば
+都度質問する」という適応的な仕組みを設計していたが、これは実装が複雑な割に
+(a) 確信度が閾値を超えるまで何ターンもかかり収束が遅い、(b) 会話1回目(履歴ゼロ)には
+機能しない、という弱点があった。**この固定2問方式に置き換えることで、複雑な確信度
+トラッキングのロジックが丸ごと不要になり、かつ初回セッションから同じ強さの手がかりを
+得られる**(コールドスタート問題も自然に解消する)。第4版の`getLowConfidenceDimensions()`
+based の適応的追加質問は、MVPスコープからは削除する(将来、必要性が実証されたら
+再検討する)。
+
+質問文言はテンプレート固定とし(LLM生成ではなく`profile.config.json`のテンプレートから
+取得)、応答の速さと再現性を優先する。
 
 ---
 
@@ -142,10 +160,15 @@ CoreModel (量子化された小型生成モデル。embedding抽出+文章生�
 
 ```mermaid
 flowchart TD
-    A[ユーザーがプロンプトを入力] --> B["Step 1: CoreModel.embed()<br/>embedding抽出(768→64次元圧縮)"]
-    B --> C["Step 2: RAGSearch<br/>過去の会話を類似検索し文脈として取得"]
+    S{セッション<br/>開始直後?} -- Yes --> S1["固定質問1: 今日はどんな話題ですか?"]
+    S1 --> S2["固定質問2: その話題をどのように詰めたいですか?"]
+    S2 --> SR["sessionTopic / sessionApproach を記録<br/>(ProfileMemo.sessionHistory + RAG検索クエリの種)"]
+    SR --> A
+    S -- No --> A[ユーザーがプロンプトを入力]
+    A --> B["Step 1: CoreModel.embed()<br/>embedding抽出(768→64次元圧縮)"]
+    B --> C["Step 2: RAGSearch<br/>sessionTopicも加味して過去の会話を類似検索"]
     C --> P["Step 2': ProfileMemo.getContext()<br/>検索なしでプロフィール・意図メモを取得"]
-    P --> D["Step 3: CoreModel.generate()<br/>RAG文脈+メモ+LoRA適用込みで本体AI自身の回答を生成"]
+    P --> D["Step 3: CoreModel.generate()<br/>RAG文脈+メモ+sessionApproach+LoRA適用込みで回答を生成"]
     D --> E{LLM APIキー<br/>設定済み?}
     E -- Yes --> F["Step 4: LLMTeacher.ask()<br/>同じプロンプトを外部LLMに送信し回答を取得"]
     E -- No --> G[本体AIの回答のみで応答]
@@ -154,23 +177,23 @@ flowchart TD
     G --> J["Step 5': FeedbackProcessor(フォールバック)<br/>ユーザーの反応からimplicit信号を抽出"]
     J --> I
     I --> Q["Step 6: ProfileMemo.update()<br/>本体AIが安価に差分更新(LLM連携時は一定間隔でLLMがまとめ直し)"]
-    Q --> K["ポッドキャスト風画面に本体AI(+LLM)の回答を表示<br/>(メモの確信度が低い項目があれば確認質問を添える)"]
+    Q --> K["ポッドキャスト風画面に本体AI(+LLM)の回答を表示"]
     K --> L[会話をIndexedDBに保存]
     L --> M[StructuredLogger / MetricCollector に記録]
 ```
 
-### 2.3 モジュールと責務(一覧、全面改訂)
+### 2.3 モジュールと責務(一覧)
 
 | モジュール | 責務 | 入力 | 出力 | 目標コスト |
 |---|---|---|---|---|
 | CoreModel | embedding抽出 **と** 文章生成の両方(base weightsはfreeze) | text, ragContext, profileContext | embedding(64d), 生成テキスト | 生成 <1500ms(端末依存) |
 | RAGSearch | 類似会話検索 | embedding | 類似ターン一覧, confidence | <20ms |
-| ProfileMemo | ユーザー像・質問意図傾向の要約メモの保持・差分更新・確信度管理 | turnData, (任意)LLM | プロフィール文脈, 確認質問候補 | 差分更新 <50ms |
+| ProfileMemo | ユーザー像・質問意図傾向の要約メモの保持・差分更新、セッション開始の固定質問と結果の記録 | turnData, sessionTopic/Approach, (任意)LLM | プロフィール文脈 | 差分更新 <50ms |
 | IndexedDBManager | 会話・LoRA重み・LLM設定・ProfileMemoの永続化 | turnData | — | — |
 | LLMTeacher | 任意。外部LLM APIの呼び出し(蒸留・メモのまとめ直し) | prompt, apiConfig | LLMの回答text | ネットワーク依存 |
 | LoRAForward | CoreModelのquery/value等へのLoRA順伝播 | hiddenState + LoRA重み | 適応後の生成 | <1ms/層 |
 | FeedbackProcessor | 蒸留損失(LLM連携時) / engagement信号(単体時)の算出 | own answer, llm answer?, user反応 | 学習ラベル・損失 | <50ms |
-| TurnController | 全体オーケストレーション | userPrompt | 本体AI回答(+LLM回答) | 合計端末依存 |
+| TurnController | 全体オーケストレーション(セッション開始の固定質問を含む) | userPrompt | 本体AI回答(+LLM回答) | 合計端末依存 |
 | StructuredLogger | 構造化ログ記録 | turn/event data | ログ永続化(json/csv) | — |
 | MetricCollector | メトリクス集計・目標値との比較 | ログ | 集計結果・アラート | — |
 | ABTestRunner | バリアント割当・効果測定 | userId | variant, 記録 | — |
@@ -188,7 +211,7 @@ docs/apps/smart-box/
 ├── configs/
 │   ├── system.config.json
 │   ├── rag.config.json
-│   ├── profile.config.json    ← 新規: プロフィール・意図メモの更新頻度・確信度閾値等
+│   ├── profile.config.json    ← セッション開始の固定質問テンプレート・更新頻度等
 │   ├── llm.config.json        ← 外部LLM連携設定(APIキーはconfigに書かず、UIから
 │   │                              入力しIndexedDB/localStorageにのみ保存する)
 │   └── lora.config.json
@@ -196,7 +219,7 @@ docs/apps/smart-box/
 │   ├── modules/
 │   │   ├── core-model/CoreModel.js
 │   │   ├── rag-search/RAGSearch.js, IndexedDBManager.js
-│   │   ├── profile-memo/ProfileMemo.js     ← 新規
+│   │   ├── profile-memo/ProfileMemo.js
 │   │   ├── llm-teacher/LLMTeacher.js
 │   │   ├── lora-training/LoRAForward.js, FeedbackProcessor.js
 │   │   ├── turn-controller/TurnController.js
@@ -220,15 +243,16 @@ docs/apps/smart-box/
 CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileMemoの情報は
 含めない(第1.5節の理由により意図的に分離)。
 
-### 4.3 configs/profile.config.json(新規)
+### 4.3 configs/profile.config.json(改訂)
 ```json
 {
+  "sessionOpeningQuestions": {
+    "topic": "今日はどんな話題ですか?",
+    "approach": "その話題をどのように詰めたいですか?"
+  },
   "updateEveryTurn": true,
   "llmConsolidationIntervalTurns": 20,
-  "confidenceThresholdForClarifyingQuestion": 0.4,
-  "maxClarifyingQuestionsPerSession": 3,
-  "trackedDimensions": ["formality", "depth", "exampleUsage", "codeInclusion"],
-  "note": "profile/questionIntentPatternsの構造は DESIGN.md 1.5節を参照。RAGとは独立した軽量メモとして持つ(RAGに混ぜると検索ノイズ・重複保存で肥大化するため)。"
+  "note": "profile/questionIntentPatterns/sessionHistoryの構造は DESIGN.md 1.5節を参照。RAGとは独立した軽量メモとして持つ(RAGに混ぜると検索ノイズ・重複保存で肥大化するため)。第5版: 次元ごとの確信度トラッキング(confidenceThresholdForClarifyingQuestion等)は廃止し、セッション開始の固定質問2問に置き換えた(DESIGN.md 1.6節)。"
 }
 ```
 
@@ -272,26 +296,29 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   第一候補とする。実機でのロード時間・推論速度・メモリ使用量の検証がPhase 0のタスク。
 
 ### 5.2 RAGSearch / IndexedDBManager
-- RAGSearchはembedding類似検索(旧版と同じ)
+- RAGSearchはembedding類似検索(旧版と同じ)。sessionTopicをクエリの種として使える
 - IndexedDBManagerは会話・LoRA重み・LLM設定に加え、`metadata`ストアに
   ProfileMemoのドキュメント(第1.5節のJSON)も保持する
 
-### 5.3 ProfileMemo (`src/modules/profile-memo/ProfileMemo.js`) — 新規
+### 5.3 ProfileMemo (`src/modules/profile-memo/ProfileMemo.js`)
 - **責務**: ユーザーの人物像と質問意図の傾向を要約したメモ(第1.5節)を保持・更新する。
-  RAGとは独立した、検索を伴わない常時参照コンテキスト。
+  RAGとは独立した、検索を伴わない常時参照コンテキスト。セッション開始の固定質問
+  (第1.6節)の結果もここに記録する。
 - **主要API**:
   - `async getContext(): Promise<string>` — CoreModel.generate()に渡す、現在のメモの
     テキスト表現を返す(固定サイズに収まるよう要約済みであること)
+  - `async recordSessionOpening(sessionTopic, sessionApproach): Promise<void>` —
+    セッション開始の固定質問2問への回答を`sessionHistory`に記録する(第1.6節、最も
+    強く安価な情報源)
   - `async update(turnData, coreModel): Promise<void>` — 毎ターン、CoreModelの軽量な
     要約(`CoreModel.summarizeForProfile()`)を使ってメモに差分反映する
   - `async consolidateWithLLM(llmTeacher): Promise<void>` —
     `profile.config.json`の`llmConsolidationIntervalTurns`ごとに呼ばれ、外部LLMで
     メモ全体を整理・圧縮する(LLM連携時のみ)
-  - `getLowConfidenceDimensions(): string[]` — 確信度が
-    `confidenceThresholdForClarifyingQuestion`未満の次元を返す(第1.6節の確認質問の
-    発火判定に使う)
-- **永続化**: IndexedDBManagerの`metadata`ストアに1ドキュメントとして保存(会話ターンの
-  ような増え続けるコレクションではないため専用object storeは持たない)。
+- **永続化**: IndexedDBManagerの`metadata`ストアに1ドキュメントとして保存。
+- **第4版からの変更**: 次元ごとの確信度を追跡し閾値未満で質問を発火する
+  `getLowConfidenceDimensions()`は削除した(第1.6節参照。セッション開始の固定質問に
+  置き換えたため不要になった)。
 
 ### 5.4 LLMTeacher (`src/modules/llm-teacher/LLMTeacher.js`)
 - **責務**: `llm.config.json`が`enabled: true`の場合のみ、(a) ユーザーのプロンプトを
@@ -304,15 +331,18 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   (存在しない)や第三者には一切送信しない。
 
 ### 5.5 LoRAForward / FeedbackProcessor
-(第3版から変更なし。CoreModelのquery/value射影へのLoRA適用、蒸留損失/implicit損失の
-算出。ProfileMemoの更新とは独立した仕組みである点に注意)
+(変更なし。CoreModelのquery/value射影へのLoRA適用、蒸留損失/implicit損失の算出。
+ProfileMemoの更新とは独立した仕組みである点に注意)
 
 ### 5.6 TurnController
-第2.2節のフロー(RAG検索とProfileMemo取得を両方行い、生成後にLoRA更新とProfileMemo
-更新を両方行う)をオーケストレーションする。
+- セッションの最初のユーザー操作時、第1.6節の固定質問2問を発火し、回答を
+  `ProfileMemo.recordSessionOpening()`に渡す
+- 以降は第2.2節の通常フロー(RAG検索とProfileMemo取得を両方行い、生成後にLoRA更新と
+  ProfileMemo更新を両方行う)をオーケストレーションする
 
 ### 5.7〜5.9 StructuredLogger / MetricCollector / ABTestRunner
-(第3版から変更なし。ProfileMemoの更新頻度・確認質問の発火率もログ対象に加える)
+(変更なし。セッション開始の固定質問への回答の質・ProfileMemoの更新頻度もログ対象に
+加える)
 
 ---
 
@@ -321,6 +351,8 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
 ```json
 {
   "turn_id": "turn_<timestamp>_<random>",
+  "session_id": "session_<timestamp>",
+  "is_session_opening": false,
   "timestamp": "2026-09-19T10:30:00Z",
   "input": {
     "user_prompt": "...",
@@ -338,8 +370,7 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   "response": {
     "own_answer": "...",
     "llm_answer": "... | null",
-    "llm_used": true,
-    "clarifying_question": "... | null"
+    "llm_used": true
   },
   "learning": {
     "mode": "distillation | implicit",
@@ -349,13 +380,17 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
 }
 ```
 
+セッション開始時の固定質問2問は、`is_session_opening: true`の専用ターンとして記録し、
+その回答(`sessionTopic`/`sessionApproach`)は`profile_memo`セクションではなく
+`ProfileMemo.sessionHistory`(第1.5節)に直接記録する。
+
 ---
 
 ## 7. IndexedDBスキーマ
 `turns`/`metadata`/`logs`の3ストア構成。`metadata`ストアに以下を保持する:
 - LoRA重み(A/B行列、3階層分)
 - LLM APIキー・設定
-- **ProfileMemoドキュメント(第1.5節のJSON。1ユーザー1件)**
+- ProfileMemoドキュメント(第1.5節のJSON。`sessionHistory`を含む。1ユーザー1件)
 
 ---
 
@@ -377,27 +412,29 @@ Qwen2.5-0.5B-Instruct級モデルのブラウザ内(WebGPU/wasm)実行速度・�
 LLMの回答文をteacher-forcingのターゲットにする方式は実装可能だが、学習の安定性は
 Phase 1.5で実ログを見ながら調整する。
 
-### 8.5 ProfileMemoの肥大化・陳腐化リスク(新規)
+### 8.5 ProfileMemoの肥大化・陳腐化リスク
 毎ターンの差分更新だけを続けると、メモが冗長化・矛盾を含むようになるおそれがある。
-LLM連携時の定期的な「まとめ直し」(第1.5節)はこれを防ぐ主な対策だが、LLM未設定の
-単体運用では対策が弱い。Phase 1.5で、CoreModel自身による簡易な重複除去・矛盾検出の
-必要性を評価する。
+LLM連携時の定期的な「まとめ直し」(第1.5節)はこれを防ぐ主な対策。セッション開始の
+固定質問(第1.6節)による`sessionHistory`は構造化されているため、この肥大化リスクの
+影響を受けにくい。
 
 ---
 
 ## 9〜11節
-テスト戦略・開発原則・フェーズロードマップの大枠は第3版を踏襲するが、Phase 1の
-スコープに ProfileMemo の基本実装(差分更新のみ、LLMまとめ直しはPhase 2)を追加する。
+テスト戦略・開発原則・フェーズロードマップの大枠は第3版を踏襲する。第5版でProfileMemo
+の確信度トラッキングを廃止したことで、Phase 1のスコープはむしろ軽くなった
+(セッション開始の固定質問2問+テキスト差分更新のみで足りる)。
 
 ## 12. 次にやること(直近アクション)
 
 1. **(最優先)** 生成モデル候補(第5.1節)の実機検証
 2. **(最優先)** LoRA部分のみを対象にした逆伝播が技術的に実現できるかの検証(第8.1節)
 3. `CoreModel.js` の実装(embed + generate + summarizeForProfile)
-4. `ProfileMemo.js` の実装(差分更新のみ。LLMまとめ直しはPhase 2)
+4. `ProfileMemo.js` の実装(セッション開始の固定質問の記録 + 毎ターンの差分更新。
+   LLMまとめ直しはPhase 2)
 5. `LLMTeacher.js` の実装(蒸留・ProfileMemoまとめ直し・APIキーのローカル保存UI)
 6. `LoRAForward.js` / `FeedbackProcessor.js` の実装(蒸留損失・LoRA更新)
-7. ポッドキャスト風UI(`src/ui/`)の実装
+7. ポッドキャスト風UI(`src/ui/`)の実装(セッション開始の固定質問2問の画面を含む)
 8. `TurnController` で結線し、Core loopを動かす
 9. `docs/apps.json` への登録
 
