@@ -1,8 +1,11 @@
 /**
- * BERTInference — 軽量BERT(bert-base-japanese, ONNX int8量子化)による
- * 意図分類とembedding抽出。DESIGN.md 5.1節を参照。
+ * BERTInference — 軽量BERT(bert-base-japanese, ONNX int8量子化)によるembedding抽出。
+ * DESIGN.md 5.1節・1.4節を参照。
  *
  * 推論のみを行う(学習・逆伝播はしない。BERT本体は常にfreeze)。
+ * **分類ヘッドは持たない**(2026-09-19改訂: confidenceをRAG類似度ベースに変更したため、
+ * 教師データが必要な意図分類は不要になった。DESIGN.md 1.4節を参照)。
+ *
  * configは configs/system.config.json の `model` / `runtime` を渡すこと。
  */
 export class BERTInference {
@@ -26,25 +29,24 @@ export class BERTInference {
    * ONNXモデル・トークナイザをロードし、config.runtime.warmupOnLoad が true なら
    * ダミー入力で1回推論してウォームアップする。
    * @returns {Promise<void>}
-   * @throws モデル・トークナイザのロードに失敗した場合(呼び出し側でフォールバック処理をすること)
+   * @throws モデル・トークナイザのロードに失敗した場合(呼び出し側でフォールバック処理をすること。
+   *   TurnController側では acknowledge型の固定応答にフォールバックする設計)
    */
   async initialize() {
     throw new Error('not implemented');
   }
 
   /**
-   * テキストを意図分類し、圧縮embeddingを返す。
-   * @param {string} text - ユーザー入力
+   * テキストを圧縮embeddingに変換する(意図分類はしない)。
+   * @param {string} text - 日記エントリの本文
    * @returns {Promise<{
-   *   intent: string,
-   *   confidence: number,
-   *   embedding: Float32Array,   // 64次元(rag.config.jsonのcompressedDim)
+   *   embedding: Float32Array,    // 64次元(rag.config.jsonのcompressedDim)
    *   rawEmbedding: Float32Array, // 768次元
    *   latencyMs: number
    * }>}
    * @throws initialize() 未実行、または推論失敗時
    */
-  async classify(text) {
+  async embed(text) {
     throw new Error('not implemented');
   }
 
