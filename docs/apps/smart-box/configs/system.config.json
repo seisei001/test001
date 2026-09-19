@@ -1,0 +1,43 @@
+{
+  "$schema": "./schemas/system.schema.json",
+  "model": {
+    "bertModelUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/bert-base-ja-int8.onnx",
+    "tokenizerUrl": "https://cdn.jsdelivr.net/gh/seisei001/test001@resources/models/smart-box/tokenizer.json",
+    "quantization": "int8",
+    "rawEmbeddingDim": 768,
+    "maxSequenceLength": 128,
+    "expectedSizeMB": 30
+  },
+  "runtime": {
+    "backend": "wasm",
+    "executionProviders": ["wasm"],
+    "numThreads": 4,
+    "warmupOnLoad": true
+  },
+  "storage": {
+    "indexedDBName": "conversation-rag-db",
+    "indexedDBVersion": 1,
+    "maxTurnsStored": 1000,
+    "compressAfterTurns": 100,
+    "quotaWarningMB": 40,
+    "quotaHardLimitMB": 80
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "persistToIndexedDB": true,
+    "exportFormats": ["json", "csv"]
+  },
+  "experiments": {
+    "abTestingEnabled": true,
+    "stickyAssignment": true
+  },
+  "targets": {
+    "note": "Phase 0で確認済みの実用基準(Coworkセッション内シミュレーション値)。実測値がこれを下回ったらアラート。Phase 1で実機検証すること。",
+    "maxInferenceLatencyMs": 500,
+    "maxTotalTurnLatencyMs": 1000,
+    "minIntentAccuracy": 0.85,
+    "minEntityF1": 0.70,
+    "minContextUnderstanding": 0.70
+  }
+}
