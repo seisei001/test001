@@ -94,6 +94,37 @@ viewer.start();
 - `'error'`(`event.detail`にError) — アバターの読み込みに失敗し、プレースホルダー表示に切り替わった
 - `'statechange'`(`event.detail`に状態文字列) — 行動状態が変化するたびに発行される
 
+## 表情AIの推論結果(weights)をアバターに反映する(`applyFaceBlendshapeWeights`)
+
+`lib/face-weights.js`の`applyFaceBlendshapeWeights(vrm, blendshapes)`は、下の
+「`actionAnimations`の`expression`」機能とは別物です。あちらは仕草クリップ名に
+紐づけた**手動の固定対応表**(AIは関与しない)ですが、こちらは**実際の表情AI
+モデルの推論結果(weights)**を受け取ってアバターに変換・適用する関数です。
+
+想定する入力は、MediaPipe Face Landmarker(`outputFaceBlendshapes: true`)が
+返すARKit互換52種のブレンドシェイプスコア(`faceBlendshapes[0].categories`、
+`[{categoryName, score}, ...]`形式。`{名前: score}`のプレーンオブジェクトでも可)
+です。この関数自体はカメラや画像など**入力の取得方法には一切依存せず**、
+weights(推論結果)さえ渡されれば動く、独立した「weights→アバター」コネクタ
+として実装してあります。入力をどう取得するか(カメラのリアルタイム映像、
+静止画1枚、その他)は別途の検討事項です。
+
+```js
+import { applyFaceBlendshapeWeights } from './lib/index.js';
+
+// blendshapesは MediaPipe FaceLandmarker#detect()/detectForVideo() の
+// 戻り値の result.faceBlendshapes[0].categories と同じ形
+applyFaceBlendshapeWeights(vrm, blendshapes);
+```
+
+内部では、まばたき(`eyeBlinkLeft/Right`→`blinkLeft/blinkRight`)や口の開き
+(`jawOpen`→`aa`)はそのままweightとして使い、感情プリセット(`happy` `sad`
+`angry` `surprised`)はARKitの代表的なブレンドシェイプの組み合わせによる
+簡易近似(例: 口角が上がっていれば`happy`、眉が下がっていれば`angry`)で
+求めています。ARKitの52種は「顔の筋肉の動き」単位で、VRMの感情プリセットの
+ような「感情」単位ではないため、これは正確な感情分類ではなく広く使われている
+近似である点に注意してください。
+
 ## 表情weightと仕草の連動(`actionAnimations`の`expression`)
 
 VRM(0.x)アバターは通常、モデル本体に表情のブレンドシェイプ(重み付きの
