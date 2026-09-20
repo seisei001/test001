@@ -106,8 +106,7 @@ viewer.start();
 `[{categoryName, score}, ...]`形式。`{名前: score}`のプレーンオブジェクトでも可)
 です。この関数自体はカメラや画像など**入力の取得方法には一切依存せず**、
 weights(推論結果)さえ渡されれば動く、独立した「weights→アバター」コネクタ
-として実装してあります。入力をどう取得するか(カメラのリアルタイム映像、
-静止画1枚、その他)は別途の検討事項です。
+として実装してあります。
 
 ```js
 import { applyFaceBlendshapeWeights } from './lib/index.js';
@@ -124,6 +123,35 @@ applyFaceBlendshapeWeights(vrm, blendshapes);
 求めています。ARKitの52種は「顔の筋肉の動き」単位で、VRMの感情プリセットの
 ような「感情」単位ではないため、これは正確な感情分類ではなく広く使われている
 近似である点に注意してください。
+
+### 実際に動かす(`FaceAIDemo`) — カメラ不要のサンプル動画入力
+
+`applyFaceBlendshapeWeights`に実際にweightsを流し込む、最小構成の入力元として
+`lib/face-ai-demo.js`の`FaceAIDemo`クラスを用意している。カメラは使わず、
+リポジトリに同梱したサンプル動画(`samples/`、同一オリジン配信のためCORSの
+制約を受けない)をMediaPipe Face Landmarkerで解析し、その推論結果を
+`applyFaceBlendshapeWeights`経由でVRMに適用し続ける。
+
+```js
+import { FaceAIDemo } from './lib/index.js';
+
+const demo = new FaceAIDemo(viewer.vrm, videoEl, 'samples/xxxxx.mp4');
+await demo.init();  // モデル読み込み(数MB程度の通信)
+await demo.start(); // 動画再生+推論ループ開始(ユーザー操作の中から呼ぶこと)
+
+// 停止時: demo.stop();
+// 併せて、体の動きに連動する自動表情更新と競合しないよう
+// AvatarController#setFaceOverride(true/false) で切り替えること。
+// 停止後にweightsを0へ戻したい場合は applyFaceBlendshapeWeights(vrm, []) を呼ぶ。
+```
+
+将来カメラや別の動画・画像に入力元を差し替えたい場合は、`FaceAIDemo`の
+`videoUrl`(またはvideo要素そのもの)を差し替えるか、`applyFaceBlendshapeWeights`
+を別の入力元から直接呼び出せばよい(このクラス自体は「サンプル動画版」の
+実装例に過ぎない)。
+
+`samples/`配下に動画を追加する場合は、`samples/NOTICE.md`に出典・ライセンスを
+明記すること(既存の`animations/`と同じ運用)。
 
 ## 表情weightと仕草の連動(`actionAnimations`の`expression`)
 

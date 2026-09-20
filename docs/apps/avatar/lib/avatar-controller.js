@@ -130,6 +130,7 @@ export default class AvatarController {
     this._exprCurrentName = null; // 現在フェード中/表示中の表情プリセット名(0まで下がったらnullに戻す)
     this._exprWeight = 0;
     this._exprFadeTarget = 0; // _exprCurrentNameが目指す重み(1=表示, 0=消えたらnullに戻す)
+    this._faceOverride = false; // trueの間は表情weightの自動更新を止める(外部が直接操作中)
     this.idleAction = null; // 導入(伸び等)を含む、最初の1回だけ再生する部分
     this.idleLoopAction = null; // 導入の後、以降ずっと繰り返す落ち着いた部分(無ければidleActionを使い回す)
     this.walkStartAction = null;
@@ -161,6 +162,16 @@ export default class AvatarController {
   /** 後方互換用: 「座る」系propが有効かどうか */
   get isSitting() {
     return this.activeProps.has('stool');
+  }
+
+  /**
+   * 外部(表情AIのデモ等)がvrm.expressionManagerを直接操作している間、
+   * 仕草に連動した自動の表情weight更新(_updateExpression)を止める。
+   * 体の動き(仕草・歩行等)や瞬きには影響しない。
+   * @param {boolean} active
+   */
+  setFaceOverride(active) {
+    this._faceOverride = !!active;
   }
 
   async _loadAnimations() {
@@ -293,7 +304,7 @@ export default class AvatarController {
   // _exprFadeTargetが0になり十分weightが下がったら、_exprCurrentNameをnullに戻す
   // (次にどのクリップにも表情が無い状態を「何もしていない」と区別するため)。
   _updateExpression(delta) {
-    if (!this._exprCurrentName) return;
+    if (this._faceOverride || !this._exprCurrentName) return;
     this._exprWeight += (this._exprFadeTarget - this._exprWeight) * Math.min(1, delta * EXPRESSION_FADE_RATE);
     const weight = Math.max(0, Math.min(1, this._exprWeight));
     this.vrm.expressionManager?.setValue(this._exprCurrentName, weight);
