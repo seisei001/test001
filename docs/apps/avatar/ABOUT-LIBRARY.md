@@ -94,32 +94,32 @@ viewer.start();
 - `'error'`(`event.detail`にError) — アバターの読み込みに失敗し、プレースホルダー表示に切り替わった
 - `'statechange'`(`event.detail`に状態文字列) — 行動状態が変化するたびに発行される
 
-## カメラ+AIモデルでリアルタイムに動かす(`AIMotionDriver`)
+## 表情weightと仕草の連動(`actionAnimations`の`expression`)
 
-`lib/ai-motion-driver.js` は、Webカメラの映像を量子化済み(float16)のMediaPipeモデル
-(Pose Landmarker / Face Landmarker、Apache-2.0)で解析し、Kalidokit(MIT)でVRMの
-ボーン回転・表情ブレンドシェイプへリターゲットする、`AvatarController`とは独立した
-ドライバです。使う側が「自律行動」と「AIモーション」を切り替えられるように、
-`AvatarController#setExternalControl(true/false)` と組み合わせて使います。
+VRM(0.x)アバターは通常、モデル本体に表情のブレンドシェイプ(重み付きの
+モーフターゲット、例: `Joy` `Angry` `Sorrow` `Fun` `Surprised`)を持っており、
+three-vrmはこれを`vrm.expressionManager`経由の統一プリセット名
+(`happy` `angry` `sad` `relaxed` `surprised` 等)として扱えます(実際、同梱の
+`AvatarSample_A.vrm` / `_B.vrm`もこれらを15種持っています)。
+
+`actionAnimations`の各要素は文字列(パスのみ)の代わりに`{ path, expression }`を
+渡せ、そのクリップ(仕草)が再生されている間だけ指定した表情プリセットの重みを
+0→1でフェードイン、終了(または他の仕草への切り替え)で自動的に0へ戻します。
+`AvatarController`が状態機械の一部として管理するため、呼び出し側は何もする
+必要がありません。
 
 ```js
-import { AvatarViewer, AIMotionDriver } from './lib/index.js';
-
-const viewer = new AvatarViewer(canvas, { avatarUrl: 'models/AvatarSample_A.vrm' });
-viewer.addEventListener('ready', async () => {
-  const driver = new AIMotionDriver(viewer.vrm, videoEl);
-  await driver.init();        // モデル読み込み(数MB〜十数MBの通信)
-  await driver.startCamera(); // ユーザー操作(クリック等)の中から呼ぶこと
-  viewer.controller.setExternalControl(true); // 自律行動を一時停止
-  driver.start();
-});
-
-// 終了時: driver.stop(); viewer.controller.setExternalControl(false);
+actionAnimations: [
+  'my-animations/wave.vrma', // 表情指定なし(表情は変化しない)
+  { path: 'my-animations/angry-stomp.vrma', expression: 'angry' },
+  { path: 'my-animations/cheer.vrma', expression: 'happy' },
+],
 ```
 
-CDN構成のみ・サーバー不要で完結し、カメラ映像は外部へ送信されません(すべて
-ブラウザ内のWASM/WebGLで推論)。iOS Safari等モバイルブラウザでは `startCamera()`
-をユーザーのタップ操作のハンドラ内から呼ぶ必要があります(自動再生ポリシーのため)。
+指定できる`expression`は、読み込んだVRMの`vrm.expressionManager`が持つ
+プリセット名(多くのVRM0アバターでは `happy` `angry` `sad` `relaxed`
+`surprised` が使える)。存在しない名前を指定してもエラーにはならず、
+単に何も変化しません。
 
 ## 独自のモーション集に差し替える
 
@@ -130,7 +130,10 @@ CDN構成のみ・サーバー不要で完結し、カメラ映像は外部へ�
 ```js
 const myManifest = {
   idleAnimation: 'my-animations/idle.vrma',
-  actionAnimations: ['my-animations/wave.vrma', 'my-animations/bow.vrma'],
+  actionAnimations: [
+    'my-animations/wave.vrma',
+    { path: 'my-animations/bow.vrma', expression: 'happy' }, // 表情連動は省略可
+  ],
   walkAnimations: { start: '...', loop: '...', stop: '...' }, // 省略可
   runAnimation: '...', // 省略可
   poseSequences: [

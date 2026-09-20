@@ -25,22 +25,26 @@ export const DEFAULT_ANIMATION_MANIFEST = {
   // hmcs/idle-maid.vrmaを採用している。
   idleAnimation: 'animations/hmcs/idle-maid.vrma',
 
-  // 直立のまま始まり直立のまま終わる、ランダム再生用の仕草・ジェスチャー
+  // 直立のまま始まり直立のまま終わる、ランダム再生用の仕草・ジェスチャー。
+  // 感情が明確に対応するクリップは `{ path, expression }` 形式にし、再生中
+  // だけVRMの表情weight(Angry/Fun/Joy/Sorrow/Surprised等のblendShape、
+  // AvatarSample_A/B.vrmに実際に含まれているもの)を体の動きと連動させる。
+  // 感情が明確でないものは従来通り文字列のままでよい(表情は変化しない)。
   actionAnimations: [
     'animations/official/test.vrma',
-    'animations/vrmviewer/Angry.vrma',
-    'animations/vrmviewer/Blush.vrma',
-    'animations/vrmviewer/Clapping.vrma',
+    { path: 'animations/vrmviewer/Angry.vrma', expression: 'angry' },
+    { path: 'animations/vrmviewer/Blush.vrma', expression: 'happy' },
+    { path: 'animations/vrmviewer/Clapping.vrma', expression: 'happy' },
     'animations/vrmviewer/Goodbye.vrma',
     'animations/vrmviewer/Jump.vrma',
     'animations/vrmviewer/LookAround.vrma',
-    'animations/vrmviewer/Relax.vrma',
-    'animations/vrmviewer/Sad.vrma',
+    { path: 'animations/vrmviewer/Relax.vrma', expression: 'relaxed' },
+    { path: 'animations/vrmviewer/Sad.vrma', expression: 'sad' },
     'animations/vrmviewer/Sleepy.vrma',
-    'animations/vrmviewer/Surprised.vrma',
+    { path: 'animations/vrmviewer/Surprised.vrma', expression: 'surprised' },
     'animations/vrmviewer/Thinking.vrma',
     'animations/desktopwaifu/Cross_Jumps.vrma',
-    'animations/desktopwaifu/Joyful_Jump.vrma',
+    { path: 'animations/desktopwaifu/Joyful_Jump.vrma', expression: 'happy' },
     'animations/desktopwaifu/Spinning.vrma',
     'animations/desktopwaifu/Arm_Stretching.vrma',
     // Stroke_Shaking_Head.vrmaは除外: hipsボーンにクリップ全編を通じて
