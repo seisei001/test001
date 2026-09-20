@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3e9dc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="テキストアバター">
+<title>テキストアバター</title>
+<style>
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #f3e9dc;
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  html, body { background: #1b1810; color: #eee; }
+}
+
+.back-link {
+  display: inline-block;
+  margin: calc(env(safe-area-inset-top, 0px) + 10px) 0 0 calc(env(safe-area-inset-left, 0px) + 12px);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+#scene-wrap {
+  position: relative;
+  width: 100%;
+  height: 46vh;
+  min-height: 260px;
+}
+
+#scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.notice {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #f0a3a3;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #a33;
+  text-align: center;
+  max-width: 85vw;
+}
+@media (prefers-color-scheme: dark) {
+  .notice { background: rgba(40, 30, 30, 0.92); color: #ff9d9d; }
+}
+
+.panel {
+  padding: 12px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.7;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+input[type="password"], textarea {
+  width: 100%;
+  font-size: 16px; /* iOS Safariの自動ズーム防止 */
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.7);
+  color: inherit;
+  font-family: inherit;
+}
+@media (prefers-color-scheme: dark) {
+  input[type="password"], textarea { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+}
+
+textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+button {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  border: none;
+  border-radius: 999px;
+  background: #b8794f;
+  color: #fff;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+button.secondary {
+  background: rgba(0,0,0,0.08);
+  color: inherit;
+}
+@media (prefers-color-scheme: dark) {
+  button.secondary { background: rgba(255,255,255,0.12); }
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  min-height: 1.4em;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+
+.error-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(200, 50, 50, 0.12);
+  color: #a33;
+  font-size: 13px;
+}
+@media (prefers-color-scheme: dark) {
+  .error-box { background: rgba(255, 100, 100, 0.15); color: #ff9d9d; }
+}
+</style>
+</head>
+<body>
+<a class="back-link" href="../../">← ハブに戻る</a>
+
+<div id="scene-wrap">
+  <canvas id="scene-canvas"></canvas>
+  <div id="missing-avatar-notice" class="notice" hidden>
+    <p><strong>アバターを読み込めませんでした。</strong>しばらくしてからもう一度開いてみてください。</p>
+  </div>
+</div>
+
+<div class="panel">
+  <label for="api-key-input">Anthropic APIキー</label>
+  <input id="api-key-input" type="password" placeholder="sk-ant-..." autocomplete="off">
+  <p class="hint">
+    ここに入力したキーはあなたのブラウザ内(localStorage)にのみ保存され、外部には送信されません
+    (Anthropic APIへのリクエスト以外には使いません)。ただしブラウザから直接APIキーを使う仕組み上、
+    このページのJavaScriptからは見える状態になります。共有PCや他人に見せるページでは入力しないでください。
+  </p>
+
+  <label for="novel-text">テキスト(小説の一節など)</label>
+  <textarea id="novel-text" placeholder="ここに読み上げたい文章を貼り付けてください"></textarea>
+
+  <div class="btn-row">
+    <button id="play-btn" type="button">テキストで動かす</button>
+    <button id="stop-btn" type="button" class="secondary">停止</button>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div id="error-box" class="error-box" hidden></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js",
+    "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.js",
+    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.5.5/lib/three-vrm-animation.module.js",
+    "@anthropic-ai/sdk": "https://esm.sh/@anthropic-ai/sdk@0.127.0"
+  }
+}
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+  import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+  import { createScene } from '../avatar/lib/scene.js';
+  import TextAvatarController from './lib/text-avatar-controller.js';
+  import { analyzeNovelText } from './lib/novel-director.js';
+
+  // このアプリ専用のVRoidサンプルアバター・アニメーション素材は、既存の
+  // avatarアプリと共有する(同じ3Dモデル・モーション素材を二重に持たない)。
+  const ASSETS_BASE_URL = '../avatar/';
+  const AVATAR_MODEL_URL = '../avatar/models/AvatarSample_A.vrm';
+  const IDLE_PATH = 'animations/hmcs/idle-maid.vrma';
+  const GESTURE_MANIFEST = {
+    Angry: 'animations/vrmviewer/Angry.vrma',
+    Blush: 'animations/vrmviewer/Blush.vrma',
+    Clapping: 'animations/vrmviewer/Clapping.vrma',
+    Goodbye: 'animations/vrmviewer/Goodbye.vrma',
+    Jump: 'animations/vrmviewer/Jump.vrma',
+    LookAround: 'animations/vrmviewer/LookAround.vrma',
+    Relax: 'animations/vrmviewer/Relax.vrma',
+    Sad: 'animations/vrmviewer/Sad.vrma',
+    Sleepy: 'animations/vrmviewer/Sleepy.vrma',
+    Surprised: 'animations/vrmviewer/Surprised.vrma',
+    Thinking: 'animations/vrmviewer/Thinking.vrma',
+  };
+
+  const API_KEY_STORAGE = 'text-avatar:api-key';
+  const TEXT_STORAGE = 'text-avatar:last-text';
+
+  const canvas = document.getElementById('scene-canvas');
+  const notice = document.getElementById('missing-avatar-notice');
+  const apiKeyInput = document.getElementById('api-key-input');
+  const novelText = document.getElementById('novel-text');
+  const playBtn = document.getElementById('play-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const statusEl = document.getElementById('status');
+  const errorBox = document.getElementById('error-box');
+
+  try { apiKeyInput.value = localStorage.getItem(API_KEY_STORAGE) ?? ''; } catch {}
+  try { novelText.value = localStorage.getItem(TEXT_STORAGE) ?? ''; } catch {}
+  apiKeyInput.addEventListener('change', () => {
+    try { localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value); } catch {}
+  });
+  novelText.addEventListener('change', () => {
+    try { localStorage.setItem(TEXT_STORAGE, novelText.value); } catch {}
+  });
+
+  function setStatus(text) { statusEl.textContent = text; }
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+  }
+  function clearError() { errorBox.hidden = true; }
+
+  // --- シーン・アバターの初期化 ---
+  const { scene, camera, renderer, controls } = createScene(canvas, {
+    cameraDistance: 2.6,
+    cameraHeight: 1.3,
+    targetHeight: 1.05,
+    autoRotate: false,
+  });
+
+  let controller = null;
+
+  async function loadVRM(url) {
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`avatar not found: ${url}`);
+    const buffer = await response.arrayBuffer();
+    const gltf = await loader.parseAsync(buffer, '');
+    const vrm = gltf.userData.vrm;
+    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+    VRMUtils.combineSkeletons(gltf.scene);
+    VRMUtils.rotateVRM0(vrm);
+    vrm.scene.traverse((obj) => {
+      obj.frustumCulled = false;
+      if (obj.isMesh) obj.castShadow = true;
+    });
+    return vrm;
+  }
+
+  (async () => {
+    try {
+      const vrm = await loadVRM(AVATAR_MODEL_URL);
+      scene.add(vrm.scene);
+      controller = new TextAvatarController(vrm, GESTURE_MANIFEST, {
+        assetsBaseUrl: ASSETS_BASE_URL,
+        idlePath: IDLE_PATH,
+      });
+    } catch (err) {
+      console.warn('アバターを読み込めませんでした', err);
+      notice.hidden = false;
+    }
+  })();
+
+  const clock = new THREE.Clock();
+  function tick() {
+    requestAnimationFrame(tick);
+    const delta = Math.min(0.1, clock.getDelta());
+    controller?.update(delta);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  tick();
+
+  // --- テキスト解析→朗読+演技の再生制御 ---
+  let playing = false;
+
+  function speakAndWait(text) {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ja-JP';
+      utter.onend = resolve;
+      utter.onerror = resolve;
+      speechSynthesis.speak(utter);
+    });
+  }
+
+  async function playSegments(segments) {
+    for (let i = 0; i < segments.length; i++) {
+      if (!playing) break;
+      const seg = segments[i];
+      setStatus(`(${i + 1}/${segments.length}) ${seg.text}`);
+      controller?.setExpression(seg.emotion);
+      if (seg.action !== 'none') controller?.playGesture(seg.action);
+      await speakAndWait(seg.text);
+    }
+    controller?.setExpression('neutral');
+    if (playing) setStatus('再生が終わりました。');
+    playing = false;
+    playBtn.disabled = false;
+  }
+
+  playBtn.addEventListener('click', async () => {
+    clearError();
+    const apiKey = apiKeyInput.value.trim();
+    const text = novelText.value.trim();
+    if (!apiKey) {
+      showError('Anthropic APIキーを入力してください。');
+      return;
+    }
+    if (!text) {
+      showError('テキストを入力してください。');
+      return;
+    }
+    try { localStorage.setItem(API_KEY_STORAGE, apiKey); } catch {}
+    try { localStorage.setItem(TEXT_STORAGE, text); } catch {}
+
+    playBtn.disabled = true;
+    playing = true;
+    setStatus('AIがテキストを解析しています…');
+    try {
+      const segments = await analyzeNovelText(apiKey, text);
+      if (segments.length === 0) {
+        showError('AIの解析結果が空でした。別のテキストでお試しください。');
+        playing = false;
+        playBtn.disabled = false;
+        return;
+      }
+      setStatus(`${segments.length}個の断片に分割しました。再生します…`);
+      playSegments(segments);
+    } catch (err) {
+      console.warn('テキスト解析に失敗しました', err);
+      showError('AIの呼び出しに失敗しました: ' + (err?.message ?? String(err)));
+      playing = false;
+      playBtn.disabled = false;
+      setStatus('');
+    }
+  });
+
+  stopBtn.addEventListener('click', () => {
+    playing = false;
+    playBtn.disabled = false;
+    speechSynthesis.cancel();
+    controller?.setExpression('neutral');
+    setStatus('停止しました。');
+  });
+</script>
+</body>
+</html>

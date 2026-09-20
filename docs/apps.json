@@ -47,5 +47,12 @@
     "description": "会話するたびにLoRAとRAGで賢くなっていく、ブラウザ完結の小さな会話AI(開発中・公開準備段階)",
     "path": "apps/smart-box/src/ui/",
     "icon": "🎙️"
+  },
+  {
+    "id": "text-avatar",
+    "name": "テキストアバター",
+    "description": "小説などのテキストをAI(Claude)が解析し、感情・仕草を判定してVRMアバターに朗読させながら演技させるページ(自分のAnthropic APIキーが必要)",
+    "path": "apps/text-avatar/",
+    "icon": "📖"
   }
 ]
