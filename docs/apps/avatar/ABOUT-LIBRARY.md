@@ -94,92 +94,6 @@ viewer.start();
 - `'error'`(`event.detail`にError) — アバターの読み込みに失敗し、プレースホルダー表示に切り替わった
 - `'statechange'`(`event.detail`に状態文字列) — 行動状態が変化するたびに発行される
 
-## 表情AIの推論結果(weights)をアバターに反映する(`applyFaceBlendshapeWeights`)
-
-`lib/face-weights.js`の`applyFaceBlendshapeWeights(vrm, blendshapes)`は、下の
-「`actionAnimations`の`expression`」機能とは別物です。あちらは仕草クリップ名に
-紐づけた**手動の固定対応表**(AIは関与しない)ですが、こちらは**実際の表情AI
-モデルの推論結果(weights)**を受け取ってアバターに変換・適用する関数です。
-
-想定する入力は、MediaPipe Face Landmarker(`outputFaceBlendshapes: true`)が
-返すARKit互換52種のブレンドシェイプスコア(`faceBlendshapes[0].categories`、
-`[{categoryName, score}, ...]`形式。`{名前: score}`のプレーンオブジェクトでも可)
-です。この関数自体はカメラや画像など**入力の取得方法には一切依存せず**、
-weights(推論結果)さえ渡されれば動く、独立した「weights→アバター」コネクタ
-として実装してあります。
-
-```js
-import { applyFaceBlendshapeWeights } from './lib/index.js';
-
-// blendshapesは MediaPipe FaceLandmarker#detect()/detectForVideo() の
-// 戻り値の result.faceBlendshapes[0].categories と同じ形
-applyFaceBlendshapeWeights(vrm, blendshapes);
-```
-
-内部では、まばたき(`eyeBlinkLeft/Right`→`blinkLeft/blinkRight`)や口の開き
-(`jawOpen`→`aa`)はそのままweightとして使い、感情プリセット(`happy` `sad`
-`angry` `surprised`)はARKitの代表的なブレンドシェイプの組み合わせによる
-簡易近似(例: 口角が上がっていれば`happy`、眉が下がっていれば`angry`)で
-求めています。ARKitの52種は「顔の筋肉の動き」単位で、VRMの感情プリセットの
-ような「感情」単位ではないため、これは正確な感情分類ではなく広く使われている
-近似である点に注意してください。
-
-### 実際に動かす(`FaceAIDemo`) — カメラ不要のサンプル動画入力
-
-`applyFaceBlendshapeWeights`に実際にweightsを流し込む、最小構成の入力元として
-`lib/face-ai-demo.js`の`FaceAIDemo`クラスを用意している。カメラは使わず、
-リポジトリに同梱したサンプル動画(`samples/`、同一オリジン配信のためCORSの
-制約を受けない)をMediaPipe Face Landmarkerで解析し、その推論結果を
-`applyFaceBlendshapeWeights`経由でVRMに適用し続ける。
-
-```js
-import { FaceAIDemo } from './lib/index.js';
-
-const demo = new FaceAIDemo(viewer.vrm, videoEl, 'samples/xxxxx.mp4');
-await demo.init();  // モデル読み込み(数MB程度の通信)
-await demo.start(); // 動画再生+推論ループ開始(ユーザー操作の中から呼ぶこと)
-
-// 停止時: demo.stop();
-// 併せて、体の動きに連動する自動表情更新と競合しないよう
-// AvatarController#setFaceOverride(true/false) で切り替えること。
-// 停止後にweightsを0へ戻したい場合は applyFaceBlendshapeWeights(vrm, []) を呼ぶ。
-```
-
-将来カメラや別の動画・画像に入力元を差し替えたい場合は、`FaceAIDemo`の
-`videoUrl`(またはvideo要素そのもの)を差し替えるか、`applyFaceBlendshapeWeights`
-を別の入力元から直接呼び出せばよい(このクラス自体は「サンプル動画版」の
-実装例に過ぎない)。
-
-`samples/`配下に動画を追加する場合は、`samples/NOTICE.md`に出典・ライセンスを
-明記すること(既存の`animations/`と同じ運用)。
-
-## 表情weightと仕草の連動(`actionAnimations`の`expression`)
-
-VRM(0.x)アバターは通常、モデル本体に表情のブレンドシェイプ(重み付きの
-モーフターゲット、例: `Joy` `Angry` `Sorrow` `Fun` `Surprised`)を持っており、
-three-vrmはこれを`vrm.expressionManager`経由の統一プリセット名
-(`happy` `angry` `sad` `relaxed` `surprised` 等)として扱えます(実際、同梱の
-`AvatarSample_A.vrm` / `_B.vrm`もこれらを15種持っています)。
-
-`actionAnimations`の各要素は文字列(パスのみ)の代わりに`{ path, expression }`を
-渡せ、そのクリップ(仕草)が再生されている間だけ指定した表情プリセットの重みを
-0→1でフェードイン、終了(または他の仕草への切り替え)で自動的に0へ戻します。
-`AvatarController`が状態機械の一部として管理するため、呼び出し側は何もする
-必要がありません。
-
-```js
-actionAnimations: [
-  'my-animations/wave.vrma', // 表情指定なし(表情は変化しない)
-  { path: 'my-animations/angry-stomp.vrma', expression: 'angry' },
-  { path: 'my-animations/cheer.vrma', expression: 'happy' },
-],
-```
-
-指定できる`expression`は、読み込んだVRMの`vrm.expressionManager`が持つ
-プリセット名(多くのVRM0アバターでは `happy` `angry` `sad` `relaxed`
-`surprised` が使える)。存在しない名前を指定してもエラーにはならず、
-単に何も変化しません。
-
 ## 独自のモーション集に差し替える
 
 `animationManifest`オプションに、`src/default-manifest.js`の`DEFAULT_ANIMATION_MANIFEST`と
@@ -189,10 +103,7 @@ actionAnimations: [
 ```js
 const myManifest = {
   idleAnimation: 'my-animations/idle.vrma',
-  actionAnimations: [
-    'my-animations/wave.vrma',
-    { path: 'my-animations/bow.vrma', expression: 'happy' }, // 表情連動は省略可
-  ],
+  actionAnimations: ['my-animations/wave.vrma', 'my-animations/bow.vrma'],
   walkAnimations: { start: '...', loop: '...', stop: '...' }, // 省略可
   runAnimation: '...', // 省略可
   poseSequences: [

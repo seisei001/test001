@@ -23,9 +23,6 @@ const BLINK_DURATION_S = 0.12;
 
 const CROSSFADE_S = 0.35;
 
-// 仕草(gesture)再生中に表情weightをフェードイン/アウトさせる速さ(1秒あたりの割合)
-const EXPRESSION_FADE_RATE = 6;
-
 // vrmviewer/Relax.vrma(以前のidleAnimation)は、冒頭に「伸びをする」演出が
 // 入っており、そのまま毎回頭から再生すると直立へ戻るたびに何度も伸びを繰り返して
 // しまい不自然だった。フレーム単位でクリップを解析し、伸びが収まって姿勢が安定する
@@ -126,11 +123,6 @@ export default class AvatarController {
     this.clips = new Map();
     this.actionClipNames = [];
     this.actionClipPaths = new Map(); // 内部名(action0等) -> manifest上のパス(デバッグ・識別用)
-    this.actionClipExpressions = new Map(); // 内部名 -> VRM表情プリセット名(manifestで指定されたもののみ)
-    this._exprCurrentName = null; // 現在フェード中/表示中の表情プリセット名(0まで下がったらnullに戻す)
-    this._exprWeight = 0;
-    this._exprFadeTarget = 0; // _exprCurrentNameが目指す重み(1=表示, 0=消えたらnullに戻す)
-    this._faceOverride = false; // trueの間は表情weightの自動更新を止める(外部が直接操作中)
     this.idleAction = null; // 導入(伸び等)を含む、最初の1回だけ再生する部分
     this.idleLoopAction = null; // 導入の後、以降ずっと繰り返す落ち着いた部分(無ければidleActionを使い回す)
     this.walkStartAction = null;
@@ -164,36 +156,18 @@ export default class AvatarController {
     return this.activeProps.has('stool');
   }
 
-  /**
-   * 外部(表情AIのデモ等)がvrm.expressionManagerを直接操作している間、
-   * 仕草に連動した自動の表情weight更新(_updateExpression)を止める。
-   * 体の動き(仕草・歩行等)や瞬きには影響しない。
-   * @param {boolean} active
-   */
-  setFaceOverride(active) {
-    this._faceOverride = !!active;
-  }
-
   async _loadAnimations() {
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMAnimationLoaderPlugin(parser));
 
     const m = this.manifest;
-    // actionAnimationsの各要素は、文字列(パスのみ)か
-    // `{ path, expression }`(再生中にVRM表情weightも連動させる)のどちらか。
-    const actionEntries = (m.actionAnimations ?? []).map((entry, i) => {
-      const name = `action${i}`;
-      if (typeof entry === 'string') return [name, entry];
-      if (entry?.expression) this.actionClipExpressions.set(name, entry.expression);
-      return [name, entry?.path];
-    });
     const entries = [
       ['idle', m.idleAnimation],
       ['walkStart', m.walkAnimations?.start],
       ['walkLoop', m.walkAnimations?.loop],
       ['walkStop', m.walkAnimations?.stop],
       ['run', m.runAnimation],
-      ...actionEntries,
+      ...(m.actionAnimations ?? []).map((url, i) => [`action${i}`, url]),
     ].filter(([, url]) => !!url);
 
     for (const seq of m.poseSequences ?? []) {
@@ -300,21 +274,6 @@ export default class AvatarController {
     }
   }
 
-  // gesture再生中に対応する表情weightをフェードイン/アウトさせる。
-  // _exprFadeTargetが0になり十分weightが下がったら、_exprCurrentNameをnullに戻す
-  // (次にどのクリップにも表情が無い状態を「何もしていない」と区別するため)。
-  _updateExpression(delta) {
-    if (this._faceOverride || !this._exprCurrentName) return;
-    this._exprWeight += (this._exprFadeTarget - this._exprWeight) * Math.min(1, delta * EXPRESSION_FADE_RATE);
-    const weight = Math.max(0, Math.min(1, this._exprWeight));
-    this.vrm.expressionManager?.setValue(this._exprCurrentName, weight);
-    if (this._exprFadeTarget === 0 && this._exprWeight < 0.01) {
-      this.vrm.expressionManager?.setValue(this._exprCurrentName, 0);
-      this._exprCurrentName = null;
-      this._exprWeight = 0;
-    }
-  }
-
   _applyOffset(bone, base, eulerX, eulerY, eulerZ) {
     if (!bone || !base) return;
     const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(eulerX, eulerY, eulerZ));
@@ -361,21 +320,6 @@ export default class AvatarController {
       // 例: 'gesture:animations/vrmviewer/Surprised.vrma')
       this.state = `gesture:${this.actionClipPaths.get(name) ?? name}`;
       this.phaseTimer = clip.duration + 0.4;
-
-      // manifestで表情が指定されたクリップなら、体の動きに合わせて表情weightも
-      // フェードインさせる。別の表情が残っていれば即座に0へ戻してから切り替える
-      // (仕草の間隔が短いと自然なフェードアウトが間に合わないため)。
-      const nextExpr = this.actionClipExpressions.get(name) ?? null;
-      if (nextExpr) {
-        if (this._exprCurrentName && this._exprCurrentName !== nextExpr) {
-          this.vrm.expressionManager?.setValue(this._exprCurrentName, 0);
-        }
-        this._exprCurrentName = nextExpr;
-        this._exprFadeTarget = 1;
-      } else if (this._exprCurrentName) {
-        // このクリップに表情指定は無いので、表示中の表情があれば自然にフェードアウトさせる
-        this._exprFadeTarget = 0;
-      }
     } else if (type === 'walk') {
       this._pickNewWalkTarget();
       this._crossfadeTo(this.walkStartAction, false);
@@ -411,7 +355,6 @@ export default class AvatarController {
         this._crossfadeTo(this.idleLoopAction, true);
         this.state = 'idle';
         this.nextBehaviorTimer = this._randomBehaviorInterval();
-        this._exprFadeTarget = 0; // 仕草終了、表情も直立アイドルへ戻す
       }
       return;
     }
@@ -526,7 +469,6 @@ export default class AvatarController {
     if (this.animationsReady) {
       this._updateBehavior(delta);
       this.mixer.update(delta);
-      this._updateExpression(delta);
     } else {
       this._updateFallbackIdle();
     }

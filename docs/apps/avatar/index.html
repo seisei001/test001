@@ -100,48 +100,6 @@ html, body {
   word-break: break-all;
   pointer-events: none;
 }
-
-.face-ai-btn {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 60px);
-  right: calc(env(safe-area-inset-right, 0px) + 10px);
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 16px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #333;
-  font-size: 0.9rem;
-  font-family: inherit;
-  border: none;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-}
-.face-ai-btn[data-active="true"] {
-  background: #2563eb;
-  color: #fff;
-}
-.face-ai-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.face-ai-preview {
-  position: absolute;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
-  right: calc(env(safe-area-inset-right, 0px) + 10px);
-  width: 100px;
-  height: 100px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  object-fit: cover;
-  background: #000;
-}
-
-@media (prefers-color-scheme: dark) {
-  .back-link, .avatar-switch-btn, .face-ai-btn { background: rgba(30, 34, 40, 0.85); color: #eee; }
-  .notice { background: rgba(30, 34, 40, 0.92); color: #f2a; }
-}
 </style>
 </head>
 <body>
@@ -149,19 +107,13 @@ html, body {
   <canvas id="scene-canvas"></canvas>
   <a class="back-link" href="../../">← ハブに戻る</a>
   <button id="avatar-switch-btn" class="avatar-switch-btn" type="button"></button>
-  <button id="face-ai-btn" class="face-ai-btn" type="button">表情AIデモ</button>
-  <video id="face-ai-preview" class="face-ai-preview" playsinline muted loop hidden></video>
   <div id="missing-avatar-notice" class="notice" hidden>
     <p><strong>アバターを読み込めませんでした。</strong></p>
     <p>しばらくしてからもう一度開いてみてください。</p>
   </div>
-  <div id="face-ai-notice" class="notice" hidden>
-    <p><strong>表情AIデモを開始できませんでした。</strong></p>
-    <p>しばらくしてからもう一度お試しください。</p>
-  </div>
   <div id="debug-state-label" class="debug-state-label"></div>
 </div>
-<p class="hint">操作はありません(指でドラッグすると視点を回転できます)。「表情AIデモ」を押すと、同梱のサンプル動画をAIモデル(MediaPipe)で解析し、その表情の推論結果(weights)をアバターにリアルタイム反映します。カメラは使いません。押さない間は、アバターが自律的に呼吸・瞬き・仕草・歩行・座るなどを行う様子をただ眺めるページです。</p>
+<p class="hint">操作はありません(指でドラッグすると視点を回転できます)。アバターが自律的に呼吸・瞬き・仕草・歩行・座るなどを行う様子をただ眺めるページです。</p>
 
 <script type="importmap">
 {
@@ -170,8 +122,7 @@ html, body {
     "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js",
     "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js",
     "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.js",
-    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.5.5/lib/three-vrm-animation.module.js",
-    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.5.5/lib/three-vrm-animation.module.js"
   }
 }
 </script>
@@ -225,69 +176,6 @@ html, body {
     updateSwitchBtnLabel();
     try { localStorage.setItem(STORAGE_KEY, selectedAvatar); } catch {}
     viewer.setAvatar(AVATAR_FILES[selectedAvatar]);
-  });
-
-  // --- 表情AIデモ(サンプル動画をMediaPipeで解析し、weightsをアバターの表情に反映) ---
-  const SAMPLE_VIDEO_URL = 'samples/mixkit-blonde-girl-smiling-head-on-on-the-street-4815-hd-ready.mp4';
-  const faceAiBtn = document.getElementById('face-ai-btn');
-  const faceAiPreview = document.getElementById('face-ai-preview');
-  const faceAiNotice = document.getElementById('face-ai-notice');
-  let faceAiDemo = null;
-  let faceAiActive = false;
-  let faceAiBusy = false;
-
-  faceAiBtn.addEventListener('click', async () => {
-    if (faceAiBusy) return;
-
-    if (faceAiActive) {
-      faceAiDemo?.stop();
-      viewer.controller?.setFaceOverride(false);
-      // アバターの表情weightsを全て0へリセットしてから自律行動に戻す
-      const { applyFaceBlendshapeWeights } = await import('./lib/index.js');
-      if (viewer.vrm) applyFaceBlendshapeWeights(viewer.vrm, []);
-      faceAiActive = false;
-      faceAiPreview.hidden = true;
-      faceAiBtn.textContent = '表情AIデモ';
-      faceAiBtn.dataset.active = 'false';
-      return;
-    }
-
-    if (!viewer.vrm) {
-      faceAiNotice.hidden = false;
-      return;
-    }
-
-    faceAiBusy = true;
-    faceAiBtn.disabled = true;
-    faceAiBtn.textContent = '読み込み中…';
-    faceAiNotice.hidden = true;
-    try {
-      const { FaceAIDemo } = await import('./lib/index.js');
-      if (!faceAiDemo) {
-        faceAiDemo = new FaceAIDemo(viewer.vrm, faceAiPreview, SAMPLE_VIDEO_URL);
-        await faceAiDemo.init();
-      } else {
-        // アバター切替でVRMインスタンスが変わっている場合に備えて更新
-        faceAiDemo.vrm = viewer.vrm;
-      }
-      viewer.controller?.setFaceOverride(true);
-      await faceAiDemo.start();
-      faceAiPreview.hidden = false;
-      faceAiActive = true;
-      faceAiBtn.textContent = '表情AIデモ停止';
-      faceAiBtn.dataset.active = 'true';
-    } catch (err) {
-      console.warn('表情AIデモを開始できませんでした', err);
-      faceAiNotice.hidden = false;
-      faceAiDemo?.stop();
-      viewer.controller?.setFaceOverride(false);
-      faceAiPreview.hidden = true;
-      faceAiBtn.textContent = '表情AIデモ';
-      faceAiBtn.dataset.active = 'false';
-    } finally {
-      faceAiBusy = false;
-      faceAiBtn.disabled = false;
-    }
   });
 </script>
 </body>
