@@ -39,6 +39,7 @@ html, body {
   width: 100%;
   height: 46vh;
   min-height: 260px;
+  overflow: hidden;
 }
 
 #scene-canvas {
@@ -257,6 +258,24 @@ button.secondary {
     targetHeight: 1.05,
     autoRotate: false,
   });
+
+  // createScene()内部のresize()は、avatarアプリの全画面1枚キャンバス想定で
+  // 「画面の92%の高さ」に固定でリサイズしてしまうため、このページのように
+  // キャンバスが#scene-wrap(46vh)に収まった2段組レイアウトだと、キャンバスが
+  // 実際の枠より巨大になり下のテキスト入力欄を覆ってしまう。実際の#scene-wrapの
+  // サイズに合わせて描画サイズを上書きする(内部のresize()の後に必ず実行されるよう、
+  // window.resizeのリスナー登録も後から追加する)。
+  const sceneWrap = document.getElementById('scene-wrap');
+  function fitSceneToContainer() {
+    const w = sceneWrap.clientWidth;
+    const h = sceneWrap.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  fitSceneToContainer();
+  window.addEventListener('resize', fitSceneToContainer);
 
   let controller = null;
 
