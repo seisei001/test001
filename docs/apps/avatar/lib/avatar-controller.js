@@ -117,6 +117,7 @@ export default class AvatarController {
 
     this.blinkTimer = 0;
     this.nextBlink = this._randomBlinkInterval();
+    this._externalControl = false;
 
     // モーションキャプチャ再生
     this.mixer = new THREE.AnimationMixer(vrm.scene);
@@ -154,6 +155,25 @@ export default class AvatarController {
   /** 後方互換用: 「座る」系propが有効かどうか */
   get isSitting() {
     return this.activeProps.has('stool');
+  }
+
+  /**
+   * 外部(カメラ由来のAIモーション推定など)からボーン・表情を直接操作したい間、
+   * 自律行動(仕草の自動再生・歩行スケジューラ・自動瞬き)を一時停止する。
+   * true にしている間、update()はvrm.update()の呼び出しのみを行い、
+   * ミキサーやボーン姿勢には一切触れない(呼び出し側が自由に上書きできる)。
+   * false に戻すと、直立ループへ安全にcrossfadeして自律行動を再開する。
+   * @param {boolean} active
+   */
+  setExternalControl(active) {
+    const next = !!active;
+    if (this._externalControl === next) return;
+    this._externalControl = next;
+    if (!next && this.animationsReady && this.idleLoopAction) {
+      this._crossfadeTo(this.idleLoopAction, true);
+      this.state = 'idle';
+      this.nextBehaviorTimer = this._randomBehaviorInterval();
+    }
   }
 
   async _loadAnimations() {
@@ -455,6 +475,13 @@ export default class AvatarController {
 
   update(delta) {
     this.elapsed += delta;
+
+    if (this._externalControl) {
+      // ボーン回転・表情は外部(AIMotionDriver等)が直接設定済みなので、
+      // ここではVRM内部更新(スプリングボーン・表情の反映等)だけ行う。
+      this.vrm.update(delta);
+      return;
+    }
 
     // 瞬き: ランダムな間隔で自動的にまばたき(モーション再生中も常時)
     this.blinkTimer += delta;

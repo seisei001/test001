@@ -100,6 +100,49 @@ html, body {
   word-break: break-all;
   pointer-events: none;
 }
+
+.ai-motion-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 60px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+.ai-motion-btn[data-active="true"] {
+  background: #2563eb;
+  color: #fff;
+}
+.ai-motion-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ai-cam-preview {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  width: 120px;
+  height: 90px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  object-fit: cover;
+  transform: scaleX(-1); /* 鏡合わせにして、動かした通りに見えるようにする */
+  background: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .back-link, .avatar-switch-btn, .ai-motion-btn { background: rgba(30, 34, 40, 0.85); color: #eee; }
+  .notice { background: rgba(30, 34, 40, 0.92); color: #f2a; }
+}
 </style>
 </head>
 <body>
@@ -107,13 +150,19 @@ html, body {
   <canvas id="scene-canvas"></canvas>
   <a class="back-link" href="../../">← ハブに戻る</a>
   <button id="avatar-switch-btn" class="avatar-switch-btn" type="button"></button>
+  <button id="ai-motion-btn" class="ai-motion-btn" type="button">AIモーション</button>
+  <video id="ai-cam-video" class="ai-cam-preview" playsinline muted hidden></video>
   <div id="missing-avatar-notice" class="notice" hidden>
     <p><strong>アバターを読み込めませんでした。</strong></p>
     <p>しばらくしてからもう一度開いてみてください。</p>
   </div>
+  <div id="ai-motion-notice" class="notice" hidden>
+    <p><strong>AIモーションを開始できませんでした。</strong></p>
+    <p>カメラの利用を許可しているか確認して、もう一度お試しください。</p>
+  </div>
   <div id="debug-state-label" class="debug-state-label"></div>
 </div>
-<p class="hint">操作はありません(指でドラッグすると視点を回転できます)。アバターが自律的に呼吸・瞬き・仕草・歩行・座るなどを行う様子をただ眺めるページです。</p>
+<p class="hint">操作はありません(指でドラッグすると視点を回転できます)。「AIモーション」を押すとカメラで自分の動き・表情を読み取り、量子化されたAIモデル(MediaPipe)の推定結果をアバターにリアルタイム反映します。押さない間は、アバターが自律的に呼吸・瞬き・仕草・歩行・座るなどを行う様子をただ眺めるページです。</p>
 
 <script type="importmap">
 {
@@ -122,7 +171,8 @@ html, body {
     "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js",
     "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js",
     "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.js",
-    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.5.5/lib/three-vrm-animation.module.js"
+    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3.5.5/lib/three-vrm-animation.module.js",
+    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
   }
 }
 </script>
@@ -176,6 +226,65 @@ html, body {
     updateSwitchBtnLabel();
     try { localStorage.setItem(STORAGE_KEY, selectedAvatar); } catch {}
     viewer.setAvatar(AVATAR_FILES[selectedAvatar]);
+  });
+
+  // --- AIモーション(カメラ+量子化MediaPipeモデルでアバターをリアルタイムに動かす) ---
+  const aiBtn = document.getElementById('ai-motion-btn');
+  const aiVideo = document.getElementById('ai-cam-video');
+  const aiNotice = document.getElementById('ai-motion-notice');
+  let aiDriver = null;
+  let aiActive = false;
+  let aiBusy = false;
+
+  aiBtn.addEventListener('click', async () => {
+    if (aiBusy) return;
+    if (aiActive) {
+      aiDriver?.stop();
+      viewer.controller?.setExternalControl(false);
+      aiActive = false;
+      aiVideo.hidden = true;
+      aiBtn.textContent = 'AIモーション';
+      aiBtn.dataset.active = 'false';
+      return;
+    }
+
+    if (!viewer.vrm) {
+      aiNotice.hidden = false;
+      return;
+    }
+
+    aiBusy = true;
+    aiBtn.disabled = true;
+    aiBtn.textContent = '読み込み中…';
+    aiNotice.hidden = true;
+    try {
+      const { AIMotionDriver } = await import('./lib/index.js');
+      if (!aiDriver) {
+        aiDriver = new AIMotionDriver(viewer.vrm, aiVideo);
+        await aiDriver.init();
+      } else {
+        // アバター切替でVRMインスタンスが変わっている場合に備えて更新
+        aiDriver.vrm = viewer.vrm;
+      }
+      await aiDriver.startCamera();
+      aiVideo.hidden = false;
+      viewer.controller?.setExternalControl(true);
+      aiDriver.start();
+      aiActive = true;
+      aiBtn.textContent = 'AIモーション停止';
+      aiBtn.dataset.active = 'true';
+    } catch (err) {
+      console.warn('AIモーションを開始できませんでした', err);
+      aiNotice.hidden = false;
+      aiDriver?.stop();
+      viewer.controller?.setExternalControl(false);
+      aiVideo.hidden = true;
+      aiBtn.textContent = 'AIモーション';
+      aiBtn.dataset.active = 'false';
+    } finally {
+      aiBusy = false;
+      aiBtn.disabled = false;
+    }
   });
 </script>
 </body>

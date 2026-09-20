@@ -94,6 +94,33 @@ viewer.start();
 - `'error'`(`event.detail`にError) — アバターの読み込みに失敗し、プレースホルダー表示に切り替わった
 - `'statechange'`(`event.detail`に状態文字列) — 行動状態が変化するたびに発行される
 
+## カメラ+AIモデルでリアルタイムに動かす(`AIMotionDriver`)
+
+`lib/ai-motion-driver.js` は、Webカメラの映像を量子化済み(float16)のMediaPipeモデル
+(Pose Landmarker / Face Landmarker、Apache-2.0)で解析し、Kalidokit(MIT)でVRMの
+ボーン回転・表情ブレンドシェイプへリターゲットする、`AvatarController`とは独立した
+ドライバです。使う側が「自律行動」と「AIモーション」を切り替えられるように、
+`AvatarController#setExternalControl(true/false)` と組み合わせて使います。
+
+```js
+import { AvatarViewer, AIMotionDriver } from './lib/index.js';
+
+const viewer = new AvatarViewer(canvas, { avatarUrl: 'models/AvatarSample_A.vrm' });
+viewer.addEventListener('ready', async () => {
+  const driver = new AIMotionDriver(viewer.vrm, videoEl);
+  await driver.init();        // モデル読み込み(数MB〜十数MBの通信)
+  await driver.startCamera(); // ユーザー操作(クリック等)の中から呼ぶこと
+  viewer.controller.setExternalControl(true); // 自律行動を一時停止
+  driver.start();
+});
+
+// 終了時: driver.stop(); viewer.controller.setExternalControl(false);
+```
+
+CDN構成のみ・サーバー不要で完結し、カメラ映像は外部へ送信されません(すべて
+ブラウザ内のWASM/WebGLで推論)。iOS Safari等モバイルブラウザでは `startCamera()`
+をユーザーのタップ操作のハンドラ内から呼ぶ必要があります(自動再生ポリシーのため)。
+
 ## 独自のモーション集に差し替える
 
 `animationManifest`オプションに、`src/default-manifest.js`の`DEFAULT_ANIMATION_MANIFEST`と

@@ -16,7 +16,7 @@
   {
     "id": "avatar",
     "name": "VRMアバター",
-    "description": "自律的に呼吸・瞬き・仕草・歩行するVRMアバターをただ眺めるページ",
+    "description": "自律的に呼吸・瞬き・仕草・歩行するVRMアバターを眺める、またはカメラ+量子化AIモデル(MediaPipe)で自分の動き・表情を反映できるページ",
     "path": "apps/avatar/",
     "icon": "🧍‍♀️"
   },
