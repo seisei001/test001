@@ -86,7 +86,7 @@ label {
   line-height: 1.5;
 }
 
-input[type="password"], textarea {
+input[type="text"], textarea {
   width: 100%;
   font-size: 16px; /* iOS Safariの自動ズーム防止 */
   padding: 10px 12px;
@@ -97,7 +97,7 @@ input[type="password"], textarea {
   font-family: inherit;
 }
 @media (prefers-color-scheme: dark) {
-  input[type="password"], textarea { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+  input[type="text"], textarea { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
 }
 
 textarea {
@@ -165,11 +165,12 @@ button.secondary {
 
 <div class="panel">
   <label for="api-key-input">Anthropic APIキー</label>
-  <input id="api-key-input" type="password" placeholder="sk-ant-..." autocomplete="off">
+  <input id="api-key-input" type="text" inputmode="text" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
   <p class="hint">
     ここに入力したキーはあなたのブラウザ内(localStorage)にのみ保存され、外部には送信されません
     (Anthropic APIへのリクエスト以外には使いません)。ただしブラウザから直接APIキーを使う仕組み上、
-    このページのJavaScriptからは見える状態になります。共有PCや他人に見せるページでは入力しないでください。
+    このページのJavaScriptからは見える状態になり、この欄も伏せ字にはなりません(画面に表示された
+    ままになります)。共有PCや他人に見せるページでは入力しないでください。
   </p>
 
   <label for="novel-text">テキスト(小説の一節など)</label>
