@@ -10,8 +10,8 @@ LLMの回答を教師信号として本体AIのLoRAを更新する(蒸留)。LLM
 (フルファインチューニングはモデルが破綻するため採用しない)。
 
 **現在の状態**: 設計フェーズ完了(第3版)。各モジュールはJSDocインターフェースのみの
-スタブ(`throw new Error('not implemented')`)で、動作するUIはまだ無い。そのため
-`docs/apps.json`(ハブ一覧)には未登録。
+スタブ(`throw new Error('not implemented')`)。UI(`src/ui/`)は開発中・公開準備段階として
+`docs/apps.json`(ハブ一覧)に登録済み(path: `apps/smart-box/src/ui/`)。
 
 詳しくは [`DESIGN.md`](./DESIGN.md) を参照してください。このドキュメントは2回の
 コンセプト修正を経ています(付録B相当の改訂履歴はDESIGN.md 0節を参照)。
