@@ -4,7 +4,7 @@
 
 ## 公開URL
 
-GitHub Pagesで公開します(初回のみ下記の設定が必要)。
+GitHub Pagesで公開しています(設定済み・変更不要)。
 
 - ハブ: `https://seisei001.github.io/test001/`
 - 各アプリはハブのカードをタップして開きます
@@ -13,9 +13,11 @@ iPhoneなどのSafariでハブを開き、共有ボタン →「ホーム画面�
 
 ## 新しいアプリを追加する手順
 
+新しいアプリは既存のこのリポジトリ内に追加します(別リポジトリは作りません)。
+
 1. `docs/apps/<アプリ名>/` フォルダを作り、`index.html`(必要なら `app.js` や `style.css` も)を追加する
    - 単一ファイルで完結する簡単なアプリなら `index.html` 1つだけでOK
-   - ハブに戻れるよう、ヘッダーに `<a href="../../">← ハブに戻る</a>` を入れるのがおすすめ
+   - ハブに戻れるよう、ヘッダーに `<a href="../../">← ハブに戻る</a>` を入れる(必須。その他の実装規約はスキル参照)
 2. `docs/apps.json` に新しいアプリの情報を1件追加する
 
    ```json
@@ -32,16 +34,32 @@ iPhoneなどのSafariでハブを開き、共有ボタン →「ホーム画面�
 
 修正したいときは、該当する `docs/apps/<アプリ名>/` の中身を直接編集してpushするだけです。
 
-## GitHub Pagesの設定(初回のみ)
+## GitHub Pagesの設定
 
-1. GitHubのリポジトリページで **Settings → Pages** を開く
-2. 「Build and deployment」の **Source** を `Deploy from a branch` にする
-3. **Branch** で公開したいブランチ(通常は `docs`)を選び、フォルダは **`/docs`** を選択して **Save**
-4. 数分待つと `https://seisei001.github.io/test001/` で公開される
+設定済みのため通常は変更不要です(Source: `Deploy from a branch` / Branch: `docs` / Folder: `/docs`)。
+設定の変更はリポジトリ管理者権限が必要で、APIからは操作できません。
 
-このリポジトリでは `docs` ブランチをデフォルトブランチとして運用しています。新しいアプリの変更はまず作業ブランチで作り、動作確認できたら `docs` ブランチにマージすると公開に反映されます。
+このリポジトリでは `docs` ブランチをデフォルトブランチ(=公開ブランチ)として運用しています。新しいアプリの変更はまず作業ブランチで作り、動作確認できたら `docs` ブランチにマージすると公開に反映されます。
+
+## 運用ルール(Claude Code向け)
+
+アプリの追加・修正手順と実装規約(meta タグ、ハブへの戻るリンク、ダークモード、localStorage、タップ領域44px、input 16px 等)は
+[`.claude/skills/webapp-hub/SKILL.md`](.claude/skills/webapp-hub/SKILL.md) にまとめています。
 
 ## 収録アプリ
+
+| アプリ | パス | 概要 |
+|---|---|---|
+| 📝 ひとことメモ | `apps/hello/` | localStorage保存の簡易メモ |
+| 🔗 URLリンク内容ビューア | `apps/url-viewer/` | URLを順番に開いて内容を確認・編集 |
+| 🧍‍♀️ VRMアバター | `apps/avatar/` | 自律的に動くVRMアバターを眺めるページ |
+| 🗺️ WorkMap | `apps/workmap/` | タスク分解ツリー+タイムライン(ガントチャート) |
+| ⚡ ネオン・ダッシュ | `apps/neon-dash/` | 1タップで遊ぶネオン演出のミニゲーム |
+| ⚖️ 税理士事務所PRサイト | `apps/tax-office-pr/` | 診断コンテンツ付きのPRホームページ |
+| 🎙️ 賢い箱 | `apps/smart-box/src/ui/` | ブラウザ完結の会話AI(開発中。詳細は `apps/smart-box/README.md`) |
+| 📖 テキストアバター | `apps/text-avatar/` | テキストをAIが解析しVRMアバターに朗読・演技させる(Anthropic APIキーが必要) |
+
+主要アプリの補足:
 
 ### 📝 ひとことメモ (`apps/hello/`)
 
