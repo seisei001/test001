@@ -58,6 +58,7 @@ iPhoneなどのSafariでハブを開き、共有ボタン →「ホーム画面�
 | ⚖️ 税理士事務所PRサイト | `apps/tax-office-pr/` | 診断コンテンツ付きのPRホームページ |
 | 🎙️ 賢い箱 | `apps/smart-box/src/ui/` | ブラウザ完結の会話AI(開発中。詳細は `apps/smart-box/README.md`) |
 | 📖 テキストアバター | `apps/text-avatar/` | テキストをAIが解析しVRMアバターに朗読・演技させる(Anthropic APIキーが必要) |
+| 📚 小説設定ノート | `apps/novel-note/` | 小説の話ごとのあらすじ・固有名詞辞書・伏線(回収/未回収/矛盾)を管理。データは公開せず、Google Drive のファイルを端末に読み込んで使う |
 
 主要アプリの補足:
 

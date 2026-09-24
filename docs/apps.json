@@ -54,5 +54,12 @@
     "description": "小説などのテキストをAI(Claude)が解析し、感情・仕草を判定してVRMアバターに朗読させながら演技させるページ(自分のAnthropic APIキーが必要)",
     "path": "apps/text-avatar/",
     "icon": "📖"
+  },
+  {
+    "id": "novel-note",
+    "name": "小説設定ノート",
+    "description": "小説のあらすじ・固有名詞辞書・伏線を話数ごとに管理する執筆サポート(データは非公開・端末に読み込み)",
+    "path": "apps/novel-note/",
+    "icon": "📚"
   }
 ]
