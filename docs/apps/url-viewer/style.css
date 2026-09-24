@@ -113,7 +113,9 @@ textarea {
 }
 
 #content-editor {
-  min-height: 240px;
+  height: 45vh;
+  height: 45dvh;
+  min-height: 180px;
   white-space: pre-wrap;
   margin-top: 8px;
 }
@@ -173,6 +175,22 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 0.85rem;
   margin: 4px 0 0;
 }
+
+.paste-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.paste-row #paste-btn { flex: 1; }
+
+.paste-row .secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.paste-row .secondary:hover { background: var(--bg); }
 
 .filename-row {
   display: flex;

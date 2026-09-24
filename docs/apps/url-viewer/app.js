@@ -19,6 +19,8 @@
   const prevBtn = document.getElementById('prev-btn');
   const storeBtn = document.getElementById('store-btn');
   const finishBtn = document.getElementById('finish-btn');
+  const pasteBtn = document.getElementById('paste-btn');
+  const clearBtn = document.getElementById('clear-btn');
 
   /** @type {{urls: string[], index: number}} */
   let state = { urls: [], index: 0 };
@@ -293,6 +295,36 @@
   });
 
   storeBtn.addEventListener('click', storeCurrentContent);
+
+  // クリップボードの内容で本文を置き換える(iOSでは「ペースト」の確認が1回出る)
+  async function pasteFromClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      contentEditor.focus();
+      setNavStatus('この環境ではボタンから貼り付けできません。本文欄を長押しして貼り付けてください。');
+      return;
+    }
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setNavStatus('クリップボードが空です。');
+        return;
+      }
+      contentEditor.value = text;
+      contentEditor.scrollTop = 0;
+      refreshFileName();
+      setNavStatus('');
+    } catch {
+      setNavStatus('貼り付けできませんでした。本文欄を長押しして貼り付けてください。');
+    }
+  }
+
+  pasteBtn.addEventListener('click', pasteFromClipboard);
+
+  clearBtn.addEventListener('click', () => {
+    contentEditor.value = '';
+    refreshFileName();
+    setNavStatus('');
+  });
 
   // 本文を貼り付けたときにファイル名が空なら「第N話」から補う
   contentEditor.addEventListener('input', () => {
