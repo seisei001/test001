@@ -13,6 +13,7 @@
   const currentTitleEl = document.getElementById('current-title');
   const contentEditor = document.getElementById('content-editor');
   const navStatus = document.getElementById('nav-status');
+  const filenameInput = document.getElementById('filename-input');
 
   const nextBtn = document.getElementById('next-btn');
   const prevBtn = document.getElementById('prev-btn');
@@ -153,6 +154,7 @@
     currentTitleEl.textContent = '';
     contentEditor.value = '';
     setNavStatus('');
+    refreshFileName();
     setFetchStatus('取得中...');
 
     const data = await fetchUrlContent(url);
@@ -163,6 +165,7 @@
       setFetchStatus('取得完了。必要な部分だけ残して編集してください。');
       currentTitleEl.textContent = data.title || '';
       contentEditor.value = data.text || '';
+      if (!filenameInput.value.trim()) refreshFileName();
     }
 
     saveState();
@@ -175,27 +178,69 @@
       .slice(0, 60);
   }
 
-  function downloadCurrentContent() {
-    const content = contentEditor.value.trim();
-    if (!content) {
-      setNavStatus('保管する内容がありません。');
-      return;
-    }
-    const url = state.urls[state.index];
-    const title = currentTitleEl.textContent || url;
-    const text = `# ${title}\nURL: ${url}\n\n${content}\n`;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const namePart = sanitizeFileNamePart(title) || `page-${state.index + 1}`;
+  // エピソード番号を3桁にそろえる(1 → 001)
+  function padEpisode(n) {
+    return String(parseInt(n, 10)).padStart(3, '0');
+  }
+
+  // ファイル名の候補: URL末尾の番号を優先し、無ければ本文1行目の「第N話」を使う
+  function guessFileName() {
+    const url = state.urls[state.index] || '';
+    const m = url.match(/\/(\d+)\/?(?:[?#].*)?$/);
+    if (m) return padEpisode(m[1]);
+    const firstLine = (contentEditor.value || '').trim().split(/\r?\n/)[0] || '';
+    const zen = firstLine.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    const m2 = zen.match(/第\s*(\d+)\s*話/);
+    if (m2) return padEpisode(m2[1]);
+    return '';
+  }
+
+  function refreshFileName() {
+    filenameInput.value = guessFileName();
+  }
+
+  function currentFileName() {
+    let name = sanitizeFileNamePart(filenameInput.value.replace(/\.txt$/i, ''));
+    if (!name) name = guessFileName() || `page-${state.index + 1}`;
+    if (/^\d+$/.test(name)) name = padEpisode(name);
+    return `${name}.txt`;
+  }
+
+  function fallbackDownload(file) {
+    const blobUrl = URL.createObjectURL(file);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = `${namePart}-${stamp}.txt`;
+    a.download = file.name;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(blobUrl);
-    setNavStatus('ダウンロードしました。');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    setNavStatus(`${file.name} をダウンロードしました。`);
+  }
+
+  async function storeCurrentContent() {
+    const content = contentEditor.value.trim();
+    if (!content) {
+      setNavStatus('保管する内容がありません。本文を貼り付けてください。');
+      return;
+    }
+    const fileName = currentFileName();
+    const file = new File([`${content}\n`], fileName, { type: 'text/plain' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        setNavStatus(`${fileName} を共有しました。`);
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setNavStatus('保存をキャンセルしました。');
+        } else {
+          fallbackDownload(file);
+        }
+      }
+      return;
+    }
+    fallbackDownload(file);
   }
 
   function startFromUrls(urls) {
@@ -247,7 +292,12 @@
     }
   });
 
-  storeBtn.addEventListener('click', downloadCurrentContent);
+  storeBtn.addEventListener('click', storeCurrentContent);
+
+  // 本文を貼り付けたときにファイル名が空なら「第N話」から補う
+  contentEditor.addEventListener('input', () => {
+    if (!filenameInput.value.trim()) refreshFileName();
+  });
 
   finishBtn.addEventListener('click', () => {
     window.history.back();
