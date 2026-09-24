@@ -33,7 +33,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | tax-office-pr | ⚖️ 税理士事務所PRサイト | apps/tax-office-pr/ | 診断コンテンツ付きPRサイト |
 | smart-box | 🎙️ 賢い箱 | apps/smart-box/src/ui/ | 開発中の会話AI。本体は `src/ui/` 配下のため path と戻るリンクの階層が他と異なる(`../../../../`) |
 | text-avatar | 📖 テキストアバター | apps/text-avatar/ | テキストをClaudeで解析しVRMアバターに朗読・演技させる。ユーザー自身のAnthropic APIキー(localStorage保存)が必要 |
-| novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**小説データ(ネタバレ)はリポジトリに置かない**。データは `format: "novel-note"` のJSON(作品ごと、例 `n6924df.novelnote.json`)を Claude が作成して利用者の Google Drive「shousrtsu」に置き、アプリの「データを読み込む」で IndexedDB に保存する。作者の修正(伏線の状態・メモ)は localStorage に保存し、`format: "novel-note-edits"` のJSONで書き出して Drive に置く→次回データ更新時に取り込む。データを追加・更新するときは Drive 上の最新JSONを正として読み込み、話を足して書き戻す |
+| novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**小説データ(ネタバレ)は平文でリポジトリに置かない**。データ(`format: "novel-note"` のJSON、作品ごと)は Claude が作成し、`node tools/novel-note-encrypt.mjs data <json>` で公開鍵暗号化して `apps/novel-note/data/<作品id>.enc.json` と `index.json` に置く。鍵はアプリの初回設定で利用者が作り(パスワードは端末外に出ない)、送られてきた鍵JSONを `node tools/novel-note-encrypt.mjs keys <json>` で `data/keys.json` に登録する。平文データの正本は利用者の Google Drive「shousrtsu」の `n6924df.novelnote.json`(更新時はこれに話を足して書き戻し、暗号化し直す)。作者の修正(伏線の状態・メモ)は端末の localStorage、`format: "novel-note-edits"` で書き出して Drive に置く→次回更新時に取り込む |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 
