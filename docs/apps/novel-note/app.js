@@ -646,11 +646,10 @@
   }
 
   function renderTermList() {
-    const catCounts = Object.fromEntries(CATEGORIES.map((c) => [c.id, work.terms.filter((t) => t.category === c.id).length]));
     let html = `<input type="search" id="term-q" placeholder="名前・説明の言葉で検索" value="${esc(ui.termQuery)}" aria-label="辞書を検索">
       <div class="chips" id="term-cats">
-        <button type="button" class="chip ${ui.termCat === 'all' ? 'on' : ''}" data-cat="all">すべて <span class="n">${work.terms.length}</span></button>
-        ${CATEGORIES.map((c) => `<button type="button" class="chip ${ui.termCat === c.id ? 'on' : ''}" data-cat="${c.id}">${c.label} <span class="n">${catCounts[c.id]}</span></button>`).join('')}
+        <button type="button" class="chip ${ui.termCat === 'all' ? 'on' : ''}" data-cat="all">すべて <span class="n"></span></button>
+        ${CATEGORIES.map((c) => `<button type="button" class="chip ${ui.termCat === c.id ? 'on' : ''}" data-cat="${c.id}">${c.label} <span class="n"></span></button>`).join('')}
       </div>
       <div id="term-results"></div>`;
     view.innerHTML = html;
@@ -671,12 +670,17 @@
 
   function drawTermResults() {
     const ws = words(ui.termQuery);
+    const byQuery = (t) => {
+      const hay = norm(termText(t));
+      return ws.every((w) => hay.includes(w));
+    };
+    // ボタンの数字は検索語を反映した件数
+    for (const b of document.querySelectorAll('#term-cats [data-cat]')) {
+      b.querySelector('.n').textContent = work.terms.filter((t) => byQuery(t) && (b.dataset.cat === 'all' || t.category === b.dataset.cat)).length;
+    }
     const list = work.terms
       .filter((t) => ui.termCat === 'all' || t.category === ui.termCat)
-      .filter((t) => {
-        const hay = norm(termText(t));
-        return ws.every((w) => hay.includes(w));
-      })
+      .filter(byQuery)
       .sort((a, b) => {
         if (ws.length) {
           const an = ws.some((w) => norm([a.name, a.reading, ...a.aliases].join(' ')).includes(w)) ? 0 : 1;
@@ -687,7 +691,15 @@
       });
     const box = document.getElementById('term-results');
     if (!list.length) {
-      box.innerHTML = '<p class="empty">見つかりませんでした。別の言葉で探してみてください。</p>';
+      box.innerHTML = `<p class="empty">見つかりませんでした。別の言葉で探してみてください。</p>${ws.length || ui.termCat !== 'all' ? '<button type="button" class="btn secondary" id="term-reset">絞り込みを解除</button>' : ''}`;
+      const reset = document.getElementById('term-reset');
+      if (reset) {
+        reset.addEventListener('click', () => {
+          ui.termQuery = '';
+          ui.termCat = 'all';
+          renderTermList();
+        });
+      }
       return;
     }
     box.innerHTML = `<p class="hint">${list.length}件</p><ul class="list">${list.map((t) => `<li><a class="item" href="#term/${t.id}">
@@ -745,15 +757,14 @@
   }
 
   function renderThreadList() {
-    const stCounts = Object.fromEntries(STATUSES.map((s) => [s.id, work.threads.filter((t) => effective(t).status === s.id).length]));
     const html = `<input type="search" id="thread-q" placeholder="伏線の概要から検索(似た伏線も表示)" value="${esc(ui.threadQuery)}" aria-label="伏線を検索">
       <div class="chips" id="thread-st">
-        <button type="button" class="chip ${ui.threadStatus === 'all' ? 'on' : ''}" data-st="all">すべて <span class="n">${work.threads.length}</span></button>
-        ${STATUSES.filter((s) => stCounts[s.id] || s.id !== 'ok').map((s) => `<button type="button" class="chip ${ui.threadStatus === s.id ? 'on' : ''}" data-st="${s.id}">${s.label} <span class="n">${stCounts[s.id]}</span></button>`).join('')}
+        <button type="button" class="chip ${ui.threadStatus === 'all' ? 'on' : ''}" data-st="all">すべて <span class="n"></span></button>
+        ${STATUSES.map((s) => `<button type="button" class="chip ${ui.threadStatus === s.id ? 'on' : ''}" data-st="${s.id}">${s.label} <span class="n"></span></button>`).join('')}
       </div>
       <div class="chips" id="thread-kind">
-        <button type="button" class="chip ${ui.threadKind === 'all' ? 'on' : ''}" data-kind="all">種類: すべて</button>
-        ${KINDS.map((k) => `<button type="button" class="chip ${ui.threadKind === k.id ? 'on' : ''}" data-kind="${k.id}">${k.label}</button>`).join('')}
+        <button type="button" class="chip ${ui.threadKind === 'all' ? 'on' : ''}" data-kind="all">種類: すべて <span class="n"></span></button>
+        ${KINDS.map((k) => `<button type="button" class="chip ${ui.threadKind === k.id ? 'on' : ''}" data-kind="${k.id}">${k.label} <span class="n"></span></button>`).join('')}
       </div>
       <div id="thread-results"></div>`;
     view.innerHTML = html;
@@ -781,17 +792,28 @@
 
   function drawThreadResults() {
     const ws = words(ui.threadQuery);
-    const pool = work.threads
-      .filter((t) => ui.threadStatus === 'all' || effective(t).status === ui.threadStatus)
-      .filter((t) => ui.threadKind === 'all' || t.kind === ui.threadKind);
-    const hits = pool.filter((t) => {
+    const byQuery = (t) => {
       const hay = norm(threadText(t));
       return ws.every((w) => hay.includes(w));
-    });
+    };
+    const byStatus = (t) => ui.threadStatus === 'all' || effective(t).status === ui.threadStatus;
+    const byKind = (t) => ui.threadKind === 'all' || t.kind === ui.threadKind;
+    // ボタンの数字は「押したら実際に出る件数」(他の絞り込みと検索語を反映)
+    for (const b of document.querySelectorAll('#thread-st [data-st]')) {
+      const n = work.threads.filter((t) => byKind(t) && byQuery(t) && (b.dataset.st === 'all' || effective(t).status === b.dataset.st)).length;
+      b.querySelector('.n').textContent = n;
+      b.hidden = b.dataset.st === 'ok' && n === 0 && ui.threadStatus !== 'ok';
+    }
+    for (const b of document.querySelectorAll('#thread-kind [data-kind]')) {
+      b.querySelector('.n').textContent = work.threads.filter((t) => byStatus(t) && byQuery(t) && (b.dataset.kind === 'all' || t.kind === b.dataset.kind)).length;
+    }
+    const pool = work.threads.filter((t) => byStatus(t) && byKind(t));
+    const hits = pool.filter(byQuery);
     const box = document.getElementById('thread-results');
+    const filtered = ws.length || ui.threadStatus !== 'all' || ui.threadKind !== 'all';
     let html = hits.length
       ? `<p class="hint">${hits.length}件</p>${threadItems(hits, ui.threadQuery)}`
-      : '<p class="empty">言葉が一致する伏線はありません。</p>';
+      : `<p class="empty">条件に合う伏線はありません。</p>${filtered ? '<button type="button" class="btn secondary" id="thread-reset">絞り込みを解除</button>' : ''}`;
     if (ws.length) {
       const qb = bigrams(ui.threadQuery);
       const hitIds = new Set(hits.map((t) => t.id));
@@ -805,6 +827,15 @@
       if (similar.length) html += `<h3>似ている伏線</h3>${threadItems(similar)}`;
     }
     box.innerHTML = html;
+    const reset = document.getElementById('thread-reset');
+    if (reset) {
+      reset.addEventListener('click', () => {
+        ui.threadQuery = '';
+        ui.threadStatus = 'all';
+        ui.threadKind = 'all';
+        renderThreadList();
+      });
+    }
   }
 
   function similarThreads(t, n = 5) {
