@@ -1,6 +1,6 @@
 ---
 name: webapp-hub
-description: seisei001/test001 の「WEBアプリハブ」(GitHub Pagesで公開するミニアプリ集)の運用手順と実装規約。ハブに新しいアプリを追加する・既存アプリ(hello, url-viewer, avatar, workmap, neon-dash, tax-office-pr, smart-box, text-avatar)を修正する・apps.jsonを編集する・公開URLへの反映方法を確認する、といった作業の前に必ず読むこと。
+description: seisei001/test001 の「WEBアプリハブ」(GitHub Pagesで公開するミニアプリ集)の運用手順と実装規約。ハブに新しいアプリを追加する・既存アプリ(hello, url-viewer, avatar, workmap, neon-dash, tax-office-pr, smart-box, text-avatar, novel-note)を修正する・apps.jsonを編集する・公開URLへの反映方法を確認する、といった作業の前に必ず読むこと。
 ---
 
 # WEBアプリハブ 運用スキル
@@ -33,6 +33,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | tax-office-pr | ⚖️ 税理士事務所PRサイト | apps/tax-office-pr/ | 診断コンテンツ付きPRサイト |
 | smart-box | 🎙️ 賢い箱 | apps/smart-box/src/ui/ | 開発中の会話AI。本体は `src/ui/` 配下のため path と戻るリンクの階層が他と異なる(`../../../../`) |
 | text-avatar | 📖 テキストアバター | apps/text-avatar/ | テキストをClaudeで解析しVRMアバターに朗読・演技させる。ユーザー自身のAnthropic APIキー(localStorage保存)が必要 |
+| novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**小説データ(ネタバレ)はリポジトリに置かない**。データは `format: "novel-note"` のJSON(作品ごと、例 `n6924df.novelnote.json`)を Claude が作成して利用者の Google Drive「shousrtsu」に置き、アプリの「データを読み込む」で IndexedDB に保存する。作者の修正(伏線の状態・メモ)は localStorage に保存し、`format: "novel-note-edits"` のJSONで書き出して Drive に置く→次回データ更新時に取り込む。データを追加・更新するときは Drive 上の最新JSONを正として読み込み、話を足して書き戻す |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 
