@@ -113,9 +113,9 @@ textarea {
 }
 
 #content-editor {
-  height: 45vh;
-  height: 45dvh;
-  min-height: 180px;
+  height: 22vh;
+  height: 22dvh;
+  min-height: 120px;
   white-space: pre-wrap;
   margin-top: 8px;
 }
