@@ -29,6 +29,7 @@
   const workInfo = document.getElementById('work-info');
   const fileInput = document.getElementById('file-input');
   const exportBtn = document.getElementById('export-btn');
+  const updateBtn = document.getElementById('update-btn');
   const appStatus = document.getElementById('app-status');
   const emptyPanel = document.getElementById('empty-panel');
   const tabs = document.getElementById('tabs');
@@ -36,8 +37,9 @@
 
   /** @type {Map<string, any>} */
   const works = new Map();
-  let work = null;       // 表示中の作品データ
-  let edits = { threads: {} };
+  let base = null;       // 読み込んだままの作品データ(AIが作成したもの)
+  let work = null;       // 表示用: base に作者の修正を重ねたもの
+  let edits = emptyEdits();
   const ui = { termQuery: '', termCat: 'all', threadQuery: '', threadStatus: 'all', threadKind: 'all' };
 
   // ---------- 保存(IndexedDB。使えない環境ではメモリだけ) ----------
@@ -217,17 +219,72 @@
   const epLabel = (n) => `第${n}話`;
   const epLink = (n) => `<a class="chip" href="#ep/${n}">${epLabel(n)}</a>`;
 
-  function effective(thread) {
-    const e = edits.threads[thread.id];
-    return { status: (e && e.status) || thread.status, note: (e && e.note) || '', edited: !!e };
+  // ---------- 作者の修正(この端末に保存し、表示時に重ねる) ----------
+  // 編集できる項目。episodes は話数、terms / threads は id で対応づける
+  const EDIT_FIELDS = {
+    episodes: ['summary'],
+    terms: ['name', 'reading', 'aliases', 'description'],
+    threads: ['title', 'summary', 'resolution', 'status', 'note'],
+  };
+  const keyOf = (coll, rec) => String(coll === 'episodes' ? rec.no : rec.id);
+  function emptyEdits() {
+    return { episodes: {}, terms: {}, threads: {} };
   }
-
+  function editCount() {
+    return Object.keys(EDIT_FIELDS).reduce((n, c) => n + Object.keys(edits[c]).length, 0);
+  }
+  function applyEdits() {
+    const w = JSON.parse(JSON.stringify(base));
+    let cleaned = false;
+    for (const coll of Object.keys(EDIT_FIELDS)) {
+      for (const rec of w[coll]) {
+        const key = keyOf(coll, rec);
+        const e = edits[coll][key];
+        if (!e) continue;
+        const fields = EDIT_FIELDS[coll].filter((f) => f in e);
+        // データ更新で修正が取り込まれた(元データと同じになった)修正は、この端末からも消す
+        if (fields.every((f) => JSON.stringify(e[f]) === JSON.stringify(rec[f] ?? (Array.isArray(e[f]) ? [] : '')))) {
+          delete edits[coll][key];
+          cleaned = true;
+          continue;
+        }
+        for (const f of fields) rec[f] = e[f];
+        rec._edited = true;
+      }
+    }
+    if (cleaned) lsSet(EDITS_PREFIX + base.work.id, edits);
+    return w;
+  }
+  function baseRecord(coll, key) {
+    return base[coll].find((r) => keyOf(coll, r) === String(key));
+  }
+  function effective(thread) {
+    return { status: thread.status, note: thread.note || '', edited: !!thread._edited };
+  }
   function loadEdits() {
-    edits = lsGet(EDITS_PREFIX + work.work.id, { threads: {} });
-    if (!edits.threads) edits.threads = {};
+    const saved = lsGet(EDITS_PREFIX + base.work.id, null) || {};
+    edits = emptyEdits();
+    for (const c of Object.keys(EDIT_FIELDS)) if (saved[c]) edits[c] = saved[c];
   }
   function saveEdits() {
-    lsSet(EDITS_PREFIX + work.work.id, edits);
+    lsSet(EDITS_PREFIX + base.work.id, edits);
+    work = applyEdits();
+  }
+  // 入力値と元の値を比べ、違う項目だけを修正として保存する(同じなら修正を消す)
+  function saveRecordEdit(coll, key, values) {
+    const orig = baseRecord(coll, key);
+    const diff = {};
+    for (const [f, v] of Object.entries(values)) {
+      const o = orig ? orig[f] : undefined;
+      if (JSON.stringify(v) !== JSON.stringify(o ?? (Array.isArray(v) ? [] : ''))) diff[f] = v;
+    }
+    if (Object.keys(diff).length) edits[coll][String(key)] = { ...diff, updatedAt: new Date().toISOString() };
+    else delete edits[coll][String(key)];
+    saveEdits();
+  }
+  function resetRecordEdit(coll, key) {
+    delete edits[coll][String(key)];
+    saveEdits();
   }
 
   function validWork(d) {
@@ -235,10 +292,11 @@
   }
 
   function selectWork(id) {
-    work = works.get(id) || null;
-    if (!work) return;
+    base = works.get(id) || null;
+    if (!base) return;
     lsSet(CURRENT_KEY, id);
     loadEdits();
+    work = applyEdits();
     const c = work.coverage || {};
     workInfo.textContent = `収録: 第${c.from}〜${c.to}話 / 全${work.work.episodeCount}話 ・ データ作成日 ${work.generatedAt || '-'}`;
     render();
@@ -330,6 +388,7 @@
   let lockedMode = false;
   function showLocked(html) {
     lockedMode = true;
+    updateBtn.hidden = true;
     emptyPanel.hidden = true;
     tabs.hidden = true;
     view.innerHTML = `<section class="panel">${html}</section>`;
@@ -473,11 +532,13 @@
         return;
       }
       let merged = 0;
-      for (const [id, e] of Object.entries(data.threads || {})) {
-        const cur = edits.threads[id];
-        if (!cur || (e.updatedAt || '') > (cur.updatedAt || '')) {
-          edits.threads[id] = e;
-          merged++;
+      for (const coll of Object.keys(EDIT_FIELDS)) {
+        for (const [id, e] of Object.entries(data[coll] || {})) {
+          const cur = edits[coll][id];
+          if (!cur || (e.updatedAt || '') > (cur.updatedAt || '')) {
+            edits[coll][id] = e;
+            merged++;
+          }
         }
       }
       saveEdits();
@@ -492,14 +553,13 @@
 
   exportBtn.addEventListener('click', async () => {
     if (!work) return;
-    const count = Object.keys(edits.threads).length;
-    if (!count) {
-      setStatus('書き出す修正がまだありません。伏線の画面で状態やメモを保存すると書き出せます。');
+    if (!editCount()) {
+      setStatus('書き出す修正がまだありません。あらすじ・辞書・伏線の画面で「編集」から直すと書き出せます。');
       return;
     }
     const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const name = `novel-note-edits-${work.work.id}-${stamp}.json`;
-    const body = JSON.stringify({ format: 'novel-note-edits', version: 1, workId: work.work.id, exportedAt: new Date().toISOString(), threads: edits.threads }, null, 1);
+    const body = JSON.stringify(editsPayload(), null, 1);
     const file = new File([body], name, { type: 'application/json' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
@@ -535,6 +595,7 @@
     if (kind === 'ep' && arg) return { tab: 'episodes', ep: parseInt(arg, 10) };
     if (kind === 'term' && arg) return { tab: 'terms', term: arg };
     if (kind === 'thread' && arg) return { tab: 'threads', thread: arg };
+    if (kind === 'update') return { tab: 'update' };
     if (['episodes', 'terms', 'threads'].includes(kind)) return { tab: kind };
     return { tab: 'episodes' };
   }
@@ -542,6 +603,7 @@
   function render() {
     if (lockedMode) return;
     exportBtn.disabled = !work;
+    updateBtn.hidden = !work;
     if (!work) {
       emptyPanel.hidden = false;
       tabs.hidden = true;
@@ -557,7 +619,8 @@
       const label = { episodes: 'あらすじ', terms: '辞書', threads: '伏線' }[a.dataset.tab];
       a.innerHTML = `${label}<span class="count">${counts[a.dataset.tab]}</span>`;
     }
-    if (r.ep) renderEpisode(r.ep);
+    if (r.tab === 'update') renderUpdate();
+    else if (r.ep) renderEpisode(r.ep);
     else if (r.term) renderTerm(r.term);
     else if (r.thread) renderThread(r.thread);
     else if (r.tab === 'terms') renderTermList();
@@ -620,7 +683,7 @@
     let html = jumpForm(n);
     html += `<article class="panel detail">
       <div class="muted small">${esc(e.chapter)}</div>
-      <h2><span class="ep-no">${epLabel(n)}</span> ${esc(e.title)}</h2>
+      <h2><span class="ep-no">${epLabel(n)}</span> ${esc(e.title)}${e._edited ? ' <span class="edited">修正済み</span>' : ''}</h2>
       <p class="lead">${esc(e.summary)}</p>
       <p class="muted small">本文 約${(e.chars || 0).toLocaleString()}字 ・ <a href="${esc(work.work.url)}${n}/" target="_blank" rel="noopener">なろうで読む</a></p>`;
     for (const c of CATEGORIES) {
@@ -630,6 +693,7 @@
     }
     if (setups.length) html += `<h3>この話で張られた伏線</h3>${threadItems(setups)}`;
     if (payoffs.length) html += `<h3>この話で回収・関係する伏線</h3>${threadItems(payoffs)}`;
+    html += editBlock('episodes', n, e, [{ f: 'summary', label: 'あらすじ', type: 'textarea' }]);
     html += '</article>';
     html += `<div class="pager">
       ${map.has(n - 1) ? `<a class="btn secondary" href="#ep/${n - 1}">← 第${n - 1}話</a>` : '<span></span>'}
@@ -638,6 +702,7 @@
     <a class="btn secondary back" href="#episodes">一覧に戻る</a>`;
     view.innerHTML = html;
     bindJump();
+    bindEditBlock('episodes', n, () => renderEpisode(n));
   }
 
   // ---------- 固有名詞辞書 ----------
@@ -720,7 +785,7 @@
       return names.some((n) => n.length >= 2 && hay.includes(n));
     });
     let html = `<article class="panel detail">
-      <span class="cat">${catLabel(t.category)}</span>
+      <span class="cat">${catLabel(t.category)}</span>${t._edited ? ' <span class="edited">修正済み</span>' : ''}
       <h2>${esc(t.name)}</h2>
       ${t.reading ? `<div class="muted small">よみ: ${esc(t.reading)}</div>` : ''}
       ${t.aliases && t.aliases.length ? `<div class="muted small">別名・表記: ${t.aliases.map(esc).join('、')}</div>` : ''}
@@ -731,8 +796,15 @@
     html += `<h3>登場した話(${t.episodes.length})</h3>`;
     html += t.episodes.length ? `<div class="chips">${t.episodes.map(epLink).join('')}</div>` : '<p class="empty">収録範囲では登場していません。</p>';
     if (related.length) html += `<h3>関係する伏線</h3>${threadItems(related)}`;
+    html += editBlock('terms', t.id, t, [
+      { f: 'name', label: '名前' },
+      { f: 'reading', label: 'よみ' },
+      { f: 'aliases', label: '別名・表記(「、」区切り)', type: 'list' },
+      { f: 'description', label: '説明', type: 'textarea' },
+    ]);
     html += '</article><a class="btn secondary back" href="#terms">辞書に戻る</a>';
     view.innerHTML = html;
+    bindEditBlock('terms', t.id, () => renderTerm(id));
   }
 
   // ---------- 伏線 ----------
@@ -874,41 +946,21 @@
       </dl>`;
     if (t.resolution) html += `<h3>回収のされ方・メモ</h3><p class="lead">${esc(t.resolution)}</p>`;
     if (t.tags && t.tags.length) html += `<h3>タグ</h3><div class="chips">${t.tags.map((g) => `<button type="button" class="chip" data-tag="${esc(g)}">${esc(g)}</button>`).join('')}</div>`;
-    html += `<h3>作者の確認</h3>
-      <div class="edit-box">
-        <label for="st-select" class="hint">AIの判定: ${statusLabel(t.status)}</label>
-        <select id="st-select">${STATUSES.map((s) => `<option value="${s.id}" ${s.id === ef.status ? 'selected' : ''}>${s.label}</option>`).join('')}</select>
-        <textarea id="note-input" placeholder="メモ(回収予定の話、直す方針など)">${esc(ef.note)}</textarea>
-        <div class="row"><button type="button" class="btn" id="save-edit">保存</button>${ef.edited ? '<button type="button" class="btn secondary" id="reset-edit">AIの判定に戻す</button>' : ''}</div>
-        <p class="hint">修正はこの端末に保存されます。「修正を書き出す」で Drive に置くと、次のデータ更新に反映されます。</p>
-      </div>
-    </article>`;
+    const aiStatus = (baseRecord('threads', t.id) || t).status;
+    html += editBlock('threads', t.id, t, [
+      { f: 'status', label: `状態(AIの判定: ${statusLabel(aiStatus)})`, type: 'status' },
+      { f: 'note', label: 'メモ(回収予定の話、直す方針など)', type: 'textarea' },
+      { f: 'title', label: '見出し' },
+      { f: 'summary', label: '概要', type: 'textarea' },
+      { f: 'resolution', label: '回収のされ方・メモ', type: 'textarea' },
+    ], true);
+    html += '</article>';
     if (related.length) html += `<h3>関連する伏線</h3>${threadItems(related)}`;
     if (similar.length) html += `<h3>似ている伏線</h3>${threadItems(similar)}`;
     html += '<a class="btn secondary back" href="#threads">伏線一覧に戻る</a>';
     view.innerHTML = html;
 
-    document.getElementById('save-edit').addEventListener('click', () => {
-      const status = document.getElementById('st-select').value;
-      const note = document.getElementById('note-input').value.trim();
-      if (status === t.status && !note) {
-        delete edits.threads[t.id];
-      } else {
-        edits.threads[t.id] = { status, note, updatedAt: new Date().toISOString() };
-      }
-      saveEdits();
-      setStatus(`「${t.title}」を保存しました。`);
-      renderThread(id);
-    });
-    const reset = document.getElementById('reset-edit');
-    if (reset) {
-      reset.addEventListener('click', () => {
-        delete edits.threads[t.id];
-        saveEdits();
-        setStatus(`「${t.title}」をAIの判定に戻しました。`);
-        renderThread(id);
-      });
-    }
+    bindEditBlock('threads', t.id, () => renderThread(id));
     for (const b of view.querySelectorAll('[data-tag]')) {
       b.addEventListener('click', () => {
         ui.threadQuery = b.dataset.tag;
@@ -917,6 +969,120 @@
         location.hash = '#threads';
       });
     }
+  }
+
+  // ---------- 編集ブロック(あらすじ・辞書・伏線で共通) ----------
+  function editBlock(coll, key, rec, fields, open = false) {
+    const input = ({ f, label, type }) => {
+      const id = `ed-${f}`;
+      const v = rec[f];
+      let control;
+      if (type === 'textarea') control = `<textarea id="${id}" rows="4">${esc(v || '')}</textarea>`;
+      else if (type === 'status') control = `<select id="${id}">${STATUSES.map((s) => `<option value="${s.id}" ${s.id === v ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`;
+      else if (type === 'list') control = `<input type="text" id="${id}" value="${esc((v || []).join('、'))}">`;
+      else control = `<input type="text" id="${id}" value="${esc(v || '')}">`;
+      return `<label class="field" for="${id}"><span class="hint">${esc(label)}</span>${control}</label>`;
+    };
+    return `<details class="edit-details" ${open ? 'open' : ''}><summary>${coll === 'threads' ? '作者の確認・編集' : '編集'}</summary>
+      <div class="edit-box" data-edit="${coll}" data-fields="${fields.map((x) => x.f + ':' + (x.type || 'text')).join(',')}">
+        ${fields.map(input).join('')}
+        <div class="row wrap"><button type="button" class="btn" data-act="save">保存</button>${rec._edited ? '<button type="button" class="btn secondary" data-act="reset">元に戻す</button>' : ''}</div>
+        <p class="hint">修正はこの端末に保存されます。「データ更新を依頼」でコピーすると、次のデータ更新に反映されます。</p>
+      </div></details>`;
+  }
+  function bindEditBlock(coll, key, rerender) {
+    const box = view.querySelector(`[data-edit="${coll}"]`);
+    if (!box) return;
+    box.querySelector('[data-act="save"]').addEventListener('click', () => {
+      const values = {};
+      for (const spec of box.dataset.fields.split(',')) {
+        const [f, type] = spec.split(':');
+        const raw = document.getElementById(`ed-${f}`).value;
+        values[f] = type === 'list' ? raw.split(/[、,，]/).map((x) => x.trim()).filter(Boolean) : raw.trim();
+      }
+      saveRecordEdit(coll, key, values);
+      setStatus('保存しました。');
+      rerender();
+    });
+    const reset = box.querySelector('[data-act="reset"]');
+    if (reset) {
+      reset.addEventListener('click', () => {
+        resetRecordEdit(coll, key);
+        setStatus('元に戻しました。');
+        rerender();
+      });
+    }
+  }
+
+  // ---------- データ更新の依頼文(Claude Code などに貼り付けて使う) ----------
+  const SKILL_NAME = 'novel-note-update';
+  function editsPayload() {
+    return { format: 'novel-note-edits', version: 2, workId: base.work.id, exportedAt: new Date().toISOString(), ...edits };
+  }
+  function updateRequestText(opt) {
+    const c = base.coverage;
+    const total = base.work.episodeCount;
+    const from = c.to + 1;
+    const to = Math.min(total, c.to + opt.count);
+    const n = editCount();
+    const tasks = [];
+    if (opt.check) tasks.push(`- 本文の変更チェック: Google Drive「shousrtsu」の最新の ${base.work.id.toUpperCase()}.zip(または ${base.work.id.toUpperCase()}.txt)と比べ、本文が変わった話のデータを直す`);
+    if (opt.edits && n) tasks.push(`- 作者の修正を反映(下の「修正データ」${n}件)。作者の修正は最優先で、AI は上書きしない`);
+    if (opt.add && from <= total) tasks.push(`- 次の話を追加: 第${from}〜${to}話`);
+    tasks.push('- 最後に暗号化してハブに置き、PR を作ってマージする(平文の正本は Drive「shousrtsu」の ' + base.work.id + '.novelnote.json に書き戻す)');
+    let text = `${SKILL_NAME} スキルで、小説設定ノートのデータを更新してください。
+(スキルが見つからない場合は、リポジトリ seisei001/test001 の .claude/skills/${SKILL_NAME}/SKILL.md を読んで、その手順に従ってください)
+
+作品: ${base.work.title}(作品ID: ${base.work.id})
+今の収録: 第${c.from}〜${c.to}話 / 全${total}話(データ作成日 ${base.generatedAt || '-'})
+
+今回の作業:
+${tasks.join('\n')}
+`;
+    if (opt.edits && n) text += `\n修正データ:\n\`\`\`json\n${JSON.stringify(editsPayload())}\n\`\`\`\n`;
+    return text;
+  }
+
+  function renderUpdate() {
+    const c = base.coverage;
+    const n = editCount();
+    const rest = base.work.episodeCount - c.to;
+    view.innerHTML = `<section class="panel detail">
+      <h2>データ更新を依頼</h2>
+      <p>Claude Code などに貼り付ける依頼文を作ります。依頼文には、使うスキル名と作業内容、この端末で直した修正データが入ります。</p>
+      <div class="edit-box">
+        <label class="check"><input type="checkbox" id="up-check" checked> 本文の変更をチェックして直す</label>
+        <label class="check"><input type="checkbox" id="up-edits" ${n ? 'checked' : 'disabled'}> 作者の修正を反映する(${n}件)</label>
+        <label class="check"><input type="checkbox" id="up-add" ${rest > 0 ? 'checked' : 'disabled'}> 次の話を追加する</label>
+        <label class="field" for="up-count"><span class="hint">追加する話数(今は第${c.to}話まで。残り${rest}話)</span>
+          <input type="number" id="up-count" inputmode="numeric" min="1" max="${Math.max(rest, 1)}" value="${Math.min(20, Math.max(rest, 1))}"></label>
+        <textarea id="up-text" rows="10" readonly></textarea>
+        <div class="row wrap"><button type="button" class="btn" id="up-copy">依頼文をコピー</button></div>
+        <p class="hint">コピーしたら、Claude Code(このリポジトリを開いたセッション)に貼り付けて送ってください。修正データには小説の内容が含まれるので、公開の場所には貼らないでください。</p>
+      </div>
+    </section>
+    <a class="btn secondary back" href="#episodes">戻る</a>`;
+    const opt = () => ({
+      check: document.getElementById('up-check').checked,
+      edits: document.getElementById('up-edits').checked,
+      add: document.getElementById('up-add').checked,
+      count: Math.max(1, parseInt(document.getElementById('up-count').value, 10) || 20),
+    });
+    const ta = document.getElementById('up-text');
+    const refresh = () => { ta.value = updateRequestText(opt()); };
+    for (const id of ['up-check', 'up-edits', 'up-add', 'up-count']) document.getElementById(id).addEventListener('input', refresh);
+    refresh();
+    document.getElementById('up-copy').addEventListener('click', async () => {
+      refresh();
+      try {
+        await navigator.clipboard.writeText(ta.value);
+        setStatus('依頼文をコピーしました。Claude Code に貼り付けて送ってください。');
+      } catch {
+        ta.focus();
+        ta.select();
+        setStatus('文字を選択しました。長押しして「コピー」を押してください。');
+      }
+    });
   }
 
   init();

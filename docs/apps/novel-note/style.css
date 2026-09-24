@@ -179,3 +179,11 @@ mark { background: var(--st-check-bg); color: inherit; padding: 0 1px; border-ra
 details.hint { margin-top: 12px; }
 details.hint summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 details.hint .btn { margin-top: 4px; }
+
+.edit-details { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 4px; }
+.edit-details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--accent); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field input[type="text"] { font: inherit; font-size: 16px; color: var(--text); background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-height: 44px; width: 100%; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.check input { width: 22px; height: 22px; }
+#up-text { font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

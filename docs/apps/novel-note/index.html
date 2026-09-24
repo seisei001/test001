@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="小説設定ノート">
 <title>小説設定ノート</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="app-header">
@@ -22,6 +22,7 @@
 <div class="file-bar">
 <label class="btn secondary" for="file-input">ファイルから読み込む</label>
 <input type="file" id="file-input" hidden>
+<a id="update-btn" class="btn" href="#update">データ更新を依頼</a>
 <button id="export-btn" type="button" class="btn secondary">修正を書き出す</button>
 </div>
 <p id="app-status" class="status" role="status"></p>
@@ -41,6 +42,6 @@
 
 <main id="view" class="view"></main>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
