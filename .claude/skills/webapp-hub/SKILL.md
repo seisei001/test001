@@ -26,7 +26,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | id | 名前 | path | 概要・備考 |
 |---|---|---|---|
 | hello | 📝 ひとことメモ | apps/hello/ | localStorage保存の簡易メモ。単一ファイル構成の見本 |
-| url-viewer | 🔗 URLリンク内容ビューア | apps/url-viewer/ | URLを順に開いて内容を確認・編集・保存。Pages上は公開CORSプロキシ経由、ローカルは `npm start`(server.js)で `/api/fetch` を使用。「内容を保管」はWeb Share APIで共有シートを開き(非対応環境はダウンロード)、ファイル名はURL末尾番号→本文1行目「第N話」の順で `001.txt` 形式を自動入力(手修正可)。保存内容はエディタの本文のみ。本文欄上の「📋 貼り付け」は `navigator.clipboard.readText()` で本文を置き換え(不可時は長押し貼り付けを案内)、「クリア」あり。本文欄は画面の約半分(45dvh) |
+| url-viewer | 🔗 URLリンク内容ビューア | apps/url-viewer/ | URLを順に開いて内容を確認・編集・保存。Pages上は公開CORSプロキシ経由、ローカルは `npm start`(server.js)で `/api/fetch` を使用。「内容を保管」はWeb Share APIで共有シートを開き(非対応環境はダウンロード)、ファイル名はURL末尾番号→本文1行目「第N話」の順で `001.txt` 形式を自動入力(手修正可)。保存内容はエディタの本文のみ。本文欄上の「📋 貼り付け」は `navigator.clipboard.readText()` で本文を置き換え(不可時は長押し貼り付けを案内)、「クリア」あり。本文欄は画面の約1/4(22dvh、最小120px) |
 | avatar | 🧍‍♀️ VRMアバター | apps/avatar/ | 自律行動するVRMアバター。`lib/` は `resources` ブランチの `autovrm` のコピー。ライブラリ修正は先に `resources` 側で行ってから反映 |
 | workmap | 🗺️ WorkMap | apps/workmap/ | タスク分解ツリー+ガントチャート |
 | neon-dash | ⚡ ネオン・ダッシュ | apps/neon-dash/ | 1タップのミニゲーム。ダーク固定デザイン(例外、後述) |
