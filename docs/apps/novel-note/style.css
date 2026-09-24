@@ -38,6 +38,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -173,3 +174,8 @@ a.item:hover { border-color: var(--accent); }
 .hint { color: var(--muted); font-size: 0.82rem; margin: 0; }
 .empty { color: var(--muted); font-size: 0.9rem; padding: 8px 2px; }
 mark { background: var(--st-check-bg); color: inherit; padding: 0 1px; border-radius: 2px; }
+
+.row.wrap { flex-wrap: wrap; }
+details.hint { margin-top: 12px; }
+details.hint summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+details.hint .btn { margin-top: 4px; }

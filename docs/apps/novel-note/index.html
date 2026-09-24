@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="小説設定ノート">
 <title>小説設定ノート</title>
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <header class="app-header">
@@ -20,7 +20,7 @@
 <p id="work-info" class="muted small"></p>
 </div>
 <div class="file-bar">
-<label class="btn secondary" for="file-input">データを読み込む</label>
+<label class="btn secondary" for="file-input">ファイルから読み込む</label>
 <input type="file" id="file-input" hidden>
 <button id="export-btn" type="button" class="btn secondary">修正を書き出す</button>
 </div>
@@ -28,14 +28,9 @@
 </header>
 
 <section id="empty-panel" class="panel onboarding" hidden>
-<h2>データを読み込んでください</h2>
-<p>あらすじ・固有名詞・伏線のデータは公開していません。Google Drive に置いたデータファイルを、この端末に読み込んで使います。</p>
-<ol>
-<li>上の「データを読み込む」を押す</li>
-<li>「ブラウズ」→「Google Drive」→「shousrtsu」を開く</li>
-<li><code>n6924df.novelnote.json</code> を選ぶ</li>
-</ol>
-<p class="muted small">読み込んだデータはこの端末の中だけに保存されます。次からは開くだけで表示されます。</p>
+<h2>データがまだありません</h2>
+<p>ネットにつながった状態で開き直すと、ハブに置かれた暗号化データを自動で読み込みます。</p>
+<p class="muted small">ファイルで受け取ったデータ(<code>.novelnote.json</code>)がある場合は、上の「ファイルから読み込む」でも読み込めます。</p>
 </section>
 
 <nav id="tabs" class="tabs" aria-label="表示の切り替え" hidden>
@@ -46,6 +41,6 @@
 
 <main id="view" class="view"></main>
 
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

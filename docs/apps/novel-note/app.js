@@ -47,8 +47,12 @@
       if (dbp) return dbp;
       dbp = new Promise((resolve) => {
         try {
-          const req = indexedDB.open('novel-note', 1);
-          req.onupgradeneeded = () => req.result.createObjectStore('works', { keyPath: 'work.id' });
+          const req = indexedDB.open('novel-note', 2);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('works')) db.createObjectStore('works', { keyPath: 'work.id' });
+            if (!db.objectStoreNames.contains('keys')) db.createObjectStore('keys', { keyPath: 'id' });
+          };
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => resolve(null);
         } catch {
@@ -57,13 +61,13 @@
       });
       return dbp;
     }
-    async function tx(mode, fn) {
+    async function tx(store, mode, fn) {
       const db = await open();
       if (!db) return null;
       return new Promise((resolve) => {
         try {
-          const t = db.transaction('works', mode);
-          const r = fn(t.objectStore('works'));
+          const t = db.transaction(store, mode);
+          const r = fn(t.objectStore(store));
           t.oncomplete = () => resolve(r && 'result' in r ? r.result : true);
           t.onerror = () => resolve(null);
         } catch {
@@ -72,10 +76,86 @@
       });
     }
     return {
-      all: () => tx('readonly', (s) => s.getAll()),
-      put: (data) => tx('readwrite', (s) => s.put(data)),
+      all: () => tx('works', 'readonly', (s) => s.getAll()),
+      put: (data) => tx('works', 'readwrite', (s) => s.put(data)),
+      getKey: (id) => tx('keys', 'readonly', (s) => s.get(id)),
+      putKey: (rec) => tx('keys', 'readwrite', (s) => s.put(rec)),
+      delKey: (id) => tx('keys', 'readwrite', (s) => s.delete(id)),
     };
   })();
+
+  // ---------- 暗号(公開鍵方式。パスワードはこの端末から出ない) ----------
+  // ハブには「公開鍵」と「パスワードで暗号化した秘密鍵」だけを置く。
+  // 小説データは公開鍵で暗号化されていて、秘密鍵を持つ端末だけが開ける。
+  const DATA_DIR = 'data/';
+  const KEY_ID = 'main';
+  const PENDING_KEYS = 'novelNote.pendingKeys.v1';
+  const PBKDF2_ITER = 600000;
+  const RSA = { name: 'RSA-OAEP', hash: 'SHA-256' };
+
+  function toB64(buf) {
+    const bytes = new Uint8Array(buf);
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function fromB64(b64) {
+    const s = atob(b64);
+    const out = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  async function fingerprint(publicKeyB64) {
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(publicKeyB64));
+    return Array.from(new Uint8Array(h).slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function passwordKey(password, salt, iterations) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function storePrivateKey(pkcs8, publicKey) {
+    const key = await crypto.subtle.importKey('pkcs8', pkcs8, RSA, false, ['decrypt']);
+    await idb.putKey({ id: KEY_ID, fp: await fingerprint(publicKey), key });
+    return key;
+  }
+  async function createKeys(password) {
+    const pair = await crypto.subtle.generateKey({ ...RSA, modulusLength: 3072, publicExponent: new Uint8Array([1, 0, 1]) }, true, ['encrypt', 'decrypt']);
+    const pkcs8 = await crypto.subtle.exportKey('pkcs8', pair.privateKey);
+    const spki = await crypto.subtle.exportKey('spki', pair.publicKey);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await passwordKey(password, salt, PBKDF2_ITER), pkcs8);
+    const keys = {
+      format: 'novel-note-keys', version: 1, createdAt: new Date().toISOString(),
+      publicKey: toB64(spki), encPrivateKey: toB64(enc), salt: toB64(salt), iv: toB64(iv), iterations: PBKDF2_ITER,
+    };
+    await storePrivateKey(pkcs8, keys.publicKey);
+    return keys;
+  }
+  async function unlockKeys(password, keys) {
+    const pk = await passwordKey(password, fromB64(keys.salt), keys.iterations);
+    const pkcs8 = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(keys.iv) }, pk, fromB64(keys.encPrivateKey));
+    return storePrivateKey(pkcs8, keys.publicKey);
+  }
+  async function gunzip(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new Response(stream).text();
+  }
+  async function decryptWork(enc, privateKey) {
+    const raw = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, fromB64(enc.wrappedKey));
+    const aes = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(enc.iv) }, aes, fromB64(enc.ciphertext));
+    return JSON.parse(await gunzip(plain));
+  }
+  async function fetchJson(path) {
+    try {
+      const res = await fetch(DATA_DIR + path, { cache: 'no-store' });
+      if (!res.ok) return { missing: res.status === 404 };
+      return { json: await res.json() };
+    } catch {
+      return { offline: true };
+    }
+  }
 
   function lsGet(key, fallback) {
     try {
@@ -176,18 +256,194 @@
     if (work) workSelect.value = work.work.id;
   }
 
-  async function init() {
-    const all = (await idb.all()) || [];
-    for (const d of all) if (validWork(d)) works.set(d.work.id, d);
+  function showWorks() {
     refreshWorkSelect();
     const cur = lsGet(CURRENT_KEY, null);
-    const first = works.has(cur) ? cur : works.keys().next().value;
-    if (first) {
-      selectWork(first);
+    const id = work && works.has(work.work.id) ? work.work.id : works.has(cur) ? cur : works.keys().next().value;
+    if (id) {
+      selectWork(id);
       refreshWorkSelect();
     } else {
       render();
     }
+  }
+
+  async function init() {
+    const all = (await idb.all()) || [];
+    for (const d of all) if (validWork(d)) works.set(d.work.id, d);
+    showWorks();
+    if (!(window.crypto && crypto.subtle && window.DecompressionStream)) {
+      setStatus('このブラウザは暗号化データに対応していません。iOS 16.4 以降の Safari で開いてください。', true);
+      return;
+    }
+    const k = await fetchJson('keys.json');
+    if (k.offline) {
+      if (works.size) setStatus('オフラインのため、この端末に保存したデータを表示しています。');
+      return;
+    }
+    if (k.missing) {
+      showSetup();
+      return;
+    }
+    const keys = k.json;
+    const stored = await idb.getKey(KEY_ID);
+    if (!stored || stored.fp !== (await fingerprint(keys.publicKey))) {
+      showUnlock(keys);
+      return;
+    }
+    await sync(stored.key);
+  }
+
+  // ハブの暗号化データを確認し、新しければ取り込む
+  async function sync(privateKey) {
+    const idx = await fetchJson('index.json');
+    if (!idx.json) {
+      if (!works.size) showLocked('まだデータが登録されていません。Claude がデータを置くまでお待ちください。');
+      return;
+    }
+    const updated = [];
+    for (const entry of idx.json.works || []) {
+      const have = works.get(entry.id);
+      if (have && have._syncedAt === entry.updatedAt) continue;
+      const enc = await fetchJson(entry.file);
+      if (!enc.json) continue;
+      try {
+        const data = await decryptWork(enc.json, privateKey);
+        if (!validWork(data)) continue;
+        data._syncedAt = entry.updatedAt;
+        works.set(data.work.id, data);
+        await idb.put(data);
+        updated.push(data);
+      } catch {
+        setStatus('データを開けませんでした。鍵が新しくなっている場合は、Claude にデータの暗号化し直しを頼んでください。', true);
+        return;
+      }
+    }
+    lockedMode = false;
+    showWorks();
+    if (updated.length) {
+      setStatus(updated.map((d) => `「${d.work.title}」を最新(第${d.coverage.from}〜${d.coverage.to}話)に更新しました。`).join(' '));
+    }
+  }
+
+  // ---------- 初回設定・ロック解除の画面 ----------
+  let lockedMode = false;
+  function showLocked(html) {
+    lockedMode = true;
+    emptyPanel.hidden = true;
+    tabs.hidden = true;
+    view.innerHTML = `<section class="panel">${html}</section>`;
+  }
+
+  function keysText(keys) {
+    return JSON.stringify(keys);
+  }
+
+  function showPending(keys) {
+    showLocked(`<h2>鍵ができました。Claude に送ってください</h2>
+      <p>下の文字をすべてコピーして、Claude とのチャットに貼り付けて送ってください。Claude がこの鍵でデータを暗号化してハブに置くと、このアプリに自動で表示されます。</p>
+      <p class="hint">この文字には公開してよい鍵と、パスワードで暗号化した秘密鍵だけが入っています。<strong>パスワードそのものは送らないでください。</strong></p>
+      <textarea id="keys-text" readonly rows="6">${esc(keysText(keys))}</textarea>
+      <div class="row wrap"><button type="button" class="btn" id="copy-keys">コピー</button><button type="button" class="btn secondary" id="share-keys">ファイルで共有</button></div>
+      <p id="keys-status" class="status"></p>`);
+    const out = document.getElementById('keys-status');
+    document.getElementById('copy-keys').addEventListener('click', async () => {
+      const ta = document.getElementById('keys-text');
+      try {
+        await navigator.clipboard.writeText(ta.value);
+        out.textContent = 'コピーしました。チャットに貼り付けて送ってください。';
+      } catch {
+        ta.focus();
+        ta.select();
+        out.textContent = '文字を選択しました。長押しして「コピー」を押してください。';
+      }
+    });
+    document.getElementById('share-keys').addEventListener('click', async () => {
+      const file = new File([keysText(keys)], 'novel-note-keys.json', { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          out.textContent = '共有しました。Google Drive の shousrtsu に保存した場合は、Claude にそう伝えてください。';
+        } catch (err) {
+          if (!(err && err.name === 'AbortError')) download(file);
+        }
+      } else {
+        download(file);
+      }
+    });
+  }
+
+  function showSetup() {
+    const pending = lsGet(PENDING_KEYS, null);
+    if (pending) {
+      showPending(pending);
+      return;
+    }
+    showLocked(`<h2>最初の設定: パスワードを決める</h2>
+      <p>小説データは暗号化してハブに置きます。開くためのパスワードを決めてください。パスワードはこの端末の外には出ません。Claude にも教えないでください。</p>
+      <form id="setup-form" class="edit-box">
+        <input type="password" id="pw1" autocomplete="new-password" placeholder="パスワード(12文字以上)" aria-label="パスワード">
+        <input type="password" id="pw2" autocomplete="new-password" placeholder="もう一度入力" aria-label="パスワード(確認)">
+        <button type="submit" class="btn" id="setup-btn">鍵を作る</button>
+        <p class="hint">忘れると開けなくなります(その場合は鍵を作り直し、Claude に暗号化し直してもらいます)。パスワード管理アプリなどに保存しておくと安心です。</p>
+        <p id="setup-status" class="status error"></p>
+      </form>`);
+    document.getElementById('setup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById('pw1').value;
+      const p2 = document.getElementById('pw2').value;
+      const out = document.getElementById('setup-status');
+      if (p1.length < 12) { out.textContent = 'パスワードは12文字以上にしてください。'; return; }
+      if (p1 !== p2) { out.textContent = '2回の入力が一致しません。'; return; }
+      const btn = document.getElementById('setup-btn');
+      btn.disabled = true;
+      btn.textContent = '鍵を作っています…';
+      try {
+        const keys = await createKeys(p1);
+        lsSet(PENDING_KEYS, keys);
+        showPending(keys);
+      } catch {
+        out.textContent = '鍵を作れませんでした。Safari を最新にしてからもう一度試してください。';
+        btn.disabled = false;
+        btn.textContent = '鍵を作る';
+      }
+    });
+  }
+
+  function showUnlock(keys) {
+    showLocked(`<h2>パスワードを入力</h2>
+      <p>この端末で初めて開くときだけ、パスワードが必要です。</p>
+      <form id="unlock-form" class="edit-box">
+        <input type="password" id="unlock-pw" autocomplete="current-password" placeholder="パスワード" aria-label="パスワード">
+        <button type="submit" class="btn" id="unlock-btn">開く</button>
+        <p id="unlock-status" class="status error"></p>
+      </form>
+      <details class="hint"><summary>パスワードを忘れた場合</summary>
+        <p>鍵を作り直して Claude に送り、データを暗号化し直してもらいます。作り直すと古いパスワードでは開けなくなります。</p>
+        <button type="button" class="btn secondary" id="reset-keys">鍵を作り直す</button>
+      </details>`);
+    document.getElementById('unlock-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('unlock-btn');
+      const out = document.getElementById('unlock-status');
+      btn.disabled = true;
+      btn.textContent = '確認しています…';
+      try {
+        const key = await unlockKeys(document.getElementById('unlock-pw').value, keys);
+        lsSet(PENDING_KEYS, null);
+        setStatus('ロックを解除しました。');
+        await sync(key);
+      } catch {
+        out.textContent = 'パスワードが違います。';
+        btn.disabled = false;
+        btn.textContent = '開く';
+      }
+    });
+    document.getElementById('reset-keys').addEventListener('click', async () => {
+      await idb.delKey(KEY_ID);
+      lsSet(PENDING_KEYS, null);
+      showSetup();
+    });
   }
 
   // ---------- ファイルの読み込み・書き出し ----------
@@ -203,6 +459,7 @@
       return;
     }
     if (validWork(data)) {
+      lockedMode = false;
       works.set(data.work.id, data);
       const saved = await idb.put(data);
       selectWork(data.work.id);
@@ -283,6 +540,7 @@
   }
 
   function render() {
+    if (lockedMode) return;
     exportBtn.disabled = !work;
     if (!work) {
       emptyPanel.hidden = false;
