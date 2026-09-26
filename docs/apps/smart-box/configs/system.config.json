@@ -1,13 +1,14 @@
 {
   "$schema": "./schemas/system.schema.json",
   "model": {
-    "coreModelUrl": "PLACEHOLDER_未確定。DESIGN.md 5.1節・8.2節参照(Qwen2.5-0.5B-Instruct級を第一候補としてPhase 0で実機検証要)",
-    "quantization": "int4",
-    "rawEmbeddingDim": 768,
+    "coreModelUrl": "onnx-community/Qwen2.5-0.5B-Instruct",
+    "embeddingModelUrl": "Xenova/multilingual-e5-small",
+    "quantization": "int8",
+    "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
-    "expectedSizeMB": "未確定(Phase 0で検証)",
-    "mockMode": true,
-    "note": "embedding抽出と文章生成の両方をこの1モデルで兼ねる。base weightsは常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節)。mockModeがtrueの間、CoreModelはネットワーク不要な決定論的スタブで動作する(huggingface.co/cdn.jsdelivr.netへのアクセスが無い開発環境でもパイプライン全体を検証できるようにするため)。coreModelUrlが確定しモデルの実機検証が済んだらfalseにする。"
+    "expectedSizeMB": "生成: 約512MB(onnx/model_quantized.onnx) / embedding: 約118MB(onnx/model_quantized.onnx)。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
+    "mockMode": false,
+    "note": "第9版で決定: embedding抽出(RAG用)と文章生成(回答用)を、それぞれ専用の軽量モデルに分離した(当初は1モデル兼用の設計だったが、生成モデルの語彙数が大きく embeddingにも流用すると初回ダウンロードが重すぎるため)。生成は coreModelUrl(Qwen2.5-0.5B-Instruct、instruction-tuned)、embeddingは embeddingModelUrl(multilingual-e5-small、日本語含む多言語対応・約118MB)。base weightsは両方とも常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節、LoRAは生成モデル側にのみ適用)。mockModeは開発サンドボックスのネットワーク制限下でパイプライン全体を検証するための切り替えとして残してある。"
   },
   "runtime": {
     "backend": "webgpu",

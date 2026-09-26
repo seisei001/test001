@@ -30,12 +30,23 @@
    システムは、より純度の高い質問によって会話の質を高める構成であるべき」という指摘を
    受け、(1)質問の情報効率・純度を設計基準として明文化し(第1.7節)、(2)LLM連携時に
    質問文自体をLLMに生成させ高度化する第3の質問モード(c)を追加した(第1.8節)。
-8. **本版(第8版)**: ユーザーから「小チビAI(本体AI)の実装は可能なのか」と問われ、
+8. **第8版**: ユーザーから「小チビAI(本体AI)の実装は可能なのか」と問われ、
    第7版までの8.1節の「実現できるか未検証の研究課題」という書き方が不正確だったと
    判明。実際には推論(`transformers.js`/WebLLM)・LoRA学習(`onnxruntime-web`の
    training機能)ともに確立された実装手段があるため、「研究課題」から「具体的な
    ライブラリを使ったエンジニアリングタスク」に位置づけを訂正した(第5.1節・8.1節・
    8.2節)。
+9. **本版(第9版)**: 実装・実機検証の過程で2点判明・変更した。(1) 開発サンドボックスの
+   ネットワーク制限(huggingface.co/cdn.jsdelivr.netへのアクセス遮断)は、この開発環境
+   固有の制約であり、実際にアプリを使うユーザーのブラウザには影響しない。つまり
+   `transformers.js`がユーザーのブラウザから直接Hugging Faceにアクセスしてモデルを
+   取得する通常の構成で、自前ホスティングは不要と判明した。(2) 当初「embedding抽出と
+   文章生成を1モデルで兼ねる」としていたが、生成モデル(Qwen2.5-0.5B-Instruct、
+   語彙15万・約512MB)をembeddingにも流用すると初回ダウンロードが重くなりすぎるため、
+   embedding専用の軽量モデル(`Xenova/multilingual-e5-small`、日本語含む多言語対応・
+   約118MB)に分離した。生成モデルとembeddingモデルは別々のONNXモデルとして
+   `transformers.js`から個別に読み込む(第1.3節・5.1節・system.config.json参照)。
+   LoRAによる学習対象は引き続き生成モデル側のみ。
 
 ---
 
@@ -59,11 +70,13 @@
 セッション開始の固定質問という**機能面のメタファー**としても効いている。
 
 ### 1.3 本体AIのアーキテクチャ原則(最重要)
-- 本体AIは **1つの小型量子化生成モデル**(base model)を持つ。このモデルは
-  「embedding抽出(RAG用)」と「文章生成(回答用)」の両方を兼ねる(BERT encoderと
-  生成モデルを別々に持たない構成。「小さな小さな」重みという要望に沿う)。
-- **base modelの重みは永久にfreezeし、一切更新しない。** 会話ごとの学習は、常に
-  **LoRAアダプタ(数千パラメータ)のみ**に対して行う。
+- 本体AIは **2つの小型量子化モデル**(いずれもbase model)を持つ:「文章生成(回答用)」
+  を担う生成モデルと、「embedding抽出(RAG用)」を担う軽量embedding専用モデル。
+  当初は1モデルで両方兼ねる設計だったが、第9版で分離した(1.3節末尾の注記参照)。
+  いずれも「小さな小さな」重みという要望に沿う小型モデルである。
+- **base modelの重みは(生成モデル・embeddingモデルともに)永久にfreezeし、一切
+  更新しない。** 会話ごとの学習は、常に**生成モデル側のLoRAアダプタ(数千パラメータ)
+  のみ**に対して行う。
   - 理由(ユーザーの指摘そのもの): 極小モデルを実際の会話データでフルファイン
     チューニングすると、データ量的にもモデルが容易に破綻・崩壊し実用に耐えない。
     LoRAという小さな可逆的な変更に限定することで、システムを実用レベルに保つ。
@@ -207,7 +220,7 @@ LLMTeacherに質問文そのものを生成させる、第3の質問モード(c)
 
 ### 2.1 全体構成
 ```
-CoreModel (量子化された小型生成モデル。embedding抽出+文章生成を兼ねる。base weightsはfreeze)
+CoreModel (量子化された小型モデル2つ。生成モデル+embedding専用モデル。base weightsはfreeze)
   + LoRA (数千パラメータのアダプタのみを学習対象とする)
   + RAG (CoreModelのembeddingで過去の会話を検索、64次元に圧縮)
   + ProfileMemo (ユーザー像・質問意図傾向の軽量な要約メモ。固定質問(a)+確信度ベース補助質問(b)
@@ -354,8 +367,8 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
 ## 5. モジュール設計詳細
 
 ### 5.1 CoreModel (`src/modules/core-model/CoreModel.js`)
-- **責務**: 量子化された小型生成モデルをロードし、(a) embedding抽出、(b) LoRA適用込みの
-  文章生成、の両方を行う。base weightsは常にfreeze。
+- **責務**: 量子化された小型モデル2つ(生成モデル・embedding専用モデル)をロードし、
+  (a) embedding抽出、(b) LoRA適用込みの文章生成、を行う。base weightsは常にfreeze。
 - **主要API**:
   - `async initialize()`
   - `async embed(text): Promise<{embedding: Float32Array(64), rawEmbedding, latencyMs}>`
@@ -365,11 +378,14 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   - `async summarizeForProfile(turnData): Promise<{ profileDelta: object }>` —
     毎ターンの安価な差分更新用に、CoreModel自身で短い要約を生成する(ProfileMemoから
     呼ばれる)
-- **実装基盤(第8版で確定)**: 推論(embed/generate)は **transformers.js**
-  (Hugging Face製、WebGPU対応)を使う。feature-extractionパイプラインとtext-generation
-  パイプラインを同一モデルインスタンスに対して両方使えるため、「1モデルでembed+generate
-  を兼ねる」という第1.3節の要件に合う。モデル候補はQwen2.5-0.5B-Instruct級の小型多言語
-  ONNXモデル(第8.2節)。
+- **実装基盤(第8版で確定・第9版でモデル分離)**: 推論(embed/generate)は
+  **transformers.js**(Hugging Face製、WebGPU対応)を使う。feature-extraction
+  パイプラインとtext-generationパイプラインを、それぞれ別のモデルインスタンスに対して
+  使う(第9版で1モデル兼用から分離)。生成モデルは`Qwen2.5-0.5B-Instruct`のONNX変換版
+  (約512MB、`system.config.json`の`model.coreModelUrl`)、embeddingモデルは
+  `multilingual-e5-small`のONNX変換版(約118MB、日本語含む多言語対応、
+  `model.embeddingModelUrl`)。いずれもHugging Face上の既存の変換済みリポジトリを
+  ユーザーのブラウザが直接参照する(第8.2節)。
 - **LoRA学習の実装基盤**: **ONNX Runtime Web の training機能**
   (`onnxruntime-web`のtraining版、`onnxruntime-training-web`)を使う。LoRAのA/B行列
   だけをtrainableに指定した学習用ONNXグラフ(training artifact)をブラウザ内でロードし、
