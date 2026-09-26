@@ -1,11 +1,12 @@
 {
   "$schema": "./schemas/rag.schema.json",
   "embedding": {
+    "rawDim": 384,
     "compressedDim": 64,
     "compressionMethod": "pca",
     "pcaMatrixUrl": "PLACEHOLDER_未確定。DESIGN.md 5.1節参照",
-    "pcaFittedOn": "CoreModelのembeddingを日本語コーパスサンプルに通して抽出し、オフラインでPCAをfit(1回きり、モデル更新時のみ再計算)。DESIGN.md 8.1節: このファイルはまだ生成されていない。",
-    "note": "決定: PCA固定射影を採用(コールドスタート問題を回避)。embedding元は CoreModel.embed()(旧BERTInference.classify()から変更)。"
+    "pcaFittedOn": "embeddingModelUrl(multilingual-e5-small)の出力(384次元)を日本語コーパスサンプルに通して抽出し、オフラインでPCAをfit(1回きり、モデル更新時のみ再計算)。DESIGN.md 8.1節: このファイルはまだ生成されていない。",
+    "note": "決定: PCA固定射影を採用(コールドスタート問題を回避)。embedding元は CoreModel.embed()(第9版でembedding専用モデルに分離、768→384次元に変更)。"
   },
   "search": {
     "topK": 5,

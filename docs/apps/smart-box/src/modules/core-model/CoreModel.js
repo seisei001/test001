@@ -1,29 +1,37 @@
 /**
- * CoreModel — 「本体AI」。量子化された小型生成モデル1つで、embedding抽出(RAG用)と
- * 文章生成(回答用)の両方を兼ねる。DESIGN.md 1.3節・5.1節を参照。
+ * CoreModel — 「本体AI」。embedding抽出(RAG用)と文章生成(回答用)を、それぞれ
+ * 専用の軽量モデルで行う。DESIGN.md 1.3節・5.1節・第9版revision noteを参照。
  *
  * **base weightsは永久にfreezeし、一切更新しない。** 会話ごとの学習は常に
- * LoRAアダプタ(数千パラメータ)のみに対して行う(DESIGN.md 1.3節)。
+ * 生成モデル側のLoRAアダプタ(数千パラメータ)のみに対して行う(DESIGN.md 1.3節)。
  *
- * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定): 推論は `transformers.js` を使う。
- * feature-extractionパイプラインとtext-generationパイプラインを同一モデルに対して
- * 両方使うことで、1モデルでembed+generateを兼ねる。CDN経由の動的importで読み込む
- * (`index.html`のimport mapではなく、モデル未確定のうちは実行時分岐したいため
- * dynamic import を使う)。
+ * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定・第9版でモデル分離): 推論は
+ * `transformers.js` を使う。生成には `config.model.coreModelUrl`
+ * (Qwen2.5-0.5B-Instruct、約512MB)、embeddingには `config.model.embeddingModelUrl`
+ * (multilingual-e5-small、日本語含む多言語対応・約118MB)という、それぞれ別の
+ * ONNXモデルを読み込む。当初は1モデルで両方を兼ねる設計だったが、生成モデルは
+ * 語彙数が大きくembeddingに流用すると初回ダウンロードが重くなりすぎるため、
+ * 第9版で軽量なembedding専用モデルに分離した。CDN経由の動的importで読み込む。
  *
- * **このセッションでの制約**: 開発サンドボックスからhuggingface.co/cdn.jsdelivr.net への
- * アクセスが組織ポリシーで遮断されているため、実モデルでの動作確認ができていない
- * (DESIGN.md 8.1節・8.2節の研究ノート参照)。そのため `config.model.mockMode` が
- * true の場合は、ネットワーク接続不要な決定論的スタブ(ハッシュベースのembedding・
- * テンプレート応答)で動作し、CoreModel以外のパイプライン全体(RAG/ProfileMemo/
- * TurnController/UI)を実ブラウザで検証できるようにしてある。実モデルが用意でき次第
- * mockModeをfalseにして差し替える。
+ * 実際にアプリを利用するユーザーのブラウザが、Hugging Faceから直接モデルファイルを
+ * 取得する(このリポジトリやその配布元は何も自前ホスティングしない)。初回アクセス時
+ * のみダウンロードが発生し、以降はブラウザのCache Storage APIで永続キャッシュされる。
+ *
+ * **開発サンドボックスでの制約**: このリポジトリの開発環境からhuggingface.co/
+ * cdn.jsdelivr.net へのアクセスが組織ポリシーで遮断されているため、開発セッション内
+ * では実モデルでの動作確認ができない(DESIGN.md 8.1節・8.2節の研究ノート参照)。
+ * これは開発サンドボックス固有の制約であり、一般ユーザーのブラウザには影響しない。
+ * `config.model.mockMode` が true の場合は、ネットワーク接続不要な決定論的スタブ
+ * (ハッシュベースのembedding・テンプレート応答)で動作し、CoreModel以外の
+ * パイプライン全体(RAG/ProfileMemo/TurnController/UI)を検証できるようにしてある。
  */
 export class CoreModel {
   /**
-   * @param {object} config - system.config.json の内容全体(`model` / `runtime` を使用)
+   * @param {object} config - system.config.json の内容全体(`model.coreModelUrl` が生成用、
+   *   `model.embeddingModelUrl` がembedding用。`runtime` も使用)
    * @param {Float32Array[]|null} pcaMatrix - rag.config.json の pcaMatrixUrl から
-   *   読み込んだ 768×64 のPCA射影行列(compress()で使用)。未取得ならnull(その場合
+   *   読み込んだ rawDim×64 のPCA射影行列(compress()で使用。rawDimはembeddingModelUrlの
+   *   出力次元、multilingual-e5-smallなら384)。未取得ならnull(その場合
    *   compress()は単純な等間隔ダウンサンプリングにフォールバックする)。
    */
   constructor(config, pcaMatrix) {
@@ -57,7 +65,7 @@ export class CoreModel {
     }
     const device = navigator.gpu ? this.config.runtime.backend : this.config.runtime.fallbackBackend;
 
-    this.featureExtractor = await pipeline('feature-extraction', this.config.model.coreModelUrl, { device });
+    this.featureExtractor = await pipeline('feature-extraction', this.config.model.embeddingModelUrl, { device });
     this.generator = await pipeline('text-generation', this.config.model.coreModelUrl, { device });
     this.ready = true;
   }
@@ -148,22 +156,23 @@ export class CoreModel {
   }
 
   /**
-   * 768次元embeddingをPCA固定射影で64次元に圧縮する(行列積で実装)。
+   * 生embedding(embeddingModelUrlの出力次元。multilingual-e5-smallなら384次元)を
+   * PCA固定射影で64次元に圧縮する(行列積で実装)。
    * pcaMatrixが未取得の場合は等間隔ダウンサンプリングにフォールバックする
    * (DESIGN.md 8.1節: PCA行列はまだ生成されていないため、実運用までの暫定措置)。
-   * @param {Float32Array} embedding768
+   * @param {Float32Array} rawEmbedding
    * @returns {Float32Array} 64次元
    */
-  compress(embedding768) {
+  compress(rawEmbedding) {
     const targetDim = 64;
 
     if (this.pcaMatrix) {
-      // pcaMatrix: [rawDim][targetDim] の行列。out[j] = sum_i embedding768[i] * pcaMatrix[i][j]
+      // pcaMatrix: [rawDim][targetDim] の行列。out[j] = sum_i rawEmbedding[i] * pcaMatrix[i][j]
       const out = new Float32Array(targetDim);
       for (let j = 0; j < targetDim; j++) {
         let sum = 0;
-        for (let i = 0; i < embedding768.length; i++) {
-          sum += embedding768[i] * this.pcaMatrix[i][j];
+        for (let i = 0; i < rawEmbedding.length; i++) {
+          sum += rawEmbedding[i] * this.pcaMatrix[i][j];
         }
         out[j] = sum;
       }
@@ -172,13 +181,13 @@ export class CoreModel {
 
     // フォールバック: 等間隔ダウンサンプリング(PCA未生成の間の暫定実装)
     const out = new Float32Array(targetDim);
-    const step = embedding768.length / targetDim;
+    const step = rawEmbedding.length / targetDim;
     for (let j = 0; j < targetDim; j++) {
       let sum = 0;
       const start = Math.floor(j * step);
       const end = Math.floor((j + 1) * step);
       for (let i = start; i < end; i++) {
-        sum += embedding768[i];
+        sum += rawEmbedding[i];
       }
       out[j] = sum / Math.max(1, end - start);
     }
