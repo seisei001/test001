@@ -236,10 +236,38 @@ function updateLoadingMessage() {
     : 'AIモデルを読み込んでいます…';
 }
 
-function showOpeningError(message) {
+// エラーオブジェクトの形が一定しない(Errorインスタンスとは限らず、messageを
+// 持たない値がthrow/rejectされることもある)ため、必ず何らかの文字列に変換する。
+function describeError(error) {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`;
+  }
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function showOpeningError(error) {
+  const detail = describeError(error);
   document.getElementById('loading-status').classList.add('hidden');
   document.getElementById('loading-error').classList.remove('hidden');
-  document.getElementById('loading-error-detail').textContent = message;
+  document.getElementById('loading-error-detail').textContent = detail || '(詳細情報なし)';
+
+  const copyBtn = document.getElementById('loading-error-copy-btn');
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(detail);
+        copyBtn.textContent = 'コピーしました';
+        setTimeout(() => { copyBtn.textContent = 'エラー内容をコピー'; }, 2000);
+      } catch (copyError) {
+        console.error('clipboard copy failed', copyError);
+      }
+    };
+  }
 }
 
 async function runApp() {
@@ -265,7 +293,7 @@ async function runApp() {
 function main() {
   runApp().catch((error) => {
     console.error('smart-box: failed to initialize', error);
-    showOpeningError(error.message);
+    showOpeningError(error);
   });
 
   document.getElementById('loading-retry-btn')?.addEventListener('click', () => {
