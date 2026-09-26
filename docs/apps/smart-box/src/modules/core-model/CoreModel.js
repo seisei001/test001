@@ -1,19 +1,23 @@
 /**
  * CoreModel — 「本体AI」。embedding抽出(RAG用)と文章生成(回答用)を、それぞれ
- * 専用の軽量モデルで行う。DESIGN.md 1.3節・5.1節・第9版/第10版revision noteを参照。
+ * 専用の軽量モデルで行う。DESIGN.md 1.3節・5.1節・第9版〜第11版revision noteを参照。
  *
  * **base weightsは永久にfreezeし、一切更新しない。** 会話ごとの学習は常に
  * 生成モデル側のLoRAアダプタ(数千パラメータ)のみに対して行う(DESIGN.md 1.3節)。
  *
- * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定・第9版でモデル分離・第10版で
+ * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定・第9版でモデル分離・第10版/第11版で
  * 生成モデル変更): 推論は `transformers.js` を使う。生成には
- * `config.model.coreModelUrl`(Gemma-3-270m-it、int4量子化・約322MB)、embedding
- * には `config.model.embeddingModelUrl`(multilingual-e5-small、日本語含む多言語
- * 対応・約118MB)という、それぞれ別のONNXモデルを読み込む(量子化方式は
+ * `config.model.coreModelUrl`(SmolLM2-135M-Instruct、int8量子化・約137MB)、
+ * embeddingには `config.model.embeddingModelUrl`(multilingual-e5-small、日本語含む
+ * 多言語対応・約118MB)という、それぞれ別のONNXモデルを読み込む(量子化方式は
  * `coreModelDtype`/`embeddingModelDtype`で指定)。当初は1モデルで両方を兼ねる設計
- * だったが第9版でembedding専用モデルに分離、さらに第10版でQwen2.5-0.5B-Instruct
- * (int8・約512MB)からGemma-3-270m-it(int4・約322MB)に変更した(iPhone Safariで
- * 旧構成が合計630MBのメモリ確保に失敗しタブがクラッシュすることを実機で確認したため)。
+ * だったが第9版でembedding専用モデルに分離。生成モデルは実機(iPhone Safari)の
+ * メモリ制限に合わせて Qwen2.5-0.5B-Instruct(int8・約512MB、第9版)→
+ * gemma-3-270m-it(int4・約322MB、第10版)→SmolLM2-135M-Instruct(int8・約137MB、
+ * 第11版)と縮小してきた。いずれの旧構成もiPhone Safariで実機検証したところメモリ
+ * 確保に失敗した(クラッシュ、またはWebAssembly側の生の例外ポインタが数値として
+ * そのままthrowされるEmscripten特有のエラー)ため。SmolLM2は語彙が小さく英語中心の
+ * ため日本語品質は明確に劣るが、まず実機で動作することを優先している。
  * CDN経由の動的importで読み込む。
  *
  * 実際にアプリを利用するユーザーのブラウザが、Hugging Faceから直接モデルファイルを

@@ -238,11 +238,19 @@ function updateLoadingMessage() {
 
 // エラーオブジェクトの形が一定しない(Errorインスタンスとは限らず、messageを
 // 持たない値がthrow/rejectされることもある)ため、必ず何らかの文字列に変換する。
+//
+// 補足: onnxruntime-web(WebAssembly版)は、C++側でメモリ確保に失敗した際
+// (std::bad_allocなど)、正しいJS Errorではなく生の数値(WASM内部の例外ポインタ)を
+// そのままthrowすることがある(Emscripten特有の既知の挙動)。この場合エラーは
+// ただの数字にしか見えないため、その可能性を明示するヒントを添える。
 function describeError(error) {
   if (error instanceof Error) {
     return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`;
   }
   if (typeof error === 'string') return error;
+  if (typeof error === 'number') {
+    return `${error}\n(数値のみの例外です。WebAssembly側でのメモリ確保失敗の可能性が高いです。端末のメモリ不足でモデルの読み込みに失敗したと考えられます。)`;
+  }
   try {
     return JSON.stringify(error);
   } catch {

@@ -60,6 +60,18 @@
     最終的に、Google公式の多言語(140言語以上)小型モデル`gemma-3-270m-it`を
     int4量子化(約322MB)で採用し、生成モデル+embeddingモデルの合計を約440MBまで
     削減した(第10版時点でこの構成も未検証。実機での再検証が次のステップ)。
+11. **本版(第11版)**: 第10版の構成(生成322MB+embedding118MB=合計440MB)を
+    実機(iPhone Safari)で再検証したところ、依然として失敗した。エラー画面には
+    英語のメッセージではなく`225006920`のような**数字だけ**が表示されており、
+    調査の結果これはonnxruntime-webのWebAssembly版が、C++側のメモリ確保失敗
+    (std::bad_alloc相当)を正式なJS Errorではなく生の例外ポインタ(数値)として
+    そのままthrowする、Emscripten特有の既知の挙動と判明した。つまり440MBでも
+    まだこの端末のメモリ制限を超えていたということ。この教訓を踏まえ、
+    describeError()に数値のみの例外を検知して説明を補うヒントを追加した(今後
+    同様の状況でも原因が分かるように)。生成モデルを`SmolLM2-135M-Instruct`
+    (int8、約137MB)に変更し、embeddingモデルと合わせて合計約255MBまで削減した。
+    SmolLM2は語彙が小さく(49152語彙)英語中心のため日本語品質は明確に劣るが、
+    まず技術的な土台が実機で動くことを優先して確認する方針とした。
 
 ---
 
@@ -391,12 +403,13 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   - `async summarizeForProfile(turnData): Promise<{ profileDelta: object }>` —
     毎ターンの安価な差分更新用に、CoreModel自身で短い要約を生成する(ProfileMemoから
     呼ばれる)
-- **実装基盤(第8版で確定・第9版でモデル分離・第10版で生成モデル変更)**:
+- **実装基盤(第8版で確定・第9版でモデル分離・第10版/第11版で生成モデル変更)**:
   推論(embed/generate)は**transformers.js**(Hugging Face製、WebGPU対応)を使う。
   feature-extractionパイプラインとtext-generationパイプラインを、それぞれ別の
   モデルインスタンスに対して使う(第9版で1モデル兼用から分離)。生成モデルは
-  `gemma-3-270m-it`のONNX変換版(int4量子化・約322MB、`system.config.json`の
-  `model.coreModelUrl`、第10版でQwen2.5-0.5B-Instructから変更)、embeddingモデルは
+  `SmolLM2-135M-Instruct`のONNX変換版(int8量子化・約137MB、`system.config.json`の
+  `model.coreModelUrl`、第9版Qwen2.5-0.5B-Instruct→第10版gemma-3-270m-it→第11版
+  SmolLM2-135M-Instructと、実機のメモリ制限に合わせて縮小してきた)、embeddingモデルは
   `multilingual-e5-small`のONNX変換版(約118MB、日本語含む多言語対応、
   `model.embeddingModelUrl`)。いずれもHugging Face上の既存の変換済みリポジトリを
   ユーザーのブラウザが直接参照する(第8.2節)。
