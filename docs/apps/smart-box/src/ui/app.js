@@ -208,12 +208,29 @@ function setupChatScreen(controller) {
   });
 }
 
-function updateLoadingMessage(progressByModel) {
+// modelKeyごとに、ファイル名→{loaded, total}を積み上げて、複数ファイルをまたいだ
+// 合計ダウンロード進捗を計算する(1ファイルの進捗だけを見ると、ファイルが切り替わる
+// たびに0%に戻ったように見えてしまうため)。
+const fileProgressByModel = { embedding: {}, generation: {} };
+
+function computeOverallPercent(modelKey) {
+  const files = fileProgressByModel[modelKey];
+  const totals = Object.values(files);
+  const loadedSum = totals.reduce((sum, f) => sum + f.loaded, 0);
+  const totalSum = totals.reduce((sum, f) => sum + f.total, 0);
+  return totalSum > 0 ? (loadedSum / totalSum) * 100 : 0;
+}
+
+function updateLoadingMessage() {
   const el = document.getElementById('loading-message');
   if (!el) return;
   const parts = [];
-  if ('embedding' in progressByModel) parts.push(`embedding ${Math.round(progressByModel.embedding)}%`);
-  if ('generation' in progressByModel) parts.push(`生成 ${Math.round(progressByModel.generation)}%`);
+  if (Object.keys(fileProgressByModel.embedding).length > 0) {
+    parts.push(`embedding ${Math.round(computeOverallPercent('embedding'))}%`);
+  }
+  if (Object.keys(fileProgressByModel.generation).length > 0) {
+    parts.push(`生成 ${Math.round(computeOverallPercent('generation'))}%`);
+  }
   el.textContent = parts.length > 0
     ? `AIモデルを読み込んでいます…(${parts.join(' / ')})`
     : 'AIモデルを読み込んでいます…';
@@ -226,10 +243,9 @@ function showOpeningError(message) {
 }
 
 async function runApp() {
-  const progressByModel = {};
   const { controller, db, llmConfigStatic, llmSettings } = await boot((info) => {
-    progressByModel[info.modelKey] = info.progress;
-    updateLoadingMessage(progressByModel);
+    fileProgressByModel[info.modelKey][info.file] = { loaded: info.loaded, total: info.total };
+    updateLoadingMessage();
   });
 
   document.getElementById('loading-status').classList.add('hidden');

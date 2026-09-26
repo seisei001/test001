@@ -74,9 +74,20 @@ export class CoreModel {
     }
     const device = navigator.gpu ? this.config.runtime.backend : this.config.runtime.fallbackBackend;
 
+    // 1モデルの読み込みには複数ファイル(tokenizer.json、モデル本体の重みファイルなど)の
+    // ダウンロードが必要で、progress_callbackはファイルごとに0〜100%を個別に報告する。
+    // そのためファイル単位のprogressだけを見ると、ファイルが切り替わるたびに0%に
+    // 戻ったように見えてしまう。呼び出し側でファイル横断の合計進捗を計算できるよう、
+    // loaded/total(バイト数)も一緒に渡す。
     const makeProgressCallback = (modelKey) => (data) => {
       if (onProgress && data.status === 'progress') {
-        onProgress({ modelKey, file: data.file, progress: data.progress ?? 0 });
+        onProgress({
+          modelKey,
+          file: data.file,
+          progress: data.progress ?? 0,
+          loaded: data.loaded ?? 0,
+          total: data.total ?? 0,
+        });
       }
     };
 
