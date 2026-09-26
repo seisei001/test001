@@ -73,6 +73,12 @@ export class CoreModel {
     const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.min.js');
 
     env.backends.onnx.wasm.proxy = false;
+    if (this.config.runtime.numThreads) {
+      // マルチスレッドWASM(SharedArrayBuffer)はスレッドごとに作業バッファを持つため
+      // メモリ使用量が増える。実機(iPhone 14)でのメモリ不足を受け、numThreadsを
+      // 1に設定してシングルスレッド動作にできるようにしてある(system.config.json参照)。
+      env.backends.onnx.wasm.numThreads = this.config.runtime.numThreads;
+    }
     if (this.config.runtime.backend === 'webgpu' && !navigator.gpu) {
       console.warn('CoreModel: WebGPU not available, falling back to wasm');
     }
@@ -161,8 +167,11 @@ export class CoreModel {
       return { text, latencyMs: performance.now() - startTime };
     }
 
+    // max_new_tokensは生成時のメモリ使用量(KVキャッシュのサイズ)に直結する。
+    // 実機(iPhone 14)検証で、モデル読み込み自体は成功してもmax_new_tokens: 256での
+    // 生成中にメモリ不足でページがリロードされる事象を確認したため、64に縮小した。
     const output = await this.generator(fullPrompt, {
-      max_new_tokens: 256,
+      max_new_tokens: 64,
       temperature: 0.7,
       do_sample: true,
     });

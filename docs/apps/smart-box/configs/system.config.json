@@ -15,7 +15,8 @@
   "runtime": {
     "backend": "webgpu",
     "fallbackBackend": "wasm",
-    "numThreads": 4,
+    "numThreads": 1,
+    "numThreadsNote": "第11版で4→1に変更。マルチスレッドWASM(SharedArrayBuffer)はスレッドごとに作業バッファを持ちメモリ使用量が増えるため、実機(iPhone 14)でのメモリ不足対策として1(シングルスレッド)にした。速度は落ちるが、まずは安定動作を優先する。",
     "warmupOnLoad": true
   },
   "storage": {
