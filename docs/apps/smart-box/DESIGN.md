@@ -47,6 +47,19 @@
    約118MB)に分離した。生成モデルとembeddingモデルは別々のONNXモデルとして
    `transformers.js`から個別に読み込む(第1.3節・5.1節・system.config.json参照)。
    LoRAによる学習対象は引き続き生成モデル側のみ。
+10. **本版(第10版)**: 第9版の構成(生成512MB+embedding118MB=合計630MB)を、
+    ユーザーのiPhone(Safari)で実機テストしたところ、**メモリ不足でタブが
+    クラッシュを繰り返す**ことが判明した(Safariの「問題が繰り返し起きました」
+    警告画面が表示された)。原因は、多言語対応モデルは語彙数(トークン数)が
+    数十万規模と大きく、パラメータ数のわりに埋め込み層のサイズが大きくなること。
+    ユーザーから「日本語特化の小型モデルを探す方が効率的では」と指摘され調査した
+    が、(a) 日本語特化・小型のモデル(`rinna/japanese-gpt2-small`等)は指示
+    チューニングされておらずONNX変換版もない、(b) 指示チューニング済みの日本語
+    モデル(`rinna/japanese-gpt-neox-3.6b-instruction-sft`等)は3.6B〜4Bと
+    ブラウザには大きすぎる、という理由で実用的な代替が見つからなかった。
+    最終的に、Google公式の多言語(140言語以上)小型モデル`gemma-3-270m-it`を
+    int4量子化(約322MB)で採用し、生成モデル+embeddingモデルの合計を約440MBまで
+    削減した(第10版時点でこの構成も未検証。実機での再検証が次のステップ)。
 
 ---
 
@@ -378,11 +391,12 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   - `async summarizeForProfile(turnData): Promise<{ profileDelta: object }>` —
     毎ターンの安価な差分更新用に、CoreModel自身で短い要約を生成する(ProfileMemoから
     呼ばれる)
-- **実装基盤(第8版で確定・第9版でモデル分離)**: 推論(embed/generate)は
-  **transformers.js**(Hugging Face製、WebGPU対応)を使う。feature-extraction
-  パイプラインとtext-generationパイプラインを、それぞれ別のモデルインスタンスに対して
-  使う(第9版で1モデル兼用から分離)。生成モデルは`Qwen2.5-0.5B-Instruct`のONNX変換版
-  (約512MB、`system.config.json`の`model.coreModelUrl`)、embeddingモデルは
+- **実装基盤(第8版で確定・第9版でモデル分離・第10版で生成モデル変更)**:
+  推論(embed/generate)は**transformers.js**(Hugging Face製、WebGPU対応)を使う。
+  feature-extractionパイプラインとtext-generationパイプラインを、それぞれ別の
+  モデルインスタンスに対して使う(第9版で1モデル兼用から分離)。生成モデルは
+  `gemma-3-270m-it`のONNX変換版(int4量子化・約322MB、`system.config.json`の
+  `model.coreModelUrl`、第10版でQwen2.5-0.5B-Instructから変更)、embeddingモデルは
   `multilingual-e5-small`のONNX変換版(約118MB、日本語含む多言語対応、
   `model.embeddingModelUrl`)。いずれもHugging Face上の既存の変換済みリポジトリを
   ユーザーのブラウザが直接参照する(第8.2節)。

@@ -1,14 +1,16 @@
 {
   "$schema": "./schemas/system.schema.json",
   "model": {
-    "coreModelUrl": "onnx-community/Qwen2.5-0.5B-Instruct",
+    "coreModelUrl": "onnx-community/gemma-3-270m-it-ONNX",
+    "coreModelDtype": "q4",
     "embeddingModelUrl": "Xenova/multilingual-e5-small",
-    "quantization": "int8",
+    "embeddingModelDtype": "q8",
+    "quantization": "int4(生成)/int8(embedding)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
-    "expectedSizeMB": "生成: 約512MB(onnx/model_quantized.onnx) / embedding: 約118MB(onnx/model_quantized.onnx)。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
+    "expectedSizeMB": "生成: 約322MB(Gemma-3-270m-it、onnx/model_q4.onnx+onnx_data) / embedding: 約118MB(multilingual-e5-small、onnx/model_quantized.onnx)。合計約440MB。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
     "mockMode": false,
-    "note": "第9版で決定: embedding抽出(RAG用)と文章生成(回答用)を、それぞれ専用の軽量モデルに分離した(当初は1モデル兼用の設計だったが、生成モデルの語彙数が大きく embeddingにも流用すると初回ダウンロードが重すぎるため)。生成は coreModelUrl(Qwen2.5-0.5B-Instruct、instruction-tuned)、embeddingは embeddingModelUrl(multilingual-e5-small、日本語含む多言語対応・約118MB)。base weightsは両方とも常にfreeze、更新対象はLoRAアダプタのみ(DESIGN.md 1.3節、LoRAは生成モデル側にのみ適用)。mockModeは開発サンドボックスのネットワーク制限下でパイプライン全体を検証するための切り替えとして残してある。"
+    "note": "第10版で決定: 生成モデルをQwen2.5-0.5B-Instruct(int8、約512MB)からGemma-3-270m-it(int4、約322MB)に変更。旧構成(生成512MB+embedding118MB=合計630MB)を実機(iPhone Safari)で検証したところ、メモリ不足でタブがクラッシュを繰り返すことを確認したため。日本語特化・小型・指示チューニング済み・ONNX対応モデルも探したが該当する実用的なものは見つからず(日本語特化の小型モデルは指示チューニングされておらずONNX変換もない。指示チューニング済みの日本語モデルは3.6B以上とブラウザ向けには大きすぎる)、Google公式の多言語(140言語以上対応)小型モデルであるGemma-3-270m-itを採用した。embedding抽出(RAG用)と文章生成(回答用)を専用モデルに分離した設計自体は第9版のまま(1.3節)。base weightsは両方とも常にfreeze、更新対象はLoRAアダプタのみ(LoRAは生成モデル側にのみ適用)。mockModeは開発サンドボックスのネットワーク制限下でパイプライン全体を検証するための切り替えとして残してある。"
   },
   "runtime": {
     "backend": "webgpu",

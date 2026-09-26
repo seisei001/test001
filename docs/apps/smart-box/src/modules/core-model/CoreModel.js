@@ -1,17 +1,20 @@
 /**
  * CoreModel — 「本体AI」。embedding抽出(RAG用)と文章生成(回答用)を、それぞれ
- * 専用の軽量モデルで行う。DESIGN.md 1.3節・5.1節・第9版revision noteを参照。
+ * 専用の軽量モデルで行う。DESIGN.md 1.3節・5.1節・第9版/第10版revision noteを参照。
  *
  * **base weightsは永久にfreezeし、一切更新しない。** 会話ごとの学習は常に
  * 生成モデル側のLoRAアダプタ(数千パラメータ)のみに対して行う(DESIGN.md 1.3節)。
  *
- * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定・第9版でモデル分離): 推論は
- * `transformers.js` を使う。生成には `config.model.coreModelUrl`
- * (Qwen2.5-0.5B-Instruct、約512MB)、embeddingには `config.model.embeddingModelUrl`
- * (multilingual-e5-small、日本語含む多言語対応・約118MB)という、それぞれ別の
- * ONNXモデルを読み込む。当初は1モデルで両方を兼ねる設計だったが、生成モデルは
- * 語彙数が大きくembeddingに流用すると初回ダウンロードが重くなりすぎるため、
- * 第9版で軽量なembedding専用モデルに分離した。CDN経由の動的importで読み込む。
+ * 実装基盤(DESIGN.md 5.1節・8.1節、第8版で確定・第9版でモデル分離・第10版で
+ * 生成モデル変更): 推論は `transformers.js` を使う。生成には
+ * `config.model.coreModelUrl`(Gemma-3-270m-it、int4量子化・約322MB)、embedding
+ * には `config.model.embeddingModelUrl`(multilingual-e5-small、日本語含む多言語
+ * 対応・約118MB)という、それぞれ別のONNXモデルを読み込む(量子化方式は
+ * `coreModelDtype`/`embeddingModelDtype`で指定)。当初は1モデルで両方を兼ねる設計
+ * だったが第9版でembedding専用モデルに分離、さらに第10版でQwen2.5-0.5B-Instruct
+ * (int8・約512MB)からGemma-3-270m-it(int4・約322MB)に変更した(iPhone Safariで
+ * 旧構成が合計630MBのメモリ確保に失敗しタブがクラッシュすることを実機で確認したため)。
+ * CDN経由の動的importで読み込む。
  *
  * 実際にアプリを利用するユーザーのブラウザが、Hugging Faceから直接モデルファイルを
  * 取得する(このリポジトリやその配布元は何も自前ホスティングしない)。初回アクセス時
@@ -80,10 +83,12 @@ export class CoreModel {
     [this.featureExtractor, this.generator] = await Promise.all([
       pipeline('feature-extraction', this.config.model.embeddingModelUrl, {
         device,
+        dtype: this.config.model.embeddingModelDtype || 'q8',
         progress_callback: makeProgressCallback('embedding'),
       }),
       pipeline('text-generation', this.config.model.coreModelUrl, {
         device,
+        dtype: this.config.model.coreModelDtype || 'q8',
         progress_callback: makeProgressCallback('generation'),
       }),
     ]);
