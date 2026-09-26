@@ -52,8 +52,11 @@
 
     <div class="loading-error hidden" id="loading-error">
       <p>⚠️ AIモデルの読み込みに失敗しました。</p>
-      <p class="muted-note" id="loading-error-detail"></p>
-      <button class="primary" id="loading-retry-btn" type="button">再試行</button>
+      <pre class="error-detail" id="loading-error-detail"></pre>
+      <div class="error-actions">
+        <button class="primary" id="loading-retry-btn" type="button">再試行</button>
+        <button class="secondary" id="loading-error-copy-btn" type="button">エラー内容をコピー</button>
+      </div>
     </div>
 
     <div class="opening-question hidden" id="question-topic-block">
