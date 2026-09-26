@@ -46,10 +46,16 @@ export class CoreModel {
 
   /**
    * 量子化モデル・トークナイザをロードする(WebGPU優先、wasmにフォールバック)。
+   * 生成モデル(約512MB)とembeddingモデル(約118MB)、合計630MB程度の初回ダウンロードが
+   * 発生するため、進捗をUIに伝えられるよう onProgress コールバックを受け付ける。
+   * 2つのモデルは互いに独立しているため Promise.all で並行ロードする(直列だと
+   * ダウンロード時間が単純合算されてしまうため)。
+   * @param {(info: {modelKey: 'embedding'|'generation', file: string, progress: number}) => void}
+   *   [onProgress] - ダウンロード進捗の通知(0〜100のパーセンテージ)。省略可。
    * @returns {Promise<void>}
    * @throws ロード失敗時(呼び出し側でユーザーにエラー表示する設計とする)
    */
-  async initialize() {
+  async initialize(onProgress) {
     if (this.config.model.mockMode) {
       this.ready = true;
       return;
@@ -65,8 +71,22 @@ export class CoreModel {
     }
     const device = navigator.gpu ? this.config.runtime.backend : this.config.runtime.fallbackBackend;
 
-    this.featureExtractor = await pipeline('feature-extraction', this.config.model.embeddingModelUrl, { device });
-    this.generator = await pipeline('text-generation', this.config.model.coreModelUrl, { device });
+    const makeProgressCallback = (modelKey) => (data) => {
+      if (onProgress && data.status === 'progress') {
+        onProgress({ modelKey, file: data.file, progress: data.progress ?? 0 });
+      }
+    };
+
+    [this.featureExtractor, this.generator] = await Promise.all([
+      pipeline('feature-extraction', this.config.model.embeddingModelUrl, {
+        device,
+        progress_callback: makeProgressCallback('embedding'),
+      }),
+      pipeline('text-generation', this.config.model.coreModelUrl, {
+        device,
+        progress_callback: makeProgressCallback('generation'),
+      }),
+    ]);
     this.ready = true;
   }
 

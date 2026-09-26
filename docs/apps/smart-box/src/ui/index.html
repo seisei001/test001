@@ -13,7 +13,7 @@
 </head>
 <body>
 <header>
-<a class="back-link" href="../../../">← ハブに戻る</a>
+<a class="back-link" href="../../../../">← ハブに戻る</a>
 <button class="settings-btn" id="settings-toggle" type="button" title="設定" aria-label="設定">⚙️</button>
 </header>
 <main>
@@ -44,6 +44,18 @@
     <p class="episode-title">賢い箱</p>
     <p class="episode-subtitle">新しいエピソードを始めましょう</p>
 
+    <div class="loading-status" id="loading-status">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-message">AIモデルを読み込んでいます…</p>
+      <p class="muted-note">初回のみ、合計600MB前後のダウンロードが発生します(数分かかる場合があります)。Wi-Fi環境をおすすめします。2回目以降はブラウザにキャッシュされ、すぐに使えます。</p>
+    </div>
+
+    <div class="loading-error hidden" id="loading-error">
+      <p>⚠️ AIモデルの読み込みに失敗しました。</p>
+      <p class="muted-note" id="loading-error-detail"></p>
+      <button class="primary" id="loading-retry-btn" type="button">再試行</button>
+    </div>
+
     <div class="opening-question hidden" id="question-topic-block">
       <label id="question-topic-label"></label>
       <input type="text" id="question-topic-input" placeholder="回答を入力...">
@@ -52,7 +64,7 @@
       <label id="question-approach-label"></label>
       <input type="text" id="question-approach-input" placeholder="回答を入力...">
     </div>
-    <button class="primary" id="opening-next-btn" type="button">はじめる</button>
+    <button class="primary hidden" id="opening-next-btn" type="button">はじめる</button>
   </section>
 
   <section class="hidden" id="chat-screen">

@@ -16,7 +16,7 @@ async function loadConfig(name) {
   return response.json();
 }
 
-async function boot() {
+async function boot(onModelProgress) {
   const [systemConfig, ragConfig, profileConfig, llmConfigStatic, loraConfig] = await Promise.all([
     loadConfig('system.config.json'),
     loadConfig('rag.config.json'),
@@ -32,7 +32,7 @@ async function boot() {
   const llmConfig = { ...llmConfigStatic, enabled: llmSettings.enabled };
 
   const coreModel = new CoreModel(systemConfig, null);
-  await coreModel.initialize();
+  await coreModel.initialize(onModelProgress);
 
   const rag = new RAGSearch(db, ragConfig.search);
 
@@ -208,8 +208,34 @@ function setupChatScreen(controller) {
   });
 }
 
-async function main() {
-  const { controller, db, llmConfigStatic, llmSettings } = await boot();
+function updateLoadingMessage(progressByModel) {
+  const el = document.getElementById('loading-message');
+  if (!el) return;
+  const parts = [];
+  if ('embedding' in progressByModel) parts.push(`embedding ${Math.round(progressByModel.embedding)}%`);
+  if ('generation' in progressByModel) parts.push(`生成 ${Math.round(progressByModel.generation)}%`);
+  el.textContent = parts.length > 0
+    ? `AIモデルを読み込んでいます…(${parts.join(' / ')})`
+    : 'AIモデルを読み込んでいます…';
+}
+
+function showOpeningError(message) {
+  document.getElementById('loading-status').classList.add('hidden');
+  document.getElementById('loading-error').classList.remove('hidden');
+  document.getElementById('loading-error-detail').textContent = message;
+}
+
+async function runApp() {
+  const progressByModel = {};
+  const { controller, db, llmConfigStatic, llmSettings } = await boot((info) => {
+    progressByModel[info.modelKey] = info.progress;
+    updateLoadingMessage(progressByModel);
+  });
+
+  document.getElementById('loading-status').classList.add('hidden');
+  document.getElementById('question-topic-block').classList.remove('hidden');
+  document.getElementById('question-approach-block').classList.remove('hidden');
+  document.getElementById('opening-next-btn').classList.remove('hidden');
 
   setupSettingsPanel(db, llmConfigStatic, llmSettings);
 
@@ -220,7 +246,15 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  console.error('smart-box: failed to initialize', error);
-  document.body.innerHTML = `<p style="padding:16px;">初期化に失敗しました: ${error.message}</p>`;
-});
+function main() {
+  runApp().catch((error) => {
+    console.error('smart-box: failed to initialize', error);
+    showOpeningError(error.message);
+  });
+
+  document.getElementById('loading-retry-btn')?.addEventListener('click', () => {
+    location.reload();
+  });
+}
+
+main();
