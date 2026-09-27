@@ -1,19 +1,19 @@
 {
   "$schema": "./schemas/system.schema.json",
-  "version": "1.02",
-  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。1.01ではバッジがv1.00のまま(HTML側の初期値更新漏れ)+iOS Safariのキャッシュにより実機でバージョンが切り替わらない問題があったため、1.02でHTML側の修正・config取得へのcache: 'no-store'指定・css/js読み込みURLへのバージョンクエリ付与を行った。次のテスト/設定変更のたびに1.03, 1.04...と上げていく。",
+  "version": "1.03",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.04, 1.05...と上げていく。",
   "model": {
-    "coreModelUrl": "onnx-community/TinyStories-Instruct-33M-ONNX",
-    "coreModelDtype": "int8",
+    "coreModelUrl": "iamketangoyal/TinyStories-8M-ONNX",
+    "coreModelDtype": "q8",
     "embeddingModelUrl": "Xenova/multilingual-e5-small",
     "embeddingModelDtype": "q8",
-    "quantization": "int8(診断用の二分探索・中間サイズ)",
+    "quantization": "int8相当(diagnostic quantized、二分探索・中間サイズ)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
     "embeddingDisabled": true,
-    "expectedSizeMB": "生成: 約77MB(onnx-community/TinyStories-Instruct-33M-ONNX、onnx/model_int8.onnx)のみ。診断用の二分探索(第14版参照)。出力内容は簡単な英語の物語文になる想定(TinyStories系モデルのため日本語の質問への回答としては不適切)だが、それで問題ない。目的は生成処理自体がクラッシュせず完走するかの確認のみ。",
+    "expectedSizeMB": "生成: 約28.5MB(iamketangoyal/TinyStories-8M-ONNX、onnx/model_quantized.onnx)のみ。診断用の二分探索(第16版参照)。出力内容は簡単な英語の物語文になる想定(TinyStories系モデルのため日本語の質問への回答としては不適切)だが、それで問題ない。目的は生成処理自体がクラッシュせず完走するかの確認のみ。",
     "mockMode": false,
-    "note": "第14版で決定(診断用の一時措置): 第13版で、ランダム初期化の極小モデル(約2.2MB)に切り替えたところ、iPhone実機でクラッシュ・自動リロードなく生成処理が完走した(ユーザー報告: 「やったよ」、文字化けした無意味な出力だが完走)。これにより「この端末でのWASM自己回帰生成処理自体が原因」という仮説は否定され、2.2MB(成功)〜137MB(失敗)のどこかにメモリ的な閾値があると判明した。次のステップとしてその間を二分探索する。SmolLM2-135M-Instructのリポジトリ自体には137MBより小さい量子化バリエーションがほぼ存在しない(q4f16でも117.7MBとほぼ変わらない)ため、パラメータ数がより少ない別の実モデル(roneneldan/TinyStories-Instruct-33M のONNX変換版、int8量子化で約77MB)に切り替えた。これで成功すれば次は77MBと137MBの間、失敗すれば2.2MBと77MBの間を探る。第13版までの詳細はrevision history参照。"
+    "note": "第16版で決定(診断用の一時措置): 第15版のバージョン1.02(生成モデル約77MB、onnx-community/TinyStories-Instruct-33M-ONNX)を実機テストしたところ、今回は謎のクラッシュや無言リロードではなく、describeError()が正しく捕捉した明確なエラー『[wasm] RangeError: Out of memory』が表示された。これにより2.2MB(成功)〜77MB(失敗)の間にメモリ閾値があると確定した。次のステップとしてその間の中間サイズ(約28.5MB、GPTNeoアーキテクチャ・8Mパラメータ)に切り替えてさらに二分探索する。これで成功すれば28.5MB〜77MBの間、失敗すれば2.2MB〜28.5MBの間を次に探る。第15版までの詳細はrevision history参照。"
   },
   "runtime": {
     "backend": "wasm",
