@@ -101,6 +101,22 @@ export class CoreModel {
       }
     };
 
+    // 診断用の一時措置(第12版): embeddingモデルと生成モデルの2セッションを同時に
+    // メモリ上に保持すること自体が、iPhone実機でのメモリ不足の原因になっている
+    // 疑いがあるため、config.model.embeddingDisabledがtrueの間はembeddingモデルを
+    // 読み込まず、生成モデル1つだけロードする。embed()はハッシュベースの簡易実装に
+    // フォールバックする(RAGの精度は落ちるが、まず生成モデル単体でメモリ不足が
+    // 解消するかを切り分けるため)。
+    if (this.config.model.embeddingDisabled) {
+      this.generator = await pipeline('text-generation', this.config.model.coreModelUrl, {
+        device,
+        dtype: this.config.model.coreModelDtype || 'q8',
+        progress_callback: makeProgressCallback('generation'),
+      });
+      this.ready = true;
+      return;
+    }
+
     [this.featureExtractor, this.generator] = await Promise.all([
       pipeline('feature-extraction', this.config.model.embeddingModelUrl, {
         device,
@@ -125,7 +141,7 @@ export class CoreModel {
     this._assertReady();
     const startTime = performance.now();
 
-    if (this.config.model.mockMode) {
+    if (this.config.model.mockMode || this.config.model.embeddingDisabled) {
       const rawEmbedding = this._mockEmbedding(text, this.config.model.rawEmbeddingDim || 768);
       const embedding = this.compress(rawEmbedding);
       return { embedding, rawEmbedding, latencyMs: performance.now() - startTime };

@@ -8,9 +8,10 @@
     "quantization": "int8(生成・embeddingとも)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
-    "expectedSizeMB": "生成: 約137MB(SmolLM2-135M-Instruct、onnx/model_quantized.onnx) / embedding: 約118MB(multilingual-e5-small、onnx/model_quantized.onnx)。合計約255MB。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
+    "embeddingDisabled": true,
+    "expectedSizeMB": "生成: 約137MB(SmolLM2-135M-Instruct、onnx/model_quantized.onnx)のみ。embeddingDisabled: trueの間はembeddingモデル(約118MB)を読み込まない。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
     "mockMode": false,
-    "note": "第11版で決定: 生成モデルをGemma-3-270m-it(int4、約322MB)からSmolLM2-135M-Instruct(int8、約137MB)に変更。第10版の構成(生成322MB+embedding118MB=合計440MB)を実機(iPhone Safari)で検証したところ、WebAssemblyのメモリ確保失敗(Emscripten特有の、生のポインタ番号だけが例外として投げられる形のエラー)でやはり動作しなかったため。SmolLM2は語彙が小さく(49152語彙、Gemma/Qwenの1/3〜1/5程度)英語中心のモデルのため日本語品質は明確に劣るが、まず技術的な土台(ブラウザ内AI+LoRAの仕組み)が実機で動くことを優先して確認する。日本語品質とサイズのバランスは、動作確認が取れてから改めて見直す。embedding抽出(RAG用)と文章生成(回答用)を専用モデルに分離した設計自体は第9版のまま(1.3節)。base weightsは両方とも常にfreeze、更新対象はLoRAアダプタのみ(LoRAは生成モデル側にのみ適用)。mockModeは開発サンドボックスのネットワーク制限下でパイプライン全体を検証するための切り替えとして残してある。"
+    "note": "第12版で決定(診断用の一時措置): iPhone 14実機で、max_new_tokens縮小・シングルスレッド化(第11版)後もメモリ不足によるページの自動リロードが解消しなかったため、embeddingモデルと生成モデルを同時に2セッション保持すること自体が原因という仮説を検証する。embeddingDisabled: trueにすると、生成モデルのみをロードし、embed()はハッシュベースの簡易実装にフォールバックする(RAGの精度は落ちるが原因切り分けが目的)。これで解消すれば、2セッション同時保持がボトルネックと判明し、設計を見直す(例: 1モデルで両方兼ねる元の設計に戻す等)。解消しなければ、そもそも1モデル(137MB)ですらこの端末には厳しいという、より根本的な話になる。第11版までの詳細はrevision history参照。"
   },
   "runtime": {
     "backend": "webgpu",
