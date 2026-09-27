@@ -1,0 +1,49 @@
+{
+  "$schema": "./schemas/system.schema.json",
+  "version": "local-1.00",
+  "versionNote": "これはパソコンのローカル環境専用のビルドです(docs/apps/smart-box/とは別プロジェクト。DESIGN.md 第21版・第22版参照)。GitHub Pagesでは配信されず、リポジトリをpullしてローカルでhttpサーバーを立てて開く運用です。バージョンバッジ機構(実機テストの反映確認用)はこちらでは重要ではないため、モデル設定を変えたら自由に更新してください。",
+  "model": {
+    "coreModelUrl": "onnx-community/Qwen2.5-0.5B-Instruct",
+    "coreModelDtype": "q8",
+    "embeddingModelUrl": "Xenova/multilingual-e5-small",
+    "embeddingModelDtype": "q8",
+    "quantization": "q8(生成・embeddingとも)",
+    "rawEmbeddingDim": 384,
+    "maxSequenceLength": 128,
+    "embeddingDisabled": false,
+    "expectedSizeMB": "生成: 約512MB(onnx-community/Qwen2.5-0.5B-Instruct、q8) + embedding: 約118MB(multilingual-e5-small) = 合計約630MB。初回アクセス時にHugging Faceから直接ダウンロードされ、以降はブラウザのCache Storage APIでキャッシュされる。パソコンなら十分な空きメモリがあるはずなので、iPhone実機検証(DESIGN.md第9版〜第20版)で問題になったサイズ設定に戻した。",
+    "mockMode": false,
+    "note": "第21版・第22版で決定: iPhone Safari実機では、生成後にWASMメモリが解放されずタブが強制リロードされる構造的な問題が判明し(docs/apps/smart-box/DESIGN.md第20版)、オンデバイス生成AIの実機検証を一旦終了した。しかしこれはiPhone Safariというメモリに厳しい環境固有の問題である可能性が高く、パソコン(潤沢なRAM・ブラウザのメモリ管理がより成熟)であれば同じ制約が当てはまらないかもしれない。そこでこの検証をパソコンのローカル環境に場所を移して継続する。モデルは実機テストで最後まで使っていた極小構成(語彙数2048等)ではなく、当初の設計意図に近い、日本語も含む多言語対応でそれなりの品質が見込める構成(Qwen2.5-0.5B-Instruct、第9版で最初に採用したモデル)に戻した。embeddingモデルも再度有効化し、本来の2モデル構成(DESIGN.md 1.3節)で検証する。パソコンでのメモリ状況に応じて、モデルサイズ・量子化方式・runtime設定は自由に調整してよい。"
+  },
+  "runtime": {
+    "backend": "webgpu",
+    "backendNote": "iPhone Safari実機検証時(第12版)はWebGPUの実装が不安定な懸念からWASMを強制していたが、パソコンのブラウザ(Chrome/Edge等)はWebGPU実装がより成熟しているため、本来の設計通りWebGPUを優先しWASMにフォールバックする構成に戻した。",
+    "fallbackBackend": "wasm",
+    "numThreads": 4,
+    "numThreadsNote": "iPhone実機のメモリ制約対策として1(シングルスレッド)まで絞っていたが、パソコンのCPUはコア数に余裕があるため4に戻した。動作を見ながら調整してよい。",
+    "warmupOnLoad": true
+  },
+  "storage": {
+    "indexedDBName": "smart-box-db",
+    "indexedDBVersion": 1,
+    "maxTurnsStored": 1000,
+    "compressAfterTurns": 100,
+    "quotaWarningMB": 40,
+    "quotaHardLimitMB": 80
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "persistToIndexedDB": true,
+    "exportFormats": ["json", "csv"]
+  },
+  "experiments": {
+    "abTestingEnabled": true,
+    "stickyAssignment": true
+  },
+  "targets": {
+    "note": "パソコンローカル版での目標値は未確定(実際にローカルで検証してから設定する)。",
+    "maxInferenceLatencyMs": "TBD",
+    "maxTotalTurnLatencyMs": "TBD"
+  }
+}
