@@ -1,10 +1,18 @@
 /**
- * LLMTeacher — ユーザーが任意で設定した外部LLM API(例: Claude API)を呼び出し、
- * 本体AI(CoreModel)を賢くするための「先生役」の回答・質問を取得する。
- * DESIGN.md 1.4節・1.8節・5.4節を参照。
+ * LLMTeacher — ユーザーが任意で設定した外部LLM API(Claude API、またはOpenRouter)を
+ * 呼び出し、本体AI(CoreModel)を賢くするための「先生役」の回答・質問を取得する。
+ * DESIGN.md 1.4節・1.8節・5.4節・第21版を参照。
  *
  * `llm.config.json` の `enabled` が false の場合、TurnControllerはこのモジュールを
  * 呼び出さない(本体AI単体で動作する。DESIGN.md 1.3節)。
+ *
+ * **第21版でOpenRouter対応を追加**: 第20版でオンデバイス生成AIの実機検証を一旦
+ * 終了し外部LLMのみに頼る設計にしたことを受け、Claude API(有料)に加えて
+ * OpenRouter(無料枠あり、カード登録不要)を選べるようにした。OpenRouterは
+ * ブラウザから直接fetch()できることを確認済み(公式にpermissive CORSヘッダを返す)。
+ * `this.config.provider`(`'anthropic'`または`'openrouter'`)で呼び分ける
+ * (`_call()`がディスパッチする)。呼び出し元(ask/consolidateProfile/
+ * generateQuestion)はプロバイダの違いを意識しなくてよい。
  *
  * セキュリティ: APIキーはブラウザのIndexedDB/localStorageにのみ保存し、賢い箱側の
  * サーバー(存在しない)や第三者には一切送信しない。LLM APIへはブラウザから直接
@@ -14,13 +22,14 @@
  * 許容している。DESIGN.md 8.3節)。
  */
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const MAX_TOKENS = 1024;
 
 export class LLMTeacher {
   /**
-   * @param {object} llmConfig - llm.config.json の内容(enabled, provider, model等)
+   * @param {object} llmConfig - llm.config.json の providers[provider] の内容に
+   *   `enabled`/`provider`をマージしたもの(`{ enabled, provider, model, apiBase }`。
+   *   app.js の boot() で組み立てる)
    * @param {string} apiKey - ユーザーがUIから入力し、IndexedDB等から読み出したキー
    */
   constructor(llmConfig, apiKey) {
@@ -38,7 +47,7 @@ export class LLMTeacher {
   async ask(prompt, ragContext) {
     const contextText = this._formatRagContext(ragContext);
     const userMessage = contextText ? `${contextText}\n\n${prompt}` : prompt;
-    return this._callAnthropic({
+    return this._call({
       system: 'あなたはユーザーの会話相手です。簡潔に、要点を押さえて答えてください。',
       userMessage,
     });
@@ -72,7 +81,7 @@ export class LLMTeacher {
       `- ${recentSummaries}`,
     ].join('\n');
 
-    const { text } = await this._callAnthropic({ system: systemPrompt, userMessage });
+    const { text } = await this._call({ system: systemPrompt, userMessage });
 
     let consolidatedMemo;
     try {
@@ -120,16 +129,16 @@ export class LLMTeacher {
       contextText ? `\n直近の会話の文脈:\n${contextText}` : '',
     ].join('\n');
 
-    return this._callAnthropic({ system: systemPrompt, userMessage });
+    return this._call({ system: systemPrompt, userMessage });
   }
 
   /**
-   * Anthropic Messages APIを直接呼び出す共通処理。
+   * `this.config.provider` に応じて実際のAPI呼び出しを振り分ける共通入口。
    * @param {{ system: string, userMessage: string }} params
    * @returns {Promise<{ text: string, latencyMs: number }>}
    * @private
    */
-  async _callAnthropic({ system, userMessage }) {
+  async _call({ system, userMessage }) {
     if (!this.config.enabled) {
       throw new Error('LLMTeacher: llm.config.json is disabled');
     }
@@ -137,9 +146,22 @@ export class LLMTeacher {
       throw new Error('LLMTeacher: API key is not set');
     }
 
+    if (this.config.provider === 'openrouter') {
+      return this._callOpenRouter({ system, userMessage });
+    }
+    return this._callAnthropic({ system, userMessage });
+  }
+
+  /**
+   * Anthropic Messages APIを直接呼び出す。
+   * @param {{ system: string, userMessage: string }} params
+   * @returns {Promise<{ text: string, latencyMs: number }>}
+   * @private
+   */
+  async _callAnthropic({ system, userMessage }) {
     const startTime = performance.now();
 
-    const response = await fetch(ANTHROPIC_API_URL, {
+    const response = await fetch(this.config.apiBase, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -165,6 +187,46 @@ export class LLMTeacher {
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
       .join('');
+
+    return { text, latencyMs: performance.now() - startTime };
+  }
+
+  /**
+   * OpenRouter(https://openrouter.ai)のOpenAI互換 chat completions APIを
+   * 直接呼び出す。無料枠(`:free`タグのモデル)はカード登録不要で使える
+   * (DESIGN.md 第21版参照)。Anthropic版と違い`system`は独立フィールドではなく
+   * `messages`配列の先頭に`role: 'system'`として渡す。
+   * @param {{ system: string, userMessage: string }} params
+   * @returns {Promise<{ text: string, latencyMs: number }>}
+   * @private
+   */
+  async _callOpenRouter({ system, userMessage }) {
+    const startTime = performance.now();
+
+    const response = await fetch(this.config.apiBase, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${this.apiKey}`,
+        'x-title': '賢い箱',
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        max_tokens: MAX_TOKENS,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`LLMTeacher: OpenRouter API request failed (${response.status}): ${errorBody}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
 
     return { text, latencyMs: performance.now() - startTime };
   }

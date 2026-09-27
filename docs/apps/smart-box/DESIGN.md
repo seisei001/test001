@@ -5,7 +5,7 @@
 アシスタントである。外部LLM(ユーザーが任意でAPIキーを設定)を「先生役」として併用でき、
 その場合はユーザー・LLM・本体AI自身の三者の会話を使って本体AIを賢くしていく。
 
-このドキュメントは20段階の改訂を経ている:
+このドキュメントは21段階の改訂を経ている:
 
 1. **初版**: Google Drive上の資料(`conversation-rag-app` フォルダ、00〜07)を統合。
    BERT+RAG+LoRAのアーキテクチャのみが決まっていて、ドメイン(何をするアプリか)は
@@ -225,6 +225,31 @@
     実装コード自体は削除せず残し、将来別の技術的ブレークスルー(例:
     WebAssembly側のメモリ解放手段の登場、より安定した実行環境への移行等)が
     あれば再開できるようにしてある。
+21. **本版(第21版)**: 第20版でLLM連携が実質必須になったことを受け、ユーザーから
+    「無料のAPIを検証したい」という要望があり、サブエージェントに調査を依頼した。
+    結果、このアプリはバックエンドサーバーを持たずブラウザから直接LLM APIを叩く
+    構成のため「CORS(ブラウザからの直接呼び出し)に公式対応しているか」が
+    決定的な制約になると判明。Google Gemini/Groq/Mistral/Cloudflare Workers AI
+    はいずれもバックエンドプロキシが実質必須(CORS非対応または未保証)だったのに
+    対し、**OpenRouter**は公式にpermissiveなCORSヘッダーを返しブラウザから
+    直接fetch()できることを確認した。カード登録不要・`:free`タグの無料モデル
+    (Llama/DeepSeek/Qwen/Gemini系等)が使え、OpenAI互換のchat completions
+    形式(`messages`配列、`system`ロールも同配列内)。無料枠のレート制限は
+    控えめ(未課金で20回/分・50回/日程度)だが雑談用途には十分と判断し採用した。
+    `llm.config.json`に`providers`(`openrouter`/`anthropic`)を追加し
+    `defaultProvider`を`openrouter`に設定、設定画面(⚙️)にプロバイダ選択
+    (`<select>`)を追加して、ユーザーがOpenRouter(無料)とClaude API(有料)を
+    切り替えられるようにした。`LLMTeacher.js`は`_call()`が
+    `this.config.provider`を見て`_callAnthropic()`/`_callOpenRouter()`に
+    振り分ける構成にした。
+    加えてユーザーから、オンデバイス生成AI(小さい重み)の検証は今後パソコンの
+    ローカル環境で行いたいという方針が示され、「このリポジトリの資源を使って、
+    (1)外部LLM APIに頼るクラウド版(このdocs/apps/smart-box/、GitHub Pagesで
+    公開)と、(2)オンデバイス生成AIを検証し続けるパソコンローカル版、の2つの
+    プロジェクトに分けよう」という指示を受けた。これを受け、
+    `docs/`フォルダの外(GitHub Pagesでは配信されない場所)に
+    `local/smart-box-local/`としてオンデバイス生成AI版を切り出した
+    (第22版参照)。
 
 ---
 

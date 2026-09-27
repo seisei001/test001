@@ -44,8 +44,23 @@ async function boot(onModelProgress) {
   const db = new IndexedDBManager(systemConfig.storage);
   await db.initialize();
 
-  const llmSettings = (await db.getMetadata(LLM_SETTINGS_KEY)) || { enabled: llmConfigStatic.enabled, apiKey: '' };
-  const llmConfig = { ...llmConfigStatic, enabled: llmSettings.enabled };
+  const llmSettings = (await db.getMetadata(LLM_SETTINGS_KEY)) || {
+    enabled: llmConfigStatic.enabled,
+    provider: llmConfigStatic.defaultProvider,
+    apiKey: '',
+  };
+  // llm.config.jsonのproviders[選択中のprovider]から model/apiBase を取り出し、
+  // enabled/providerと合わせてLLMTeacherに渡す1つのconfigに組み立てる
+  // (第21版でOpenRouter対応を追加した際、Claude API/OpenRouterを設定画面で
+  // 切り替えられるようにしたため。DESIGN.md 第21版参照)。
+  const selectedProvider = llmSettings.provider || llmConfigStatic.defaultProvider;
+  const providerConfig = llmConfigStatic.providers[selectedProvider] || {};
+  const llmConfig = {
+    enabled: llmSettings.enabled,
+    provider: selectedProvider,
+    model: providerConfig.model,
+    apiBase: providerConfig.apiBase,
+  };
 
   const coreModel = new CoreModel(systemConfig, null);
   await coreModel.initialize(onModelProgress);
@@ -80,10 +95,22 @@ function setupSettingsPanel(db, llmConfigStatic, llmSettings) {
   const toggleBtn = document.getElementById('settings-toggle');
   const panel = document.getElementById('settings-panel');
   const enabledCheckbox = document.getElementById('llm-enabled');
+  const providerSelect = document.getElementById('llm-provider');
   const apiKeyInput = document.getElementById('llm-api-key');
   const saveBtn = document.getElementById('settings-save');
 
+  // providers(openrouter/anthropic)の選択肢をllm.config.jsonから動的に作る
+  // (第21版。プロバイダの追加・削除をHTML側の変更なしで行えるようにするため)。
+  providerSelect.innerHTML = '';
+  for (const [key, providerConfig] of Object.entries(llmConfigStatic.providers)) {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = providerConfig.label || key;
+    providerSelect.appendChild(option);
+  }
+
   enabledCheckbox.checked = !!llmSettings.enabled;
+  providerSelect.value = llmSettings.provider || llmConfigStatic.defaultProvider;
   apiKeyInput.value = llmSettings.apiKey || '';
 
   toggleBtn.addEventListener('click', () => {
@@ -93,6 +120,7 @@ function setupSettingsPanel(db, llmConfigStatic, llmSettings) {
   saveBtn.addEventListener('click', async () => {
     await db.setMetadata(LLM_SETTINGS_KEY, {
       enabled: enabledCheckbox.checked,
+      provider: providerSelect.value,
       apiKey: apiKeyInput.value.trim(),
     });
     location.reload();

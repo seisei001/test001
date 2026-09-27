@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/system.schema.json",
-  "version": "1.07",
-  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次の設定変更のたびに1.08, 1.09...と上げていく。",
+  "version": "1.08",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次の設定変更のたびに1.09, 1.10...と上げていく。",
   "model": {
     "coreModelUrl": "onnx-community/TinyStories-656K-ONNX",
     "coreModelDtype": "int8",
