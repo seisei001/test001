@@ -26,5 +26,12 @@
     "description": "タスク分解ツリーとタイムライン(ガントチャート)で進めるワーク管理ツール",
     "path": "apps/workmap/",
     "icon": "🗺️"
+  },
+  {
+    "id": "raglog",
+    "name": "育てる質問箱",
+    "description": "会話やWebページを取り込み、質問のたびに関連情報を探してAIに渡す学習型メモ",
+    "path": "apps/raglog/",
+    "icon": "🧠"
   }
 ]

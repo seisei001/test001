@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="育てる質問箱">
+<title>育てる質問箱</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#4f46e5;--accent-hover:#4338ca;--good:#16a34a;--bad:#dc2626;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{padding:16px;max-width:640px;margin:0 auto;}
+.back-link{display:inline-block;margin-bottom:8px;color:var(--muted);text-decoration:none;font-size:0.85rem;}
+header h1{margin:0 0 12px;font-size:1.3rem;}
+nav{display:flex;gap:8px;}
+.tab-btn{flex:1;padding:10px;border:1px solid var(--border);background:var(--panel-bg);color:var(--text);border-radius:10px;cursor:pointer;font-size:0.85rem;min-height:44px;}
+.tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+main{max-width:640px;margin:0 auto;padding:0 16px 48px;}
+.tab{display:flex;flex-direction:column;gap:12px;}
+.panel{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.row{display:flex;gap:8px;align-items:center;}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--panel-bg);color:var(--text);font-family:inherit;font-size:16px;}
+textarea{resize:vertical;min-height:60px;}
+button{border:none;border-radius:8px;padding:12px 16px;min-height:44px;font-size:0.95rem;cursor:pointer;background:var(--accent);color:#fff;}
+button:hover{background:var(--accent-hover);}
+button.good{background:var(--good);}
+button.bad{background:var(--bad);}
+button:disabled{opacity:0.5;}
+.muted{color:var(--muted);font-size:0.85rem;margin:4px 0 0;}
+#chat-log{display:flex;flex-direction:column;gap:10px;}
+.bubble{padding:10px 14px;border-radius:12px;white-space:pre-wrap;word-break:break-word;}
+.bubble.question{background:var(--accent);color:#fff;align-self:flex-end;max-width:85%;margin-left:auto;}
+.bubble.answer{background:var(--panel-bg);border:1px solid var(--border);}
+.used-info{font-size:0.8rem;color:var(--muted);}
+.rate-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.rate-row input{flex:2;min-width:120px;}
+.notice{background:#fff7e6;border:1px solid #f0c36d;color:#6b4e00;border-radius:10px;padding:12px;font-size:0.85rem;white-space:pre-line;}
+.preview-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;white-space:pre-wrap;}
+details{border:1px solid var(--border);border-radius:10px;padding:10px 14px;}
+details summary{cursor:pointer;font-weight:600;}
+details label{display:block;margin-top:10px;}
+h2{font-size:1rem;margin:0 0 8px;}
+[hidden]{display:none!important;}
+@media (prefers-color-scheme: dark){
+:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;}
+.notice{background:#3a2f10;border-color:#6b4e00;color:#f0c36d;}
+}
+</style>
+</head>
+<body>
+<header>
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1>🧠 育てる質問箱</h1>
+<nav>
+<button class="tab-btn active" data-tab="ask" type="button">質問する</button>
+<button class="tab-btn" data-tab="url" type="button">情報を教える</button>
+<button class="tab-btn" data-tab="settings" type="button">設定</button>
+</nav>
+</header>
+<main>
+
+<section id="tab-ask" class="tab">
+  <div id="chat-log"></div>
+  <div class="panel row">
+    <label style="flex:1">回答のかしこさレベル:
+      <select id="level">
+        <option value="light">軽い</option>
+        <option value="normal" selected>ふつう</option>
+        <option value="sage">賢人</option>
+      </select>
+    </label>
+  </div>
+  <form id="ask-form" class="row">
+    <input id="question-input" placeholder="なんでも聞いてください" autocomplete="off">
+    <button type="submit">聞く</button>
+  </form>
+</section>
+
+<section id="tab-url" class="tab" hidden>
+  <p class="muted">Webページの内容を教えてあげると、質問箱が賢くなります。</p>
+  <form id="url-form" class="row">
+    <input id="url-input" placeholder="https://..." autocomplete="off">
+    <button type="submit">確認</button>
+  </form>
+  <div id="url-preview" class="panel" hidden>
+    <p><strong>取得した内容(先頭部分):</strong></p>
+    <p id="url-preview-text" class="preview-box"></p>
+    <p id="url-chunk-info" class="muted"></p>
+    <p>この内容は信頼できますか？</p>
+    <textarea id="url-note" placeholder="信頼性メモ(任意): 例)公式サイトなので信頼できる"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="url-good" class="good" type="button">👍 信頼できる</button>
+      <button id="url-bad" class="bad" type="button">👎 信頼できない</button>
+    </div>
+    <p id="url-save-status" class="muted"></p>
+  </div>
+</section>
+
+<section id="tab-settings" class="tab" hidden>
+  <div class="notice" id="privacy-notice"></div>
+
+  <div class="panel">
+    <h2>接続先</h2>
+    <label>WorkerのURL(デプロイ手順はREADME参照):
+      <input id="worker-url" type="text" placeholder="https://raglog.xxxx.workers.dev">
+    </label>
+    <label style="margin-top:10px">合言葉(APP_SECRET、Worker側と同じ値):
+      <input id="app-secret" type="password" placeholder="設定した合言葉">
+    </label>
+  </div>
+
+  <div class="panel">
+    <h2>APIキー</h2>
+    <label>Hugging Faceのキー(ベクトル化に必須・無料): <input id="hf-key" type="password"></label>
+    <p class="muted">無料で発行: https://huggingface.co/settings/tokens</p>
+    <label style="margin-top:10px">Googleのキー(回答生成にGeminiを選んだ場合): <input id="gemini-key" type="password"></label>
+    <label style="margin-top:10px">Claudeのキー(回答生成にClaudeを選んだ場合): <input id="anthropic-key" type="password"></label>
+    <label style="margin-top:10px">ChatGPTのキー(回答生成にChatGPTを選んだ場合): <input id="openai-key" type="password"></label>
+  </div>
+
+  <div class="panel">
+    <h2>回答を作るAI</h2>
+    <select id="provider">
+      <option value="gemini">Google Gemini(無料枠あり)</option>
+      <option value="claude">Claude(高品質・有料)</option>
+      <option value="openai">ChatGPT(OpenAI・有料)</option>
+    </select>
+  </div>
+
+  <details id="advanced-settings">
+    <summary>詳細設定(通常は変更しなくて大丈夫です)</summary>
+    <p class="muted">回答が返ってこなくなった場合、モデル名を新しいものに書き換えてください。</p>
+    <label>Geminiのモデル名: <input id="gemini-model" type="text"></label>
+    <label>Claudeのモデル名: <input id="claude-model" type="text"></label>
+    <label>ChatGPTのモデル名: <input id="openai-model" type="text"></label>
+  </details>
+
+  <div class="row">
+    <button id="save-settings" type="button">保存する</button>
+  </div>
+  <p id="settings-status" class="muted"></p>
+
+  <div class="panel">
+    <h2>蓄積状況</h2>
+    <div id="stats"></div>
+  </div>
+</section>
+
+</main>
+<script src="app.js"></script>
+</body>
+</html>
