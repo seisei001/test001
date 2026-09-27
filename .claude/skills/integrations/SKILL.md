@@ -22,6 +22,7 @@ description: 外部サービス連携(MCPコネクタ・API)の目次と、新�
 | AI実行 | Gemini API | ⬜ | コンテナから到達可。APIキーを環境シークレットに入れれば curl で呼べる |
 | データサーバー | Cloudflare D1 / KV(`Cloudflare_Developer_Platform`) | ✅ | 一覧取得を確認(0件)。作成・クエリのツールあり |
 | データサーバー | Supabase | ⬜ | 公式コネクタ `https://mcp.supabase.com/mcp`。無料 DB 500MB。7日放置で一時停止 |
+| 情報DB | Wikipedia(`Wikipeaia` カスタムコネクタ、Pipeworx運営) | ✅ | `wikipedia-integration`。日本語版は `lang: "ja"` |
 | 情報DB | Wikidata | ⬜ | `https://wd-mcp.wmcloud.org/mcp/`(公式・認証不要) |
 | 情報DB | e-Stat など行政データ | ⬜ | `https://mcp.n-3.ai/mcp?tools=...`(民間運営) |
 | サーバー | Cloudflare Workers | 🟡 | 閲覧のみ。デプロイは GitHub 連携(Workers Builds)で push 時に自動 |
