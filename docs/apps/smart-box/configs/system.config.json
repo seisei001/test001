@@ -1,19 +1,19 @@
 {
   "$schema": "./schemas/system.schema.json",
-  "version": "1.04",
-  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.05, 1.06...と上げていく。",
+  "version": "1.05",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.06, 1.07...と上げていく。",
   "model": {
-    "coreModelUrl": "onnx-community/TinyStories-656K-ONNX",
+    "coreModelUrl": "Xenova/tiny-random-mistral",
     "coreModelDtype": "int8",
     "embeddingModelUrl": "Xenova/multilingual-e5-small",
     "embeddingModelDtype": "q8",
-    "quantization": "int8(診断用・語彙数2048の極小モデル)",
+    "quantization": "int8(診断用・対照実験として再テスト)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
     "embeddingDisabled": true,
-    "expectedSizeMB": "生成: 約0.75MB(onnx-community/TinyStories-656K-ONNX、onnx/model_int8.onnx)のみ。診断用(第17版参照)。語彙数がわずか2048(GPT-2系の50257の約1/25)のため、英語の極めて単純な単語しか扱えず日本語は不可。出力品質は度外視し、実機でメモリ不足なく完走するかのみを見る。",
+    "expectedSizeMB": "生成: 約2.2MB(Xenova/tiny-random-mistral、onnx/model_int8.onnx)のみ。第18版の対照実験(revision history参照)。v1.00で一度成功した実績があるモデルに戻し、Safariを完全終了してから再テストしてもらうことで、(a)アーキテクチャの構造差が本当の原因なのか、(b)これまでの連続テストでブラウザ側にメモリが蓄積していた影響なのかを切り分ける。",
     "mockMode": false,
-    "note": "第17版で決定(診断用の一時措置): 第16版のバージョン1.03(生成モデル約28.5MB、iamketangoyal/TinyStories-8M-ONNX)も実機で同じ『RangeError: Out of memory』エラーとなった。ユーザーから『大きいモデルは取れていたのに小さいこれが取れないのはおかしい』と指摘があり調査した結果、ファイルサイズではなく語彙数(vocab_size)がボトルネックだと判明: これまで失敗した実モデルはいずれもGPT-2系の50257語彙を持ち、語彙変換テーブル(vocab_size×hidden_size)だけで、int8ファイルサイズより遥かに大きいfloat32換算メモリ(例: 8Mモデルでも概算50MB超)を実行時に必要とする。唯一成功したv1.00のtiny-random-mistralは、テスト用ダミーモデルのため語彙を含め全次元が極端に小さかったから成功したと考えられる。この仮説を検証するため、語彙数がわずか2048(Llamaアーキテクチャ、raincandy-u/TinyStories-656K)という別系統の極小語彙モデルに切り替えた。成功すれば「語彙サイズが真のボトルネック」という仮説が裏付けられる(ただし語彙2048では日本語はおろか実用的な英語も扱えないため、実用化には別途小語彙・多言語対応モデルの探索か、外部LLM連携のみに頼る設計への転換が必要になる)。第16版までの詳細はrevision history参照。"
+    "note": "第18版で決定(対照実験): 第17版のバージョン1.04(生成モデル約0.75MB、語彙数2048、onnx-community/TinyStories-656K-ONNX)も実機で同じ『RangeError: Out of memory』エラーとなった。これはv1.00で成功した2.2MBのモデルより小さいファイルであり、これまでの「ファイルサイズ」「語彙数」いずれの仮説も否定された(v1.00: 語彙32000・hidden_size32で成功、v1.04: 語彙2048・hidden_size128で失敗。語彙数は逆に大きい方が成功しており、hidden_sizeの方が小さい方が成功している)。単純な数値指標では説明がつかないため、(a)アーキテクチャ構造(ONNXグラフの中身・KV-cache実装等)の違いが本当の原因である可能性と、(b)これまでの連続テストでSafari側にメモリが蓄積・断片化していた可能性の2つを切り分けることにした。v1.00で一度成功実績のあるXenova/tiny-random-mistralに戻し、今回はSafariを完全終了(アプリスイッチャーから上にスワイプして終了)してから開いてもらう対照実験とする。再度成功すればアーキテクチャ差が本命、失敗すればブラウザ側のメモリ蓄積が疑わしくなる。第17版までの詳細はrevision history参照。"
   },
   "runtime": {
     "backend": "wasm",
