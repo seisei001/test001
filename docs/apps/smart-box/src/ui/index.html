@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="賢い箱">
 <title>賢い箱</title>
-<link rel="stylesheet" href="./styles.css?v=1.06">
+<link rel="stylesheet" href="./styles.css?v=1.07">
 </head>
 <body>
 <header>
 <a class="back-link" href="../../../../">← ハブに戻る</a>
-<span class="version-badge" id="version-badge" title="このビルドのバージョン。実機テスト時に、最新の変更が反映されているか確認するために使います。">v1.06</span>
+<span class="version-badge" id="version-badge" title="このビルドのバージョン。実機テスト時に、最新の変更が反映されているか確認するために使います。">v1.07</span>
 <button class="settings-btn" id="settings-toggle" type="button" title="設定" aria-label="設定">⚙️</button>
 </header>
 <main>
@@ -22,14 +22,15 @@
     <p class="notice-title">⚠️ 公開準備中(開発中)のアプリです</p>
     <p>このアプリはまだ開発中で、公開に向けた準備段階です。表示される回答は簡易的なもの(一部はダミー応答)であり、内容の正確性は保証されません。</p>
     <p>本アプリの利用により生じたいかなる損害についても、開発者は一切の責任を負いません。ご自身の判断と責任においてご利用ください。</p>
+    <p>現在、ブラウザ内で完結するオンデバイスAI(本体AI)は実機での安定動作の検証中のため一時停止しており、本体AIの回答はダミーのテンプレート文になります。実際にAIらしい回答を得るには、右上の⚙️から外部LLM(Claude API、ご自身のAPIキー)を設定してください。</p>
   </div>
 
   <section class="settings-panel hidden" id="settings-panel">
     <div>
-      <label for="llm-enabled">LLM連携(任意)</label>
+      <label for="llm-enabled">LLM連携</label>
       <div class="settings-row">
         <input type="checkbox" id="llm-enabled">
-        <span class="muted-note">外部LLM(Claude API)を先生役として使う</span>
+        <span class="muted-note">外部LLM(Claude API)を使う。現在、本体AI(オンデバイス生成)は実機の安定動作検証のため一時停止中(ダミー応答)のため、実際にAIらしい回答を得るにはこちらの設定を推奨します。</span>
       </div>
     </div>
     <div>
@@ -47,8 +48,7 @@
 
     <div class="loading-status" id="loading-status">
       <div class="spinner" aria-hidden="true"></div>
-      <p id="loading-message">AIモデルを読み込んでいます…</p>
-      <p class="muted-note">初回のみ、合計600MB前後のダウンロードが発生します(数分かかる場合があります)。Wi-Fi環境をおすすめします。2回目以降はブラウザにキャッシュされ、すぐに使えます。</p>
+      <p id="loading-message">読み込んでいます…</p>
     </div>
 
     <div class="loading-error hidden" id="loading-error">
@@ -79,6 +79,6 @@
     </div>
   </section>
 </main>
-<script type="module" src="./app.js?v=1.06"></script>
+<script type="module" src="./app.js?v=1.07"></script>
 </body>
 </html>
