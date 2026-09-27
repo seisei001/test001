@@ -1,19 +1,19 @@
 {
   "$schema": "./schemas/system.schema.json",
-  "version": "1.00",
-  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.01, 1.02...と上げていく。",
+  "version": "1.01",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.02, 1.03...と上げていく。",
   "model": {
-    "coreModelUrl": "Xenova/tiny-random-mistral",
+    "coreModelUrl": "onnx-community/TinyStories-Instruct-33M-ONNX",
     "coreModelDtype": "int8",
     "embeddingModelUrl": "Xenova/multilingual-e5-small",
     "embeddingModelDtype": "q8",
-    "quantization": "int8(診断用の極小テストモデル)",
+    "quantization": "int8(診断用の二分探索・中間サイズ)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
     "embeddingDisabled": true,
-    "expectedSizeMB": "生成: 約2.2MB(Xenova/tiny-random-mistral、onnx/model_int8.onnx)のみ。診断用の一時措置(第13版参照)。出力内容は無意味(ランダム初期化のテスト用モデルのため)だが、それで問題ない。目的は生成処理自体がクラッシュせず完走するかの確認のみ。",
+    "expectedSizeMB": "生成: 約77MB(onnx-community/TinyStories-Instruct-33M-ONNX、onnx/model_int8.onnx)のみ。診断用の二分探索(第14版参照)。出力内容は簡単な英語の物語文になる想定(TinyStories系モデルのため日本語の質問への回答としては不適切)だが、それで問題ない。目的は生成処理自体がクラッシュせず完走するかの確認のみ。",
     "mockMode": false,
-    "note": "第13版で決定(診断用の一時措置): 第12版までで、生成モデルを137MB単体・WASM強制・シングルスレッドまで絞ってもiPhone実機でのメモリ不足(ページの自動リロード)が解消しなかった。「モデルサイズや設定の問題ではなく、実機でのWASM推論(生成)処理そのものが原因では」という仮説を検証するため、transformers.js開発元(Xenova)がライブラリ自身のテスト用に公開している、ランダム初期化の極小モデル(Xenova/tiny-random-mistral、量子化後わずか約2.2MB)に切り替えた。これでも同じ現象が起きれば、モデルサイズに関係なく「この端末でのWASMによる自己回帰生成処理自体」に根本的な問題があると判明する。成功すれば、137MBとの間のどこかにサイズ的な閾値があると分かり、その間を探る次のステップに進む。第12版までの詳細はrevision history参照。"
+    "note": "第14版で決定(診断用の一時措置): 第13版で、ランダム初期化の極小モデル(約2.2MB)に切り替えたところ、iPhone実機でクラッシュ・自動リロードなく生成処理が完走した(ユーザー報告: 「やったよ」、文字化けした無意味な出力だが完走)。これにより「この端末でのWASM自己回帰生成処理自体が原因」という仮説は否定され、2.2MB(成功)〜137MB(失敗)のどこかにメモリ的な閾値があると判明した。次のステップとしてその間を二分探索する。SmolLM2-135M-Instructのリポジトリ自体には137MBより小さい量子化バリエーションがほぼ存在しない(q4f16でも117.7MBとほぼ変わらない)ため、パラメータ数がより少ない別の実モデル(roneneldan/TinyStories-Instruct-33M のONNX変換版、int8量子化で約77MB)に切り替えた。これで成功すれば次は77MBと137MBの間、失敗すれば2.2MBと77MBの間を探る。第13版までの詳細はrevision history参照。"
   },
   "runtime": {
     "backend": "wasm",
