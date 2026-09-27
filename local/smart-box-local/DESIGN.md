@@ -1,3 +1,9 @@
+> **【このファイルについて】** これは `docs/apps/smart-box/DESIGN.md`
+> (第21版時点)からのコピーです。第22版で`local/smart-box-local/`
+> (このフォルダ)を切り出した経緯は公開版側のDESIGN.mdに記録されています。
+> 以後の改訂はこのフォルダ単独(オンデバイス生成AIのパソコンでの検証)で
+> 進める想定です。README.mdも参照してください。
+
 ## 0. このドキュメントの位置づけ・改訂履歴
 
 「賢い箱」は、ブラウザ内で完結する**極小の生成AI**(量子化済み・LoRA+RAG+プロフィール
@@ -5,7 +11,7 @@
 アシスタントである。外部LLM(ユーザーが任意でAPIキーを設定)を「先生役」として併用でき、
 その場合はユーザー・LLM・本体AI自身の三者の会話を使って本体AIを賢くしていく。
 
-このドキュメントは22段階の改訂を経ている:
+このドキュメントは21段階の改訂を経ている:
 
 1. **初版**: Google Drive上の資料(`conversation-rag-app` フォルダ、00〜07)を統合。
    BERT+RAG+LoRAのアーキテクチャのみが決まっていて、ドメイン(何をするアプリか)は
@@ -250,25 +256,6 @@
     `docs/`フォルダの外(GitHub Pagesでは配信されない場所)に
     `local/smart-box-local/`としてオンデバイス生成AI版を切り出した
     (第22版参照)。
-22. **本版(第22版)**: 第21版の方針に基づき、リポジトリ直下(`docs/`フォルダの外、
-    GitHub Pagesでは配信されない)に`local/smart-box-local/`を作成し、
-    `docs/apps/smart-box/`のコード一式(CoreModel等の全モジュール、UI、
-    このDESIGN.mdを含む設定ファイル群)をコピーした。ローカル版では
-    `mockMode: false`に戻し、生成モデルを第9版で最初に採用した
-    `onnx-community/Qwen2.5-0.5B-Instruct`(日本語含む多言語対応)に戻し、
-    embeddingモデル(`multilingual-e5-small`)も再度有効化して、本来の
-    2モデル構成(第1.3節)に戻した。`runtime.backend`もiPhone Safari向けの
-    WASM強制からWebGPU優先(フォールバックWASM)に戻し、`numThreads`も
-    1→4、`max_new_tokens`も64→256に戻した(いずれもパソコンの潤沢な
-    RAM・GPUを前提とした設定)。これで2つの独立したプロジェクトに分離した:
-    - **公開版**(`docs/apps/smart-box/`): GitHub Pagesで配信、外部LLM
-      (OpenRouter無料枠/Claude API)のみに頼る設計。今後の改訂はLLM連携
-      まわりが中心になる見込み。
-    - **ローカル版**(`local/smart-box-local/`): 配信せず、ユーザーが
-      パソコンで`git pull`してローカルHTTPサーバー経由で実行。オンデバイス
-      生成AIが実際にパソコンで安定動作するかの検証を継続する。今後の改訂は
-      このフォルダ単独で進める想定(セットアップ手順はローカル版の
-      `README.md`参照)。
 
 ---
 
