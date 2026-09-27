@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/system.schema.json",
-  "version": "1.01",
-  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.02, 1.03...と上げていく。",
+  "version": "1.02",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。1.01ではバッジがv1.00のまま(HTML側の初期値更新漏れ)+iOS Safariのキャッシュにより実機でバージョンが切り替わらない問題があったため、1.02でHTML側の修正・config取得へのcache: 'no-store'指定・css/js読み込みURLへのバージョンクエリ付与を行った。次のテスト/設定変更のたびに1.03, 1.04...と上げていく。",
   "model": {
     "coreModelUrl": "onnx-community/TinyStories-Instruct-33M-ONNX",
     "coreModelDtype": "int8",

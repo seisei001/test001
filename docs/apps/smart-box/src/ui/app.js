@@ -10,8 +10,11 @@ import { TurnController } from '../modules/turn-controller/TurnController.js';
 const CONFIG_BASE = '../../configs/';
 const LLM_SETTINGS_KEY = 'llmSettings';
 
+// cache: 'no-store'にしないと、iOS Safariがsystem.config.jsonを古いまま
+// キャッシュしてしまい、バージョンバッジやモデル設定が更新されないことが
+// あったため(実機テストで確認)、常にネットワークから取り直す。
 async function loadConfig(name) {
-  const response = await fetch(`${CONFIG_BASE}${name}`);
+  const response = await fetch(`${CONFIG_BASE}${name}`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`Failed to load config: ${name}`);
   return response.json();
 }
