@@ -5,7 +5,7 @@
 アシスタントである。外部LLM(ユーザーが任意でAPIキーを設定)を「先生役」として併用でき、
 その場合はユーザー・LLM・本体AI自身の三者の会話を使って本体AIを賢くしていく。
 
-このドキュメントは8段階の改訂を経ている:
+このドキュメントは13段階の改訂を経ている:
 
 1. **初版**: Google Drive上の資料(`conversation-rag-app` フォルダ、00〜07)を統合。
    BERT+RAG+LoRAのアーキテクチャのみが決まっていて、ドメイン(何をするアプリか)は
@@ -72,6 +72,33 @@
     (int8、約137MB)に変更し、embeddingモデルと合わせて合計約255MBまで削減した。
     SmolLM2は語彙が小さく(49152語彙)英語中心のため日本語品質は明確に劣るが、
     まず技術的な土台が実機で動くことを優先して確認する方針とした。
+12. **第12版**: 第11版の構成(生成137MB+embedding118MB=合計255MB)を実機
+    (iPhone 14 Safari)で再検証したが、依然としてメモリ不足(タブの自動
+    リロード)が解消しなかった。原因の切り分けとして、(a) embeddingモデルの
+    読み込みを一時停止し生成モデル単体(137MB)のみをロードする、(b) WebGPU
+    (iPhone Safariでの実装がまだ新しく不安定な可能性がある)を使わずWASM
+    (CPU側)を強制する、の2段階で検証したが、いずれも解消しなかった
+    (ユーザー報告: 「ダメだね」「ダメです」)。つまりモデルを2つ同時に
+    保持することや、バックエンド選択自体はボトルネックではないと判明した。
+13. **本版(第13版)**: ここまでの結果を受け、ユーザーから「モデルサイズや
+    設定を少しずつ調整する場当たり的な検証ではなく、ブラウザ版のチビ
+    weightsがそもそも動くのかを、weightsの最小単位から検証すべき」という
+    方針転換の指摘を受けた。妥当な指摘のため、生成モデルをtransformers.js
+    開発元(Xenova)がライブラリ自身のテスト用に公開しているランダム初期化の
+    極小モデル(`Xenova/tiny-random-mistral`、量子化後わずか約2.2MB)に
+    一時的に切り替えた(出力内容に意味はない。生成処理がクラッシュせず完走
+    するかどうかのみを見る診断用ビルド)。これで解消しなければ、モデル
+    サイズによらず「この端末でのWASMによる自己回帰生成処理自体」に根本的な
+    問題があると判明し、これで解消すれば、137MBとの間のどこかにサイズ的な
+    閾値があると分かり実機で動く上限を探る次のステップに進む。また、
+    ここまでの実機テストのたびにGitHub Pagesのデプロイ反映タイミングや
+    ブラウザキャッシュにより「今テストしているのが本当に最新の変更か」が
+    分かりにくいという問題が繰り返し起きていたため、`system.config.json`に
+    `version`フィールド(例: `"1.00"`)を追加し、index.html右上に
+    バージョンバッジとして表示するようにした。バッジの初期値はHTMLに
+    直書きしてあるため、JSやconfig取得が失敗してもバージョンだけは表示される。
+    今後、実機テストや設定変更のたびに1.01, 1.02...とバージョンを上げていく
+    運用とする。
 
 ---
 
@@ -403,16 +430,18 @@ CoreModelのembeddingを使う(PCA圧縮・topK・閾値等は維持)。ProfileM
   - `async summarizeForProfile(turnData): Promise<{ profileDelta: object }>` —
     毎ターンの安価な差分更新用に、CoreModel自身で短い要約を生成する(ProfileMemoから
     呼ばれる)
-- **実装基盤(第8版で確定・第9版でモデル分離・第10版/第11版で生成モデル変更)**:
+- **実装基盤(第8版で確定・第9版でモデル分離・第10版〜第13版で生成モデル変更)**:
   推論(embed/generate)は**transformers.js**(Hugging Face製、WebGPU対応)を使う。
   feature-extractionパイプラインとtext-generationパイプラインを、それぞれ別の
   モデルインスタンスに対して使う(第9版で1モデル兼用から分離)。生成モデルは
-  `SmolLM2-135M-Instruct`のONNX変換版(int8量子化・約137MB、`system.config.json`の
-  `model.coreModelUrl`、第9版Qwen2.5-0.5B-Instruct→第10版gemma-3-270m-it→第11版
-  SmolLM2-135M-Instructと、実機のメモリ制限に合わせて縮小してきた)、embeddingモデルは
-  `multilingual-e5-small`のONNX変換版(約118MB、日本語含む多言語対応、
-  `model.embeddingModelUrl`)。いずれもHugging Face上の既存の変換済みリポジトリを
-  ユーザーのブラウザが直接参照する(第8.2節)。
+  `system.config.json`の`model.coreModelUrl`で指定し、第9版Qwen2.5-0.5B-Instruct→
+  第10版gemma-3-270m-it→第11版SmolLM2-135M-Instructと実機のメモリ制限に合わせて
+  縮小してきたがいずれも失敗し、第13版時点では原因切り分けのため
+  `Xenova/tiny-random-mistral`(ランダム初期化・約2.2MB)に一時的に切り替えて
+  診断中(第13版参照)。embeddingモデルは`multilingual-e5-small`のONNX変換版
+  (約118MB、日本語含む多言語対応、`model.embeddingModelUrl`)だが、第12版以降
+  `embeddingDisabled: true`により一時的に読み込みを止めている。いずれもHugging
+  Face上の既存の変換済みリポジトリをユーザーのブラウザが直接参照する(第8.2節)。
 - **LoRA学習の実装基盤**: **ONNX Runtime Web の training機能**
   (`onnxruntime-web`のtraining版、`onnxruntime-training-web`)を使う。LoRAのA/B行列
   だけをtrainableに指定した学習用ONNXグラフ(training artifact)をブラウザ内でロードし、

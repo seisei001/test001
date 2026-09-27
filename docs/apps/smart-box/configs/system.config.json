@@ -1,17 +1,19 @@
 {
   "$schema": "./schemas/system.schema.json",
+  "version": "1.00",
+  "versionNote": "実機テストのたびに採番するビルド番号。index.html右上のバッジ(HTMLに直書き)と、この値(config読み込み後にJSで上書き)の両方が一致していれば、最新の変更が実機に届いていると確認できる。次のテスト/設定変更のたびに1.01, 1.02...と上げていく。",
   "model": {
-    "coreModelUrl": "HuggingFaceTB/SmolLM2-135M-Instruct",
-    "coreModelDtype": "q8",
+    "coreModelUrl": "Xenova/tiny-random-mistral",
+    "coreModelDtype": "int8",
     "embeddingModelUrl": "Xenova/multilingual-e5-small",
     "embeddingModelDtype": "q8",
-    "quantization": "int8(生成・embeddingとも)",
+    "quantization": "int8(診断用の極小テストモデル)",
     "rawEmbeddingDim": 384,
     "maxSequenceLength": 128,
     "embeddingDisabled": true,
-    "expectedSizeMB": "生成: 約137MB(SmolLM2-135M-Instruct、onnx/model_quantized.onnx)のみ。embeddingDisabled: trueの間はembeddingモデル(約118MB)を読み込まない。初回アクセス時にユーザーのブラウザがHugging Faceから直接取得し、Cache Storage APIで永続キャッシュされる(2回目以降は再ダウンロードなし)。",
+    "expectedSizeMB": "生成: 約2.2MB(Xenova/tiny-random-mistral、onnx/model_int8.onnx)のみ。診断用の一時措置(第13版参照)。出力内容は無意味(ランダム初期化のテスト用モデルのため)だが、それで問題ない。目的は生成処理自体がクラッシュせず完走するかの確認のみ。",
     "mockMode": false,
-    "note": "第12版で決定(診断用の一時措置): iPhone 14実機で、max_new_tokens縮小・シングルスレッド化(第11版)後もメモリ不足によるページの自動リロードが解消しなかったため、embeddingモデルと生成モデルを同時に2セッション保持すること自体が原因という仮説を検証する。embeddingDisabled: trueにすると、生成モデルのみをロードし、embed()はハッシュベースの簡易実装にフォールバックする(RAGの精度は落ちるが原因切り分けが目的)。これで解消すれば、2セッション同時保持がボトルネックと判明し、設計を見直す(例: 1モデルで両方兼ねる元の設計に戻す等)。解消しなければ、そもそも1モデル(137MB)ですらこの端末には厳しいという、より根本的な話になる。第11版までの詳細はrevision history参照。"
+    "note": "第13版で決定(診断用の一時措置): 第12版までで、生成モデルを137MB単体・WASM強制・シングルスレッドまで絞ってもiPhone実機でのメモリ不足(ページの自動リロード)が解消しなかった。「モデルサイズや設定の問題ではなく、実機でのWASM推論(生成)処理そのものが原因では」という仮説を検証するため、transformers.js開発元(Xenova)がライブラリ自身のテスト用に公開している、ランダム初期化の極小モデル(Xenova/tiny-random-mistral、量子化後わずか約2.2MB)に切り替えた。これでも同じ現象が起きれば、モデルサイズに関係なく「この端末でのWASMによる自己回帰生成処理自体」に根本的な問題があると判明する。成功すれば、137MBとの間のどこかにサイズ的な閾値があると分かり、その間を探る次のステップに進む。第12版までの詳細はrevision history参照。"
   },
   "runtime": {
     "backend": "wasm",

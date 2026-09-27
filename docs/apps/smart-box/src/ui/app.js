@@ -16,6 +16,17 @@ async function loadConfig(name) {
   return response.json();
 }
 
+// index.htmlのバッジには読み込み前のバージョンをハードコードしてあるので、
+// JSが一切動かなくても(configの取得自体に失敗しても)最低限そのビルドの
+// バージョンは画面に出る。config取得が成功したらここでconfig側の値に
+// 上書きし、両者が一致していれば「最新の変更が実機に届いている」と確認できる。
+function updateVersionBadge(systemConfig) {
+  const el = document.getElementById('version-badge');
+  if (el && systemConfig.version) {
+    el.textContent = `v${systemConfig.version}`;
+  }
+}
+
 async function boot(onModelProgress) {
   const [systemConfig, ragConfig, profileConfig, llmConfigStatic, loraConfig] = await Promise.all([
     loadConfig('system.config.json'),
@@ -24,6 +35,8 @@ async function boot(onModelProgress) {
     loadConfig('llm.config.json'),
     loadConfig('lora.config.json'),
   ]);
+
+  updateVersionBadge(systemConfig);
 
   const db = new IndexedDBManager(systemConfig.storage);
   await db.initialize();
