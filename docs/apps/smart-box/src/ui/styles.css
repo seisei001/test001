@@ -54,6 +54,16 @@ header {
   padding: 4px 8px;
 }
 
+.version-badge {
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
 main {
   max-width: 640px;
   margin: 0 auto;
