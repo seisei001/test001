@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="賢い箱(ローカル版)">
+<title>賢い箱(パソコンローカル版)</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header>
+<span class="version-badge" id="version-badge" title="パソコンローカル専用ビルド。docs/apps/smart-box/(公開版)とは別プロジェクト。">🖥️ ローカル版</span>
+<button class="settings-btn" id="settings-toggle" type="button" title="設定" aria-label="設定">⚙️</button>
+</header>
+<main>
+  <div class="notice-banner" role="note">
+    <p class="notice-title">🖥️ パソコンローカル実行専用のビルドです</p>
+    <p>これは docs/apps/smart-box/ (GitHub Pagesで公開・スマホ向け)とは別の、オンデバイス生成AI(本体AI)の検証を続けるためのパソコンローカル版です。ローカルでHTTPサーバーを立てて開いてください(README.md参照)。</p>
+    <p>本体AIの回答はブラウザ内で完結する量子化モデルが生成します。初回アクセス時にHugging Faceからモデルファイル(合計600MB程度)がダウンロードされます。</p>
+  </div>
+
+  <section class="settings-panel hidden" id="settings-panel">
+    <div>
+      <label for="llm-enabled">LLM連携</label>
+      <div class="settings-row">
+        <input type="checkbox" id="llm-enabled">
+        <span class="muted-note">外部LLMを使う。現在、本体AI(オンデバイス生成)は実機の安定動作検証のため一時停止中(ダミー応答)のため、実際にAIらしい回答を得るにはこちらの設定を推奨します。</span>
+      </div>
+    </div>
+    <div>
+      <label for="llm-provider">LLMプロバイダ</label>
+      <select id="llm-provider"></select>
+      <p class="muted-note">OpenRouterは無料枠あり・カード登録不要です。Claude APIは有料ですがより高品質です。</p>
+    </div>
+    <div>
+      <label for="llm-api-key">APIキー</label>
+      <input type="text" id="llm-api-key" placeholder="選んだプロバイダのAPIキーを入力">
+      <p class="muted-note">このブラウザのIndexedDBにのみ保存されます。サーバーには送信されません。</p>
+    </div>
+    <button class="primary" id="settings-save" type="button">保存</button>
+  </section>
+
+  <section class="episode-card" id="opening-screen">
+    <div class="episode-art">🎙️</div>
+    <p class="episode-title">賢い箱</p>
+    <p class="episode-subtitle">新しいエピソードを始めましょう</p>
+
+    <div class="loading-status" id="loading-status">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-message">AIモデルを読み込んでいます…</p>
+      <p class="muted-note">初回のみ、合計600MB前後のダウンロードが発生します(数分かかる場合があります)。2回目以降はブラウザにキャッシュされ、すぐに使えます。</p>
+    </div>
+
+    <div class="loading-error hidden" id="loading-error">
+      <p>⚠️ AIモデルの読み込みに失敗しました。</p>
+      <pre class="error-detail" id="loading-error-detail"></pre>
+      <div class="error-actions">
+        <button class="primary" id="loading-retry-btn" type="button">再試行</button>
+        <button class="secondary" id="loading-error-copy-btn" type="button">エラー内容をコピー</button>
+      </div>
+    </div>
+
+    <div class="opening-question hidden" id="question-topic-block">
+      <label id="question-topic-label"></label>
+      <input type="text" id="question-topic-input" placeholder="回答を入力...">
+    </div>
+    <div class="opening-question hidden" id="question-approach-block">
+      <label id="question-approach-label"></label>
+      <input type="text" id="question-approach-input" placeholder="回答を入力...">
+    </div>
+    <button class="primary hidden" id="opening-next-btn" type="button">はじめる</button>
+  </section>
+
+  <section class="hidden" id="chat-screen">
+    <div class="transcript" id="transcript"></div>
+    <div class="composer">
+      <textarea id="composer-input" placeholder="話しかけてみてください..." rows="1"></textarea>
+      <button class="primary" id="composer-send" type="button">送信</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="./app.js?v=1.08"></script>
+</body>
+</html>

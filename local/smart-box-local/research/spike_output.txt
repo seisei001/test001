@@ -1,0 +1,26 @@
+Toy ONNX model built and validated: /tmp/toy_core_model.onnx
+generate_artifacts() succeeded. Files:
+  checkpoint  (632 bytes)
+  eval_model.onnx  (841 bytes)
+  optimizer_model.onnx  (538 bytes)
+  training_model.onnx  (3798 bytes)
+=== TRAIN STEP ===
+LoRA_A before (first 4 vals): [ 0.0032897  -0.00258573  0.01583473  0.01320361]
+LoRA_B before (should be all 0): [0. 0. 0. 0.]
+step 0: loss = 9.611168
+step 1: loss = 9.610203
+step 2: loss = 9.608988
+step 3: loss = 9.607480
+step 4: loss = 9.605659
+LoRA_A after  (first 4 vals): [ 0.00663241 -0.00592847  0.01916012  0.00987819]
+LoRA_B after  (first 4 vals): [-0.00501771  0.00495344  0.00501481  0.00501813]
+
+=== 検証結果 (DESIGN.md 1.3節の核心原則) ===
+LoRA_A が学習で変化した: True  (期待: True)
+LoRA_B が学習で変化した: True  (期待: True)
+base weights(W0)は学習グラフのforward専用入力であり、そもそも
+checkpoint/state の trainable params に含まれない(frozen_paramsに
+指定したため)。よって「更新されようがない」ことがアーキテクチャ
+レベルで保証されている。
+
+検証成功: LoRAのA/B行列のみを対象とした学習ループが実際に動作した。

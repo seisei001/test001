@@ -33,5 +33,40 @@
     "description": "会話やWebページを取り込み、質問のたびに関連情報を探してAIに渡す学習型メモ",
     "path": "apps/raglog/",
     "icon": "🧠"
+  },
+  {
+    "id": "neon-dash",
+    "name": "ネオン・ダッシュ",
+    "description": "1タップで飛び越える、ネオン演出とパーティクルが光る軽量ミニゲーム",
+    "path": "apps/neon-dash/",
+    "icon": "⚡"
+  },
+  {
+    "id": "tax-office-pr",
+    "name": "税理士事務所PRサイト",
+    "description": "元国税調査官の強みを活かした税理士事務所向けの、診断コンテンツ付きインタラクティブPRホームページ",
+    "path": "apps/tax-office-pr/",
+    "icon": "⚖️"
+  },
+  {
+    "id": "smart-box",
+    "name": "賢い箱",
+    "description": "会話するたびにLoRAとRAGで賢くなっていく、ブラウザ完結の小さな会話AI(開発中・公開準備段階)",
+    "path": "apps/smart-box/src/ui/",
+    "icon": "🎙️"
+  },
+  {
+    "id": "text-avatar",
+    "name": "テキストアバター",
+    "description": "小説などのテキストをAI(Claude)が解析し、感情・仕草を判定してVRMアバターに朗読させながら演技させるページ(自分のAnthropic APIキーが必要)",
+    "path": "apps/text-avatar/",
+    "icon": "📖"
+  },
+  {
+    "id": "novel-note",
+    "name": "小説設定ノート",
+    "description": "小説のあらすじ・固有名詞辞書・伏線を話数ごとに管理する執筆サポート(データは非公開・端末に読み込み)",
+    "path": "apps/novel-note/",
+    "icon": "📚"
   }
 ]

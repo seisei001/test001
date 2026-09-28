@@ -109,13 +109,28 @@ button{ font-family:inherit; }
 }
 @keyframes rippleAnim{ to{ transform:scale(1); opacity:0; } }
 
-/* project header card */
+/* project header card (compact bar + expandable menu) */
 .page-header{
-  background:var(--panel-bg); border:1px solid var(--border); border-radius:var(--radius); padding:16px;
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  background:var(--panel-bg); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;
 }
-.page-header h2{ font-size:18px; font-weight:700; }
+.ph-bar{
+  display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; min-height:44px;
+  -webkit-tap-highlight-color:transparent;
+}
+.ph-bar:active{ background:var(--panel-alt); }
+.ph-bar h2{ font-size:15.5px; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 auto; }
+.ph-mini-progress{ flex:none; font-size:11.5px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:100px; }
+.ph-bar .chev{ flex:none; color:var(--faint); display:flex; }
+.ph-dropdown{
+  padding:2px 14px 14px; border-top:1px solid var(--border-soft);
+  animation:menuPop 160ms cubic-bezier(.22,.9,.3,1.1); transform-origin:top center;
+}
+.ph-dropdown .project-desc{ margin-top:12px; }
+.project-desc{ margin:4px 0 0; font-size:13px; color:var(--muted); line-height:1.5; white-space:pre-wrap; overflow-wrap:break-word; }
+.ph-dropdown .progress-wrap{ margin-top:12px; }
 .progress-wrap{ display:flex; align-items:center; gap:8px; }
+.ph-actions{ display:flex; gap:8px; margin-top:12px; }
+.ph-actions .btn{ flex:1; }
 .progress-bar{ width:120px; height:7px; border-radius:4px; background:var(--neutral-bg); overflow:hidden; flex:none; }
 .progress-fill{ height:100%; border-radius:4px; background:var(--accent); transition:width 450ms cubic-bezier(.22,.9,.3,1); }
 .progress-num{ font-size:12.5px; font-weight:700; color:var(--muted); }
@@ -157,7 +172,8 @@ button{ font-family:inherit; }
 .node{ background:var(--panel-bg); border:1px solid var(--border); border-radius:var(--radius); }
 .node-root{ width:230px; padding:18px; background:var(--accent); color:#fff; border:none; }
 .node-root .k{ font-size:11px; color:#dbe6ff; font-weight:600; letter-spacing:.04em; margin-bottom:6px; }
-.node-root h2{ font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; }
+.node-root h2{ font-size:17px; font-weight:700; color:#fff; margin-bottom:4px; }
+.node-root .project-desc{ color:#e4e9ff; opacity:.92; margin:4px 0 0; }
 .node-root .progress-bar{ background:rgba(255,255,255,.28); }
 .node-root .progress-fill{ background:#fff; }
 .node-root .progress-num{ color:#fff; }
@@ -213,10 +229,19 @@ button{ font-family:inherit; }
 
 /* gantt */
 .gantt{ display:flex; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel-bg); width:max-content; max-width:100%; overflow-x:auto; overflow-y:hidden; }
-.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); position:sticky; left:0; z-index:6; background:var(--panel-bg); box-shadow:2px 0 5px rgba(0,0,0,.06); }
-.tl-head{ height:44px; display:flex; align-items:center; padding:0 12px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.04em; background:var(--panel-alt); border-bottom:1px solid var(--border); }
+.tasklist{ width:220px; flex:none; border-right:1px solid var(--border); position:sticky; left:0; z-index:6; background:var(--panel-bg); box-shadow:2px 0 5px rgba(0,0,0,.06); transition:width 180ms ease; }
+.tasklist.collapsed{ width:40px; }
+.tl-month-spacer{ height:20px; background:var(--panel-alt); border-bottom:1px solid var(--border-soft); }
+.tl-head{ height:44px; display:flex; align-items:center; gap:6px; padding:0 12px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.04em; background:var(--panel-alt); border-bottom:1px solid var(--border); }
+.tl-toggle{ flex:none; width:24px; height:24px; min-width:0; min-height:0; border-radius:6px; border:none; background:none; color:var(--faint); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+.tl-toggle:hover{ background:var(--neutral-bg); color:var(--text); }
+.tasklist.collapsed .tl-head{ padding:0; justify-content:center; }
 .tl-row{ height:44px; display:flex; align-items:center; gap:6px; padding:0 12px; font-size:12px; background-image:repeating-linear-gradient(to bottom, var(--border-soft) 0 1px, transparent 1px 44px); }
 .tl-row.indent{ padding-left:32px; }
+.tasklist.collapsed .tl-row{ padding:0; justify-content:center; gap:0; }
+.tasklist.collapsed .tl-row.indent{ padding-left:0; }
+.tasklist.collapsed .tl-title,
+.tasklist.collapsed .pill-xs{ display:none; }
 .tl-title{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
 .tl-title.dim{ color:var(--faint); font-weight:500; }
 .tl-title.phase{ font-weight:700; }
@@ -225,13 +250,17 @@ button{ font-family:inherit; }
 .check-sm{ width:14px; height:14px; border-radius:50%; background:var(--success-text); display:flex; align-items:center; justify-content:center; flex:none; }
 .pill-xs{ font-size:9px; font-weight:700; padding:2px 6px; border-radius:100px; margin-left:auto; flex:none; }
 .grid-wrap{ position:relative; }
+.grid-month-row{ display:flex; height:20px; background:var(--panel-alt); border-bottom:1px solid var(--border-soft); position:relative; z-index:1; }
+.month-seg{ flex:none; display:flex; align-items:center; font-size:10px; font-weight:600; color:var(--faint); padding-left:5px; border-right:1px solid var(--border-soft); box-sizing:border-box; white-space:nowrap; overflow:hidden; }
 .grid-header{ display:flex; height:44px; background:var(--panel-alt); border-bottom:1px solid var(--border); position:relative; z-index:2; }
-.day-cell{ flex:none; width:30px; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--faint); font-weight:600; }
-.day-num-today{ width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; }
+.day-cell{ flex:none; width:30px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px; color:var(--faint); font-weight:600; }
+.day-wd{ font-size:8.5px; font-weight:600; color:var(--faint); opacity:.75; line-height:1; }
+.day-num{ line-height:1; }
+.day-num-today{ width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; line-height:1; }
 .grid-body{ position:relative; background-image:repeating-linear-gradient(to bottom, var(--border-soft) 0 1px, transparent 1px 44px); }
 .weekend{ position:absolute; top:0; bottom:0; background:rgba(0,0,0,.03); }
 .today-line{ position:absolute; top:0; width:2px; z-index:3; background-image:repeating-linear-gradient(to bottom, var(--accent) 0 6px, transparent 6px 12px); }
-.today-tag{ position:absolute; top:-24px; transform:translateX(-50%); background:var(--accent); color:#fff; font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:5px; white-space:nowrap; }
+.today-tag{ position:absolute; top:-44px; transform:translateX(-50%); background:var(--accent); color:#fff; font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:5px; white-space:nowrap; }
 .bar{
   position:absolute; height:26px; border-radius:7px; display:flex; align-items:center; padding:0 8px; font-size:10.5px;
   font-weight:700; overflow:hidden; white-space:nowrap; gap:4px; cursor:pointer;
@@ -249,7 +278,8 @@ button{ font-family:inherit; }
 .modal h2{ font-size:16px; margin-bottom:14px; }
 .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
 .field label{ font-size:12px; font-weight:600; color:var(--muted); }
-.field input,.field select{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; font-size:16px; font-family:inherit; background:var(--panel-bg); color:var(--text); min-height:44px; }
+.field input,.field select,.field textarea{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; font-size:16px; font-family:inherit; background:var(--panel-bg); color:var(--text); min-height:44px; }
+.field textarea{ resize:vertical; line-height:1.5; }
 .field-row{ display:flex; gap:10px; }
 .field-row .field{ flex:1; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }

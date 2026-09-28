@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "defaultProvider": "openrouter",
+  "providers": {
+    "openrouter": {
+      "label": "OpenRouter(無料枠あり・APIキー登録のみでカード不要)",
+      "apiBase": "https://openrouter.ai/api/v1/chat/completions",
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
+      "modelNote": "OpenRouterの無料モデル(:freeタグ)は入れ替わりがあるため、https://openrouter.ai/models?max_price=0 で最新のモデルIDを確認し、必要ならここを更新する。無料枠のレート制限は控えめ(未課金アカウントで20回/分・50回/日程度)。"
+    },
+    "anthropic": {
+      "label": "Claude API(有料・高品質)",
+      "apiBase": "https://api.anthropic.com/v1/messages",
+      "model": "claude-sonnet-5"
+    }
+  },
+  "apiKeyStorage": "indexeddb-local-only",
+  "note": "APIキーはユーザーがUIから入力し、ブラウザのIndexedDB/localStorageにのみ保存する。このconfigファイル自体にキーを書かない。賢い箱側のサーバー(存在しない)や第三者には一切送信しない(DESIGN.md 8.3節)。enabled=falseの間、TurnControllerはLLMTeacherを呼ばず、本体AI(CoreModel)単体で動作する(DESIGN.md 1.3節)。第20版でオンデバイス生成AIの実機検証を一旦終了したことに伴い、第21版でproviderを選べるようにした(providers参照)。defaultProviderはopenrouter(無料枠あり・カード不要)。ユーザーは設定画面からanthropicに切り替えることもできる(有料だが高品質)。いずれもブラウザから直接APIを呼ぶ構成(CORS許可を確認済み。DESIGN.md 第21版参照)。"
+}

@@ -1,0 +1,386 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f8;
+  --panel-bg: #fff;
+  --border: #dcdce0;
+  --text: #1c1c1f;
+  --muted: #6b6b73;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --bubble-own: #ede9fe;
+  --bubble-llm: #e0f2fe;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+header {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.settings-btn {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.version-badge {
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- ポッドキャスト風「エピソード」カード --- */
+.episode-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.episode-art {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+}
+
+.episode-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.episode-subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.loading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.loading-status p {
+  margin: 0;
+  text-align: center;
+}
+
+.loading-status .muted-note {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: smart-box-spin 0.8s linear infinite;
+}
+
+@keyframes smart-box-spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.loading-error p {
+  margin: 0;
+  color: var(--danger);
+}
+
+.error-detail {
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+button.secondary {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 12px 20px;
+  min-height: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+}
+
+.opening-question {
+  width: 100%;
+  text-align: left;
+}
+
+.opening-question label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+button.primary {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+}
+
+button.primary:hover {
+  background: var(--accent-hover);
+}
+
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- チャット(会話ログ)画面。ポッドキャストの「トランスクリプト」風 --- */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble {
+  border-radius: 14px;
+  padding: 10px 14px;
+  max-width: 88%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+
+.bubble.own {
+  align-self: flex-start;
+  background: var(--bubble-own);
+}
+
+.bubble.llm {
+  align-self: flex-start;
+  background: var(--bubble-llm);
+  font-size: 0.9rem;
+}
+
+.bubble-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.clarifying-question {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  padding: 10px 14px;
+  max-width: 88%;
+  font-size: 0.85rem;
+}
+
+.clarifying-question form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.clarifying-question input {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.composer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  background: var(--bg);
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.notice-banner {
+  background: #fffbeb;
+  border: 1px solid #f5d78a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: #7a5b00;
+}
+
+.notice-banner p {
+  margin: 4px 0;
+}
+
+.notice-title {
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notice-banner {
+    background: #332b12;
+    border-color: #6b5518;
+    color: #f0d580;
+  }
+}
+
+.settings-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.muted-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181c;
+    --panel-bg: #1f2024;
+    --border: #303136;
+    --text: #eaeaec;
+    --muted: #9a9aa2;
+    --bubble-own: #2e2a4a;
+    --bubble-llm: #1e3a4a;
+  }
+}

@@ -113,7 +113,9 @@ textarea {
 }
 
 #content-editor {
-  min-height: 240px;
+  height: 22vh;
+  height: 22dvh;
+  min-height: 120px;
   white-space: pre-wrap;
   margin-top: 8px;
 }
@@ -173,6 +175,43 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 0.85rem;
   margin: 4px 0 0;
 }
+
+.paste-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.paste-row #paste-btn { flex: 1; }
+
+.paste-row .secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.paste-row .secondary:hover { background: var(--bg); }
+
+.filename-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.filename-row input {
+  width: 7em;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.filename-row .ext { color: var(--muted); }
 
 .menu-bar {
   margin-top: 16px;

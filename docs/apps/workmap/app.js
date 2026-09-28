@@ -2,6 +2,14 @@
   const STORAGE_KEY = 'workmapApp.data.v1';
   const DAY_W = 30;
   const ROW_H = 44;
+  const MONTH_ROW_H = 20;
+  const INITIAL_PAST_DAYS = 14;
+  const INITIAL_FUTURE_DAYS = 30;
+  const STEP_DAYS = 14;
+  const EXTEND_CHUNK_DAYS = 60;
+  const EXTEND_THRESHOLD_PX = DAY_W * 10;
+  const MAX_RANGE_DAYS = 3650;
+  const WEEKDAY_LETTERS = ['日', '月', '火', '水', '木', '金', '土'];
 
   const icons = {
     plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
@@ -26,6 +34,9 @@
   function uid() { return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
   function initial(name) { return (name || '?').trim().slice(0, 1); }
   function addDays(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
+  function startOfDay(base) { const d = new Date(base); d.setHours(0, 0, 0, 0); return d; }
+  function addDaysDate(base, days) { const d = new Date(base); d.setDate(d.getDate() + days); return d; }
+  function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
   function statusMeta(status) {
     if (status === 'done') return { label: '完了', pillClass: 'pill-done' };
     if (status === 'in_progress') return { label: '進行中', pillClass: 'pill-progress' };
@@ -57,7 +68,13 @@
       { id: uid(), projectId, predecessorId: back, successorId: integ }
     ];
     return {
-      projects: [{ id: projectId, name: 'Webサイトリニューアル', color: '#2563eb', createdAt: today.toISOString() }],
+      projects: [{
+        id: projectId,
+        name: 'Webサイトリニューアル',
+        description: '9月末までに新デザインで公開し、問い合わせ経由のCVRを15%改善する。',
+        color: '#2563eb',
+        createdAt: today.toISOString()
+      }],
       tasks,
       dependencies
     };
@@ -81,9 +98,14 @@
   let activeTab = 'tree';
   const collapsedTree = new Set();
   const collapsedTimeline = new Set();
-  let viewDate = new Date();
+  let viewStart = startOfDay(new Date());
+  let rangePast = INITIAL_PAST_DAYS;
+  let rangeFuture = INITIAL_FUTURE_DAYS;
   let notifOpen = false;
   let openMenuId = null;
+  let tasklistCollapsed = false;
+  let projectMenuOpen = false;
+  let timelineScrollX = null; // null = 未設定(基準日を左端に揃える)。手動スクロール後はその位置を保持する。
 
   function renderActions(task) {
     const open = openMenuId === task.id;
@@ -183,7 +205,25 @@
     indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`;
   }
 
+  function getScrollLeft(selector) {
+    const node = document.querySelector(selector);
+    return node ? node.scrollLeft : 0;
+  }
+  function setScrollLeft(selector, value) {
+    const node = document.querySelector(selector);
+    if (node) node.scrollLeft = value;
+  }
+
   function render() {
+    // 再描画のたびにツリー/タイムラインのDOMを作り直すと、横スクロール中の
+    // 位置がリセットされて画面が一番左に飛んでしまう(iOS Safariで顕著)。
+    // 描画前に現在のスクロール位置を保存し、描画後に同じ位置へ戻す。
+    const treeScrollLeft = getScrollLeft('#tree-view .scroll-x');
+    // タイムラインのスクロール位置はscrollイベントでtimelineScrollXに常に
+    // 反映されている(手動スクロール分を尊重するため)。ナビゲーション操作
+    // (前へ/次へ/今日)はrender()を呼ぶ前にtimelineScrollXを明示的に
+    // 書き換えるので、ここでは何もしない。
+
     renderProjectSelect();
     el('tab-tree').classList.toggle('active', activeTab === 'tree');
     el('tab-timeline').classList.toggle('active', activeTab === 'timeline');
@@ -201,18 +241,34 @@
     const { tasks: enriched, projectProgress } = buildView(tasks, deps);
 
     el('page-header').innerHTML = `
-      <div>
+      <div class="ph-bar" id="ph-toggle-btn">
         <h2>${escapeHtml(project.name)}</h2>
-        <div class="progress-wrap" style="margin-top:6px;">
+        <span class="ph-mini-progress">${projectProgress}%</span>
+        <span class="chev">${projectMenuOpen ? icons.chevronDown : icons.chevronRight}</span>
+      </div>
+      ${projectMenuOpen ? `
+      <div class="ph-dropdown">
+        ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ''}
+        <div class="progress-wrap">
           <div class="progress-bar"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
           <span class="progress-num">${projectProgress}%</span>
           <span class="meta-item">全${tasks.length}タスク</span>
         </div>
-      </div>
-      <div class="toolbar-spacer"></div>
-      <button class="btn btn-ghost" id="add-root-task">${icons.plus} タスクを追加</button>
+        <div class="ph-actions">
+          <button class="btn btn-ghost" id="edit-project-btn">${icons.edit} 編集</button>
+          <button class="btn btn-primary" id="add-root-task">${icons.plus} タスクを追加</button>
+        </div>
+      </div>` : ''}
     `;
-    el('add-root-task').addEventListener('click', () => openTaskModal({ mode: 'create', parentId: null }));
+    el('ph-toggle-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      projectMenuOpen = !projectMenuOpen;
+      render();
+    });
+    if (projectMenuOpen) {
+      el('add-root-task').addEventListener('click', (e) => { e.stopPropagation(); openTaskModal({ mode: 'create', parentId: null }); });
+      el('edit-project-btn').addEventListener('click', (e) => { e.stopPropagation(); openProjectModal({ mode: 'edit', project }); });
+    }
 
     el('tree-view').style.display = activeTab === 'tree' ? '' : 'none';
     el('timeline-view').style.display = activeTab === 'timeline' ? '' : 'none';
@@ -222,6 +278,12 @@
     else renderTimeline(enriched, deps);
 
     renderNotif();
+
+    setScrollLeft('#tree-view .scroll-x', treeScrollLeft);
+    if (activeTab === 'timeline') {
+      if (timelineScrollX === null) timelineScrollX = rangePast * DAY_W;
+      setScrollLeft('#timeline-view .gantt', timelineScrollX);
+    }
   }
 
   function renderProjectSelect() {
@@ -242,7 +304,8 @@
           <div class="node node-root">
             <div class="k">プロジェクト</div>
             <h2>${escapeHtml(project.name)}</h2>
-            <div class="progress-bar"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
+            ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ''}
+            <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill" style="width:${projectProgress}%;"></div></div>
             <div class="meta-item" style="color:#fff;opacity:.9;margin-top:8px;">${projectProgress}% ・ 全${enriched.length}タスク</div>
           </div>
           ${top.length ? `<div class="line-h"></div>
@@ -376,13 +439,19 @@
   function pillBg(status) { return status === 'done' ? 'var(--success-bg)' : status === 'in_progress' ? 'var(--accent-soft)' : 'var(--neutral-bg)'; }
   function pillColor(status) { return status === 'done' ? 'var(--success-text)' : status === 'in_progress' ? 'var(--accent)' : 'var(--muted)'; }
 
-  function renderMonthNav() {
-    const y = viewDate.getFullYear(), m = viewDate.getMonth();
-    el('month-label').textContent = `${y}年${m + 1}月`;
+  // ヘッダーに表示する年月は「現在スクロールして見えている位置」を反映する。
+  // グリッド左端の日付が何年何月かを、スクロール位置から逆算する。
+  function updateMonthLabel() {
+    const labelEl = el('month-label');
+    if (!labelEl) return;
+    const rangeStart = addDaysDate(viewStart, -rangePast);
+    const scrollLeft = timelineScrollX === null ? rangePast * DAY_W : timelineScrollX;
+    const visibleDate = addDaysDate(rangeStart, Math.round(scrollLeft / DAY_W));
+    labelEl.textContent = `${visibleDate.getFullYear()}年${visibleDate.getMonth() + 1}月`;
   }
 
   function renderTimeline(enriched, deps) {
-    renderMonthNav();
+    updateMonthLabel();
     const map = childrenMap(enriched);
     const rows = flattenVisible(map);
     const timelineEl = el('timeline-view');
@@ -390,32 +459,46 @@
       timelineEl.innerHTML = '<div class="empty-state">タスクがありません。タスク分解タブから追加してください。</div>';
       return;
     }
-    const year = viewDate.getFullYear(), month = viewDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month, daysInMonth);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+    const monthStart = addDaysDate(viewStart, -rangePast);
+    const daysInMonth = rangePast + rangeFuture;
+    const monthEnd = addDaysDate(monthStart, daysInMonth - 1);
+    const today = startOfDay(new Date());
+    const isCurrentMonth = today >= monthStart && today <= monthEnd;
     const gridWidth = daysInMonth * DAY_W;
     const gridHeight = rows.length * ROW_H;
 
     let dayHeader = '', weekendLayer = '';
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d);
-      const isToday = isCurrentMonth && d === today.getDate();
-      dayHeader += `<div class="day-cell">${isToday ? `<span class="day-num-today">${d}</span>` : d}</div>`;
-      if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${(d - 1) * DAY_W}px;width:${DAY_W}px;"></div>`;
+    const monthSegments = [];
+    for (let i = 0; i < daysInMonth; i++) {
+      const date = addDaysDate(monthStart, i);
+      const isToday = isSameDay(date, today);
+      const wd = WEEKDAY_LETTERS[date.getDay()];
+      dayHeader += `<div class="day-cell"><span class="day-wd">${wd}</span>${isToday ? `<span class="day-num-today">${date.getDate()}</span>` : `<span class="day-num">${date.getDate()}</span>`}</div>`;
+      if (date.getDay() === 0 || date.getDay() === 6) weekendLayer += `<div class="weekend" style="left:${i * DAY_W}px;width:${DAY_W}px;"></div>`;
+      const segKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const lastSeg = monthSegments[monthSegments.length - 1];
+      if (lastSeg && lastSeg.key === segKey) lastSeg.count++;
+      else monthSegments.push({ key: segKey, year: date.getFullYear(), month: date.getMonth() + 1, count: 1 });
     }
+    const monthRowHtml = monthSegments.map((s, idx) => {
+      const showYear = idx === 0 || s.year !== monthSegments[idx - 1].year;
+      return `<div class="month-seg" style="width:${s.count * DAY_W}px;">${showYear ? s.year + '年' : ''}${s.month}月</div>`;
+    }).join('');
 
-    let taskListHtml = '<div class="tl-head">タスク</div>';
+    let taskListHtml = `
+      <div class="tl-month-spacer"></div>
+      <div class="tl-head">
+        <button class="tl-toggle" id="tl-collapse-btn" title="${tasklistCollapsed ? 'タスク名を表示' : 'タスク名を折りたたむ'}">${tasklistCollapsed ? icons.arrowRight : icons.arrowLeft}</button>
+        ${tasklistCollapsed ? '' : '<span>タスク</span>'}
+      </div>`;
     let barsHtml = '';
     rows.forEach((row, i) => {
       const t = row.task;
       const meta = statusMeta(t.status);
       const top = i * ROW_H;
       taskListHtml += `
-        <div class="tl-row ${row.depth > 0 ? 'indent' : ''}">
-          ${row.hasChildren ? `<button class="chev" style="width:12px;height:12px;" data-action="toggle-tl" data-id="${t.id}">${collapsedTimeline.has(t.id) ? icons.chevronRight : icons.chevronDown}</button>` : (row.depth === 0 ? '<span style="width:12px;"></span>' : statusGlyph(t))}
+        <div class="tl-row ${row.depth > 0 ? 'indent' : ''}" title="${escapeHtml(t.title)}">
+          ${row.hasChildren ? `<button class="chev" style="width:12px;height:12px;" data-action="toggle-tl" data-id="${t.id}">${collapsedTimeline.has(t.id) ? icons.chevronRight : icons.chevronDown}</button>` : statusGlyph(t)}
           <span class="tl-title ${row.depth === 0 ? 'phase' : ''} ${t.status === 'todo' ? 'dim' : ''}">${escapeHtml(t.title)}</span>
           <span class="pill-xs" style="background:${t.blocked ? 'var(--warn-bg)' : pillBg(t.status)};color:${t.blocked ? 'var(--warn-text)' : pillColor(t.status)};">${t.blocked ? 'ブロック中' : meta.label}</span>
         </div>`;
@@ -438,15 +521,16 @@
 
     let todayLine = '';
     if (isCurrentMonth) {
-      const x = (today.getDate() - 1) * DAY_W + DAY_W / 2;
-      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
+      const x = Math.round((today - monthStart) / 86400000) * DAY_W + DAY_W / 2;
+      todayLine = `<div class="today-line" style="left:${x}px;height:${gridHeight + ROW_H + MONTH_ROW_H}px;"></div><div class="today-tag" style="left:${x}px;">本日</div>`;
     }
 
     timelineEl.innerHTML = `
       <div class="scroll-x">
         <div class="gantt">
-          <div class="tasklist">${taskListHtml}</div>
+          <div class="tasklist ${tasklistCollapsed ? 'collapsed' : ''}">${taskListHtml}</div>
           <div class="grid-wrap">
+            <div class="grid-month-row">${monthRowHtml}</div>
             <div class="grid-header">${dayHeader}</div>
             <div class="grid-body" id="grid-body" style="width:${gridWidth}px;height:${gridHeight}px;">
               ${weekendLayer}
@@ -464,6 +548,33 @@
       </div>
     `;
     drawDependencies(deps);
+    const ganttEl = timelineEl.querySelector('.gantt');
+    if (ganttEl) {
+      ganttEl.addEventListener('scroll', () => {
+        // render()で作り直された古い要素が、外れた後にscrollイベントを
+        // 発火させることがあるため、現在DOMに存在する要素かを確認する。
+        if (!document.body.contains(ganttEl)) return;
+        timelineScrollX = ganttEl.scrollLeft;
+        updateMonthLabel();
+        // 端に近づいたら範囲を広げて連続的にスクロールできるようにする(月で区切らない)
+        const nearLeft = ganttEl.scrollLeft < EXTEND_THRESHOLD_PX;
+        const nearRight = (ganttEl.scrollWidth - ganttEl.clientWidth - ganttEl.scrollLeft) < EXTEND_THRESHOLD_PX;
+        if (rangePast + rangeFuture >= MAX_RANGE_DAYS) return;
+        if (nearLeft) {
+          rangePast += EXTEND_CHUNK_DAYS;
+          timelineScrollX = ganttEl.scrollLeft + EXTEND_CHUNK_DAYS * DAY_W;
+          render();
+        } else if (nearRight) {
+          rangeFuture += EXTEND_CHUNK_DAYS;
+          render();
+        }
+      }, { passive: true });
+    }
+    el('tl-collapse-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      tasklistCollapsed = !tasklistCollapsed;
+      render();
+    });
     timelineEl.querySelectorAll('[data-action="toggle-tl"]').forEach((elm) => {
       elm.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -621,6 +732,50 @@
     });
   }
 
+  /* ---------- project modal ---------- */
+  function openProjectModal({ mode, project }) {
+    const isEdit = mode === 'edit';
+    const modalRoot = el('modal-root');
+    modalRoot.innerHTML = `
+      <div class="modal-backdrop" id="modal-backdrop">
+        <div class="modal">
+          <h2>${isEdit ? 'プロジェクトを編集' : '新規プロジェクト'}</h2>
+          <form id="project-form">
+            <div class="field"><label>プロジェクト名</label><input type="text" id="p-name" required value="${isEdit ? escapeHtml(project.name) : ''}"></div>
+            <div class="field">
+              <label>目的・完了の目標(任意)</label>
+              <textarea id="p-desc" rows="3" placeholder="例: 9月末までに新デザインで公開し、CVRを15%改善する">${isEdit ? escapeHtml(project.description || '') : ''}</textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-ghost" id="modal-cancel">キャンセル</button>
+              <button type="submit" class="btn btn-primary">${isEdit ? '保存' : '作成'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    el('modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'modal-backdrop') modalRoot.innerHTML = ''; });
+    el('modal-cancel').addEventListener('click', () => { modalRoot.innerHTML = ''; });
+    el('p-name').focus();
+    el('project-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = el('p-name').value.trim();
+      const description = el('p-desc').value.trim();
+      if (!name) return;
+      if (isEdit) {
+        project.name = name;
+        project.description = description;
+      } else {
+        const id = uid();
+        DB.projects.push({ id, name, description, color: '#2563eb', createdAt: new Date().toISOString() });
+        currentProjectId = id;
+      }
+      saveDB(DB);
+      modalRoot.innerHTML = '';
+      render();
+    });
+  }
+
   /* ---------- tap ripple feedback ---------- */
   function spawnRipple(target, evt) {
     const rect = target.getBoundingClientRect();
@@ -647,24 +802,29 @@
   /* ---------- wiring ---------- */
   function init() {
     el('project-select').addEventListener('change', (e) => { currentProjectId = e.target.value; render(); });
-    el('new-project-btn').addEventListener('click', () => {
-      const name = prompt('新規プロジェクト名を入力してください');
-      if (!name || !name.trim()) return;
-      const id = uid();
-      DB.projects.push({ id, name: name.trim(), color: '#2563eb', createdAt: new Date().toISOString() });
-      saveDB(DB);
-      currentProjectId = id;
-      render();
-    });
+    el('new-project-btn').addEventListener('click', () => openProjectModal({ mode: 'create' }));
     el('tab-tree').addEventListener('click', () => { activeTab = 'tree'; render(); });
     el('tab-timeline').addEventListener('click', () => { activeTab = 'timeline'; render(); });
     el('bell-btn').addEventListener('click', (e) => { e.stopPropagation(); notifOpen = !notifOpen; renderNotif(); });
     document.addEventListener('click', () => {
       if (notifOpen) { notifOpen = false; renderNotif(); }
       if (openMenuId) { openMenuId = null; render(); }
+      if (projectMenuOpen) { projectMenuOpen = false; render(); }
     });
-    el('prev-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1); render(); });
-    el('next-month').addEventListener('click', () => { viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1); render(); });
+    // 前へ/次へ/今日は、月区切りで再アンカーするのではなく、既存の連続した
+    // グリッドを滑らかにスクロールするだけ(端に近づけば自動で範囲が伸びる)。
+    el('prev-month').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollBy({ left: -STEP_DAYS * DAY_W, behavior: 'smooth' });
+    });
+    el('next-month').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollBy({ left: STEP_DAYS * DAY_W, behavior: 'smooth' });
+    });
+    el('today-btn').addEventListener('click', () => {
+      const g = document.querySelector('#timeline-view .gantt');
+      if (g) g.scrollTo({ left: rangePast * DAY_W, behavior: 'smooth' });
+    });
     window.addEventListener('resize', positionTabIndicator);
     render();
   }

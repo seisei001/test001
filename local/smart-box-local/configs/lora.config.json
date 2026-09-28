@@ -1,0 +1,51 @@
+{
+  "$schema": "./schemas/lora.schema.json",
+  "note": "DESIGN.md 5.4節: 前バージョンで「検索結果の再ランキングのみ」に限定したのは誤りだったため撤回。CoreModel.generate()のquery/value射影への本来のLoRA適用に戻した。base modelの重みは一切更新せず、常にこのLoRA A/B行列のみを更新する(DESIGN.md 1.3節)。",
+  "layers": {
+    "global": {
+      "rank": 4,
+      "targetModules": ["query", "value"],
+      "learningRate": 0.0005,
+      "description": "ユーザー全体の好み(技術深度、形式度など)。ゆっくり更新。"
+    },
+    "topic": {
+      "rank": 2,
+      "targetModules": ["value"],
+      "learningRate": 0.001,
+      "description": "特定トピック・ドメインでの傾向。中速更新。"
+    },
+    "style": {
+      "rank": 1,
+      "targetModules": ["query"],
+      "learningRate": 0.002,
+      "description": "tone/formalityの微調整。最速更新。"
+    },
+    "totalParamsEstimate": 7000
+  },
+  "training": {
+    "proximalLambda": 0.01,
+    "batchSize": 1,
+    "updateFrequency": "per-turn",
+    "experienceReplayBufferSize": 50,
+    "catastrophicForgettingGuard": "proximal-regularizer",
+    "note": "決定: learningRate/proximalLambdaはPESO論文の正確な推奨値が未確認のため仮値のまま固定しない。ABTestRunnerを使いPhase 1.5のβテストで実測調整する運用とする。DESIGN.md 8.1節: 生成モデルのforwardを通した逆伝播の技術検証がPhase 0の最優先タスク。"
+  },
+  "feedback": {
+    "mode": "distillation-primary-implicit-fallback",
+    "distillation": {
+      "description": "llm.config.jsonが有効な場合、LLMの回答をteacher-forcingのターゲットとした教師あり損失でLoRAを更新する(DESIGN.md 1.4節・5.5節)。"
+    },
+    "implicit": {
+      "noCorrectionConfidenceDelta": 1,
+      "explicitCorrectionConfidenceDelta": -2,
+      "description": "LLM未設定時のフォールバック。ユーザーの反応(続けて書いた量等)から損失を計算する。"
+    }
+  },
+  "lossWeights": {
+    "distillation": 0.6,
+    "implicit": 0.2,
+    "trajectory": 0.1,
+    "proximalReg": 0.1,
+    "note": "dynamic更新の初期値。合計1.0で正規化。distillationはLLM連携時のみ、implicitは単体時のフォールバックとして働く(両方使える場合は併用してもよい)。"
+  }
+}
