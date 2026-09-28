@@ -215,28 +215,56 @@ async function askClaude(question, systemPrompt, apiKey, model) {
   return textBlock ? textBlock.text : "";
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function askGemini(question, systemPrompt, apiKey, model) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: question }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-      }),
+  const maxAttempts = 3;
+  let lastErr;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: question }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      return parts.map((p) => p.text || "").join("");
     }
-  );
-  if (!response.ok) {
+
     const errText = await response.text();
+
     if (response.status === 404) {
       throw new Error(`Geminiのモデル「${model}」が見つかりませんでした。設定画面の「詳細設定」でモデル名を確認・変更してください。`);
     }
+
+    // 503(混雑)・429(レート制限)は一時的な問題なので少し待って再試行する
+    if ((response.status === 503 || response.status === 429) && attempt < maxAttempts) {
+      lastErr = new Error(`Geminiが混雑しています(${response.status})。再試行します...`);
+      await sleep(attempt * 1000);
+      continue;
+    }
+
+    if (response.status === 503) {
+      throw new Error("Geminiのサーバーが混雑しています。少し時間をおいてから、もう一度お試しください。");
+    }
+    if (response.status === 429) {
+      throw new Error("Geminiの利用回数の上限に達しました。しばらく待ってから、もう一度お試しください。");
+    }
     throw new Error(`Geminiへの問い合わせに失敗しました: ${response.status} ${errText.slice(0, 200)}`);
   }
-  const data = await response.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  return parts.map((p) => p.text || "").join("");
+
+  throw lastErr || new Error("Geminiへの問い合わせに失敗しました。");
 }
 
 async function askOpenAI(question, systemPrompt, apiKey, model) {
