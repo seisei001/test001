@@ -63,6 +63,19 @@ CREATE TABLE IF NOT EXISTS entries (
 3. 変数名(Variable name)を **`DB`**(この名前が必須)、Database は `raglog-db` を選択
 4. 保存
 
+### 4.5. Workers AIを紐付ける(任意・おすすめ)
+
+回答生成に **Cloudflare Workers AI**(無料・APIキー不要)を使いたい場合は、以下も設定してください。
+これを設定しなくても、Gemini/Claude/ChatGPTのキーを使えばアプリ自体は動きます。
+
+1. 同じく **Settings → Bindings** を開く
+2. 「Add binding」→「Workers AI」を選択
+3. 変数名(Variable name)を **`AI`**(この名前が必須)にする
+4. 保存
+
+無料枠は1日10,000 neurons(小型モデルなら数百〜数千回の質問に相当)です。超過すると
+従量課金になるか、それまで待つ必要があります。
+
 ### 5. 合言葉(APP_SECRET)を設定する
 
 1. 同じく **Settings → Variables and Secrets**
@@ -76,7 +89,9 @@ CREATE TABLE IF NOT EXISTS entries (
 - **WorkerのURL**: 手順3でメモしたURL
 - **合言葉**: 手順5で決めた `APP_SECRET` の値
 - **Hugging Faceのキー**: https://huggingface.co/settings/tokens で無料発行
-- 回答生成に使うAI(Gemini/Claude/ChatGPT)のキー
+- 回答を作るAIとして「Cloudflare Workers AI」を選ぶ場合はキー入力は不要です
+  (手順4.5でAIバインディングを設定していれば動きます)。
+  Gemini/Claude/ChatGPTを使いたい場合は、それぞれのキーを入力してください。
 
 を入力して保存すれば完了です。
 

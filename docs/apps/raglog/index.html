@@ -126,15 +126,19 @@ h2{font-size:1rem;margin:0 0 8px;}
   <div class="panel">
     <h2>回答を作るAI</h2>
     <select id="provider">
+      <option value="workers-ai">Cloudflare Workers AI(無料・キー不要)</option>
       <option value="gemini">Google Gemini(無料枠あり)</option>
       <option value="claude">Claude(高品質・有料)</option>
       <option value="openai">ChatGPT(OpenAI・有料)</option>
     </select>
+    <p class="muted">「Cloudflare Workers AI」はAPIキーの入力が不要です。ただしWorker側で
+    AIバインディングの設定が必要です(README参照)。</p>
   </div>
 
   <details id="advanced-settings">
     <summary>詳細設定(通常は変更しなくて大丈夫です)</summary>
     <p class="muted">回答が返ってこなくなった場合、モデル名を新しいものに書き換えてください。</p>
+    <label>Workers AIのモデル名: <input id="workers-ai-model" type="text"></label>
     <label>Geminiのモデル名: <input id="gemini-model" type="text"></label>
     <label>Claudeのモデル名: <input id="claude-model" type="text"></label>
     <label>ChatGPTのモデル名: <input id="openai-model" type="text"></label>

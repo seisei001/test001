@@ -2,12 +2,13 @@
  * 育てる質問箱 - Cloudflare Worker
  *
  * ブラウザ(静的ページ)から呼ばれる仲介役。CORSをここで解決し、
- * Hugging Face / Gemini / Claude / ChatGPT への問い合わせと、
- * D1データベース(entriesテーブル)への保存・検索をまとめて行う。
+ * Hugging Face / Cloudflare Workers AI / Gemini / Claude / ChatGPT への
+ * 問い合わせと、D1データベース(entriesテーブル)への保存・検索をまとめて行う。
  *
  * デプロイ手順は README.md を参照してください。
  * 必要な設定(Cloudflareダッシュボードで行う):
  *   - D1バインディング: 変数名 "DB" を raglog-db に紐付ける
+ *   - AIバインディング: 変数名 "AI" を Workers AI に紐付ける(任意。Cloudflare Workers AIを使う場合)
  *   - シークレット変数: APP_SECRET (このアプリ専用の合言葉。自分で決めてよい)
  */
 
@@ -18,6 +19,7 @@ const CHUNK_MAX_CHARS = 600;
 const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
 const CLAUDE_DEFAULT_MODEL = "claude-opus-5";
 const OPENAI_DEFAULT_MODEL = "gpt-5.5";
+const WORKERS_AI_DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const RETRIEVAL_LEVELS = {
   light: { topK: 1, threshold: 0.82 },
@@ -174,18 +176,36 @@ function buildContextBlock(similar) {
   return lines.join("\n");
 }
 
-async function generateAnswer(question, similar, provider, apiKey, model) {
-  if (!apiKey) {
+async function generateAnswer(question, similar, provider, apiKey, model, env) {
+  if (provider !== "workers-ai" && !apiKey) {
     throw new Error(`${provider} のAPIキーが設定されていません。設定画面から入力してください。`);
   }
   const contextBlock = buildContextBlock(similar);
   let systemPrompt = "あなたは、蓄積された知識を参考にしながら質問に答えるアシスタントです。";
   if (contextBlock) systemPrompt += "\n\n" + contextBlock;
 
+  if (provider === "workers-ai") return askWorkersAI(question, systemPrompt, env, model || WORKERS_AI_DEFAULT_MODEL);
   if (provider === "claude") return askClaude(question, systemPrompt, apiKey, model || CLAUDE_DEFAULT_MODEL);
   if (provider === "gemini") return askGemini(question, systemPrompt, apiKey, model || GEMINI_DEFAULT_MODEL);
   if (provider === "openai") return askOpenAI(question, systemPrompt, apiKey, model || OPENAI_DEFAULT_MODEL);
   throw new Error(`未知のプロバイダーです: ${provider}`);
+}
+
+async function askWorkersAI(question, systemPrompt, env, model) {
+  if (!env.AI) {
+    throw new Error("Cloudflare Workers AIが有効になっていません。WorkerのSettings→BindingsでAIバインディングを追加してください(README参照)。");
+  }
+  try {
+    const result = await env.AI.run(model, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ],
+    });
+    return result.response || "";
+  } catch (err) {
+    throw new Error(`Cloudflare Workers AIへの問い合わせに失敗しました: ${err.message || err}`);
+  }
 }
 
 async function askClaude(question, systemPrompt, apiKey, model) {
@@ -367,7 +387,7 @@ export default {
           .sort((a, b) => b.score - a.score)
           .slice(0, preset.topK);
 
-        const answer = await generateAnswer(question, scored, body.provider, body.provider_key, body.provider_model);
+        const answer = await generateAnswer(question, scored, body.provider, body.provider_key, body.provider_model, env);
         const used = scored.map((s) => ({ text: s.entry.text, score: Math.round(s.score * 1000) / 1000, source_ref: s.entry.source_ref }));
         return json({ question, answer, used }, 200, origin);
       }

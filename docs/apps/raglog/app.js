@@ -7,11 +7,12 @@ const DEFAULTS = {
   geminiKey: "",
   anthropicKey: "",
   openaiKey: "",
-  provider: "gemini",
+  provider: "workers-ai",
   level: "normal",
   geminiModel: "gemini-2.0-flash",
   claudeModel: "claude-opus-5",
   openaiModel: "gpt-5.5",
+  workersAiModel: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 };
 
 const PRIVACY_NOTICE = `ℹ️ お知らせ
@@ -21,7 +22,11 @@ const PRIVACY_NOTICE = `ℹ️ お知らせ
 登録する・質問するたびに毎回Hugging Face側に送信されます。
 
 さらに、「質問する」タブで実際に質問し、回答を作ってもらう時には、
-下で選んだAI(Google/Claude/ChatGPT)にも質問と参考情報が送信されます。
+下で選んだAIに質問と参考情報が送信されます。「Cloudflare Workers AI」
+を選んだ場合はこのアプリを動かしているCloudflare自身のサーバー内で
+処理され、Google/Anthropic/OpenAIなど外部のAI企業には送信されません
+(APIキーも不要です)。Google/Claude/ChatGPTを選んだ場合は、それぞれの
+会社に送信されます。
 
 無料枠で使う場合、送信した内容がサービス改善に使われることがあります
 (各社の利用規約に基づく正当な取り扱いです)。気になる場合は、
@@ -101,6 +106,7 @@ function renderSettingsForm() {
   $("gemini-model").value = s.geminiModel;
   $("claude-model").value = s.claudeModel;
   $("openai-model").value = s.openaiModel;
+  $("workers-ai-model").value = s.workersAiModel;
 }
 
 async function refreshStats() {
@@ -131,6 +137,7 @@ $("save-settings").addEventListener("click", () => {
     geminiModel: $("gemini-model").value.trim() || DEFAULTS.geminiModel,
     claudeModel: $("claude-model").value.trim() || DEFAULTS.claudeModel,
     openaiModel: $("openai-model").value.trim() || DEFAULTS.openaiModel,
+    workersAiModel: $("workers-ai-model").value.trim() || DEFAULTS.workersAiModel,
   };
   saveSettings(s);
   $("settings-status").textContent = "保存しました。";
@@ -150,12 +157,14 @@ function addBubble(text, kind) {
 function providerKeyFor(settings) {
   if (settings.provider === "claude") return settings.anthropicKey;
   if (settings.provider === "openai") return settings.openaiKey;
+  if (settings.provider === "workers-ai") return "";
   return settings.geminiKey;
 }
 
 function providerModelFor(settings) {
   if (settings.provider === "claude") return settings.claudeModel;
   if (settings.provider === "openai") return settings.openaiModel;
+  if (settings.provider === "workers-ai") return settings.workersAiModel;
   return settings.geminiModel;
 }
 
