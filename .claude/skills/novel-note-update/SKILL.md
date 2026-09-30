@@ -18,7 +18,7 @@ description: 「小説設定ノート」(docs/apps/novel-note)のデータ更新
 | 利用者の鍵 | `docs/apps/novel-note/data/keys.json` | 公開 | 公開鍵+パスワードで暗号化した秘密鍵(アプリの初回設定で作成) |
 | 本文ハッシュ | `docs/apps/novel-note/data/<作品id>.hashes.json` | 公開 | 前回データ作成時の各話の本文の指紋。変更チェック用 |
 | マスターキー | Google Drive「shousrtsu」の `novel-note-master-key.json` | **非公開** | AI が正本データを取り出すための鍵。**リポジトリに入れない** |
-| 小説の本文 | Google Drive「shousrtsu」の `N6924DF.txt`(なろうの投稿済み作品テキストダウンロード。ZIP の中身) | **非公開** | 作者が改稿したら取り直して置く |
+| 小説の本文 | Google Drive「shousrtsu」の `N6924DF.txt`(なろうの投稿済み作品テキストダウンロード。ZIP の中身) | **非公開** | 作者は改稿をなろうに直接反映し、Drive の本文は取り直さないことが多い(古いままでよい) |
 | 処理スクリプト | `tools/novel-note-*.mjs` | 公開 | Node 18 以降。追加パッケージ不要 |
 
 - Google Drive は `sakatano01@gmail.com`。フォルダ「shousrtsu」の ID は `1HUGOMdKgsD1wIq1KMgVBCWviCpFPhh3x`。
@@ -38,6 +38,7 @@ novel-note-update スキルで、小説設定ノートのデータを更新し�
 - 作者の修正を反映(下の「修正データ」3件)…
 - 次の話を追加: 第21〜40話
 - 最後に暗号化してハブに置き、PR を作ってマージする
+守ること: …(下の「守ること」と同じ内容)
 修正データ:
 ```json
 {"format":"novel-note-edits","version":2,"workId":"n6924df","episodes":{…},"terms":{…},"threads":{…}}
@@ -45,6 +46,19 @@ novel-note-update スキルで、小説設定ノートのデータを更新し�
 ```
 
 チェックが外れている作業はしない。修正データは平文の小説情報なので、一時フォルダの `edits.json` に保存して使う(コミットしない)。
+
+## 守ること(依頼文の遵守と作者との分担)
+
+依頼文はアプリが作る決まった形の指示書。**書かれた作業を、書かれたとおりに、それだけ行う。**
+
+- **依頼文にない作業はしない。** 気づいたことは最後の報告で伝えるだけにする。
+- **平文の正本を Drive に書き戻さない。** 正本は暗号化してハブに置いたもの(`<作品id>.enc.json`)だけ。Drive の `<作品id>.novelnote.json` は古いままでよい。
+- **Drive の本文には手を加えない**(アップロード・修正・置き換えをしない)。本文の修正は作者がなろうで行う。Drive の `N6924DF.txt` は古いことがあるが、そのまま使う。
+- **作者の修正メモ(修正データの `note`)に書かれた修正は、作者が手作業で行う。** AI はそれをデータに反映しない。
+  - 例: 「〇〇に統一」「〇〇に変更」「訂正済み」とあっても、固有名詞の名前・別名・読み・説明、あらすじ、伏線を AI の判断で書き換えない。
+  - 修正データは merge の `--edits` で取り込むだけ(status と note がそのまま入る)。
+- **作者が確認済み(`ok`・`resolved` や note あり)の食い違いを、古い本文を根拠に蒸し返さない。** Drive の本文に古い表記が残っていても、新しい食い違い候補(`check`)にしない。新しく作るのは、作者がまだ扱っていない食い違いだけ。
+- 依頼文の作業がこの規則とぶつかるときは、作業せずに報告で確認する。
 
 ## 手順
 
@@ -68,7 +82,7 @@ novel-note-update スキルで、小説設定ノートのデータを更新し�
    `node tools/novel-note-merge.mjs --base W/base.json --texts W/eps --patch W/patch.json --out W/new.json`
    エラーが出たらパッチを直してやり直す。「注意」に出た内容(作者の修正を守った項目、本文に見つからない固有名詞など)は最後の報告に書く。
    このとき `docs/apps/novel-note/data/<作品id>.hashes.json` も更新される。
-9. **暗号化してハブに置く**:
+9. **暗号化してハブに置く**(平文を Drive に書き戻す作業はない):
    `node tools/novel-note-encrypt.mjs data W/new.json W/mk.json`(`<作品id>.enc.json` と `index.json` が更新される)
    確認: `node tools/novel-note-encrypt.mjs decrypt <作品id> W/mk.json W/check.json` で取り出せること。`grep` で enc/hashes/index に本文の言葉が含まれていないこと。
 10. **PR**: 変更されるのは `docs/apps/novel-note/data/` の3ファイル(enc / index / hashes)だけのはず。コミット → push → PR 作成 → マージ(依頼文に「マージする」とある場合)。
