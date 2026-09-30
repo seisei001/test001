@@ -1029,7 +1029,13 @@
     if (opt.check) tasks.push(`- 本文の変更チェック: Google Drive「shousrtsu」の最新の ${base.work.id.toUpperCase()}.zip(または ${base.work.id.toUpperCase()}.txt)と比べ、本文が変わった話のデータを直す`);
     if (opt.edits && n) tasks.push(`- 作者の修正を反映(下の「修正データ」${n}件)。作者の修正は最優先で、AI は上書きしない`);
     if (opt.add && from <= total) tasks.push(`- 次の話を追加: 第${from}〜${to}話`);
-    tasks.push('- 最後に暗号化してハブに置き、PR を作ってマージする(平文の正本は Drive「shousrtsu」の ' + base.work.id + '.novelnote.json に書き戻す)');
+    tasks.push('- 最後に暗号化してハブに置き、PR を作ってマージする');
+    const rules = [
+      '- この依頼文に書かれた作業だけを行う。書かれていないことは報告で伝えるだけにする',
+      '- 平文の正本を Drive に書き戻さない。Drive の本文にも手を加えない(本文の修正は作者がなろうで行う。Drive の本文は古いままでよい)',
+      '- 修正データの note に書かれた修正は作者が手作業で行う。AI は固有名詞・あらすじ・伏線をそれに合わせて書き換えない',
+      '- 作者が確認済みの食い違いを、古い本文を根拠に新しい要確認として挙げない',
+    ];
     let text = `${SKILL_NAME} スキルで、小説設定ノートのデータを更新してください。
 (スキルが見つからない場合は、リポジトリ seisei001/test001 の .claude/skills/${SKILL_NAME}/SKILL.md を読んで、その手順に従ってください)
 
@@ -1038,6 +1044,9 @@
 
 今回の作業:
 ${tasks.join('\n')}
+
+守ること:
+${rules.join('\n')}
 `;
     if (opt.edits && n) text += `\n修正データ:\n\`\`\`json\n${JSON.stringify(editsPayload())}\n\`\`\`\n`;
     return text;
