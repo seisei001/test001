@@ -1,6 +1,6 @@
 ---
 name: webapp-hub
-description: seisei001/test001 の「WEBアプリハブ」(GitHub Pagesで公開するミニアプリ集)の運用手順と実装規約。ハブに新しいアプリを追加する・既存アプリ(hello, url-viewer, avatar, workmap, neon-dash, tax-office-pr, smart-box, text-avatar, novel-note)を修正する・apps.jsonを編集する・公開URLへの反映方法を確認する、といった作業の前に必ず読むこと。
+description: seisei001/test001 の「WEBアプリハブ」(GitHub Pagesで公開するミニアプリ集)の運用手順と実装規約。ハブに新しいアプリを追加する・既存アプリ(hello, url-viewer, avatar, workmap, neon-dash, tax-office-pr, smart-box, text-avatar, novel-note, gif-gallery)を修正する・apps.jsonを編集する・公開URLへの反映方法を確認する、といった作業の前に必ず読むこと。
 ---
 
 # WEBアプリハブ 運用スキル
@@ -34,6 +34,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | smart-box | 🎙️ 賢い箱 | apps/smart-box/src/ui/ | 開発中の会話AI。本体は `src/ui/` 配下のため path と戻るリンクの階層が他と異なる(`../../../../`) |
 | text-avatar | 📖 テキストアバター | apps/text-avatar/ | テキストをClaudeで解析しVRMアバターに朗読・演技させる。ユーザー自身のAnthropic APIキー(localStorage保存)が必要 |
 | novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**データ更新・データ形式・暗号化の手順は `novel-note-update` スキルに従う**。小説データは平文でリポジトリに置かず、`data/` に暗号化して置く(アプリ用の利用者の鍵+AI作業用のマスターキー。マスターキーは利用者の Google Drive にだけある)。アプリで作者が直した内容は端末に保存し、「データ更新を依頼」で依頼文(スキル名・作業・修正データ)としてコピーされる |
+| gif-gallery | 🎞️ アニメGIFギャラリー | apps/gif-gallery/ | 商用利用OKのゲーム素材アニメGIF 98件(`gifs/<cat>/` と `gifs/manifest.json`。cat=chara/item/effect/vehicle/world)。タップで再生/停止、ImageDecoderでコマ送り。素材追加時は manifest に作者・ライセンス・出典を必ず記入し、NC/ND は入れない。CC-BY/CC-BY-SA は利用時に作者表記が必要 |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 

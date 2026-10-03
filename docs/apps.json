@@ -68,5 +68,12 @@
     "description": "小説のあらすじ・固有名詞辞書・伏線を話数ごとに管理する執筆サポート(データは非公開・端末に読み込み)",
     "path": "apps/novel-note/",
     "icon": "📚"
+  },
+  {
+    "id": "gif-gallery",
+    "name": "アニメGIFギャラリー",
+    "description": "商用利用OKのゲーム素材アニメをタップで動かし、コマ送りでも見られるギャラリー",
+    "path": "apps/gif-gallery/",
+    "icon": "🎞️"
   }
 ]
