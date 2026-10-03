@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="アニメGIF">
+<title>アニメGIFギャラリー</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--stage:#e9eaee;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+header{padding:16px;max-width:1100px;margin:0 auto;}
+.back-link{display:inline-block;margin-bottom:8px;color:var(--muted);text-decoration:none;font-size:0.85rem;}
+header h1{margin:0 0 4px;font-size:1.3rem;}
+header p{margin:0;color:var(--muted);font-size:0.88rem;}
+main{max-width:1100px;margin:0 auto;padding:0 16px 48px;}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px;}
+.tab{border:1px solid var(--border);background:var(--panel-bg);color:var(--text);border-radius:999px;padding:0 14px;min-height:44px;font-size:0.88rem;cursor:pointer;}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
+.spacer{flex:1;}
+.btn{border:none;border-radius:8px;padding:0 14px;min-height:44px;font-size:0.88rem;cursor:pointer;background:var(--accent);color:#fff;}
+.btn:hover{background:var(--accent-hover);}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.card{background:var(--panel-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+.thumb{position:relative;aspect-ratio:1/1;background:var(--stage);border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;}
+.thumb img{max-width:88%;max-height:88%;image-rendering:pixelated;object-fit:contain;}
+.thumb .state{position:absolute;left:8px;bottom:8px;font-size:0.72rem;background:rgba(0,0,0,0.6);color:#fff;border-radius:999px;padding:2px 8px;}
+.card.playing .thumb{outline:3px solid var(--accent);outline-offset:-3px;}
+.card-body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:4px;flex:1;}
+.card-title{font-size:0.85rem;font-weight:700;line-height:1.35;}
+.card-meta{font-size:0.72rem;color:var(--muted);}
+.detail-btn{margin-top:auto;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:8px;min-height:44px;font-size:0.8rem;cursor:pointer;}
+.empty{color:var(--muted);padding:24px 0;}
+/* プレイヤー(詳細) */
+dialog{border:none;border-radius:14px;padding:0;width:min(560px,94vw);background:var(--panel-bg);color:var(--text);}
+dialog::backdrop{background:rgba(0,0,0,0.6);}
+.player{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.player h2{margin:0;font-size:1.05rem;}
+.stage{background:var(--stage);border-radius:10px;display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;cursor:pointer;}
+.stage canvas,.stage img{max-width:92%;max-height:92%;image-rendering:pixelated;}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.controls label{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);flex:1;min-width:200px;}
+.controls input[type=range]{flex:1;min-height:44px;}
+.frame-info{font-size:0.8rem;color:var(--muted);font-variant-numeric:tabular-nums;}
+.credit{font-size:0.8rem;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;word-break:break-all;}
+.credit a{color:var(--accent);}
+.note-fallback{font-size:0.78rem;color:var(--muted);}
+@media (prefers-color-scheme: dark){
+:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;--stage:#2a2b31;}
+}
+</style>
+</head>
+<body>
+<header>
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1>🎞️ アニメGIFギャラリー</h1>
+<p>商用利用できる無料のゲーム素材アニメ。画像をタップすると動き出し、もう一度タップで止まります。「コマ送りで見る」では速さを変えたり、パラパラ漫画のように1コマずつ動かしたりできます。</p>
+</header>
+<main>
+<div class="toolbar" id="tabs" role="group" aria-label="カテゴリ"></div>
+<div class="toolbar">
+  <span class="frame-info" id="count"></span>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="stop-all" type="button">すべて止める</button>
+  <button class="btn" id="play-all" type="button">表示中をすべて動かす</button>
+</div>
+<div class="grid" id="grid"></div>
+<p class="empty" id="empty" hidden>素材を読み込めませんでした。</p>
+</main>
+
+<dialog id="dlg">
+  <div class="player">
+    <h2 id="p-title"></h2>
+    <div class="stage" id="p-stage" title="タップで再生/停止"></div>
+    <div class="controls">
+      <button class="btn" id="p-play" type="button">⏸ 停止</button>
+      <button class="btn ghost" id="p-prev" type="button" aria-label="前のコマ">◀ 1コマ</button>
+      <button class="btn ghost" id="p-next" type="button" aria-label="次のコマ">1コマ ▶</button>
+      <span class="frame-info" id="p-frame"></span>
+    </div>
+    <div class="controls">
+      <label>コマ <input type="range" id="p-scrub" min="0" max="0" value="0"></label>
+    </div>
+    <div class="controls">
+      <label>速さ <input type="range" id="p-speed" min="0.25" max="3" step="0.25" value="1"><span id="p-speed-v">1.00x</span></label>
+    </div>
+    <p class="note-fallback" id="p-fallback" hidden>このブラウザではコマ送りに対応していないため、通常再生のみです。</p>
+    <div class="credit" id="p-credit"></div>
+    <button class="btn ghost" id="p-close" type="button">閉じる</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  'use strict';
+  const BASE = 'gifs/';
+  const CATS = [
+    { id: 'all', label: 'すべて' },
+    { id: 'chara', label: '🧙 キャラクター' },
+    { id: 'item', label: '💎 アイテム' },
+    { id: 'effect', label: '💥 エフェクト' },
+    { id: 'vehicle', label: '🚀 乗り物・宇宙' },
+    { id: 'world', label: '🏰 建物・自然' }
+  ];
+  const STORAGE_KEY = 'gifGallery.cat.v1';
+  const grid = document.getElementById('grid');
+  const tabs = document.getElementById('tabs');
+  const countEl = document.getElementById('count');
+  let items = [];
+  let cat = 'all';
+  try { cat = localStorage.getItem(STORAGE_KEY) || 'all'; } catch {}
+
+  const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+
+  // ---------- 一覧 ----------
+  function renderTabs() {
+    tabs.innerHTML = CATS.map((c) => {
+      const n = c.id === 'all' ? items.length : items.filter((it) => it.cat === c.id).length;
+      return `<button class="tab" type="button" data-cat="${c.id}" aria-pressed="${c.id === cat}">${c.label} (${n})</button>`;
+    }).join('');
+    tabs.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
+      cat = b.dataset.cat;
+      try { localStorage.setItem(STORAGE_KEY, cat); } catch {}
+      renderTabs();
+      renderGrid();
+    }));
+  }
+
+  function visibleItems() {
+    return cat === 'all' ? items : items.filter((it) => it.cat === cat);
+  }
+
+  function renderGrid() {
+    const list = visibleItems();
+    countEl.textContent = `${list.length} 件`;
+    grid.innerHTML = list.map((it) => `
+      <div class="card" data-idx="${items.indexOf(it)}">
+        <button class="thumb" type="button" aria-label="${esc(it.title)} を再生/停止">
+          <img src="${BASE + esc(it.poster)}" alt="${esc(it.title)}" loading="lazy">
+          <span class="state">▶ タップで動く</span>
+        </button>
+        <div class="card-body">
+          <div class="card-title">${esc(it.title)}</div>
+          <div class="card-meta">${esc(it.license)} / ${esc(it.author)}</div>
+          <button class="detail-btn" type="button">コマ送りで見る</button>
+        </div>
+      </div>`).join('');
+    grid.querySelectorAll('.card').forEach((card) => {
+      const it = items[Number(card.dataset.idx)];
+      card.querySelector('.thumb').addEventListener('click', () => toggleCard(card, it));
+      card.querySelector('.detail-btn').addEventListener('click', () => openPlayer(it));
+    });
+  }
+
+  function setCard(card, it, play) {
+    const img = card.querySelector('.thumb img');
+    const state = card.querySelector('.state');
+    card.classList.toggle('playing', play);
+    img.src = BASE + (play ? it.file : it.poster);
+    state.textContent = play ? '⏸ タップで止める' : '▶ タップで動く';
+  }
+  function toggleCard(card, it) { setCard(card, it, !card.classList.contains('playing')); }
+
+  document.getElementById('play-all').addEventListener('click', () => {
+    grid.querySelectorAll('.card').forEach((c) => setCard(c, items[Number(c.dataset.idx)], true));
+  });
+  document.getElementById('stop-all').addEventListener('click', () => {
+    grid.querySelectorAll('.card').forEach((c) => setCard(c, items[Number(c.dataset.idx)], false));
+  });
+
+  // ---------- コマ送りプレイヤー ----------
+  const dlg = document.getElementById('dlg');
+  const stage = document.getElementById('p-stage');
+  const playBtn = document.getElementById('p-play');
+  const scrub = document.getElementById('p-scrub');
+  const speed = document.getElementById('p-speed');
+  const speedV = document.getElementById('p-speed-v');
+  const frameEl = document.getElementById('p-frame');
+  const fallbackNote = document.getElementById('p-fallback');
+  let frames = [];      // { bmp: ImageBitmap, dur: ms }
+  let idx = 0, playing = false, timer = 0, token = 0, ctx = null;
+
+  function draw() {
+    if (!frames.length || !ctx) return;
+    const f = frames[idx];
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.drawImage(f.bmp, 0, 0);
+    scrub.value = idx;
+    frameEl.textContent = `${idx + 1} / ${frames.length} コマ`;
+  }
+  function tick() {
+    if (!playing) return;
+    idx = (idx + 1) % frames.length;
+    draw();
+    timer = setTimeout(tick, Math.max(10, frames[idx].dur / Number(speed.value)));
+  }
+  function setPlaying(p) {
+    playing = p;
+    clearTimeout(timer);
+    playBtn.textContent = p ? '⏸ 停止' : '▶ 再生';
+    if (p && frames.length) timer = setTimeout(tick, frames[idx].dur / Number(speed.value));
+  }
+  function step(d) { setPlaying(false); idx = (idx + d + frames.length) % frames.length; draw(); }
+
+  async function decodeGif(url, myToken) {
+    const res = await fetch(url);
+    const dec = new ImageDecoder({ data: res.body, type: 'image/gif' });
+    await dec.tracks.ready;
+    await dec.completed;
+    const n = dec.tracks.selectedTrack.frameCount;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      if (myToken !== token) { dec.close(); return null; }
+      const { image } = await dec.decode({ frameIndex: i });
+      const dur = image.duration ? image.duration / 1000 : 100;
+      out.push({ bmp: await createImageBitmap(image), dur: dur < 20 ? 100 : dur });
+      image.close();
+    }
+    dec.close();
+    return out;
+  }
+
+  async function openPlayer(it) {
+    const myToken = ++token;
+    setPlaying(false);
+    frames.forEach((f) => f.bmp.close && f.bmp.close());
+    frames = []; idx = 0; ctx = null;
+    document.getElementById('p-title').textContent = it.title;
+    document.getElementById('p-credit').innerHTML =
+      `作者: ${esc(it.author)}<br>ライセンス: ${esc(it.license)}<br>出典: <a href="${esc(it.source)}" target="_blank" rel="noopener">${esc(it.source)}</a>` +
+      (it.note ? `<br>${esc(it.note)}` : '');
+    stage.innerHTML = '<span class="frame-info">読み込み中…</span>';
+    frameEl.textContent = '';
+    if (!dlg.open) dlg.showModal();
+
+    const canStep = 'ImageDecoder' in window;
+    fallbackNote.hidden = canStep;
+    [document.getElementById('p-prev'), document.getElementById('p-next'), scrub, speed, playBtn].forEach((el) => { el.disabled = !canStep; });
+    if (canStep) {
+      try {
+        const fr = await decodeGif(BASE + it.file, myToken);
+        if (!fr || myToken !== token) return;
+        frames = fr;
+        const c = document.createElement('canvas');
+        c.width = frames[0].bmp.width; c.height = frames[0].bmp.height;
+        c.style.width = Math.min(c.width * 2, 420) + 'px';
+        stage.innerHTML = ''; stage.appendChild(c);
+        ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+        scrub.max = frames.length - 1;
+        draw();
+        setPlaying(true);
+        return;
+      } catch (e) { /* 失敗したら通常再生に切り替える */ }
+    }
+    fallbackNote.hidden = false;
+    stage.innerHTML = `<img src="${BASE + esc(it.file)}" alt="${esc(it.title)}">`;
+  }
+
+  stage.addEventListener('click', () => { if (frames.length) setPlaying(!playing); });
+  playBtn.addEventListener('click', () => setPlaying(!playing));
+  document.getElementById('p-prev').addEventListener('click', () => step(-1));
+  document.getElementById('p-next').addEventListener('click', () => step(1));
+  scrub.addEventListener('input', () => { setPlaying(false); idx = Number(scrub.value); draw(); });
+  speed.addEventListener('input', () => { speedV.textContent = Number(speed.value).toFixed(2) + 'x'; });
+  document.getElementById('p-close').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('close', () => { token++; setPlaying(false); });
+
+  // ---------- 読み込み ----------
+  fetch(BASE + 'manifest.json').then((r) => r.json()).then((data) => {
+    items = data;
+    if (!CATS.some((c) => c.id === cat)) cat = 'all';
+    renderTabs();
+    renderGrid();
+  }).catch(() => { document.getElementById('empty').hidden = false; });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,982 @@
+[
+ {
+  "file": "chara/flare-goblin-spear-charge.gif",
+  "poster": "chara/flare-goblin-spear-charge.png",
+  "title": "ゴブリンの槍突進",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "3Dプリレンダのアイソメトリック・ゴブリンが槍を構えて跳びかかる突進アニメ(8フレーム)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-goblin-turnaround.gif",
+  "poster": "chara/flare-goblin-turnaround.png",
+  "title": "ゴブリンの8方向ターン",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "待機ポーズを8方向分つなげて、その場でくるりと一回転するように構成",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-skeleton-sword-swing.gif",
+  "poster": "chara/flare-skeleton-sword-swing.png",
+  "title": "スケルトンの剣攻撃",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "盾と剣を持つスケルトンが構えから斬りつける(待機→攻撃)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-zombie-shamble.gif",
+  "poster": "chara/flare-zombie-shamble.png",
+  "title": "ゾンビのよろめき歩き",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "両腕を前に出してよたよた歩くゾンビの歩行ループ",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-antlion-bite.gif",
+  "poster": "chara/flare-antlion-bite.png",
+  "title": "アントライオンの噛みつき",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "巨大アリジゴク型モンスターが身構えて噛みつく攻撃",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-minotaur-axe-swing.gif",
+  "poster": "chara/flare-minotaur-axe-swing.png",
+  "title": "ミノタウロスの斧振り",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "斧を持つミノタウロスの待機→大振り攻撃",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/flare-fire-wyvern-flap.gif",
+  "poster": "chara/flare-fire-wyvern-flap.png",
+  "title": "ファイアワイバーンの羽ばたき",
+  "author": "Clint Bellanger ほか Flare Team(flare-game の CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game(mods/fantasycore/images/enemies/、元配布: https://flarerpg.org/ / OpenGameArt)",
+  "note": "空中で翼を大きく羽ばたかせるワイバーン(飛行ループ)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/kenney-adventurer-run.gif",
+  "poster": "chara/kenney-adventurer-run.png",
+  "title": "冒険者の走り",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/ETdoFresh/kenney.nl(kenneyDungeonPack_2.3/Characters/Male のミラー。元配布: https://kenney.nl/assets/isometric-miniature-dungeon)",
+  "note": "3Dレンダのアイソメトリック冒険者が斜め手前へ走るループ(10フレーム)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/kenney-adventurer-pickup.gif",
+  "poster": "chara/kenney-adventurer-pickup.png",
+  "title": "冒険者のアイテム拾い",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/ETdoFresh/kenney.nl(kenneyDungeonPack_2.3/Characters/Male のミラー。元配布: https://kenney.nl/assets/isometric-miniature-dungeon)",
+  "note": "しゃがんで物を拾い上げる動作",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/kenney-adventurer-turntable.gif",
+  "poster": "chara/kenney-adventurer-turntable.png",
+  "title": "冒険者のターンテーブル",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/ETdoFresh/kenney.nl(kenneyDungeonPack_2.3/Characters/Male のミラー。元配布: https://kenney.nl/assets/isometric-miniature-dungeon)",
+  "note": "待機ポーズ8方向を順に並べて一回転させたもの",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/kenney-mannequin-run-spin.gif",
+  "poster": "chara/kenney-mannequin-run-spin.png",
+  "title": "マネキンの円周ラン",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/ETdoFresh/kenney.nl(kenney_prototypePack_2.3/Characters/Human のミラー。元配布: https://kenney.nl/assets/isometric-miniature-prototype)",
+  "note": "プロトタイプ用人型が走りながら8方向に向きを変え、円を描くように見える構成(40フレーム)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/voxel-zombie-shamble-spin.gif",
+  "poster": "chara/voxel-zombie-shamble-spin.png",
+  "title": "ボクセルゾンビのよろめき回転",
+  "author": "Mike Judge (@mikelovesrobots)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/mikelovesrobots/mmmm(Mini Mike's Metro Minis, vox/)",
+  "note": "MagicaVoxelモデル(chr_zombie1)を自作の簡易レンダラーで描画し、左右に揺れながら360度回転させた(改変あり)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/voxel-robot-hop-spin.gif",
+  "poster": "chara/voxel-robot-hop-spin.png",
+  "title": "ボクセルロボのジャンプ回転",
+  "author": "Mike Judge (@mikelovesrobots)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/mikelovesrobots/mmmm(Mini Mike's Metro Minis, vox/)",
+  "note": "chr_robot をぴょんぴょん跳ねさせながら一回転(自前レンダリング・改変あり)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/voxel-alien-eye-float.gif",
+  "poster": "chara/voxel-alien-eye-float.png",
+  "title": "一つ目エイリアンの浮遊",
+  "author": "Mike Judge (@mikelovesrobots)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/mikelovesrobots/mmmm(Mini Mike's Metro Minis, vox/)",
+  "note": "alien_eye1a/b/c(紫・青・緑の色違い)を切り替えつつ、ふわふわ浮遊しながら首を振る(改変あり)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/voxel-bear-turntable.gif",
+  "poster": "chara/voxel-bear-turntable.png",
+  "title": "ボクセルクマのターンテーブル",
+  "author": "Mike Judge (@mikelovesrobots)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/mikelovesrobots/mmmm(Mini Mike's Metro Minis, vox/)",
+  "note": "mob_bear を斜め上からの視点で360度回転(自前レンダリング・改変あり)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/voxel-superhero-fly-spin.gif",
+  "poster": "chara/voxel-superhero-fly-spin.png",
+  "title": "ボクセルヒーローの飛行回転",
+  "author": "Mike Judge (@mikelovesrobots)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/mikelovesrobots/mmmm(Mini Mike's Metro Minis, vox/)",
+  "note": "chr_super1 を前傾させて宙に浮かせ、上下に揺れながら回転(改変あり)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/freedoom-flesh-worm-walk-around.gif",
+  "poster": "chara/freedoom-flesh-worm-walk-around.png",
+  "title": "フレッシュワームの全方位歩行",
+  "author": "Freedoom project contributors",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/freedoom/freedoom(sprites/、元配布: https://freedoom.github.io/)",
+  "note": "Freedoomのモンスター(Flesh Worm)の歩行フレームを8方向分つなげ、歩きながら向きが一周する構成",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/freedoom-combat-slug-fireball.gif",
+  "poster": "chara/freedoom-combat-slug-fireball.png",
+  "title": "コンバットスラッグの火炎弾",
+  "author": "Freedoom project contributors",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/freedoom/freedoom(sprites/、元配布: https://freedoom.github.io/)",
+  "note": "両腕の砲口から炎を噴く攻撃アニメ(正面向き)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/freedoom-assault-tripod-stomp-shoot.gif",
+  "poster": "chara/freedoom-assault-tripod-stomp-shoot.png",
+  "title": "アサルトトライポッドの歩行と射撃",
+  "author": "Freedoom project contributors",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/freedoom/freedoom(sprites/、元配布: https://freedoom.github.io/)",
+  "note": "三脚メカ風ボスが歩いてから発砲する(斜め向き)",
+  "cat": "chara"
+ },
+ {
+  "file": "chara/freedoom-serpentipede-turn-and-claw.gif",
+  "poster": "chara/freedoom-serpentipede-turn-and-claw.png",
+  "title": "サーペンティピードの旋回と爪攻撃",
+  "author": "Freedoom project contributors",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/freedoom/freedoom(sprites/、元配布: https://freedoom.github.io/)",
+  "note": "8方向に向きを変えた後、正面で爪を振りかざす",
+  "cat": "chara"
+ },
+ {
+  "file": "item/kaykit-treasure-chest-open.gif",
+  "poster": "item/kaykit-treasure-chest-open.png",
+  "title": "宝箱がパカッと開いて金貨がのぞく(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (配布元: https://kaylousberg.itch.io/kaykit-dungeon-remastered)",
+  "note": "KayKitのローポリ3D宝箱(chest_gold.glb)を自作ソフトウェアレンダラで描画。フタを蝶番で回転させ、ガタッと揺れてから開く→閉じるアニメ",
+  "cat": "item"
+ },
+ {
+  "file": "item/kaykit-gold-coin-spin.gif",
+  "poster": "item/kaykit-gold-coin-spin.png",
+  "title": "くるくる回転する金貨(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (配布元: https://kaylousberg.itch.io/kaykit-dungeon-remastered)",
+  "note": "ローポリ3Dの金貨モデルを縦に立てて360°回転+上下にふわふわ",
+  "cat": "item"
+ },
+ {
+  "file": "item/kaykit-dungeon-key-spin.gif",
+  "poster": "item/kaykit-dungeon-key-spin.png",
+  "title": "回転するダンジョンの鍵(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (配布元: https://kaylousberg.itch.io/kaykit-dungeon-remastered)",
+  "note": "鉄の鍵の3Dモデルを360°回転レンダリング",
+  "cat": "item"
+ },
+ {
+  "file": "item/kaykit-potion-bottle-spin.gif",
+  "poster": "item/kaykit-potion-bottle-spin.png",
+  "title": "回転するポーション瓶(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (配布元: https://kaylousberg.itch.io/kaykit-dungeon-remastered)",
+  "note": "緑のラベル付きボトル(bottle_A_labeled_green)を傾けて回転・浮遊",
+  "cat": "item"
+ },
+ {
+  "file": "item/kaykit-greatsword-spin.gif",
+  "poster": "item/kaykit-greatsword-spin.png",
+  "title": "回転する両手剣(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (配布元: https://kaylousberg.itch.io/kaykit-adventurers)",
+  "note": "金の鍔と赤い宝石つきの両手剣(sword_2handed_color)を360°回転",
+  "cat": "item"
+ },
+ {
+  "file": "item/kaykit-spiked-shield-spin.gif",
+  "poster": "item/kaykit-spiked-shield-spin.png",
+  "title": "回転するトゲ付き盾(3D)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (配布元: https://kaylousberg.itch.io/kaykit-adventurers)",
+  "note": "赤×鉄のスパイクシールドを360°回転。表と裏の造形が分かる",
+  "cat": "item"
+ },
+ {
+  "file": "item/th-golden-skull-shine.gif",
+  "poster": "item/th-golden-skull-shine.png",
+  "title": "回転してきらめく黄金のドクロ",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/treasure-hunters (画像取得元: https://github.com/SanguineCynic/jumpjamaica / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/treasure-hunters ※SHA256一致)",
+  "note": "Treasure Hunters の Golden Skull(8コマ)。キラッと光りながら回転",
+  "cat": "item"
+ },
+ {
+  "file": "item/th-diamond-trio-sparkle.gif",
+  "poster": "item/th-diamond-trio-sparkle.png",
+  "title": "きらめく3色のダイヤ",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/treasure-hunters (画像取得元: https://github.com/SanguineCynic/jumpjamaica / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/treasure-hunters ※SHA256一致)",
+  "note": "Blue/Green/Red Diamond の4コマ回転アニメを横に並べたもの",
+  "cat": "item"
+ },
+ {
+  "file": "item/th-potion-bottles-bubble.gif",
+  "poster": "item/th-potion-bottles-bubble.png",
+  "title": "泡立つポーション3種",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/treasure-hunters (画像取得元: https://github.com/SanguineCynic/jumpjamaica / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/treasure-hunters ※SHA256一致)",
+  "note": "Red Potion / Blue Potion / Green Bottle の7コマアニメを並べたもの",
+  "cat": "item"
+ },
+ {
+  "file": "item/th-island-chest-open-close.gif",
+  "poster": "item/th-island-chest-open-close.png",
+  "title": "宝箱が開いて閉じる(島の宝箱)",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/treasure-hunters (画像取得元: https://github.com/SanguineCynic/jumpjamaica / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/treasure-hunters ※SHA256一致)",
+  "note": "Palm Tree Island の Chest Open / Chest Close 各10コマをつなげたループ",
+  "cat": "item"
+ },
+ {
+  "file": "item/lucifer-potion-trio-glint.gif",
+  "poster": "item/lucifer-potion-trio-glint.png",
+  "title": "光るポーション3種(HP/MP/スタミナ)",
+  "author": "Baldur (commissioned) / Foozle",
+  "license": "CC0-1.0",
+  "source": "https://foozlecc.itch.io/lucifer-pickups (画像取得元: https://github.com/degeorgezach/lucifer / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/foozle-lucifer-pickups ※SHA256一致)",
+  "note": "Lucifer Pickups の Big Health/Mana/Stamina Potion(9コマ)を並べたもの",
+  "cat": "item"
+ },
+ {
+  "file": "item/lucifer-blue-gem-glint.gif",
+  "poster": "item/lucifer-blue-gem-glint.png",
+  "title": "光る青い宝石",
+  "author": "Baldur (commissioned) / Foozle",
+  "license": "CC0-1.0",
+  "source": "https://foozlecc.itch.io/lucifer-pickups (画像取得元: https://github.com/degeorgezach/lucifer / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/foozle-lucifer-pickups ※SHA256一致)",
+  "note": "Lucifer Pickups の BlueGem(9コマ)。ハイライトが走る",
+  "cat": "item"
+ },
+ {
+  "file": "item/lucifer-pile-of-gold-glint.gif",
+  "poster": "item/lucifer-pile-of-gold-glint.png",
+  "title": "きらめく金貨の山",
+  "author": "Baldur (commissioned) / Foozle",
+  "license": "CC0-1.0",
+  "source": "https://foozlecc.itch.io/lucifer-pickups (画像取得元: https://github.com/degeorgezach/lucifer / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/foozle-lucifer-pickups ※SHA256一致)",
+  "note": "Lucifer Pickups の PileOfGold(8コマ)",
+  "cat": "item"
+ },
+ {
+  "file": "item/kp-big-diamond-spin.gif",
+  "poster": "item/kp-big-diamond-spin.png",
+  "title": "くるっと光るビッグダイヤ",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/kings-and-pigs (画像取得元: https://github.com/PacktPublishing/Game-Development-Patterns-with-Godot-4 / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/kings-and-pigs ※SHA256一致)",
+  "note": "Kings and Pigs の Big Diamond Idle(10コマ)",
+  "cat": "item"
+ },
+ {
+  "file": "item/kp-big-heart-beat.gif",
+  "poster": "item/kp-big-heart-beat.png",
+  "title": "ぷにぷに弾むハート",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/kings-and-pigs (画像取得元: https://github.com/PacktPublishing/Game-Development-Patterns-with-Godot-4 / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/kings-and-pigs ※SHA256一致)",
+  "note": "Kings and Pigs の Big Heart Idle(8コマ)。回復アイテム向き",
+  "cat": "item"
+ },
+ {
+  "file": "item/kp-voxel-diamond-spin.gif",
+  "poster": "item/kp-voxel-diamond-spin.png",
+  "title": "ボクセル化したダイヤの回転",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/kings-and-pigs (画像取得元: https://github.com/PacktPublishing/Game-Development-Patterns-with-Godot-4 / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/kings-and-pigs ※SHA256一致)",
+  "note": "Kings and Pigs の Big Diamond の1コマ目をボクセル(立体)に押し出し、自作レンダラで360°回転させた二次創作",
+  "cat": "item"
+ },
+ {
+  "file": "item/pb-heart-bounce.gif",
+  "poster": "item/pb-heart-bounce.png",
+  "title": "キラッと光る大きなハート",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://pixelfrog-assets.itch.io/pirate-bomb (画像取得元: https://github.com/TuysuzTavsan/GodotNetworkEnet / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/pirate-bomb ※SHA256一致)",
+  "note": "Pirate Bomb の Heart Idle(22コマ)。光の帯が走るライフアップアイテム",
+  "cat": "item"
+ },
+ {
+  "file": "item/dt2-coin-spin.gif",
+  "poster": "item/dt2-coin-spin.png",
+  "title": "回転するドット金貨",
+  "author": "0x72 (Robert)",
+  "license": "CC0-1.0",
+  "source": "https://0x72.itch.io/dungeontileset-ii (画像取得元: https://github.com/lewiji/MagicMissile / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/0x72-dungeon-tileset-ii)",
+  "note": "DungeonTileset II の coin_anim(4コマ)を20倍に拡大",
+  "cat": "item"
+ },
+ {
+  "file": "item/dt2-chest-open.gif",
+  "poster": "item/dt2-chest-open.png",
+  "title": "宝箱が開く(ドット絵)",
+  "author": "0x72 (Robert)",
+  "license": "CC0-1.0",
+  "source": "https://0x72.itch.io/dungeontileset-ii (画像取得元: https://github.com/lewiji/MagicMissile / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/0x72-dungeon-tileset-ii)",
+  "note": "DungeonTileset II の chest_full_open_anim(3コマ)に溜めと余韻を付けたループ",
+  "cat": "item"
+ },
+ {
+  "file": "item/dt2-mimic-chest-chomp.gif",
+  "poster": "item/dt2-mimic-chest-chomp.png",
+  "title": "パクパクするミミック宝箱",
+  "author": "0x72 (Robert)",
+  "license": "CC0-1.0",
+  "source": "https://0x72.itch.io/dungeontileset-ii (画像取得元: https://github.com/lewiji/MagicMissile / ライセンス確認: https://github.com/series-ai/jam-ready-assets/tree/main/0x72-dungeon-tileset-ii)",
+  "note": "DungeonTileset II の chest_mimic_open_anim。宝箱かと思ったらミミックが噛みつく",
+  "cat": "item"
+ },
+ {
+  "file": "effect/stumpy-big-explosion.gif",
+  "poster": "effect/stumpy-big-explosion.png",
+  "title": "大爆発(64コマシート)",
+  "author": "StumpyStrust",
+  "license": "CC0-1.0",
+  "source": "https://github.com/BL-MSCH-C220/Exercise-02c-Explosions-and-Enemy (Assets/Explosion.png) / 元配布: https://opengameart.org/content/explosion-sheet",
+  "note": "閃光から煙まで広がる大きな爆発。8x8シートを1コマおきに使用",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/oga-fireball-explosion.gif",
+  "poster": "effect/oga-fireball-explosion.png",
+  "title": "火球の爆発",
+  "author": "OpenGameArt投稿者(ミラーのSOURCE.mdに作者名記載なし)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (effects/oga-explosion/exp2_0.png) / 元配布: https://opengameart.org/content/explosion",
+  "note": "オレンジの火球が膨らんで火の粉になって消える4x4シート",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/abuse-fire-explosion.gif",
+  "poster": "effect/abuse-fire-explosion.png",
+  "title": "レトロ炎爆発",
+  "author": "Crack dot Com(ゲーム『Abuse』のアート)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (effects/oga-abuse-art) / 元配布: https://opengameart.org/content/abuse-art",
+  "note": "90年代DOSゲームのドット爆発。NEAREST 3倍拡大",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/abuse-plasma-burst.gif",
+  "poster": "effect/abuse-plasma-burst.png",
+  "title": "プラズマ渦の炸裂",
+  "author": "Crack dot Com(ゲーム『Abuse』のアート)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (effects/oga-abuse-art) / 元配布: https://opengameart.org/content/abuse-art",
+  "note": "白い渦が弾けて光の粒に散る",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/abuse-ring-blowup.gif",
+  "poster": "effect/abuse-ring-blowup.png",
+  "title": "リング状の小爆発",
+  "author": "Crack dot Com(ゲーム『Abuse』のアート)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (effects/oga-abuse-art) / 元配布: https://opengameart.org/content/abuse-art",
+  "note": "火の玉がリングになって広がるドット絵",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/flare-fire-ring-blast.gif",
+  "poster": "effect/flare-fire-ring-blast.png",
+  "title": "炎のリング衝撃波",
+  "author": "Flare Game contributors (Clint Bellanger ほか / CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game (mods/fantasycore/images/powers/blast.png)",
+  "note": "地面に広がる炎の輪。奥行きのある俯瞰視点",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/flare-plasma-ball.gif",
+  "poster": "effect/flare-plasma-ball.png",
+  "title": "プラズマボール",
+  "author": "Flare Game contributors (Clint Bellanger ほか / CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game (mods/fantasycore/images/powers/plasmaball.png)",
+  "note": "紫の電撃がうごめく球体(ループ)",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/flare-ground-rupture.gif",
+  "poster": "effect/flare-ground-rupture.png",
+  "title": "大地の隆起",
+  "author": "Flare Game contributors (Clint Bellanger ほか / CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game (mods/fantasycore/images/powers/rupture.png)",
+  "note": "岩が飛び散り溶岩の割れ目が噴き出す土魔法",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/flare-thunderstrike.gif",
+  "poster": "effect/flare-thunderstrike.png",
+  "title": "落雷",
+  "author": "Flare Game contributors (Clint Bellanger ほか / CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game (mods/fantasycore/images/powers/thunderstrike.png)",
+  "note": "天から雷が落ちて地面が光る",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/flare-electric-burst.gif",
+  "poster": "effect/flare-electric-burst.png",
+  "title": "電撃スパーク",
+  "author": "Flare Game contributors (Clint Bellanger ほか / CREDITS.txt 参照)",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/flareteam/flare-game (mods/fantasycore/images/powers/lightning.png)",
+  "note": "青白い放電がはじけ続けるループ",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-huge-explosion.gif",
+  "poster": "effect/es-huge-explosion.png",
+  "title": "宇宙船の大爆発",
+  "author": "Michael Zahniser",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/explosion/huge*)",
+  "note": "モクモク膨らむ立体的な爆炎(Endless Sky)",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-nuke-flash.gif",
+  "poster": "effect/es-nuke-flash.png",
+  "title": "核爆発の閃光",
+  "author": "@Karirawri (crim@live.no) ※copyright上はMichael Zahniser名義の可能性あり",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/explosion/nuke*)",
+  "note": "強烈な光芒から衝撃波リングへ。加算合成素材を透過に変換",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-blink-star-flash.gif",
+  "poster": "effect/es-blink-star-flash.png",
+  "title": "ワープの星形フラッシュ",
+  "author": "Saugia (https://github.com/Saugia)",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/blink*)",
+  "note": "点が瞬いて回転する十字の光になる",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-blue-spark-burst.gif",
+  "poster": "effect/es-blue-spark-burst.png",
+  "title": "青い火花の炸裂",
+  "author": "Gefüllte Taubenbrust",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/explosion/quarg/huge*)",
+  "note": "青い光球から光の粒が放射状に飛ぶ",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-purple-plasma-explosion.gif",
+  "poster": "effect/es-purple-plasma-explosion.png",
+  "title": "紫のプラズマ爆発",
+  "author": "Gefüllte Taubenbrust",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/explosion/pug/huge*)",
+  "note": "エネルギーが渦巻いて飛散する異星の爆発",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/es-piercer-fireball.gif",
+  "poster": "effect/es-piercer-fireball.png",
+  "title": "白熱の火球",
+  "author": "Michael Zahniser",
+  "license": "CC-BY-SA-4.0",
+  "source": "https://github.com/endless-sky/endless-sky (images/effect/piercer explosion*)",
+  "note": "真っ白な閃光が赤い煙に冷えていく",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/kenney-magic-circle.gif",
+  "poster": "effect/kenney-magic-circle.png",
+  "title": "回転する魔法陣",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Calinou/kenney-particle-pack / 元配布: https://kenney.nl/assets/particle-pack",
+  "note": "パーティクル素材を重ねて回転・発光させて合成(継ぎ目なしループ)",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/kenney-twirl-portal.gif",
+  "poster": "effect/kenney-twirl-portal.png",
+  "title": "渦巻くポータル",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Calinou/kenney-particle-pack / 元配布: https://kenney.nl/assets/particle-pack",
+  "note": "twirl素材を多層回転させ、光の粒が吸い込まれるポータルを合成",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/kenney-lightning-orb.gif",
+  "poster": "effect/kenney-lightning-orb.png",
+  "title": "雷のオーブ",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Calinou/kenney-particle-pack / 元配布: https://kenney.nl/assets/particle-pack",
+  "note": "spark素材をランダムに切り替えて放電する光球を合成",
+  "cat": "effect"
+ },
+ {
+  "file": "effect/kenney-smoke-explosion.gif",
+  "poster": "effect/kenney-smoke-explosion.png",
+  "title": "煙と炎の爆発",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (effects/smoke-particles) / 元配布: https://kenney.nl/assets/smoke-particles",
+  "note": "Smoke Particlesの炎・閃光・黒煙パフを放射状に飛ばして爆発を合成",
+  "cat": "effect"
+ },
+ {
+  "file": "vehicle/spaceship-speeder-turn.gif",
+  "poster": "vehicle/spaceship-speeder-turn.png",
+  "title": "旋回するスピーダー宇宙船",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/space-kit",
+  "note": "Kenney Space Kit の craft_speederA。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/ufo-hover.gif",
+  "poster": "vehicle/ufo-hover.png",
+  "title": "ふわふわ浮かぶUFO",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/tower-defense-kit",
+  "note": "Tower Defense Kit の enemy-ufo-a。回転しながら上下に揺れる。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/space-rover-turn.gif",
+  "poster": "vehicle/space-rover-turn.png",
+  "title": "回転する探査ローバー",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/space-kit",
+  "note": "Space Kit の rover。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/future-racer-turn.gif",
+  "poster": "vehicle/future-racer-turn.png",
+  "title": "回転する未来型レーシングカー",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/car-kit",
+  "note": "Car Kit の race-future。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/bullet-train-turn.gif",
+  "poster": "vehicle/bullet-train-turn.png",
+  "title": "回転する新幹線風電車",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/train-kit",
+  "note": "Train Kit の train-electric-bullet-a。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/motorcycle-turn.gif",
+  "poster": "vehicle/motorcycle-turn.png",
+  "title": "回転するバイク",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KenneyNL/Starter-Kit-Racing (models/ は CC0)",
+  "note": "Starter Kit Racing の vehicle-motorcycle.glb(リポジトリREADMEで3DモデルはCC0と明記、コードはMIT)。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/iso-police-car-spin.gif",
+  "poster": "vehicle/iso-police-car-spin.png",
+  "title": "8方向にくるくる回るパトカー(アイソメ)",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/isometric-vehicles",
+  "note": "Isometric Tiles Vehicles の police_*.png 8方向スプライトを順に並べてNEAREST 6倍拡大",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/tank-turret-sweep.gif",
+  "poster": "vehicle/tank-turret-sweep.png",
+  "title": "砲塔を旋回させて撃つ戦車",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/topdown-tanks-redux",
+  "note": "Topdown Tanks Remastered の車体・砲身・マズルフラッシュを合成し砲塔を360度回転",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/robot-drive-jump.gif",
+  "poster": "vehicle/robot-drive-jump.png",
+  "title": "走ってジャンプするロボット",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/shorepine/kenney (Kenney mirror) / 元配布: https://kenney.nl/assets/robot-pack",
+  "note": "Robot Pack の Drive1/Drive2/Jump スプライトで走行→ジャンプのループ",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/earth-spin.gif",
+  "poster": "vehicle/earth-spin.png",
+  "title": "自転する地球",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (Images and Textures/Earth (A))",
+  "note": "NASAの地球テクスチャを球面にマッピングして自転アニメ化(陰影付き)",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/mars-pixel-spin.gif",
+  "poster": "vehicle/mars-pixel-spin.png",
+  "title": "自転する火星(ドット絵風)",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (Images and Textures/Mars)",
+  "note": "NASAの火星テクスチャを球にマッピングし4px単位にドット化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/jupiter-spin.gif",
+  "poster": "vehicle/jupiter-spin.png",
+  "title": "自転する木星",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (Images and Textures/Jupiter)",
+  "note": "NASAの木星テクスチャで自転。大赤斑が横切る",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/saturn-moon-orbit.gif",
+  "poster": "vehicle/saturn-moon-orbit.png",
+  "title": "衛星が周回する土星",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (Images and Textures/Saturn)",
+  "note": "NASAの土星テクスチャ+手続き生成のリングと周回衛星(リング・衛星は自作描画)",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/lunar-module-turn.gif",
+  "poster": "vehicle/lunar-module-turn.png",
+  "title": "回転するアポロ月着陸船",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (3D Models/Apollo Lunar Module)",
+  "note": "glbモデルをテクスチャ付きで自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/ingenuity-helicopter-turn.gif",
+  "poster": "vehicle/ingenuity-helicopter-turn.png",
+  "title": "回転する火星ヘリ インジェニュイティ",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (3D Models/Ingenuity Mars Helicopter)",
+  "note": "glbモデルを自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/hubble-telescope-turn.gif",
+  "poster": "vehicle/hubble-telescope-turn.png",
+  "title": "回転するハッブル宇宙望遠鏡",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (3D Models/Hubble Space Telescope (A))",
+  "note": "glbモデルを自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/perseverance-rover-turn.gif",
+  "poster": "vehicle/perseverance-rover-turn.png",
+  "title": "回転する火星探査車パーサヴィアランス",
+  "author": "NASA",
+  "license": "Public Domain (NASA, no copyright)",
+  "source": "https://github.com/nasa/NASA-3D-Resources (3D Models/Mars 2020 Perseverance Rover)",
+  "note": "glbモデル(約20万ポリゴン)を自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/toy-car-turn.gif",
+  "poster": "vehicle/toy-car-turn.png",
+  "title": "回転するおもちゃの車",
+  "author": "Guido Odendahl (model), Eric Chadwick (scene)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar",
+  "note": "glTF Sample Assets の ToyCar(台座の布メッシュは除外)。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/concept-car-turn.gif",
+  "poster": "vehicle/concept-car-turn.png",
+  "title": "回転するコンセプトカー",
+  "author": "Eric Chadwick / Darmstadt Graphics Group GmbH (元モデル: Unity Fan, CC0)",
+  "license": "CC-BY-4.0",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
+  "note": "© 2024 Darmstadt Graphics Group GmbH, CC BY 4.0。クレジット表記必須。自作ソフトウェアレンダラ(numpy)でターンテーブル回転をレンダリングしGIF化",
+  "cat": "vehicle"
+ },
+ {
+  "file": "vehicle/pixel-battlecruiser-explode.gif",
+  "poster": "vehicle/pixel-battlecruiser-explode.png",
+  "title": "エンジン噴射→爆散するドット絵戦艦",
+  "author": "Foozle",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Blue-Shell-Studios/Stubborn-Defense (asset/enemies/boss) / 元配布: https://foozlecc.itch.io/void-fleet-pack-2",
+  "note": "Foozle「Void - Fleet Pack」の Nairan Battlecruiser(Base+Engine+Destruction)を合成、NEAREST 2倍",
+  "cat": "vehicle"
+ },
+ {
+  "file": "world/kaykit-windmill-spin.gif",
+  "poster": "world/kaykit-windmill-spin.png",
+  "title": "回転する風車(羽根も回転)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "六角タイル上の風車を自前ソフトレンダラでターンテーブル回転。羽根ノードを個別に回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-watermill-wheel.gif",
+  "poster": "world/kaykit-watermill-wheel.png",
+  "title": "回る水車小屋",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "川タイル上の水車。水車ノードを回転させ、カメラを左右にゆっくり振る",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-hex-island-spin.gif",
+  "poster": "world/kaykit-hex-island-spin.png",
+  "title": "回転する六角タイルの島の村",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "城・教会・家・山を配置した島を海タイルで囲んでターンテーブル回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-hex-clouds-drift.gif",
+  "poster": "world/kaykit-hex-clouds-drift.png",
+  "title": "山岳ヘックス島の上を流れる雲",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "固定カメラで雲モデルがループして流れる。背景は空色",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-city-block-build.gif",
+  "poster": "world/kenney-city-block-build.png",
+  "title": "街区が組み上がって回転",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KenneyNL/Starter-Kit-City-Builder (models/ はCC0、コードはMIT)",
+  "note": "道路・ビル・噴水タイルが1枚ずつ落ちて街区が完成し、その後一回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-castle-spin.gif",
+  "poster": "world/kenney-castle-spin.png",
+  "title": "回転する城",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Castle Kit のCC0ミラー / 元配布: https://kenney.nl/assets/castle-kit)",
+  "note": "塔・城壁・木・投石機を組んだ城をターンテーブル回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-pirate-island-spin.gif",
+  "poster": "world/kenney-pirate-island-spin.png",
+  "title": "回転する海賊の島",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Pirate Kit のCC0ミラー / 元配布: https://kenney.nl/assets/pirate-kit)",
+  "note": "ヤシの木・見張り砦・旗・小舟の島。海の円盤は自作ポリゴン",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-tower-construction.gif",
+  "poster": "world/kenney-tower-construction.png",
+  "title": "塔の建設アニメーション",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Tower Defense Kit のCC0ミラー / 元配布: https://kenney.nl/assets/tower-defense-kit)",
+  "note": "塔のパーツが順に落ちて積み上がる。カメラはゆっくり回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-campfire-camp.gif",
+  "poster": "world/kenney-campfire-camp.png",
+  "title": "キャンプの焚き火",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Nature Kit のCC0ミラー / 元配布: https://kenney.nl/assets/nature-kit)",
+  "note": "テント・丸太・木のキャンプ場。炎は自作の低ポリ円錐で揺らぎを付け、カメラが周回",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-suburban-house-spin.gif",
+  "poster": "world/kenney-suburban-house-spin.png",
+  "title": "回転する郊外の家",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney City Kit (Suburban) のCC0ミラー / 元配布: https://kenney.nl/assets/city-kit-suburban)",
+  "note": "家・車道・植木の区画をターンテーブル回転。芝の台座は自作ポリゴン",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-sketch-town-rotate.gif",
+  "poster": "world/kenney-sketch-town-rotate.png",
+  "title": "90度ずつ回転する手描き風の街",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (fantasy/sketch-town, 同梱License.txtでCC0 / 元配布: https://kenney.nl/assets/sketch-town)",
+  "note": "N/E/S/W向きのアイソメトリックタイルを使い、マップ全体を4方向に回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-palm-tree-sway.gif",
+  "poster": "world/pixelfrog-palm-tree-sway.png",
+  "title": "揺れるヤシの木",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "4フレームのヤシの木を3倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-pirate-flag-wave.gif",
+  "poster": "world/pixelfrog-pirate-flag-wave.png",
+  "title": "はためく海賊旗",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "9フレームの旗を3倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-pirate-ship-sailing.gif",
+  "poster": "world/pixelfrog-pirate-ship-sailing.png",
+  "title": "風を受けて進む海賊船",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "船の揺れ・帆・水面の反射・流れる雲を合成して2倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-palm-island.gif",
+  "poster": "world/pixelfrog-palm-island.png",
+  "title": "ヤシの木の浮島と波",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "地形タイル・前後のヤシの木・波タイル・反射・雲を合成して2倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/lpc-waterfall-flow.gif",
+  "poster": "world/lpc-waterfall-flow.png",
+  "title": "流れ落ちる滝",
+  "author": "Lanea Zimmerman (Sharm) / Liberated Pixel Cup",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/OpenGameArt/LiberatedPixelCup (tileset/original/Sharm/outdoor)",
+  "note": "滝タイルの3フレームを崖・草・水タイルと合成して2倍に拡大。GPL-3.0とのデュアルライセンス。表示義務あり",
+  "cat": "world"
+ },
+ {
+  "file": "world/lpc-trees-swaying.gif",
+  "poster": "world/lpc-trees-swaying.png",
+  "title": "風に揺れる木",
+  "author": "Lanea Zimmerman (Sharm) / Liberated Pixel Cup",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/OpenGameArt/LiberatedPixelCup (tileset/original/Sharm/outdoor)",
+  "note": "静止画の樹冠を高さに応じて横にずらし、揺れを自作。GPL-3.0とのデュアルライセンス。表示義務あり",
+  "cat": "world"
+ },
+ {
+  "file": "world/oga-stoneage-campfire.gif",
+  "poster": "world/oga-stoneage-campfire.png",
+  "title": "パチパチ燃える焚き火(ドット絵)",
+  "author": "OpenGameArt投稿者(Stone Age Sprite Set)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (fantasy/oga-stone-age-sprite-set / 元配布: https://opengameart.org/content/stone-age-sprite-set)",
+  "note": "2フレームの炎を交互に表示して7倍に拡大",
+  "cat": "world"
+ }
+]
