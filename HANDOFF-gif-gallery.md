@@ -14,9 +14,9 @@
   - 「コマ送りで見る」: ImageDecoder で GIF を分解し、再生/停止・1コマ送り・コマのスライダー・速さ(0.25〜3x)。非対応ブラウザは通常再生
   - ヘッドレスChromiumで動作確認済み(カード表示・コマ送りOK、エラーなし)
 - 素材 `docs/apps/gif-gallery/gifs/<cat>/` と `gifs/manifest.json`(file/poster/title/author/license/source/note/cat)
-  - chara 20 / item 20 / effect 20 / vehicle 20 (+ world は最終的に集まった分。下記)
+  - chara 20 / item 20 / effect 20 / vehicle 20 / world 18(建物・自然はユーザー指示で途中終了、計98件)
   - ライセンスは CC0 / CC-BY / CC-BY-SA / BSD / NASA(Public Domain)。NC・ND は除外済み
-  - 注意: Flare / Endless Sky 由来は CC-BY-SA(継承条件あり)。concept-car-turn は CC-BY-4.0(作者表記必須)。NASA素材はロゴ使用・推奨表示の禁止に注意。es-nuke-flash は作者が2候補(meta に記載)
+  - 注意: Flare / Endless Sky 由来は CC-BY-SA(継承条件あり)。concept-car-turn は CC-BY-4.0(作者表記必須)。NASA素材はロゴ使用・推奨表示の禁止に注意。es-nuke-flash は作者が2候補(meta に記載)。world の lpc-* 2件は CC-BY-SA-3.0(作者表記必須)
 
 ## 残りの作業
 1. `docs/apps.json` の末尾に追加:

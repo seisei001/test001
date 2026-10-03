@@ -798,5 +798,185 @@
   "source": "https://github.com/Blue-Shell-Studios/Stubborn-Defense (asset/enemies/boss) / 元配布: https://foozlecc.itch.io/void-fleet-pack-2",
   "note": "Foozle「Void - Fleet Pack」の Nairan Battlecruiser(Base+Engine+Destruction)を合成、NEAREST 2倍",
   "cat": "vehicle"
+ },
+ {
+  "file": "world/kaykit-windmill-spin.gif",
+  "poster": "world/kaykit-windmill-spin.png",
+  "title": "回転する風車(羽根も回転)",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "六角タイル上の風車を自前ソフトレンダラでターンテーブル回転。羽根ノードを個別に回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-watermill-wheel.gif",
+  "poster": "world/kaykit-watermill-wheel.png",
+  "title": "回る水車小屋",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "川タイル上の水車。水車ノードを回転させ、カメラを左右にゆっくり振る",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-hex-island-spin.gif",
+  "poster": "world/kaykit-hex-island-spin.png",
+  "title": "回転する六角タイルの島の村",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "城・教会・家・山を配置した島を海タイルで囲んでターンテーブル回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kaykit-hex-clouds-drift.gif",
+  "poster": "world/kaykit-hex-clouds-drift.png",
+  "title": "山岳ヘックス島の上を流れる雲",
+  "author": "Kay Lousberg (KayKit)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 (元配布: https://kaylousberg.itch.io/kaykit-medieval-hexagon)",
+  "note": "固定カメラで雲モデルがループして流れる。背景は空色",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-city-block-build.gif",
+  "poster": "world/kenney-city-block-build.png",
+  "title": "街区が組み上がって回転",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/KenneyNL/Starter-Kit-City-Builder (models/ はCC0、コードはMIT)",
+  "note": "道路・ビル・噴水タイルが1枚ずつ落ちて街区が完成し、その後一回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-castle-spin.gif",
+  "poster": "world/kenney-castle-spin.png",
+  "title": "回転する城",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Castle Kit のCC0ミラー / 元配布: https://kenney.nl/assets/castle-kit)",
+  "note": "塔・城壁・木・投石機を組んだ城をターンテーブル回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-pirate-island-spin.gif",
+  "poster": "world/kenney-pirate-island-spin.png",
+  "title": "回転する海賊の島",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Pirate Kit のCC0ミラー / 元配布: https://kenney.nl/assets/pirate-kit)",
+  "note": "ヤシの木・見張り砦・旗・小舟の島。海の円盤は自作ポリゴン",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-tower-construction.gif",
+  "poster": "world/kenney-tower-construction.png",
+  "title": "塔の建設アニメーション",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Tower Defense Kit のCC0ミラー / 元配布: https://kenney.nl/assets/tower-defense-kit)",
+  "note": "塔のパーツが順に落ちて積み上がる。カメラはゆっくり回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-campfire-camp.gif",
+  "poster": "world/kenney-campfire-camp.png",
+  "title": "キャンプの焚き火",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney Nature Kit のCC0ミラー / 元配布: https://kenney.nl/assets/nature-kit)",
+  "note": "テント・丸太・木のキャンプ場。炎は自作の低ポリ円錐で揺らぎを付け、カメラが周回",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-suburban-house-spin.gif",
+  "poster": "world/kenney-suburban-house-spin.png",
+  "title": "回転する郊外の家",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Hidencod/tge-assets (Kenney City Kit (Suburban) のCC0ミラー / 元配布: https://kenney.nl/assets/city-kit-suburban)",
+  "note": "家・車道・植木の区画をターンテーブル回転。芝の台座は自作ポリゴン",
+  "cat": "world"
+ },
+ {
+  "file": "world/kenney-sketch-town-rotate.gif",
+  "poster": "world/kenney-sketch-town-rotate.png",
+  "title": "90度ずつ回転する手描き風の街",
+  "author": "Kenney",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (fantasy/sketch-town, 同梱License.txtでCC0 / 元配布: https://kenney.nl/assets/sketch-town)",
+  "note": "N/E/S/W向きのアイソメトリックタイルを使い、マップ全体を4方向に回転",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-palm-tree-sway.gif",
+  "poster": "world/pixelfrog-palm-tree-sway.png",
+  "title": "揺れるヤシの木",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "4フレームのヤシの木を3倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-pirate-flag-wave.gif",
+  "poster": "world/pixelfrog-pirate-flag-wave.png",
+  "title": "はためく海賊旗",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "9フレームの旗を3倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-pirate-ship-sailing.gif",
+  "poster": "world/pixelfrog-pirate-ship-sailing.png",
+  "title": "風を受けて進む海賊船",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "船の揺れ・帆・水面の反射・流れる雲を合成して2倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/pixelfrog-palm-island.gif",
+  "poster": "world/pixelfrog-palm-island.png",
+  "title": "ヤシの木の浮島と波",
+  "author": "Pixel Frog",
+  "license": "CC0-1.0",
+  "source": "https://github.com/jv-vogler/Treasure-Hunters (素材: Pixel Frog『Treasure Hunters』 https://pixelfrog-assets.itch.io/treasure-hunters)",
+  "note": "地形タイル・前後のヤシの木・波タイル・反射・雲を合成して2倍に拡大",
+  "cat": "world"
+ },
+ {
+  "file": "world/lpc-waterfall-flow.gif",
+  "poster": "world/lpc-waterfall-flow.png",
+  "title": "流れ落ちる滝",
+  "author": "Lanea Zimmerman (Sharm) / Liberated Pixel Cup",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/OpenGameArt/LiberatedPixelCup (tileset/original/Sharm/outdoor)",
+  "note": "滝タイルの3フレームを崖・草・水タイルと合成して2倍に拡大。GPL-3.0とのデュアルライセンス。表示義務あり",
+  "cat": "world"
+ },
+ {
+  "file": "world/lpc-trees-swaying.gif",
+  "poster": "world/lpc-trees-swaying.png",
+  "title": "風に揺れる木",
+  "author": "Lanea Zimmerman (Sharm) / Liberated Pixel Cup",
+  "license": "CC-BY-SA-3.0",
+  "source": "https://github.com/OpenGameArt/LiberatedPixelCup (tileset/original/Sharm/outdoor)",
+  "note": "静止画の樹冠を高さに応じて横にずらし、揺れを自作。GPL-3.0とのデュアルライセンス。表示義務あり",
+  "cat": "world"
+ },
+ {
+  "file": "world/oga-stoneage-campfire.gif",
+  "poster": "world/oga-stoneage-campfire.png",
+  "title": "パチパチ燃える焚き火(ドット絵)",
+  "author": "OpenGameArt投稿者(Stone Age Sprite Set)",
+  "license": "CC0-1.0",
+  "source": "https://github.com/Tiddybub/2d-assets (fantasy/oga-stone-age-sprite-set / 元配布: https://opengameart.org/content/stone-age-sprite-set)",
+  "note": "2フレームの炎を交互に表示して7倍に拡大",
+  "cat": "world"
  }
 ]
