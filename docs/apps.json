@@ -75,5 +75,12 @@
     "description": "商用利用OKのゲーム素材アニメをタップで動かし、コマ送りでも見られるギャラリー",
     "path": "apps/gif-gallery/",
     "icon": "🎞️"
+  },
+  {
+    "id": "shindan",
+    "name": "お悩み別簡易診断(試作)",
+    "description": "お悩みを選ぶと6種類の簡易診断に分かれ、結果に関係する専門家を表示する試作版(内容は仮置き)",
+    "path": "apps/shindan/",
+    "icon": "🩺"
   }
 ]
