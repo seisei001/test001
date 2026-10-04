@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="動きの見本">
 <title>動きの見本</title>
 <style>
-:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--stage:#eef2fb;--ok:#16a34a;}
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--stage:#fafafa;--grid:#d4d4d8;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{-webkit-text-size-adjust:100%;}
 body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
@@ -20,274 +20,314 @@ header h1{margin:0 0 4px;font-size:1.3rem;}
 header p{margin:0;color:var(--muted);font-size:0.85rem;}
 main{max-width:720px;margin:0 auto;padding:0 16px 48px;display:grid;grid-template-columns:1fr;gap:16px;}
 @media(min-width:620px){main{grid-template-columns:1fr 1fr;}}
-.card{background:var(--panel-bg);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.card{background:var(--panel-bg);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;}
 .card h2{margin:0;font-size:1rem;}
 .card .hint{margin:0;color:var(--muted);font-size:0.8rem;}
-.stage{position:relative;height:220px;border-radius:10px;background:var(--stage);overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+.stage{position:relative;height:240px;border-radius:10px;background:var(--stage);overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
 .stage svg{width:100%;height:100%;display:block;}
 button{border:none;border-radius:8px;padding:10px 16px;min-height:44px;font-size:0.95rem;cursor:pointer;background:var(--accent);color:#fff;width:100%;}
 button:hover{background:var(--accent-hover);}
-button:disabled{opacity:.55;cursor:default;}
 .foot{text-align:center;color:var(--muted);font-size:0.75rem;padding:0 16px 24px;}
 
-/* cubes */
-#cubes{touch-action:none;cursor:grab;perspective:600px;display:flex;align-items:center;justify-content:center;}
-#cubes:active{cursor:grabbing;}
-.scene{transform-style:preserve-3d;display:flex;gap:44px;align-items:center;}
-.cube{--s:56px;width:var(--s);height:var(--s);position:relative;transform-style:preserve-3d;animation:spin var(--dur,6s) linear infinite;}
-.cube:nth-child(2){--s:76px;animation-direction:reverse;}
-.cube:nth-child(3){--s:44px;animation-duration:calc(var(--dur,6s) * .7);}
-.cube i{position:absolute;inset:0;border:2px solid rgba(255,255,255,.75);display:block;}
-.cube i:nth-child(1){transform:translateZ(calc(var(--s)/2));background:rgba(37,99,235,.85);}
-.cube i:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--s)/2));background:rgba(99,102,241,.85);}
-.cube i:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--s)/2));background:rgba(14,165,233,.85);}
-.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--s)/2));background:rgba(56,189,248,.85);}
-.cube i:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--s)/2));background:rgba(124,58,237,.85);}
-.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--s)/2));background:rgba(79,70,229,.85);}
-@keyframes spin{from{transform:rotateX(-20deg) rotateY(0)}to{transform:rotateX(-20deg) rotateY(360deg)}}
-
-#confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+/* 等角キューブ */
+#iso{touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;}
+#iso:active{cursor:grabbing;}
+#iso-scale{width:0;height:0;position:relative;}
+#iso-cam{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;transform:translateY(22px) rotateX(58deg) rotateZ(var(--az,-45deg));}
+#iso-floor{position:absolute;background-color:var(--stage);border:1px solid var(--grid);}
+.cube{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;}
+.face{position:absolute;border:1px solid rgba(255,255,255,.45);}
+.tint{position:absolute;transform:translateZ(.5px);pointer-events:none;}
 @media (prefers-color-scheme: dark){
-:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;--stage:#262a36;}
+:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;--stage:#2a2c33;--grid:#4a4d57;}
 }
-@media (prefers-reduced-motion: reduce){.cube{animation-duration:30s;}}
 </style>
 </head>
 <body>
 <header>
 <a class="back-link" href="../../">← ハブに戻る</a>
 <h1>🎬 動きの見本</h1>
-<p>すべてこのページ内で自作したアニメーションです。素材の権利を気にせず使えます。</p>
+<p>すべてこのページ内のコードで描いた自作アニメーションです。</p>
 </header>
 <main>
 
 <section class="card">
-<h2>🎯 ゴール達成</h2>
-<p class="hint">ボタンかステージをタップすると矢が的に当たります。</p>
-<div class="stage" id="goal-stage">
-<svg viewBox="0 0 300 200" aria-label="的に矢が当たるアニメーション">
-<g transform="translate(210 100)">
-<circle r="62" fill="#ef4444"/><circle r="48" fill="#fff"/><circle r="34" fill="#ef4444"/><circle r="20" fill="#fff"/><circle id="goal-bull" r="8" fill="#ef4444"/>
+<h2>🏆 GOAL 祝おう</h2>
+<p class="hint">ステージをタップすると、もう一度祝います。</p>
+<div class="stage" id="goal-stage" style="background:#fff;">
+<svg viewBox="42 36 216 150" id="goal-svg" aria-label="GOALの文字と祝う手のアニメーション">
+<g id="g-dots"></g>
+<g font-family="Impact,Haettenschweiler,'Arial Narrow',sans-serif" font-weight="900" font-size="118" fill="#d98062">
+<text class="gl" x="58" y="148" textLength="42" lengthAdjust="spacingAndGlyphs" style="transform-box:fill-box;transform-origin:50% 100%">G</text>
+<text class="gl" x="104" y="148" textLength="44" lengthAdjust="spacingAndGlyphs" style="transform-box:fill-box;transform-origin:50% 100%">O</text>
+<text class="gl" x="152" y="148" textLength="46" lengthAdjust="spacingAndGlyphs" style="transform-box:fill-box;transform-origin:50% 100%">A</text>
+<text class="gl" x="202" y="148" textLength="38" lengthAdjust="spacingAndGlyphs" style="transform-box:fill-box;transform-origin:50% 100%">L</text>
 </g>
-<g id="goal-burst" transform="translate(210 100)"></g>
-<g id="goal-arrow" opacity="0" transform="translate(-90 100)">
-<line x1="0" y1="0" x2="70" y2="0" stroke="#92400e" stroke-width="4" stroke-linecap="round"/>
-<polygon points="70,-6 84,0 70,6" fill="#475569"/>
-<polygon points="0,0 -10,-8 6,0 -10,8" fill="#2563eb"/>
-</g>
-<text id="goal-text" x="80" y="62" text-anchor="middle" font-size="30" font-weight="800" fill="#f59e0b" stroke="#fff" stroke-width="1" opacity="0" style="transform-origin:center;transform-box:fill-box">GOAL!</text>
+<!-- 手(左・スティック) -->
+<g class="arm"><g class="wave" data-o="84px 172px" style="transform-origin:84px 172px">
+<line x1="76" y1="128" x2="82" y2="150" stroke="#3a3d5c" stroke-width="2" stroke-linecap="round"/>
+<path d="M72 138c-8 2-6 10 0 8" fill="none" stroke="#5fb3a3" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="78" y="146" width="12" height="28" rx="6" fill="#ecd29a"/>
+<circle cx="84" cy="146" r="8" fill="#ecd29a"/>
+</g></g>
+<!-- 手(フォームフィンガー) -->
+<g class="arm"><g class="wave" style="transform-origin:128px 172px">
+<rect x="122" y="150" width="12" height="24" rx="6" fill="#ecd29a"/>
+<rect x="114" y="112" width="28" height="42" rx="10" fill="#3a3d5c"/>
+<rect x="122" y="94" width="11" height="26" rx="5.5" fill="#3a3d5c"/>
+<polyline points="118,132 123,126 128,136 133,126 138,134" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</g></g>
+<!-- 手(緑) -->
+<g class="arm"><g class="wave" style="transform-origin:170px 172px">
+<rect x="164" y="138" width="13" height="36" rx="6.5" fill="#8fb89f"/>
+<circle cx="170" cy="134" r="10" fill="#8fb89f"/>
+<path d="M163 126c-6-2-7 5-2 6M178 126c6-2 7 5 2 6" fill="none" stroke="#8fb89f" stroke-width="5" stroke-linecap="round"/>
+<path d="M186 136c8-1 9 8 2 9" fill="none" stroke="#5fb3a3" stroke-width="2.5" stroke-linecap="round"/>
+</g></g>
+<!-- 手(ホーン) -->
+<g class="arm"><g class="wave" style="transform-origin:208px 172px">
+<rect x="202" y="146" width="12" height="28" rx="6" fill="#ecd29a" transform="rotate(14 208 172)"/>
+<path d="M200 126l30-16v36z" fill="#ecd29a"/>
+<ellipse cx="230" cy="128" rx="4.5" ry="18" fill="#3a3d5c"/>
+</g></g>
+<line x1="66" y1="173" x2="232" y2="173" stroke="#e07a5f" stroke-width="3" stroke-linecap="round"/>
 </svg>
 </div>
-<button type="button" id="goal-btn">矢を放つ</button>
+<button type="button" id="goal-btn">もう一度</button>
 </section>
 
 <section class="card">
-<h2>🧊 回るキューブ</h2>
-<p class="hint">ステージをドラッグすると向きが変わります。</p>
-<div class="stage" id="cubes">
-<div class="scene" id="scene">
-<div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-<div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-<div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-</div>
+<h2>🧊 転がるキューブ</h2>
+<p class="hint">ステージを左右にドラッグすると、見る向きが変わります。</p>
+<div class="stage" id="iso">
+<div id="iso-scale"><div id="iso-cam"><div id="iso-floor"></div></div></div>
 </div>
 <button type="button" id="cube-btn">速さ:ふつう</button>
 </section>
 
 <section class="card">
-<h2>🔍 ファイルスキャン</h2>
-<p class="hint">スキャンが終わると結果が表示されます。</p>
-<div class="stage" id="scan-stage">
-<svg viewBox="0 0 300 212" aria-label="ファイルをスキャンするアニメーション">
+<h2>🔍 ファイルをスキャン</h2>
+<p class="hint">虫めがねをドラッグすると、下の書類が浮かんで青くなります。</p>
+<div class="stage" id="scan-stage" style="touch-action:none;background:radial-gradient(ellipse at 50% 50%,#eef3ff,#fafafa 70%);">
+<svg viewBox="0 0 300 200" id="scan-svg" aria-label="虫めがねで書類を調べるアニメーション">
 <defs>
-<linearGradient id="scan-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity="0"/><stop offset="1" stop-color="#38bdf8" stop-opacity=".75"/></linearGradient>
-<clipPath id="scan-clip"><path d="M105 30h66l34 34v106a6 6 0 0 1-6 6H105a6 6 0 0 1-6-6V36a6 6 0 0 1 6-6z"/></clipPath>
+<filter id="doc-shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#6b7390" flood-opacity=".22"/></filter>
+<radialGradient id="lens" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#dfe9ff" stop-opacity=".45"/></radialGradient>
 </defs>
-<path d="M105 30h66l34 34v106a6 6 0 0 1-6 6H105a6 6 0 0 1-6-6V36a6 6 0 0 1 6-6z" fill="#fff" stroke="#94a3b8" stroke-width="3"/>
-<path d="M171 30v28a6 6 0 0 0 6 6h28z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
-<g id="scan-lines" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round">
-<line x1="118" y1="90" x2="186" y2="90"/><line x1="118" y1="108" x2="170" y2="108"/><line x1="118" y1="126" x2="186" y2="126"/><line x1="118" y1="144" x2="156" y2="144"/>
+<g id="docs"></g>
+<g id="mag" style="cursor:grab">
+<line x1="21" y1="21" x2="52" y2="60" stroke="#6b7080" stroke-width="10" stroke-linecap="round"/>
+<line x1="47" y1="54" x2="52" y2="60" stroke="#42455c" stroke-width="11" stroke-linecap="round"/>
+<circle r="31" fill="url(#lens)" stroke="#3e3f5e" stroke-width="7"/>
+<path d="M-18-8a21 21 0 0 1 14-12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
 </g>
-<g clip-path="url(#scan-clip)"><g id="scan-bar" opacity="0"><rect x="95" y="-34" width="120" height="34" fill="url(#scan-grad)"/><rect x="95" y="-2" width="120" height="3" fill="#0ea5e9"/></g></g>
-<g id="scan-ok" opacity="0" style="transform-origin:205px 160px;transform-box:view-box">
-<circle cx="205" cy="160" r="22" fill="#16a34a"/><path d="M194 160l8 8 15-17" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-</g>
-<text id="scan-pct" x="150" y="204" text-anchor="middle" font-size="13" fill="currentColor" opacity=".7">待機中</text>
 </svg>
 </div>
-<button type="button" id="scan-btn">スキャン開始</button>
+<button type="button" id="scan-btn">自動の動きを止める</button>
 </section>
 
 <section class="card">
 <h2>✅ 成功チェック</h2>
-<p class="hint">ボタンかステージをタップすると紙吹雪が舞います。</p>
-<div class="stage" id="ok-stage">
-<svg viewBox="0 0 300 200" aria-label="チェックマークが描かれるアニメーション">
-<defs><linearGradient id="ok-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset="1" stop-color="#15803d"/></linearGradient></defs>
-<g id="ok-all" style="transform-origin:150px 100px;transform-box:view-box">
-<circle id="ok-ring" cx="150" cy="100" r="52" fill="none" stroke="url(#ok-grad)" stroke-width="10" stroke-linecap="round" transform="rotate(-90 150 100)" stroke-dasharray="327" stroke-dashoffset="0"/>
-<circle id="ok-fill" cx="150" cy="100" r="44" fill="url(#ok-grad)" opacity=".18"/>
-<path id="ok-check" d="M126 102l18 18 32-38" fill="none" stroke="url(#ok-grad)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="0"/>
-</g>
+<p class="hint">ステージをタップすると、もう一度演出します。</p>
+<div class="stage" id="ok-stage" style="background:#fff;">
+<svg viewBox="0 0 300 200" id="ok-svg" aria-label="緑のチェックマークと紙吹雪のアニメーション">
+<defs>
+<linearGradient id="s-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8bdca0"/><stop offset="1" stop-color="#3f9363"/></linearGradient>
+<filter id="blur6"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>
+<ellipse cx="150" cy="172" rx="48" ry="7" fill="#000" opacity=".12" filter="url(#blur6)"/>
+<circle id="s-grey" cx="150" cy="100" r="62" fill="#d9dbe0" style="transform-box:fill-box;transform-origin:center"/>
+<circle id="s-green" cx="150" cy="100" r="62" fill="url(#s-grad)" opacity="0" style="transform-box:fill-box;transform-origin:center"/>
+<path id="s-check" d="M121 102L143 124L182 80" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="95" stroke-dashoffset="95"/>
+<g id="s-conf"></g>
 </svg>
-<canvas id="confetti"></canvas>
 </div>
-<button type="button" id="ok-btn">お祝いする</button>
+<button type="button" id="ok-btn">もう一度</button>
 </section>
 
 </main>
-<p class="foot">矢・的・キューブ・チェックマーク・紙吹雪はすべてこのページ内のコードで描画しています。</p>
+<p class="foot">参考にした素材の雰囲気に寄せていますが、図形・動きはすべてこのページ内のコードで描いた自作です。</p>
 <script>
 (() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = id => document.getElementById(id);
   const NS = 'http://www.w3.org/2000/svg';
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
 
-  /* 1. goal */
+  /* 1. GOAL */
   (() => {
-    const arrow = $('goal-arrow'), burst = $('goal-burst'), text = $('goal-text'), btn = $('goal-btn'), stage = $('goal-stage');
-    let busy = false;
-    const colors = ['#f59e0b', '#ef4444', '#2563eb', '#16a34a', '#a855f7'];
-    async function shoot() {
-      if (busy) return; busy = true; btn.disabled = true;
-      burst.replaceChildren(); text.style.opacity = 0;
-      arrow.setAttribute('opacity', 1);
-      const fly = arrow.animate([
-        { transform: 'translate(-90px,100px) rotate(8deg)' },
-        { transform: 'translate(140px,100px) rotate(0deg)' }
-      ], { duration: reduce ? 1 : 480, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' });
-      await fly.finished;
-      arrow.animate([
-        { transform: 'translate(140px,100px) rotate(0)' },
-        { transform: 'translate(142px,100px) rotate(-4deg)' },
-        { transform: 'translate(140px,100px) rotate(3deg)' },
-        { transform: 'translate(140px,100px) rotate(0)' }
-      ], { duration: reduce ? 1 : 360, fill: 'forwards' });
-      for (let i = 0; i < 14; i++) {
-        const s = document.createElementNS(NS, 'polygon');
-        s.setAttribute('points', '0,-7 2,-2 7,-2 3,1 5,6 0,3 -5,6 -3,1 -7,-2 -2,-2');
-        s.setAttribute('fill', colors[i % colors.length]);
-        burst.appendChild(s);
-        const a = (i / 14) * Math.PI * 2, d = 55 + (i % 3) * 18;
-        s.animate([
-          { transform: 'translate(0,0) scale(.3)', opacity: 1 },
-          { transform: `translate(${Math.cos(a) * d}px,${Math.sin(a) * d}px) scale(1.1) rotate(${i * 40}deg)`, opacity: 0 }
-        ], { duration: reduce ? 1 : 800, easing: 'ease-out', fill: 'forwards' });
-      }
-      text.animate([
-        { opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1.25)', offset: .6 }, { opacity: 1, transform: 'scale(1)' }
-      ], { duration: reduce ? 1 : 500, easing: 'ease-out', fill: 'forwards' });
-      await new Promise(r => setTimeout(r, reduce ? 50 : 1400));
-      arrow.getAnimations().forEach(a => a.cancel());
-      arrow.setAttribute('opacity', 0);
-      busy = false; btn.disabled = false;
+    const svg = $('goal-svg'), letters = [...svg.querySelectorAll('.gl')], arms = [...svg.querySelectorAll('.arm')], waves = [...svg.querySelectorAll('.wave')];
+    const cols = ['#3a3d5c', '#5fb3a3', '#e07a5f', '#f2b84b', '#d98062'];
+    const dots = [];
+    for (let i = 0; i < 22; i++) dots.push(el('circle', { cx: rnd(34, 266), cy: rnd(26, 150), r: rnd(1.4, 3), fill: cols[i % cols.length] }, $('g-dots')));
+    let list = [], timer = 0;
+    function play() {
+      list.forEach(a => a.cancel()); list = [];
+      letters.forEach((l, i) => list.push(l.animate([
+        { transform: 'translateY(50px) scale(.8)', opacity: 0 },
+        { transform: 'translateY(-7px) scale(1.04)', opacity: 1, offset: .7 },
+        { transform: 'translateY(0) scale(1)', opacity: 1 }
+      ], { duration: 520, delay: i * 90, easing: 'ease-out', fill: 'both' })));
+      arms.forEach((a, i) => list.push(a.animate([{ transform: 'translateY(90px)' }, { transform: 'translateY(0)' }], { duration: 650, delay: 300 + i * 110, easing: 'cubic-bezier(.3,1.35,.5,1)', fill: 'both' })));
+      waves.forEach((w, i) => list.push(w.animate([{ transform: 'rotate(-7deg)' }, { transform: 'rotate(7deg)' }], { duration: 650 + i * 70, delay: 1000, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out', fill: 'both' })));
+      dots.forEach((d, i) => list.push(d.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(-6px)', offset: .5 }, { opacity: 0, transform: 'translateY(-16px)' }], { duration: rnd(1600, 2800), delay: 500 + i * 60, iterations: Infinity, easing: 'ease-in-out' })));
     }
-    btn.addEventListener('click', e => { e.stopPropagation(); shoot(); });
-    stage.addEventListener('click', shoot);
+    const restart = () => { clearInterval(timer); play(); if (!reduce) timer = setInterval(play, 6500); };
+    $('goal-stage').addEventListener('click', restart);
+    $('goal-btn').addEventListener('click', restart);
+    restart();
   })();
 
-  /* 2. cubes */
+  /* 2. 等角の転がるキューブ */
   (() => {
-    const stage = $('cubes'), scene = $('scene'), btn = $('cube-btn');
-    let rx = 0, ry = 0, drag = null;
-    const speeds = [['ゆっくり', '12s'], ['ふつう', '6s'], ['はやい', '2.5s']];
-    let si = 1;
-    const apply = () => scene.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
-    stage.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; stage.setPointerCapture(e.pointerId); });
-    stage.addEventListener('pointermove', e => {
-      if (!drag) return;
-      ry += (e.clientX - drag.x) * .6; rx = Math.max(-80, Math.min(80, rx - (e.clientY - drag.y) * .6));
-      drag = { x: e.clientX, y: e.clientY }; apply();
+    const stage = $('iso'), wrap = $('iso-scale'), cam = $('iso-cam'), floor = $('iso-floor'), btn = $('cube-btn');
+    const N = 5, S = 38, half = N * S / 2;
+    Object.assign(floor.style, { width: N * S + 'px', height: N * S + 'px', left: -half + 'px', top: -half + 'px',
+      backgroundImage: `linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px)`, backgroundSize: `${S}px ${S}px` });
+    const faceDefs = [
+      { n: [0, 0, 1], t: `translateZ(${S / 2}px)` }, { n: [0, 0, -1], t: `rotateY(180deg) translateZ(${S / 2}px)` },
+      { n: [1, 0, 0], t: `rotateY(90deg) translateZ(${S / 2}px)` }, { n: [-1, 0, 0], t: `rotateY(-90deg) translateZ(${S / 2}px)` },
+      { n: [0, 1, 0], t: `rotateX(-90deg) translateZ(${S / 2}px)` }, { n: [0, -1, 0], t: `rotateX(90deg) translateZ(${S / 2}px)` }
+    ];
+    const palette = [[247, 196, 92], [132, 120, 245], [236, 126, 126]];
+    const starts = [[0, 1], [2, 3], [4, 1]];
+    const cubes = palette.map((rgb, i) => {
+      const node = document.createElement('div'); node.className = 'cube';
+      const faces = faceDefs.map(f => {
+        const d = document.createElement('div'); d.className = 'face';
+        Object.assign(d.style, { width: S + 'px', height: S + 'px', left: -S / 2 + 'px', top: -S / 2 + 'px', transform: f.t });
+        node.appendChild(d); return { d, n: f.n };
+      });
+      cam.appendChild(node);
+      return { rgb, node, faces, gx: starts[i][0], gy: starts[i][1], M: new DOMMatrix(), roll: null, next: 400 + i * 500 };
     });
+    const occupied = (x, y, self) => cubes.some(c => c !== self && ((c.gx === x && c.gy === y) || (c.roll && c.gx + c.roll.dx === x && c.gy + c.roll.dy === y)));
+    const cell = g => (g - (N - 1) / 2) * S;
+    let speed = 1; const speeds = [['ゆっくり', .6], ['ふつう', 1], ['はやい', 1.8]]; let si = 1;
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    function shade(c, M) {
+      c.faces.forEach(f => {
+        const [x, y, z] = f.n;
+        const ny = M.m12 * x + M.m22 * y + M.m32 * z, nz = M.m13 * x + M.m23 * y + M.m33 * z;
+        const b = Math.max(.45, Math.min(1, .76 + .24 * nz + .14 * ny));
+        f.d.style.background = `rgb(${c.rgb.map(v => Math.round(v * b)).join(',')})`;
+      });
+    }
+    function place(c, W) { c.node.style.transform = W.toString(); }
+    function draw(c, theta) {
+      const cx = cell(c.gx), cy = cell(c.gy);
+      let W;
+      if (c.roll && theta > 0) {
+        const { dx, dy } = c.roll, px = cx + dx * S / 2, py = cy + dy * S / 2;
+        const axis = dx ? [0, 1, 0] : [1, 0, 0], ang = dx ? dx * theta : -dy * theta;
+        W = new DOMMatrix().translate(px, py, 0).rotateAxisAngle(axis[0], axis[1], axis[2], ang).translate(-px, -py, 0).translate(cx, cy, S / 2).multiply(c.M);
+        shade(c, new DOMMatrix().rotateAxisAngle(axis[0], axis[1], axis[2], ang).multiply(c.M));
+      } else { W = new DOMMatrix().translate(cx, cy, S / 2).multiply(c.M); shade(c, c.M); }
+      place(c, W);
+    }
+    function startRoll(c, now) {
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => { const x = c.gx + dx, y = c.gy + dy; return x >= 0 && y >= 0 && x < N && y < N && !occupied(x, y, c); });
+      if (!dirs.length) { c.next = now + 300; return; }
+      const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
+      c.roll = { dx, dy, t0: now, dur: 700 / speed };
+      const t = document.createElement('div'); t.className = 'tint';
+      Object.assign(t.style, { width: S + 'px', height: S + 'px', left: cell(c.gx + dx) - S / 2 + 'px', top: cell(c.gy + dy) - S / 2 + 'px', background: `rgba(${c.rgb.join(',')},.4)` });
+      cam.appendChild(t);
+      t.animate([{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 0 }], { duration: 1800 / speed }).onfinish = () => t.remove();
+    }
+    function frame(now) {
+      cubes.forEach(c => {
+        if (c.roll) {
+          const p = Math.min(1, (now - c.roll.t0) / c.roll.dur), theta = ease(p) * 90;
+          draw(c, theta);
+          if (p >= 1) {
+            const { dx, dy } = c.roll;
+            const axis = dx ? [0, 1, 0] : [1, 0, 0], ang = dx ? dx * 90 : -dy * 90;
+            c.M = new DOMMatrix().rotateAxisAngle(axis[0], axis[1], axis[2], ang).multiply(c.M);
+            c.gx += dx; c.gy += dy; c.roll = null; c.next = now + rnd(100, 450) / speed;
+            draw(c, 0);
+          }
+        } else if (now >= c.next) startRoll(c, now);
+      });
+      requestAnimationFrame(frame);
+    }
+    function fit() { wrap.style.transform = `scale(${Math.min(1.25, stage.clientWidth / 275)})`; }
+    fit(); addEventListener('resize', fit);
+    cubes.forEach(c => draw(c, 0));
+    requestAnimationFrame(frame);
+    let az = -45, drag = null;
+    stage.addEventListener('pointerdown', e => { drag = e.clientX; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (drag == null) return; az += (e.clientX - drag) * .5; drag = e.clientX; cam.style.setProperty('--az', az + 'deg'); });
     const end = () => { drag = null; };
     stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
-    btn.addEventListener('click', () => {
-      si = (si + 1) % speeds.length;
-      stage.style.setProperty('--dur', speeds[si][1]);
-      btn.textContent = '速さ:' + speeds[si][0];
+    btn.addEventListener('click', () => { si = (si + 1) % speeds.length; speed = speeds[si][1]; btn.textContent = '速さ:' + speeds[si][0]; });
+  })();
+
+  /* 3. 虫めがねで書類スキャン */
+  (() => {
+    const svg = $('scan-svg'), mag = $('mag'), g = $('docs'), btn = $('scan-btn');
+    const defs = [[50, 106, -5], [88, 98, 4], [126, 108, -7], [166, 96, 6], [206, 106, -4], [244, 98, 5]];
+    const docs = defs.map(([x, y, r], i) => {
+      const grp = el('g', { }, g);
+      const inner = el('g', { transform: `translate(${x} ${y}) rotate(${r})` }, grp);
+      el('rect', { x: -22, y: -30, width: 44, height: 60, rx: 4, fill: '#fff', filter: 'url(#doc-shadow)' }, inner);
+      const ls = [0, 1, 2, 3].map(k => el('line', { x1: -13, x2: k % 2 ? 6 : 13, y1: -16 + k * 9, y2: -16 + k * 9, stroke: '#a3a9b8', 'stroke-width': 2.4, 'stroke-linecap': 'round' }, inner));
+      return { x, y, grp, ls, k: 0 };
     });
-    apply();
+    let t = 0, auto = true, pos = { x: 150, y: 100 }, target = null, last = performance.now();
+    const toSvg = e => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / 300, r.height / 200); return { x: (e.clientX - r.left - (r.width - 300 * s) / 2) / s, y: (e.clientY - r.top - (r.height - 200 * s) / 2) / s }; };
+    const stage = $('scan-stage'); let holding = false;
+    stage.addEventListener('pointerdown', e => { holding = true; target = toSvg(e); stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (holding) target = toSvg(e); });
+    const release = () => { holding = false; target = null; };
+    stage.addEventListener('pointerup', release); stage.addEventListener('pointercancel', release);
+    btn.addEventListener('click', () => { auto = !auto; btn.textContent = auto ? '自動の動きを止める' : '自動で動かす'; });
+    function frame(now) {
+      const dt = Math.min(50, now - last); last = now;
+      if (auto) t += dt / 1000;
+      let tg = target || { x: 140 + 80 * Math.sin(t * .8), y: 98 + 16 * Math.sin(t * 1.6 + .6) };
+      if (!auto && !target) tg = pos;
+      pos.x += (tg.x - pos.x) * .14; pos.y += (tg.y - pos.y) * .14;
+      mag.setAttribute('transform', `translate(${pos.x.toFixed(1)} ${pos.y.toFixed(1)})`);
+      docs.forEach(d => {
+        const dist = Math.hypot(d.x - pos.x, d.y - pos.y), want = Math.max(0, 1 - dist / 46);
+        d.k += (want - d.k) * .2;
+        d.grp.setAttribute('transform', `translate(0 ${(-9 * d.k).toFixed(2)})`);
+        const col = d.k > .35 ? '#3b82f6' : '#a3a9b8';
+        d.ls.forEach(l => l.setAttribute('stroke', col));
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   })();
 
-  /* 3. scan */
+  /* 4. 成功チェック */
   (() => {
-    const bar = $('scan-bar'), ok = $('scan-ok'), pct = $('scan-pct'), lines = $('scan-lines'), btn = $('scan-btn');
-    let busy = false;
-    async function scan() {
-      if (busy) return; busy = true; btn.disabled = true;
-      ok.setAttribute('opacity', 0); ok.getAnimations().forEach(a => a.cancel());
-      [...lines.children].forEach(l => l.setAttribute('stroke', '#cbd5e1'));
-      bar.setAttribute('opacity', 1);
-      const dur = reduce ? 300 : 3000;
-      const move = bar.animate([{ transform: 'translateY(30px)' }, { transform: 'translateY(210px)' }, { transform: 'translateY(30px)' }, { transform: 'translateY(210px)' }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' });
-      const t0 = performance.now();
-      await new Promise(res => {
-        const tick = now => {
-          const p = Math.min(1, (now - t0) / dur);
-          pct.textContent = 'スキャン中… ' + Math.round(p * 100) + '%';
-          [...lines.children].forEach((l, i) => { if (p > (i + 1) / 5) l.setAttribute('stroke', '#38bdf8'); });
-          p < 1 ? requestAnimationFrame(tick) : res();
-        };
-        requestAnimationFrame(tick);
+    const grey = $('s-grey'), green = $('s-green'), check = $('s-check'), conf = $('s-conf');
+    const cols = ['#f4c430', '#e74c3c', '#3498db', '#e75b9f', '#1abc9c'];
+    const pieces = [];
+    for (let i = 0; i < 20; i++) pieces.push(el('rect', { x: -3, y: -5, width: rnd(5, 7), height: rnd(8, 11), rx: 1, fill: cols[i % cols.length], opacity: 0 }, conf));
+    let list = [], timer = 0;
+    function play() {
+      list.forEach(a => a.cancel()); list = [];
+      list.push(grey.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 320, easing: 'ease-out', fill: 'both' }));
+      list.push(green.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1.06)', offset: .6 }, { opacity: 1, transform: 'scale(1)' }], { duration: 520, delay: 420, easing: 'ease-out', fill: 'both' }));
+      list.push(check.animate([{ strokeDashoffset: 95 }, { strokeDashoffset: 0 }], { duration: 420, delay: 820, easing: 'ease-out', fill: 'both' }));
+      pieces.forEach((p, i) => {
+        const a = (i / pieces.length) * Math.PI * 2 + rnd(-.2, .2), d = rnd(88, 132);
+        const x = 150 + Math.cos(a) * d, y = 100 + Math.sin(a) * d + 18;
+        list.push(p.animate([
+          { transform: 'translate(150px,100px) rotate(0deg) scale(.4)', opacity: 0 },
+          { transform: `translate(${150 + Math.cos(a) * 70}px,${100 + Math.sin(a) * 70}px) rotate(${rnd(90, 200)}deg) scale(1)`, opacity: 1, offset: .25 },
+          { transform: `translate(${x}px,${y}px) rotate(${rnd(220, 520)}deg) scale(1)`, opacity: 0 }
+        ], { duration: rnd(1300, 1900), delay: 950 + rnd(0, 250), easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'both' }));
       });
-      move.cancel(); bar.setAttribute('opacity', 0);
-      [...lines.children].forEach(l => l.setAttribute('stroke', '#22c55e'));
-      pct.textContent = '問題は見つかりませんでした';
-      ok.setAttribute('opacity', 1);
-      ok.animate([{ transform: 'scale(0)' }, { transform: 'scale(1.3)', offset: .65 }, { transform: 'scale(1)' }], { duration: reduce ? 1 : 450, easing: 'ease-out' });
-      busy = false; btn.disabled = false; btn.textContent = 'もう一度スキャン';
     }
-    btn.addEventListener('click', scan);
-  })();
-
-  /* 4. success + confetti */
-  (() => {
-    const stage = $('ok-stage'), btn = $('ok-btn'), cv = $('confetti'), ring = $('ok-ring'), check = $('ok-check'), all = $('ok-all'), fill = $('ok-fill');
-    const ctx = cv.getContext('2d');
-    let parts = [], raf = 0, busy = false;
-    function size() {
-      const r = stage.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
-      cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
-    }
-    function loop() {
-      const w = stage.clientWidth, h = stage.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      parts = parts.filter(p => p.y < h + 20 && p.life > 0);
-      parts.forEach(p => {
-        p.vy += .22; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life--;
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-        ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life / 30);
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
-      });
-      raf = parts.length ? requestAnimationFrame(loop) : 0;
-      if (!raf) ctx.clearRect(0, 0, w, h);
-    }
-    function confetti() {
-      size();
-      const w = stage.clientWidth, h = stage.clientHeight, cols = ['#22c55e', '#facc15', '#38bdf8', '#f472b6', '#a78bfa', '#fb923c'];
-      const n = reduce ? 20 : 110;
-      for (let i = 0; i < n; i++) {
-        const a = -Math.PI / 2 + (Math.random() - .5) * 2.2, v = 5 + Math.random() * 7;
-        parts.push({ x: w / 2, y: h / 2, vx: Math.cos(a) * v, vy: Math.sin(a) * v, w: 5 + Math.random() * 6, h: 3 + Math.random() * 5, rot: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[i % cols.length], life: 110 + Math.random() * 60 });
-      }
-      if (!raf) raf = requestAnimationFrame(loop);
-    }
-    async function play() {
-      if (busy) return; busy = true; btn.disabled = true;
-      const t = reduce ? 1 : 1;
-      const d = reduce ? 1 : 1;
-      ring.animate([{ strokeDashoffset: 327 }, { strokeDashoffset: 0 }], { duration: 600 * t * d, easing: 'ease-out' });
-      fill.animate([{ opacity: 0 }, { opacity: .18 }], { duration: 600 });
-      check.animate([{ strokeDashoffset: 80 }, { strokeDashoffset: 80, offset: .45 }, { strokeDashoffset: 0 }], { duration: 900, easing: 'ease-out' });
-      await new Promise(r => setTimeout(r, 750));
-      all.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
-      confetti();
-      await new Promise(r => setTimeout(r, 1200));
-      busy = false; btn.disabled = false; btn.textContent = 'もう一度';
-    }
-    btn.addEventListener('click', e => { e.stopPropagation(); play(); });
-    stage.addEventListener('click', play);
-    addEventListener('resize', size);
+    const restart = () => { clearInterval(timer); play(); if (!reduce) timer = setInterval(play, 5200); };
+    $('ok-stage').addEventListener('click', restart);
+    $('ok-btn').addEventListener('click', restart);
+    restart();
   })();
 })();
 </script>
