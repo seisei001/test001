@@ -6,7 +6,7 @@ window.Consult = (() => {
   const cache = {};
   const load = async (f) => cache[f] || (cache[f] = await (await fetch('data/shindan/' + f)).json());
   // 診断の分野 → 対応する専門家
-  const EXPERTS = { tax: ['sakaguchi', 'honda'], labor: ['yamada', 'honda'], restructure: ['uehara', 'sakashita'], it: ['sakaguchi'] };
+  const EXPERTS = { tax: ['honda', 'sakaguchi'], labor: ['yamada', 'honda'], restructure: ['uehara', 'sakashita'], it: ['sakaguchi'] };
   const NOTE = {
     sakaguchi: '国税局37年のキャリア。税務調査対応・システム・AIの活用の相談に。',
     honda: '税理士・社会保険労務士・行政書士のトリプルライセンス。',
@@ -15,8 +15,8 @@ window.Consult = (() => {
     sakashita: '公認会計士・税理士・公認不正検査士。監査、税務、会計、不正調査等。'
   };
   const RELATED = {
-    chosa: [['/sakaguchi', '坂口 誠 税理士事務所のページ'], ['/honda', '本田 智広のページ']],
-    setsuzei: [['/sakaguchi', '坂口 誠 税理士事務所のページ'], ['/uehara/s-succession', '事業承継・廃業支援(上原)'], ['/honda', '本田 智広のページ']],
+    chosa: [['/honda', '本田 智広のページ'], ['/sakaguchi', '坂口 誠 税理士事務所のページ']],
+    setsuzei: [['/honda', '本田 智広のページ'], ['/sakaguchi', '坂口 誠 税理士事務所のページ'], ['/uehara/s-succession', '事業承継・廃業支援(上原)']],
     koeki: [['/shafuku/about-3', '社会福祉法人会計基準(社福サポート)'], ['/sakaguchi', '坂口 誠 税理士事務所のページ']],
     saisei: [['/uehara/s-succession', '事業承継・廃業支援(上原)'], ['/uehara/s-plan', '事業計画策定(上原)'], ['/sr/services', '社会保険料の換価の猶予(社労士法人)']],
     romu: [['/sr/services', '業務内容(日本綜合社会保険労務士法人)'], ['/shafuku/labor', '給与・労務(社福サポート)']],
