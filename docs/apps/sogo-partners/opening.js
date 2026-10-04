@@ -1,11 +1,12 @@
-/* オープニング演出(最初に1回): 統合 → シナジー → 専門 → シナジー
+/* オープニング演出(最初に1回): 専門分野の言葉を順に表示 → 専門家の統合 → シナジー
    → 上へ流れる四角 → 横長の円筒 → 球体 → 球の中からGOAL → 横長の円筒 → 縦スクロールへ */
 window.Opening = (() => {
   'use strict';
   const reduce = FX.reduce;
   const KEY = 'sogoOpening';
-  const WORDS = ['統合', 'シナジー', '専門', 'シナジー'];
-  const T = { A: 3.4, B: 4.3, C: 5.1, D: 7.1, E1: 7.7, E2: 8.4, E3: 9.3 };   // 各場面の終わり(秒)
+  // [言葉, 表示開始(秒), 表示時間(秒)] 最後の「シナジー」は少し長く見せる
+const WORDS = ['公認会計士', '税理士', '社会保険労務士', '事業再生', '社会福祉法人', '公益法人', '国税調査対応', 'クラウド対応社労管理', '専門家の統合', 'シナジー'].map((w, i, a) => [w, .25 + i * .5, i === a.length - 1 ? 1 : .5]);
+  const T = { A: 5.9, B: 6.7, C: 7.4, D: 9.3, E1: 9.9, E2: 10.6, E3: 11.5 };   // 各場面の終わり(秒)
   const COLS = [[31, 106, 122], [201, 138, 27], [47, 111, 79], [217, 104, 74], [106, 76, 147], [43, 138, 156]];
   const FONT = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans",sans-serif';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -79,11 +80,12 @@ window.Opening = (() => {
             cx.globalAlpha = .85 + .15 * pB; cx.fillStyle = shade(r.c, 1); rr(x - w / 2, y - h / 2, w, h, rad); cx.fill(); cx.globalAlpha = 1;
           });
           if (t >= T.A) capsule(mid.x, mid.y, capW, capH, teal, ease(seg(t, T.A + .55, T.B)));
-          // 文字(統合 → シナジー → 専門 → シナジー)
-          WORDS.forEach((w, i) => {
-            const s = .25 + i * .8, p = seg(t, s, s + .8); if (p <= 0 || p >= 1) return;
+          // 文字(専門分野の言葉 → 専門家の統合 → シナジー)
+          WORDS.forEach(([w, s0, d]) => {
+            const p = seg(t, s0, s0 + d); if (p <= 0 || p >= 1) return;
             const a = Math.min(seg(p, 0, .25), 1 - seg(p, .8, 1)), ty = lerp(26, 0, out(seg(p, 0, .3)));
-            cx.save(); cx.globalAlpha = a; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.font = `900 ${fs}px ${FONT}`;
+            cx.save(); cx.globalAlpha = a; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+            let f = fs; cx.font = `900 ${f}px ${FONT}`; const mw = cx.measureText(w).width; if (mw > W * .88) { f = f * W * .88 / mw; cx.font = `900 ${f}px ${FONT}`; }
             cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = 24; cx.fillStyle = '#fff'; cx.fillText(w, mid.x, mid.y + ty); cx.restore();
           });
         }
