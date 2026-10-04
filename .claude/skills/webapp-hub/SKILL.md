@@ -30,7 +30,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | avatar | 🧍‍♀️ VRMアバター | apps/avatar/ | 自律行動するVRMアバター。`lib/` は `resources` ブランチの `autovrm` のコピー。ライブラリ修正は先に `resources` 側で行ってから反映 |
 | workmap | 🗺️ WorkMap | apps/workmap/ | タスク分解ツリー+ガントチャート |
 | neon-dash | ⚡ ネオン・ダッシュ | apps/neon-dash/ | 1タップのミニゲーム。ダーク固定デザイン(例外、後述) |
-| tax-office-pr | ⚖️ 税理士事務所PRサイト | apps/tax-office-pr/ | 診断コンテンツ付きPRサイト |
+| tax-office-pr | ⚖️ 税理士事務所PRサイト | apps/tax-office-pr/ | 診断コンテンツ付きPRサイト。演出は自作の共通部品 `fx.js`(FX.check / FX.scan / FX.cubes / FX.goal)と `fx.css` に集約し、開幕のオープニング・ヒーロー・診断(質問の遷移、探す→考える→結果)・ステップ4・お問い合わせ送信後のGOAL演出で使用。外部素材なし |
 | smart-box | 🎙️ 賢い箱 | apps/smart-box/src/ui/ | 開発中の会話AI。本体は `src/ui/` 配下のため path と戻るリンクの階層が他と異なる(`../../../../`) |
 | text-avatar | 📖 テキストアバター | apps/text-avatar/ | テキストをClaudeで解析しVRMアバターに朗読・演技させる。ユーザー自身のAnthropic APIキー(localStorage保存)が必要 |
 | novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**データ更新・データ形式・暗号化の手順は `novel-note-update` スキルに従う**。小説データは平文でリポジトリに置かず、`data/` に暗号化して置く(アプリ用の利用者の鍵+AI作業用のマスターキー。マスターキーは利用者の Google Drive にだけある)。アプリで作者が直した内容は端末に保存し、「データ更新を依頼」で依頼文(スキル名・作業・修正データ)としてコピーされる |

@@ -1,0 +1,101 @@
+/* ---------- 演出部品 (fx.js) ---------- */
+.fx-stage{ position: relative; width: 100%; overflow: hidden; }
+.fx-stage svg{ width: 100%; height: 100%; display: block; }
+.fx-iso{ display: flex; align-items: center; justify-content: center; --fx-grid: #d9cdb8; }
+.fx-iso-scale{ width: 0; height: 0; position: relative; }
+.fx-cam{ position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; transform: translateY(22px) rotateX(58deg) rotateZ(-45deg); }
+.fx-floor{ position: absolute; border: 1px solid var(--fx-grid);
+  background-image: linear-gradient(var(--fx-grid) 1px, transparent 1px), linear-gradient(90deg, var(--fx-grid) 1px, transparent 1px); }
+.fx-cube{ position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+.fx-face{ position: absolute; border: 1px solid rgba(255,255,255,.45); }
+.fx-tint{ position: absolute; transform: translateZ(.5px); pointer-events: none; }
+.fx-on-dark.fx-iso, .fx-on-dark .fx-iso{ --fx-grid: rgba(255,255,255,.28); }
+@media (prefers-color-scheme: dark){ .fx-iso{ --fx-grid: #4a3d2a; } .fx-on-dark.fx-iso, .fx-on-dark .fx-iso{ --fx-grid: rgba(255,255,255,.28); } }
+
+/* ---------- オープニング ---------- */
+.splash{ position: fixed; inset: 0; z-index: 100; background: radial-gradient(circle at 15% -10%, #234b67, var(--navy-deep) 65%);
+  color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; text-align: center;
+  transition: opacity .6s ease, transform .6s ease; animation: splashSafety .5s ease 4.5s forwards; cursor: pointer; }
+.splash.is-out{ opacity: 0; transform: translateY(-24px); pointer-events: none; }
+.splash-fx{ width: min(420px, 90vw); }
+.splash-open{ font-size: .75rem; color: var(--gold-soft); letter-spacing: .08em; margin: 0; opacity: 0; animation: fadeUp .7s ease .5s forwards; }
+.splash-name{ font-size: clamp(1.05rem, 4.4vw, 1.5rem); font-weight: 800; margin: 0; line-height: 1.5; opacity: 0; animation: fadeUp .7s ease .8s forwards; }
+.splash-skip{ font-size: .72rem; color: #9fb0c0; margin: 14px 0 0; opacity: 0; animation: fadeUp .7s ease 1.2s forwards; }
+.splash-seen .splash{ display: none; }
+@keyframes splashSafety{ to{ opacity: 0; visibility: hidden; pointer-events: none; } }
+@keyframes fadeUp{ from{ opacity: 0; transform: translateY(10px); } to{ opacity: 1; transform: none; } }
+
+/* ---------- ヒーローの演出 ---------- */
+.hero-fx{ position: relative; max-width: 720px; margin: 22px auto 0; }
+
+/* ---------- 実績バッジ ---------- */
+.stat.is-done .stat-icon{ animation: iconPop .6s cubic-bezier(.3,1.6,.5,1); }
+@keyframes iconPop{ 0%{ transform: scale(1); } 40%{ transform: scale(1.45) rotate(-8deg); } 100%{ transform: scale(1); } }
+
+/* ---------- 強み比較(チェックが描かれる) ---------- */
+.fx-tick{ width: 22px; height: 22px; vertical-align: -4px; margin-right: 6px; }
+.fx-tick circle{ fill: var(--teal); transform-box: fill-box; transform-origin: center; }
+.fx-tick path{ fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.compare-panel.is-active .fx-tick circle{ animation: dqPop .45s cubic-bezier(.3,1.6,.5,1); }
+.compare-panel.is-active .fx-tick path{ animation: drawIn .4s ease .25s forwards; }
+.compare-panel.is-active .compare-col--us{ animation: slideIn .45s cubic-bezier(.2,.8,.3,1) .1s both; }
+@keyframes drawIn{ to{ stroke-dashoffset: 0; } }
+@keyframes slideIn{ from{ opacity: 0; transform: translateX(22px); } to{ opacity: 1; transform: none; } }
+
+/* ---------- ステッパー ---------- */
+.step-btn:active{ transform: scale(.96); }
+.step-btn{ transition: transform .15s ease; }
+.fx-goal-host{ margin-top: 10px; }
+
+/* ---------- 診断(アニメーション版) ---------- */
+.dq-steps{ position: relative; display: flex; justify-content: space-between; align-items: center; margin: 4px 4px 24px; }
+.dq-line{ position: absolute; left: 14px; right: 14px; top: 50%; height: 4px; margin-top: -2px; background: var(--panel-bg-alt); border-radius: 4px; overflow: hidden; }
+.dq-line i{ display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--coral)); transition: width .6s cubic-bezier(.3,.9,.3,1); }
+.dq-dot{ position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; background: var(--panel-bg); border: 2px solid var(--border);
+  display: grid; place-items: center; font-size: .72rem; font-weight: 700; color: var(--muted); transition: border-color .3s, background .3s, color .3s; }
+.dq-dot svg{ display: none; width: 16px; height: 16px; }
+.dq-dot svg path{ fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.dq-dot.is-now{ border-color: var(--gold); color: var(--gold); animation: dqPulse 1.6s ease-out infinite; }
+.dq-dot.is-done{ background: var(--teal); border-color: var(--teal); color: #fff; animation: dqPop .45s cubic-bezier(.3,1.6,.5,1); }
+.dq-dot.is-done span{ display: none; }
+.dq-dot.is-done svg{ display: block; }
+.dq-dot.is-done svg path{ animation: drawIn .35s ease .15s forwards; }
+@keyframes dqPulse{ 0%{ box-shadow: 0 0 0 0 rgba(224,147,46,.55); } 100%{ box-shadow: 0 0 0 12px rgba(224,147,46,0); } }
+@keyframes dqPop{ 0%{ transform: scale(.5); } 60%{ transform: scale(1.25); } 100%{ transform: scale(1); } }
+
+.dq-stage{ position: relative; min-height: 240px; overflow: hidden; }
+.diag-option{ position: relative; overflow: hidden; transition: transform .2s ease, opacity .25s ease, background .2s, border-color .2s; }
+.diag-option:active{ transform: scale(.98); }
+.diag-options.is-locked .diag-option:not(.is-picked){ opacity: .3; transform: scale(.97); }
+.diag-option.is-picked{ background: var(--gold-soft); border-color: var(--gold); color: #2a1600; padding-right: 48px; }
+.opt-check{ position: absolute; right: 14px; top: 50%; width: 24px; height: 24px; margin-top: -12px; }
+.opt-check circle{ fill: var(--teal); transform-box: fill-box; transform-origin: center; animation: dqPop .4s cubic-bezier(.3,1.6,.5,1); }
+.opt-check path{ fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; animation: drawIn .3s ease .12s forwards; }
+.dq-ripple{ position: absolute; border-radius: 50%; background: rgba(226,105,75,.35); pointer-events: none; }
+
+.diag-think{ text-align: center; min-height: 260px; }
+.dq-fxhost{ position: relative; }
+.dq-think-text{ font-weight: 700; margin: 8px 0 10px; min-height: 1.7em; color: var(--text); }
+.dq-think-bar{ height: 6px; border-radius: 999px; background: var(--panel-bg-alt); overflow: hidden; max-width: 320px; margin: 0 auto; }
+.dq-think-bar i{ display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--coral)); }
+
+.dq-gauge-wrap{ margin: 4px 0 14px; }
+.dq-gauge{ position: relative; height: 12px; border-radius: 999px; overflow: hidden; background: linear-gradient(90deg, var(--teal), var(--gold), var(--coral)); }
+.dq-gauge i{ position: absolute; right: 0; top: 0; bottom: 0; width: 100%; background: var(--panel-bg-alt); }
+.dq-gauge-num{ font-size: .8rem; color: var(--muted); margin: 6px 0 0; }
+.dq-gauge-num b{ color: var(--text); font-size: 1.05rem; }
+.diag-result-badge{ transform-origin: left center; }
+
+/* ---------- ゴール(お問い合わせ送信) ---------- */
+.goal-overlay{ position: fixed; inset: 0; z-index: 90; background: rgba(15,37,55,.72); display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }
+.goal-overlay[hidden]{ display: none; }
+.goal-card{ background: var(--panel-bg); border-radius: 20px; padding: 18px 18px 22px; width: min(420px, 100%); text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35); animation: cardIn .45s cubic-bezier(.3,1.4,.5,1); }
+.goal-card h3{ margin: 6px 0 4px; font-size: 1.1rem; }
+.goal-card p{ color: var(--muted); font-size: .85rem; margin: 0 0 12px; }
+.goal-card .btn{ border-color: var(--border); color: var(--text); }
+@keyframes cardIn{ from{ opacity: 0; transform: scale(.85) translateY(20px); } to{ opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce){
+  .splash{ display: none; }
+  .dq-dot.is-now{ animation: none; }
+}
