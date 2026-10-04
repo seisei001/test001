@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>スクロール演出見本 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 構成: 開幕(動く形と浮かぶ面)→ 背景色が変わる章 → 面取りした白い面が写真帯に重なる章 → 順に現れる一覧 */
+:root{
+  --bgA:#e8f1f5;--bgB:#0f2236;--fgA:#11243a;--fgB:#eef3f7;
+  --bg:#f3f6f8;--fg:#11243a;--muted:#5b6b7c;--line:#d3dbe3;--card:#ffffff;
+  --k1:#12263f;--k2:#1f6a7a;--k3:#c98a1b;--k4:#6a4c93;--accent:#c98a1b;--blob:#7fc4cf;
+  --disp:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bgA:#13263a;--bgB:#050c14;--fgA:#e8eef4;--fgB:#eef3f7;
+  --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;--card:#15222f;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--accent:#e0a53b;--blob:#2b6f80;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bgA:#13263a;--bgB:#050c14;--fgA:#e8eef4;--fgB:#eef3f7;
+  --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;--card:#15222f;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--accent:#e0a53b;--blob:#2b6f80;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.85 var(--disp);overflow-x:hidden}
+a{color:inherit}
+
+/* 浮かぶ見出しバー */
+.hdr{position:fixed;z-index:50;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;
+  padding:6px 8px 6px 16px;border-radius:14px;background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:0 6px 22px rgba(0,0,0,.12);transition:transform .35s}
+.hdr.hide{transform:translateY(-130%)}
+.hdr a{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;font-weight:900;font-size:14px;letter-spacing:.04em}
+.hdr .nav{width:44px;height:44px;border-radius:10px;background:var(--fg);display:grid;place-items:center}
+.hdr .nav i{display:block;width:20px;height:2px;background:var(--bg);box-shadow:0 6px 0 var(--bg);margin-bottom:6px}
+
+/* 1 開幕 */
+.hero{position:relative;min-height:100svh;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bgA);color:var(--fgA);padding:0 22px}
+.blob{position:absolute;left:50%;top:50%;width:min(120vw,620px);height:min(120vw,620px);transform:translate(-50%,-50%);pointer-events:none}
+.blob path{fill:var(--blob);opacity:.55}
+.copy{position:relative;z-index:2;text-align:center}
+.copy .ln{display:block;overflow:hidden;line-height:1.5}
+.copy .ln span{display:block;transform:translateY(110%);transition:transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
+.hero.on .copy .ln span{transform:none}
+.copy h1{margin:0;font-size:clamp(21px,5.9vw,38px);font-weight:900;white-space:nowrap}
+.copy p{margin:18px 0 0;font-size:14px;color:var(--muted);opacity:0;transition:opacity 1s 1.2s}
+.hero.on .copy p{opacity:1}
+.fl{position:absolute;z-index:1;width:30vw;max-width:150px;aspect-ratio:3/4;border-radius:12px;display:flex;align-items:flex-end;padding:8px;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;will-change:transform;box-shadow:0 10px 26px rgba(0,0,0,.16)}
+.fl.a{left:6vw;top:62svh;background:linear-gradient(160deg,var(--k2),var(--k1))}
+.fl.b{right:6vw;top:14svh;background:linear-gradient(200deg,var(--k3),#8a5a0c);aspect-ratio:1/1;width:26vw}
+.fl.c{right:12vw;top:68svh;background:linear-gradient(140deg,var(--k4),var(--k1));width:24vw}
+.scrollhint{position:absolute;z-index:2;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));text-align:center;font-size:11px;letter-spacing:.2em;color:var(--muted)}
+
+/* 2 背景色が変わる章 */
+#bgc{height:320svh;position:relative}
+#bgc .pin{position:sticky;top:0;height:100svh;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:0 26px;text-align:center}
+.stmt{position:absolute;left:26px;right:26px;opacity:0;transform:translateY(26px);transition:none}
+.stmt small{display:block;letter-spacing:.2em;font-size:12px;opacity:.7;margin-bottom:12px}
+.stmt h2{margin:0;font-size:clamp(24px,6.8vw,40px);font-weight:900;line-height:1.5;text-wrap:balance}
+.stmt p{margin:14px auto 0;max-width:26em;font-size:15px;opacity:.85}
+
+/* 3 面取りした白い面が写真帯に重なる */
+.cover{position:relative;background:var(--bgB)}
+.band{position:sticky;top:0;height:78svh;overflow:hidden;background:linear-gradient(155deg,var(--k2),var(--k1) 55%,#0a1626)}
+.band .img{position:absolute;inset:-10% 0;background:
+  radial-gradient(60% 40% at 25% 30%,rgba(255,255,255,.22),transparent 70%),
+  radial-gradient(50% 35% at 80% 70%,rgba(201,138,27,.35),transparent 70%);will-change:transform}
+.band h2{position:absolute;left:18px;bottom:calc(8svh + 0px);margin:0;font-size:clamp(46px,15vw,92px);line-height:.95;font-weight:900;letter-spacing:.01em;color:#fff;z-index:2}
+.panel{position:relative;z-index:3;background:var(--bg);margin-top:-7svh;
+  clip-path:polygon(0 9vw,9vw 0,calc(100% - 9vw) 0,100% 9vw,100% 100%,0 100%);padding:15vw 22px 56px}
+.panel .tag{color:var(--accent);font-weight:900;font-size:13px;letter-spacing:.1em}
+.panel h3{margin:8px 0 10px;font-size:clamp(22px,6.2vw,30px);line-height:1.5;font-weight:900;text-wrap:balance}
+.panel p{margin:0;color:var(--muted);font-size:15px}
+.cts{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;margin:26px 0 8px;padding:0;list-style:none}
+.cts li{border-bottom:1px solid var(--line)}
+.cts a{display:flex;align-items:center;gap:10px;min-height:50px;text-decoration:none;font-size:14px;font-weight:700}
+.arr{flex:none;width:24px;height:24px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:12px;border-radius:3px}
+.btn{display:inline-flex;align-items:center;justify-content:space-between;gap:26px;min-height:54px;padding:0 6px 0 22px;background:#000;color:#fff;text-decoration:none;font-weight:900;border-radius:2px;margin-top:22px;min-width:220px}
+.btn .arr{width:42px;height:42px;background:var(--accent);color:#11243a;font-size:16px;border-radius:2px}
+
+/* 4 順に現れる一覧 */
+.rows{padding:30px 22px 70px;background:var(--bg)}
+.rows h3{margin:0 0 6px;font-size:22px;font-weight:900}
+.row{display:grid;grid-template-columns:76px 1fr 28px;gap:14px;align-items:center;padding:16px 0;border-bottom:1px solid var(--line)}
+.row .ph{aspect-ratio:1;border-radius:10px;display:flex;align-items:flex-end;padding:6px;color:#fff;font-size:10px;font-weight:700}
+.row:nth-of-type(1) .ph{background:linear-gradient(150deg,var(--k1),var(--k2))}
+.row:nth-of-type(2) .ph{background:linear-gradient(150deg,var(--k3),#7a4d0a)}
+.row:nth-of-type(3) .ph{background:linear-gradient(150deg,var(--k4),var(--k1))}
+.row h4{margin:0;font-size:16px;font-weight:900;line-height:1.5}
+.row p{margin:2px 0 0;font-size:13px;color:var(--muted);line-height:1.6}
+
+[data-rv]{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
+[data-rv].in{opacity:1;transform:none}
+.end{padding:20px 20px 90px;text-align:center;color:var(--muted);font-size:13px;background:var(--bg)}
+@media (prefers-reduced-motion:reduce){
+  .copy .ln span{transform:none;transition:none}.copy p{opacity:1;transition:none}
+  [data-rv]{opacity:1;transform:none;transition:none}
+  #bgc{height:auto}#bgc .pin{position:relative;height:auto;display:block;padding:40px 26px}
+  .stmt{position:relative;left:auto;right:auto;opacity:1;transform:none;margin:0 0 40px}
+}
+</style>
+</head>
+<body>
+<header class="hdr" id="hdr"><a href="../../">← ハブに戻る</a><span class="nav" aria-hidden="true"><i></i></span></header>
+
+<!-- 1 開幕 -->
+<section class="hero" id="hero">
+  <svg class="blob" viewBox="0 0 400 400" aria-hidden="true"><path id="bp" d=""/></svg>
+  <div class="fl a" data-sp=".16">写真(仮)</div>
+  <div class="fl b" data-sp="-.1">写真(仮)</div>
+  <div class="fl c" data-sp=".08">写真(仮)</div>
+  <div class="copy">
+    <h1>
+      <span class="ln"><span style="--d:.1s">ひとりで抱えていた悩みが、</span></span>
+      <span class="ln"><span style="--d:.28s">ひとつ、軽くなる。</span></span>
+    </h1>
+    <p>税務・資金繰り・労務・AI。専門家が連携して向き合います(仮の文)</p>
+  </div>
+  <div class="scrollhint">SCROLL</div>
+</section>
+
+<!-- 2 背景色が変わる -->
+<section id="bgc"><div class="pin" id="bgPin">
+  <div class="stmt"><small>01 / 気づく</small><h2>「何から相談すればいいか」が、<br>いちばんの悩み。</h2></div>
+  <div class="stmt"><small>02 / 整理する</small><h2>悩みを選ぶと、<br>気になる点が見えてくる。</h2><p>数分の質問で、いまの状況の目安を確かめます。</p></div>
+  <div class="stmt"><small>03 / 動き出す</small><h2>必要な専門家が、<br>ひとつのチームで。</h2><p>税理士・社会保険労務士・公認会計士が連携します(仮の文)。</p></div>
+</div></section>
+
+<!-- 3 面取りした面が写真帯に重なる -->
+<section class="cover">
+  <div class="band"><div class="img" id="bandImg"></div><h2 id="bandT">OUR<br>AREAS</h2></div>
+  <div class="panel">
+    <div class="tag" data-rv>― 取り組む分野</div>
+    <h3 data-rv style="--d:.08s">税務から、人、システムまで。<br>悩みの入口はひとつで足ります。</h3>
+    <p data-rv style="--d:.16s">どの分野から始めても、関係する専門家につなぎます。内容は仮の文です。</p>
+    <ul class="cts" data-rv style="--d:.2s">
+      <li><a href="#"><span class="arr">→</span>調査・税務</a></li>
+      <li><a href="#"><span class="arr">→</span>節税・承継</a></li>
+      <li><a href="#"><span class="arr">→</span>公益法人</a></li>
+      <li><a href="#"><span class="arr">→</span>資金繰り</a></li>
+      <li><a href="#"><span class="arr">→</span>人・労務</a></li>
+      <li><a href="#"><span class="arr">→</span>AI・システム</a></li>
+    </ul>
+    <a class="btn" href="#" data-rv>view more <span class="arr">→</span></a>
+  </div>
+</section>
+
+<!-- 4 順に現れる一覧 -->
+<section class="rows">
+  <h3 data-rv>PICK UP</h3>
+  <div class="row" data-rv><div class="ph">写真(仮)</div><div><h4>調査に備える</h4><p>帳簿と書類の整え方を確認</p></div><span class="arr">→</span></div>
+  <div class="row" data-rv style="--d:.1s"><div class="ph">写真(仮)</div><div><h4>資金繰りを整理する</h4><p>早めの状況整理から</p></div><span class="arr">→</span></div>
+  <div class="row" data-rv style="--d:.2s"><div class="ph">写真(仮)</div><div><h4>AIを安全に使う</h4><p>社内ルールと導入の助言</p></div><span class="arr">→</span></div>
+</section>
+<div class="end">以上です。気に入った動きを教えてください。</div>
+
+<script>
+(function(){
+  var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function rgb(s){var m=s.trim();if(m[0]==='#'){if(m.length===4)m='#'+m[1]+m[1]+m[2]+m[2]+m[3]+m[3];return[parseInt(m.substr(1,2),16),parseInt(m.substr(3,2),16),parseInt(m.substr(5,2),16)]}var a=m.match(/[\d.]+/g);return[+a[0],+a[1],+a[2]]}
+  function mix(a,b,t){return'rgb('+a.map(function(x,i){return Math.round(x+(b[i]-x)*t)}).join(',')+')'}
+  var root=getComputedStyle(document.documentElement);
+  function tok(n){return rgb(root.getPropertyValue(n))}
+  var hero=document.getElementById('hero'),hdr=document.getElementById('hdr');
+
+  /* 開幕の文字 */
+  requestAnimationFrame(function(){setTimeout(function(){hero.classList.add('on')},120)});
+
+  /* 動く形(ゆっくり変形) */
+  var bp=document.getElementById('bp'),N=8;
+  function blob(t){
+    var pts=[],i;
+    for(i=0;i<N;i++){var a=i/N*Math.PI*2,r=150*(1+.16*Math.sin(t*.0009+i*1.7)+.09*Math.sin(t*.0014+i*2.9));pts.push([200+Math.cos(a)*r,200+Math.sin(a)*r])}
+    var d='M'+((pts[0][0]+pts[N-1][0])/2).toFixed(1)+','+((pts[0][1]+pts[N-1][1])/2).toFixed(1);
+    for(i=0;i<N;i++){var p=pts[i],q=pts[(i+1)%N];d+=' Q'+p[0].toFixed(1)+','+p[1].toFixed(1)+' '+((p[0]+q[0])/2).toFixed(1)+','+((p[1]+q[1])/2).toFixed(1)}
+    bp.setAttribute('d',d+'Z');
+  }
+  blob(0);
+  var heroVis=true,loopOn=false;
+  function bl(t){loopOn=false;blob(t);if(heroVis&&!rm){loopOn=true;requestAnimationFrame(bl)}}
+  if('IntersectionObserver' in window){new IntersectionObserver(function(es){heroVis=es[0].isIntersecting;if(heroVis&&!loopOn)bl(performance.now())},{threshold:0}).observe(hero)}
+  if(!rm)bl(0);
+
+  /* 浮かぶ面 */
+  var fls=[].slice.call(document.querySelectorAll('.fl'));
+  /* 背景色が変わる章 */
+  var bgc=document.getElementById('bgc'),pin=document.getElementById('bgPin'),stm=[].slice.call(pin.querySelectorAll('.stmt'));
+  /* 写真帯 */
+  var bandImg=document.getElementById('bandImg'),bandT=document.getElementById('bandT'),cover=document.querySelector('.cover');
+  var lastY=0,ticking=false;
+  function update(){
+    ticking=false;var vh=innerHeight,y=scrollY;
+    hdr.classList.toggle('hide',y>lastY&&y>120);lastY=y;
+    if(rm)return;
+    fls.forEach(function(f){var sp=parseFloat(f.getAttribute('data-sp'));f.style.transform='translate3d(0,'+(-y*sp*1.6).toFixed(1)+'px,0) rotate('+(sp*14)+'deg)'});
+    var r=bgc.getBoundingClientRect(),p=clamp(-r.top/(r.height-vh),0,1);
+    var t=clamp((p-.1)/.5,0,1);
+    pin.style.background=mix(tok('--bgA'),tok('--bgB'),t);
+    pin.style.color=mix(tok('--fgA'),tok('--fgB'),clamp((t-.15)/.3,0,1));
+    stm.forEach(function(s,i){
+      var c=(i+.5)/stm.length,d=(p-c)/(.5/stm.length);   /* -1..1 */
+      if(i===0&&d<0)d=0; if(i===stm.length-1&&d>0)d=0;   /* 最初と最後は端まで残す */
+      var a=clamp(1.7-Math.abs(d)*1.7,0,1);
+      s.style.opacity=a.toFixed(2);s.style.transform='translateY('+(d*34).toFixed(1)+'px)';
+    });
+    var cr=cover.getBoundingClientRect();
+    var q=clamp(-cr.top/Math.max(1,cr.height-vh),0,1);
+    bandImg.style.transform='translate3d(0,'+(q*vh*.18).toFixed(1)+'px,0) scale('+(1.12-.08*q).toFixed(3)+')';
+    bandT.style.transform='translate3d('+(q*-6).toFixed(1)+'vw,0,0)';
+  }
+  function onS(){if(!ticking){ticking=true;requestAnimationFrame(update)}}
+  addEventListener('scroll',onS,{passive:true});addEventListener('resize',onS);update();
+
+  /* 順に現れる */
+  var rv=[].slice.call(document.querySelectorAll('[data-rv]'));
+  if('IntersectionObserver' in window&&!rm){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.15,rootMargin:'0px 0px -6% 0px'});
+    rv.forEach(function(e){io.observe(e)});
+  }else{rv.forEach(function(e){e.classList.add('in')})}
+})();
+</script>
+</body>
+</html>

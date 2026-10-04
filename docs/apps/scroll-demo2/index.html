@@ -14,17 +14,17 @@
 /* 構成: 縦のスクロール量を、球体の展開・横移動・斜め移動・扉の開きに変える4つの舞台 */
 :root{
   --bg:#f3f5f7;--fg:#11243a;--muted:#5b6b7c;--line:#d3dbe3;
-  --k1:#12263f;--k2:#1f6a7a;--k3:#c98a1b;--k4:#6a4c93;--on:#f3f5f7;
+  --k1:#12263f;--k2:#1f6a7a;--k3:#c98a1b;--k4:#6a4c93;--k5:#2f6f4f;--on:#f3f5f7;
   --stage:#0f1f33;--stage2:#e6ecf1;--accent:#c98a1b;
   --disp:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;
-  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--on:#eef3f7;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--k5:#3f9a6c;--on:#eef3f7;
   --stage:#08111c;--stage2:#1b2a3a;--accent:#e0a53b;color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;
-  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--on:#eef3f7;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--k5:#3f9a6c;--on:#eef3f7;
   --stage:#08111c;--stage2:#1b2a3a;--accent:#e0a53b;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-webkit-text-size-adjust:100%;overflow-x:hidden}
@@ -39,7 +39,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-we
 .pin{position:sticky;top:0;height:100svh;overflow:hidden}
 
 /* 1 球体から平面へ */
-#s1{height:340svh}
+#s1{height:560svh}
 #s1 .pin{background:var(--stage);color:var(--on)}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cap{position:absolute;left:0;right:0;text-align:center;padding:0 24px;pointer-events:none;transition:opacity .2s}
@@ -94,11 +94,12 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-we
   <p>下へスクロールするだけで、それぞれが動きます。内容は仮の文です。</p>
 </div>
 
-<div class="label"><span class="tag">1</span><b>球体から平面へ。</b>回る球体の上のカードが、スクロールにつれて、整った平面に並びます。</div>
+<div class="label"><span class="tag">1</span><b>球体から平面へ。</b>回る球体のカードが、平面に広がり、最後は縦の一覧になって読み進められます。</div>
 <section class="scene" id="s1"><div class="pin">
   <canvas id="cv" aria-hidden="true"></canvas>
   <div class="cap top" id="c1a"><h2>悩みの数だけ、専門分野がある</h2><p>下へスクロール</p></div>
   <div class="cap bot" id="c1b" style="opacity:0"><h2>ばらばらの悩みを、ひとつの窓口に</h2></div>
+  <div class="cap top" id="c1c" style="opacity:0"><h2>分野を選んで、読み進める</h2><p>下へスクロール</p></div>
 </div></section>
 
 <div class="label"><span class="tag">2</span><b>縦から横へ。</b>縦にスクロールすると、カードが横へ流れます。</div>
@@ -142,21 +143,30 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-we
 
   /* ---- 1 球体 → 平面 ---- */
   var cv=document.getElementById('cv'),cx=cv.getContext('2d');
-  var s1=document.getElementById('s1'),c1a=document.getElementById('c1a'),c1b=document.getElementById('c1b');
-  var labels=['税務調査','帳簿','領収書','決算','節税','役員報酬','退職金','法人化','承継','相続','公益法人','会計基準','資金繰り','返済','再生','納税','労務','就業規則','社会保険','雇用','賃上げ','助成金','AI','システム','クラウド会計','電帳法','インボイス','内部統制','監査','月次','予算','設備投資','補助金','融資','M&A'];
-  var N=labels.length,COLS=5,ROWS=7;
+  var s1=document.getElementById('s1'),c1a=document.getElementById('c1a'),c1b=document.getElementById('c1b'),c1c=document.getElementById('c1c');
+  var data=[['税務調査',0],['帳簿',0],['領収書',0],['決算',0],['節税',0],['役員報酬',0],['退職金',0],['法人化',0],['承継',0],['相続',0],['納税',0],['インボイス',0],
+    ['公益法人',1],['会計基準',1],['内部統制',1],['監査',1],['月次',1],['予算',1],
+    ['資金繰り',2],['返済',2],['再生',2],['設備投資',2],['補助金',2],['融資',2],['M&A',2],
+    ['労務',3],['就業規則',3],['社会保険',3],['雇用',3],['賃上げ',3],['助成金',3],
+    ['AI',4],['システム',4],['クラウド会計',4],['電帳法',4]];
+  var catName=['税務','会計','資金・再生','人・労務','AI・IT'];
+  var N=data.length,COLS=5,ROWS=7;
   var sph=[],i;
   for(i=0;i<N;i++){var y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),th=i*2.399963;sph.push([Math.cos(th)*r,y,Math.sin(th)*r])}
-  var W=0,H=0,dpr=1,col=['#1f3b5c','#1f6a7a','#c98a1b','#6a4c93'],txt='#f3f5f7',frame=0;
-  function readColors(){var s=getComputedStyle(document.documentElement);col=['--k1','--k2','--k3','--k4'].map(function(k){return s.getPropertyValue(k).trim()||'#1f3b5c'});txt=s.getPropertyValue('--on').trim()||'#f3f5f7'}
+  var W=0,H=0,dpr=1,col=['#1f3b5c','#1f6a7a','#c98a1b','#6a4c93','#2f6f4f'],txt='#f3f5f7',frame=0;
+  function readColors(){var s=getComputedStyle(document.documentElement);col=['--k1','--k2','--k3','--k4','--k5'].map(function(k){return s.getPropertyValue(k).trim()||'#1f3b5c'});txt=s.getPropertyValue('--on').trim()||'#f3f5f7'}
   function size(){dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0);vh=innerHeight;vw=innerWidth}
   function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+  var FONT='"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",sans-serif';
   function draw(p,time){
     cx.clearRect(0,0,W,H);
-    var t=ease(clamp((p-.12)/.62,0,1));
+    /* 段階: 球体 → 平面(グリッド) → 縦の一覧 → 一覧をスクロール */
+    var t1=ease(clamp((p-.08)/.30,0,1)),t2=ease(clamp((p-.46)/.16,0,1)),ls=clamp((p-.62)/.36,0,1);
     var R=Math.min(W,H)*.4,F=R*3.4;
     var cw=Math.min(W/COLS*.92,H*.7/ROWS*.9),ch=Math.min(H*.7/ROWS,cw*1.25);
-    var ang=time*.00035+p*5,tilt=.35*(1-t);
+    var rowW=W*.88,rowH=Math.max(54,Math.min(66,H*.085)),gap=10,listH=N*(rowH+gap)-gap;
+    var listTop=H*.2,off=ls*Math.max(0,listH-H*.76);
+    var ang=time*.00035+p*5,tilt=.35*(1-t1);
     var items=[];
     for(var k=0;k<N;k++){
       var s=sph[k],x=s[0]*R,y=s[1]*R,z=s[2]*R;
@@ -166,21 +176,45 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-we
       var y1=y*cb-z1*sb,z2=y*sb+z1*cb;
       var c=k%COLS,rw=Math.floor(k/COLS);
       var gx=(c-(COLS-1)/2)*(W/COLS),gy=(rw-(ROWS-1)/2)*(ch*1.06)-H*.04;
-      var px=x1+(gx-x1)*t,py=y1+(gy-y1)*t,pz=z2*(1-t);
+      var px=x1+(gx-x1)*t1,py=y1+(gy-y1)*t1,pz=z2*(1-t1);
       var sc=F/(F-pz);
-      var tw=(R*.4+(cw-R*.4)*t)*sc,th2=(R*.32+(ch-R*.32)*t)*sc;
-      var al=(.28+.72*((pz/R+1)/2))*(1-t)+t;
-      items.push({k:k,x:W/2+px*sc,y:H/2+py*sc,w:tw,h:th2,z:pz,a:al});
+      var tw=(R*.4+(cw-R*.4)*t1)*sc,th2=(R*.32+(ch-R*.32)*t1)*sc;
+      var al=(.28+.72*((pz/R+1)/2))*(1-t1)+t1;
+      /* 一覧への移行 */
+      var ly=listTop+k*(rowH+gap)+rowH/2-off-H/2;
+      var fx=px*(1-t2),fy=py+(ly-py)*t2;
+      var sy=H/2+fy,e=1-.05*Math.min(1,Math.abs(sy-H/2)/(H/2));
+      var w=(tw+(rowW-tw)*t2)*((1-t2)+t2*e),h2=(th2+(rowH-th2)*t2)*((1-t2)+t2*e);
+      var edge=clamp((sy-H*.1)/(H*.08),0,1)*clamp((H*.985-sy)/(H*.07),0,1);
+      al=al*((1-t2)+t2*edge);
+      items.push({k:k,x:W/2+fx*sc*(1-t2)+fx*t2,y:sy,w:w,h:h2,z:pz,a:al});
     }
     items.sort(function(a,b){return a.z-b.z});
     for(i=0;i<items.length;i++){
       var it=items[i];
+      if(it.a<=.01||it.y<-it.h||it.y>H+it.h)continue;
+      var d=data[it.k],cc=col[d[1]];
       cx.globalAlpha=clamp(it.a,0,1);
-      cx.fillStyle=col[Math.floor(it.k/9)%4];
-      rr(it.x-it.w/2,it.y-it.h/2,it.w,it.h,Math.min(14,it.h*.2));cx.fill();
-      cx.fillStyle=txt;cx.textAlign='center';cx.textBaseline='middle';
-      cx.font='700 '+Math.max(9,Math.min(15,it.h*.26))+'px "Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",sans-serif';
-      cx.fillText(labels[it.k],it.x,it.y,it.w-6);
+      cx.fillStyle=cc;
+      rr(it.x-it.w/2,it.y-it.h/2,it.w,it.h,Math.min(14,it.h*.22));cx.fill();
+      cx.fillStyle=txt;
+      if(t2<.42){
+        cx.globalAlpha=clamp(it.a,0,1)*clamp(1-t2*2.4,0,1);
+        cx.textAlign='center';cx.textBaseline='middle';
+        cx.font='700 '+Math.max(9,Math.min(15,it.h*.26))+'px '+FONT;
+        cx.fillText(d[0],it.x,it.y,it.w-6);
+      }
+      if(t2>.5){
+        cx.globalAlpha=clamp(it.a,0,1)*clamp((t2-.5)/.5,0,1);
+        var x0=it.x-it.w/2;
+        cx.textAlign='left';cx.textBaseline='middle';
+        cx.font='900 '+Math.round(rowH*.34)+'px '+FONT;
+        cx.fillText(d[0],x0+20,it.y,it.w*.6);
+        cx.textAlign='right';
+        cx.font='700 '+Math.round(rowH*.21)+'px '+FONT;
+        cx.globalAlpha=clamp(it.a,0,1)*clamp((t2-.5)/.5,0,1)*.85;
+        cx.fillText(catName[d[1]],x0+it.w-18,it.y,it.w*.34);
+      }
     }
     cx.globalAlpha=1;
   }
@@ -202,8 +236,9 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-we
     var p1=prog(s1);
     if(frame++%40===0)readColors();
     draw(rm?1:p1,time||0);
-    c1a.style.opacity=(1-clamp(p1/.12,0,1)).toFixed(2);
-    c1b.style.opacity=clamp((p1-.82)/.12,0,1).toFixed(2);
+    c1a.style.opacity=(1-clamp(p1/.08,0,1)).toFixed(2);
+    c1b.style.opacity=(clamp((p1-.3)/.06,0,1)*(1-clamp((p1-.46)/.05,0,1))).toFixed(2);
+    c1c.style.opacity=clamp((p1-.64)/.05,0,1).toFixed(2);
     if(rm)return;
     var p2=prog(s2),max2=hT.scrollWidth-vw;
     hT.style.transform='translate3d('+(-p2*max2).toFixed(1)+'px,0,0)';
