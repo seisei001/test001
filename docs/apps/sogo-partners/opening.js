@@ -4,9 +4,10 @@ window.Opening = (() => {
   'use strict';
   const reduce = FX.reduce;
   const KEY = 'sogoOpening';
-  // [言葉, 表示開始(秒), 表示時間(秒)] 最後の「シナジー」は少し長く見せる
-const WORDS = ['公認会計士', '税理士', '社会保険労務士', '事業再生', '社会福祉法人', '公益法人', '国税調査対応', 'クラウド対応社労管理', '専門家の統合', 'シナジー'].map((w, i, a) => [w, .25 + i * .5, i === a.length - 1 ? 1 : .5]);
+  // 各場面の終わり(秒)
   const T = { A: 5.9, B: 6.7, C: 7.4, D: 9.3, E1: 9.9, E2: 10.6, E3: 11.5 };   // 各場面の終わり(秒)
+  // [言葉, 表示開始(秒), 表示時間(秒), 最後か] 言葉は薄いところから現れて上へ動き、次の言葉が薄く現れる。最後の「シナジー」は中央で止まる
+const WORDS = ['公認会計士', '税理士', '社会保険労務士', '事業再生', '社会福祉法人', '公益法人', '国税調査対応', 'クラウド対応社労管理', '専門家の統合', 'シナジー'].map((w, i, a) => { const last = i === a.length - 1, s0 = .25 + i * .5; return [w, s0, last ? T.A + .4 - s0 : 1.2, last]; });
   const COLS = [[31, 106, 122], [201, 138, 27], [47, 111, 79], [217, 104, 74], [106, 76, 147], [43, 138, 156]];
   const FONT = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans",sans-serif';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -81,9 +82,11 @@ const WORDS = ['公認会計士', '税理士', '社会保険労務士', '事業�
           });
           if (t >= T.A) capsule(mid.x, mid.y, capW, capH, teal, ease(seg(t, T.A + .55, T.B)));
           // 文字(専門分野の言葉 → 専門家の統合 → シナジー)
-          WORDS.forEach(([w, s0, d]) => {
+          WORDS.forEach(([w, s0, d, last]) => {
             const p = seg(t, s0, s0 + d); if (p <= 0 || p >= 1) return;
-            const a = Math.min(seg(p, 0, .25), 1 - seg(p, .8, 1)), ty = lerp(26, 0, out(seg(p, 0, .3)));
+            // 薄い状態から現れて、上へ動いていく(最後の言葉は中央で止まり、場面の終わりで消える)
+            const a = last ? out(seg(p * d, 0, .6)) * (1 - seg(t, T.A, T.A + .4)) : Math.min(ease(seg(p, 0, .45)), 1 - seg(p, .62, 1));
+            const ty = last ? lerp(70, 0, out(seg(p * d, 0, .7))) : lerp(70, -70, p);
             cx.save(); cx.globalAlpha = a; cx.textAlign = 'center'; cx.textBaseline = 'middle';
             let f = fs; cx.font = `900 ${f}px ${FONT}`; const mw = cx.measureText(w).width; if (mw > W * .88) { f = f * W * .88 / mw; cx.font = `900 ${f}px ${FONT}`; }
             cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = 24; cx.fillStyle = '#fff'; cx.fillText(w, mid.x, mid.y + ty); cx.restore();
