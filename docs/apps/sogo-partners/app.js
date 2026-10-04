@@ -65,7 +65,8 @@
     menu.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
     $('gf').innerHTML = `<div class="wrap"><h3>${esc(BRAND)}</h3><p>公認会計士・税理士・社会保険労務士の専門家チームです。拠点は次のとおりです(事務所により連絡先が異なります)。</p><div class="offs">${OFFICES.map((o) =>
       `<div class="off"><b>${esc(o.city)}</b>${esc(o.zip)}<br>${esc(o.addr)}<br>${o.tel.map(([n, t]) => `${n ? esc(n) + ' ' : ''}TEL <a href="tel:${t.replace(/-/g, '')}">${t}</a>`).join('<br>')}${o.fax ? `<br>FAX ${o.fax}` : ''}<br><a href="${mapLink(o.addr)}" target="_blank" rel="noopener">地図を開く</a></div>`).join('')}</div>
-      <p><a href="#/map">全ページ一覧</a> / <a href="#/consult">お悩み診断</a> / <a href="../../">ハブに戻る</a></p></div>`;
+      <p><a href="#/map">全ページ一覧</a> / <a href="#/consult">お悩み診断</a> / <a href="#/" id="replay">オープニングをもう一度見る</a> / <a href="../../">ハブに戻る</a></p></div>`;
+    $('replay').addEventListener('click', (e) => { e.preventDefault(); const go2 = () => { window.scrollTo(0, 0); Opening.play({ force: true }); }; if ((location.hash || '#/') !== '#/') { location.hash = '#/'; setTimeout(go2, 900); } else go2(); });
   }
   const setNav = (path) => document.querySelectorAll('#gh-nav a').forEach((a) => a.classList.toggle('on', a.dataset.r === path || (a.dataset.r !== '/' && path.startsWith(a.dataset.r + '/'))));
 
@@ -245,7 +246,8 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
       await w.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }], { duration: 440, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards' }).finished;
       w.getAnimations().forEach((x) => x.cancel());
     }
-    first = false; busy = false;
+    const wasFirst = first; first = false; busy = false;
+    if (wasFirst && (path === '/' || path === '/consult') && Opening.should()) Opening.play();
   }
   async function boot() {
     try {

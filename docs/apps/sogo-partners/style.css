@@ -238,3 +238,10 @@ p{ margin:0 0 .9em; }
   .door{ display:none; } .gtext{ color:var(--fg); -webkit-text-stroke:0; } [data-reveal]{ opacity:1; transform:none; }
   .sph canvas{ position:relative; height:70svh; }
 }
+
+/* ---- オープニング ---- */
+.opening{ position:fixed; inset:0; z-index:120; background:radial-gradient(circle at 20% -10%,#27506d,#0f1f33 62%); cursor:pointer; }
+.opening canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.op-goal{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.05); opacity:0; pointer-events:none; }
+.op-skip{ position:absolute; right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); font:inherit; font-weight:700; font-size:.85rem; color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.4); border-radius:999px; min-height:44px; padding:0 18px; cursor:pointer; }
+@media (prefers-reduced-motion: reduce){ .opening{ display:none; } }
