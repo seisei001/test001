@@ -42,23 +42,22 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
 .hero .tag{position:relative;align-self:flex-start;margin-bottom:14px;color:var(--teal)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hero .tag{color:#e0a53b}}
 
-/* 2 diagonal */
-.diag{position:relative;height:520svh}
-.diag .pin{position:sticky;top:0;height:100svh;overflow:hidden;background:#0a1a2c}
-.scr{position:absolute;inset:0;overflow:hidden;color:#fff}
-.scr .in{position:absolute;inset:-12% -12%;padding:0 12%;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;will-change:transform}
-.scr .in>div{padding:0 22px;max-width:34em}
-.scr h2{font-size:clamp(28px,8vw,48px);line-height:1.25;margin:12px 0 10px;font-weight:900;text-wrap:balance}
-.scr p{margin:0;font-size:15px;opacity:.92}
-.s1{background:#0a1a2c}.s2{background:#1f4a66}.s3{background:#c98a1b}.s4{background:#e6ecf1;color:#11243a}
-.iso{position:absolute;left:50%;top:50%;width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;transform-style:preserve-3d;will-change:transform;opacity:.55}
-.iso i{position:absolute;width:30vmin;height:19vmin;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22)}
-.tilt{position:absolute;right:-8vw;bottom:9svh;width:62vw;max-width:280px;aspect-ratio:4/3;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:14px;font:700 12px/1.5 var(--lat);letter-spacing:.06em;will-change:transform}
-.tilt b{display:block;font-size:30px;font-weight:900;line-height:1.1;margin-top:6px}
-.s4 .tilt{background:rgba(18,38,63,.08);border-color:rgba(18,38,63,.25)}
-.dnav{position:absolute;left:22px;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;z-index:5}
-.dnav i{width:26px;height:3px;background:rgba(255,255,255,.3);border-radius:2px;transition:background .3s}
+/* 2 page flip (diagonal) */
+.diag{position:relative;height:560svh}
+.diag .pin{position:sticky;top:0;height:100svh;overflow:hidden;background:#0a1a2c;color:#fff}
+.pg,.fl{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
+.pg .pgc{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 24px}
+.pg h2{font-size:clamp(28px,8vw,48px);line-height:1.25;margin:12px 0 10px;font-weight:900;text-wrap:balance;max-width:12em}
+.pg p{margin:0;font-size:15px;opacity:.92;max-width:26em}
+.pg .big{position:absolute;right:14px;bottom:6svh;font:900 38vw/1 var(--lat);opacity:.12}
+.pg .tag{align-self:flex-start}
+.fl{background:linear-gradient(135deg,#ffffff22,#ffffff08),var(--fc,#fff)}
+.fl .sh,.pg .sh{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.fl .sh{background:linear-gradient(90deg,rgba(0,0,0,.38),rgba(0,0,0,0) 150px)}
+.pg .sh{background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.3))}
+.dhint{position:absolute;left:0;right:0;bottom:calc(46px + env(safe-area-inset-bottom,0px));text-align:center;font-size:12px;letter-spacing:.08em;opacity:.7;z-index:300;pointer-events:none;mix-blend-mode:difference;color:#fff}
+.dnav{position:absolute;left:22px;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;z-index:300}
+.dnav i{width:26px;height:3px;background:rgba(255,255,255,.35);border-radius:2px;transition:background .3s;mix-blend-mode:difference}
 .dnav i.on{background:#fff}
 
 /* 3 wave */
@@ -108,7 +107,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
 @media (prefers-reduced-motion:reduce){
   .chars span{transform:none;opacity:1;transition:none}
   .diag,.wipe{height:auto}.diag .pin,.wipe .pin{position:relative;height:auto}
-  .scr,.sl{position:relative;min-height:70svh;clip-path:none!important}
+  .sl{position:relative;min-height:70svh;clip-path:none!important}
   .route .stop{opacity:1;transform:none}
 }
 </style></head><body>
@@ -125,17 +124,9 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
 
 <!-- 2 -->
 <section class="diag" id="diag">
-  <div class="pin">
-    <div class="scr s1"><div class="iso" id="iso"></div>
-      <div class="in"><div><span class="tag">DIAGONAL 01</span><h2>斜めに、画面が入れ替わる</h2><p>次の画面が、右下から斜めの境目をつくって差し込みます。</p></div></div>
-      <div class="tilt" data-k="1">TAX<b>税務調査</b>落ち着いて備える</div></div>
-    <div class="scr s2"><div class="in"><div><span class="tag">02</span><h2>境目は、いつも斜め</h2><p>中の文字や札は境目と逆向きに少しずれて、奥行きが出ます。</p></div></div>
-      <div class="tilt" data-k="1">FUND<b>資金繰り</b>早めの整理から</div></div>
-    <div class="scr s3"><div class="in"><div><span class="tag">03</span><h2>人と、仕組みも</h2><p>労務・AI・システムまで、専門家が連携します。</p></div></div>
-      <div class="tilt" data-k="1">TEAM<b>連携</b>士業が横で動く</div></div>
-    <div class="scr s4"><div class="in"><div><span class="tag">04</span><h2>最後は、ひとつの窓口へ</h2><p>まず、いまの悩みを選ぶところから。</p></div></div>
-      <div class="tilt" data-k="1">START<b>診断</b>数分で目安</div></div>
-    <div class="dnav" id="dnav"><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="pin" id="dpin">
+    <div class="dhint">ページが、斜めにめくれていきます</div>
+    <div class="dnav" id="dnav"></div>
   </div>
 </section>
 
@@ -202,10 +193,22 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
   });
   var heroH=document.querySelector('.hero .chars');
   setTimeout(function(){heroH.classList.add('on')},200);
-  // iso タイル
-  var iso=document.getElementById('iso'),h='';
-  for(var r=0;r<9;r++)for(var c=0;c<9;c++){h+='<i style="left:'+(c*34)+'vmin;top:'+(r*23)+'vmin"></i>'}
-  iso.innerHTML=h;
+  // めくるページ
+  var PG=[
+    {c:'#0a1a2c',t:'PAGE 01',h:'ページが、斜めに<br>めくれていく',p:'右下の角から、紙がぱらぱらとめくれ、次のページが現れます。',n:'1'},
+    {c:'#1f4a66',t:'PAGE 02',h:'税務調査に、<br>慌てず向き合う',p:'帳簿や書類の整え方を、数問で確認します。',n:'2'},
+    {c:'#c98a1b',t:'PAGE 03',h:'資金繰りは、<br>早めの整理から',p:'返済や資金繰りの悩みは、状況の整理から始めます。',n:'3'},
+    {c:'#2f7a6b',t:'PAGE 04',h:'人とシステムも、<br>まとめて',p:'労務・AI・システムまで、専門家が連携します。',n:'4'},
+    {c:'#e6ecf1',t:'PAGE 05',h:'最後は、<br>ひとつの窓口へ',p:'まず、いまの悩みを選ぶところから。',n:'5',dk:1}
+  ];
+  var dpin=document.getElementById('dpin'),dnavEl=document.getElementById('dnav'),pgs=[],fls=[],NP=PG.length;
+  PG.forEach(function(d,i){
+    var pg=document.createElement('div');pg.className='pg';pg.style.background=d.c;pg.style.zIndex=200-i*2;if(d.dk)pg.style.color='#11243a';
+    pg.innerHTML='<div class="pgc"><span class="tag">'+d.t+'</span><h2>'+d.h+'</h2><p>'+d.p+'</p></div><div class="big">'+d.n+'</div><div class="sh"></div>';
+    dpin.insertBefore(pg,dpin.firstChild);pgs.push(pg);
+    if(i<NP-1){var fl=document.createElement('div');fl.className='fl';fl.style.zIndex=201-i*2;fl.style.setProperty('--fc',d.dk?'#fff':d.c);fl.innerHTML='<div class="sh"></div>';fl.style.filter='brightness(1.25)';dpin.insertBefore(fl,dpin.firstChild);fls.push(fl)}
+    var di=document.createElement('i');dnavEl.appendChild(di);
+  });
   // 波形バー
   var wf=document.getElementById('wf'),bars=[];
   for(var i=0;i<36;i++){var b=document.createElement('i');wf.appendChild(b);bars.push(b)}
@@ -214,8 +217,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
   var L=rp.getTotalLength();rp2.style.strokeDasharray=L;
   var stops=[].slice.call(route.querySelectorAll('.stop'));
   var blobp=document.getElementById('blobp'),wv=document.getElementById('wv');
-  var scrs=[].slice.call(document.querySelectorAll('.scr')),tilts=[].slice.call(document.querySelectorAll('.tilt'));
-  var dn=[].slice.call(document.querySelectorAll('#dnav i'));
+    var dn=[].slice.call(dnavEl.children);
   var diag=document.getElementById('diag'),wipe=document.getElementById('wipe'),fz=document.getElementById('fz'),dark=document.getElementById('dark');
   var rows=[].slice.call(document.querySelectorAll('.row')),fcs=[].slice.call(document.querySelectorAll('.fc'));
   var sls=[].slice.call(document.querySelectorAll('.sl')),bar=document.getElementById('bar'),cnt=document.getElementById('cnt');
@@ -244,35 +246,46 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);ove
     hdr.classList.toggle('hide',sy>lastY&&sy>80);lastY=sy;
     var now=performance.now();vel=vel*.85+Math.abs(sy-prevY)*.15;prevY=sy;
     if(rm)return;
-    // 2 斜め
+    // 2 斜めにめくる
     var r=diag.getBoundingClientRect(),p=cl(-r.top/(r.height-vh),0,1);
-    var seg=p*3,idx=Math.min(2,Math.floor(seg)),t=ease(cl(seg-idx,0,1));
-    var active=Math.round(p*3-.001+.0);
-    scrs.forEach(function(s,i){
-      var x0,x1,sh=0,shy=0,inn=s.querySelector('.in');
-      if(i===0){s.style.clipPath='none';}
-      else{
-        var tt=i-1<idx?1:(i-1===idx?t:0);
-        var xt=130-130*tt,xb=xt-30;
-        s.style.clipPath='polygon('+xt+'% 0,100% 0,100% 100%,'+xb+'% 100%)';
-        sh=(1-tt)*14;shy=-(1-tt)*7;
-        inn.style.transform='translate('+sh+'vw,'+shy+'svh)';
+    var W=dpin.clientWidth,H=dpin.clientHeight,ang=52*Math.PI/180,nx=Math.cos(ang),ny=Math.sin(ang),smax=nx*W+ny*H;
+    var phi=ang*180/Math.PI,L=Math.hypot(W,H)*1.6;
+    function clipHalf(poly,c,keepGreater){
+      var out=[];
+      for(var i=0;i<poly.length;i++){
+        var a=poly[i],b=poly[(i+1)%poly.length];
+        var sa=nx*a[0]+ny*a[1]-c,sb=nx*b[0]+ny*b[1]-c;
+        if(!keepGreater){sa=-sa;sb=-sb}
+        if(sa>=0)out.push(a);
+        if((sa>=0)!==(sb>=0)){var k=sa/(sa-sb);out.push([a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k])}
       }
-      if(i<3){
-        var out=cl((i<idx?1:(i===idx?t:0)),0,1);
-        if(i===0)inn.style.transform='translate('+(-out*14)+'vw,'+(out*7)+'svh)';
-      }
-    });
-    tilts.forEach(function(tl,i){
-      var tt=i===0?0:(i-1<idx?1:(i-1===idx?t:0));
-      var out=i<idx?1:(i===idx?t:0);
-      var d=(i===0?0:(1-tt))*30-out*30;
-      tl.style.transform='translate('+(d*1.2)+'vw,'+(-d*.7)+'svh) rotate('+(-9+d*.2)+'deg)';
-    });
-    var cur=cl(Math.round(seg),0,3);
-    dn.forEach(function(d,i){d.classList.toggle('on',i===cur)});
-    // iso 面
-    iso.style.transform='rotateX(58deg) rotateZ(-38deg) translate('+(-p*60)+'vmin,'+(-p*40)+'vmin)';
+      return out;
+    }
+    function toClip(poly){return 'polygon('+poly.map(function(q){return q[0].toFixed(1)+'px '+q[1].toFixed(1)+'px'}).join(',')+')'}
+    var rect=[[0,0],[W,0],[W,H],[0,H]],curPage=0;
+    for(var i=0;i<NP;i++){
+      var pg=pgs[i];pg.style.width=W+'px';pg.style.height=H+'px';
+      if(i===NP-1){pg.style.display='block';pg.style.clipPath='none';continue}
+      var t=ease(cl((p-i*0.2)/0.36,0,1));
+      if(t>.5&&curPage===i)curPage=i+1;
+      var c=smax*(1-t);
+      var fl=fls[i];
+      if(t<=0.0005){pg.style.display='block';pg.style.clipPath='none';fl.style.display='none';pg.querySelector('.sh').style.display='none';continue}
+      if(t>=0.999){pg.style.display='none';fl.style.display='none';continue}
+      pg.style.display='block';fl.style.display='block';
+      var keep=clipHalf(rect,c,false),cut=clipHalf(rect,c,true);
+      pg.style.clipPath=toClip(keep);
+      var sh=pg.querySelector('.sh');sh.style.display='block';
+      sh.style.width=L+'px';sh.style.height=L+'px';
+      sh.style.transform='translate('+(nx*c)+'px,'+(ny*c)+'px) rotate('+phi+'deg) translate(-110px,'+(-L/2)+'px)';
+      sh.style.width='110px';
+      fl.style.width=W+'px';fl.style.height=H+'px';
+      fl.style.clipPath=toClip(cut);
+      fl.style.transform='matrix('+(1-2*nx*nx)+','+(-2*nx*ny)+','+(-2*nx*ny)+','+(1-2*ny*ny)+','+(2*c*nx)+','+(2*c*ny)+')';
+      var fsh=fl.querySelector('.sh');fsh.style.width=L+'px';fsh.style.height=L+'px';
+      fsh.style.transform='translate('+(nx*c)+'px,'+(ny*c)+'px) rotate('+phi+'deg) translate(0,'+(-L/2)+'px)';
+    }
+    dn.forEach(function(d,i){d.classList.toggle('on',i===Math.min(curPage,NP-1))});
     // 3 波・経路
     wave(now);
     var rr=route.getBoundingClientRect(),q=cl((vh*.7-rr.top)/(rr.height+vh*.1),0,1);
