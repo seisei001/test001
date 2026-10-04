@@ -4,7 +4,7 @@ window.Consult = (() => {
   const { esc, wait, tickSvg } = U;
   const reduce = FX.reduce;
   const cache = {};
-  const load = async (f) => cache[f] || (cache[f] = await (await fetch('data/shindan/' + f)).json());
+  const load = async (f) => cache[f] || (cache[f] = await (await fetch('data/shindan/' + f, { cache: 'no-cache' })).json());
   // 診断の分野 → 対応する専門家
   const EXPERTS = { tax: ['honda', 'sakaguchi'], labor: ['yamada', 'honda'], restructure: ['uehara', 'sakashita'], it: ['sakaguchi'] };
   const NOTE = {
@@ -26,7 +26,7 @@ window.Consult = (() => {
 
   async function mount(el, ctx, single) {
     const { people } = ctx;
-    const idx = single ? null : await (await fetch('data/shindan/index.json')).json();
+    const idx = single ? null : await (await fetch('data/shindan/index.json', { cache: 'no-cache' })).json();
     let cur = null, cid = '', qi = 0, picks = [], busy = false, token = 0, live = null, n = 0;
     ctx.cleanup.push(() => { token++; if (live) live.stop(); });
 
