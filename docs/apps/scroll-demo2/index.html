@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>スクロール演出見本 2</title>
+</head>
+<body>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 構成: 縦のスクロール量を、球体の展開・横移動・斜め移動・扉の開きに変える4つの舞台 */
+:root{
+  --bg:#f3f5f7;--fg:#11243a;--muted:#5b6b7c;--line:#d3dbe3;
+  --k1:#12263f;--k2:#1f6a7a;--k3:#c98a1b;--k4:#6a4c93;--on:#f3f5f7;
+  --stage:#0f1f33;--stage2:#e6ecf1;--accent:#c98a1b;
+  --disp:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--on:#eef3f7;
+  --stage:#08111c;--stage2:#1b2a3a;--accent:#e0a53b;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1622;--fg:#e8eef4;--muted:#9fb0c0;--line:#25364a;
+  --k1:#2a4a72;--k2:#2b8a9c;--k3:#d79a2b;--k4:#8a6cb8;--on:#eef3f7;
+  --stage:#08111c;--stage2:#1b2a3a;--accent:#e0a53b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--disp);-webkit-text-size-adjust:100%;overflow-x:hidden}
+.intro{padding:52px 20px 24px;max-width:640px;margin:0 auto}
+.intro small{color:var(--muted);letter-spacing:.12em;font-size:12px}
+.intro h1{font-size:clamp(26px,7.4vw,42px);line-height:1.28;margin:10px 0 12px;font-weight:900;text-wrap:balance}
+.intro p{color:var(--muted);margin:0;font-size:15px}
+.label{max-width:640px;margin:0 auto;padding:44px 20px 14px;font-size:15px}
+.label .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.1em;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:1px 12px;margin-right:8px}
+
+.scene{position:relative}
+.pin{position:sticky;top:0;height:100svh;overflow:hidden}
+
+/* 1 球体から平面へ */
+#s1{height:340svh}
+#s1 .pin{background:var(--stage);color:var(--on)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cap{position:absolute;left:0;right:0;text-align:center;padding:0 24px;pointer-events:none;transition:opacity .2s}
+.cap.top{top:calc(34px + env(safe-area-inset-top,0px))}
+.cap.bot{bottom:calc(36px + env(safe-area-inset-bottom,0px))}
+.cap h2{margin:0;font-size:clamp(22px,6vw,34px);font-weight:900;line-height:1.35;text-wrap:balance}
+.cap p{margin:6px 0 0;font-size:13px;opacity:.75}
+
+/* 2 縦から横へ */
+#s2 .pin{background:var(--bg)}
+.hTrack{position:absolute;left:0;top:0;height:100%;display:flex;align-items:center;gap:5vw;padding:0 11vw;will-change:transform}
+.hp{flex:none;width:78vw;max-width:420px;height:62svh;border-radius:26px;padding:26px 22px;color:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.hp:nth-child(odd){transform:translateY(-4svh)}.hp:nth-child(even){transform:translateY(6svh)}
+.hp:nth-child(1){background:var(--k1)}.hp:nth-child(2){background:var(--k2)}.hp:nth-child(3){background:var(--k3)}.hp:nth-child(4){background:var(--k4)}.hp:nth-child(5){background:var(--k1)}
+.hp b{position:absolute;top:8px;right:18px;font-size:92px;line-height:1;opacity:.16;font-weight:900}
+.hp h3{margin:0 0 6px;font-size:24px;font-weight:900;line-height:1.35}
+.hp p{margin:0;font-size:14px;opacity:.92}
+.bar{position:absolute;left:6vw;right:6vw;bottom:calc(26px + env(safe-area-inset-bottom,0px));height:3px;background:var(--line);border-radius:3px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:3px}
+.sceneNote{position:absolute;left:6vw;top:calc(24px + env(safe-area-inset-top,0px));font-size:13px;color:var(--muted)}
+
+/* 3 斜めに進む */
+#s3 .pin{background:var(--stage2)}
+.dStage{position:absolute;left:0;top:0;width:100%;height:100%;will-change:transform}
+.dc{position:absolute;width:64vw;max-width:360px;height:32svh;border-radius:22px;padding:20px;color:#fff;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 14px 34px rgba(0,0,0,.22);transform:rotate(-4deg)}
+.dc h3{margin:0 0 4px;font-size:21px;font-weight:900;line-height:1.35}
+.dc p{margin:0;font-size:13.5px;opacity:.92}
+
+/* 4 扉が開く */
+#s4{height:230svh}
+#s4 .pin{background:var(--stage);perspective:1500px}
+.core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--on);padding:0 28px}
+.core h2{margin:0;font-size:clamp(26px,7.6vw,44px);font-weight:900;line-height:1.3;text-wrap:balance}
+.core p{margin:12px 0 22px;opacity:.85;font-size:15px;max-width:26em}
+.core .go{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 28px;border-radius:14px;background:var(--accent);color:#11243a;font-weight:900;font-size:16px;border:0;font-family:inherit}
+.door{position:absolute;top:0;bottom:0;width:50.5%;display:flex;align-items:center;font-weight:900;font-size:clamp(28px,9vw,60px);line-height:1.15;color:#fff;backface-visibility:hidden;will-change:transform;border-inline:1px solid rgba(255,255,255,.12)}
+.door.l{left:0;transform-origin:0 50%;background:var(--k1);justify-content:flex-end;padding-right:14px}
+.door.r{right:0;transform-origin:100% 50%;background:var(--k2);justify-content:flex-start;padding-left:14px}
+.end{padding:50px 20px 90px;text-align:center;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){
+  .scene{height:auto!important}.pin{position:relative;height:auto;min-height:70svh}
+  .hTrack,.dStage{position:relative;transform:none!important;flex-wrap:wrap}
+  .dc{position:relative;margin:12px}
+  #cv{position:relative;height:70svh}
+  .door{display:none}
+}
+</style>
+
+<div class="intro"><a href="../../" style="display:inline-flex;align-items:center;min-height:44px;color:var(--accent);text-decoration:none;font-size:14px">← ハブに戻る</a>
+  <small>MOTION SAMPLE 2 / 試作</small>
+  <h1>縦・横・斜め、球体、扉。<br>スクロールで動く 4 つの舞台</h1>
+  <p>下へスクロールするだけで、それぞれが動きます。内容は仮の文です。</p>
+</div>
+
+<div class="label"><span class="tag">1</span><b>球体から平面へ。</b>回る球体の上のカードが、スクロールにつれて、整った平面に並びます。</div>
+<section class="scene" id="s1"><div class="pin">
+  <canvas id="cv" aria-hidden="true"></canvas>
+  <div class="cap top" id="c1a"><h2>悩みの数だけ、専門分野がある</h2><p>下へスクロール</p></div>
+  <div class="cap bot" id="c1b" style="opacity:0"><h2>ばらばらの悩みを、ひとつの窓口に</h2></div>
+</div></section>
+
+<div class="label"><span class="tag">2</span><b>縦から横へ。</b>縦にスクロールすると、カードが横へ流れます。</div>
+<section class="scene" id="s2"><div class="pin">
+  <div class="sceneNote">縦のスクロール → 横に進む</div>
+  <div class="hTrack" id="hT">
+    <article class="hp"><b>1</b><h3>調査・税務</h3><p>準備の整え方を、数問で確認。</p></article>
+    <article class="hp"><b>2</b><h3>節税・承継</h3><p>制度を適切に使うための整理。</p></article>
+    <article class="hp"><b>3</b><h3>資金繰り</h3><p>早めの状況整理から始める。</p></article>
+    <article class="hp"><b>4</b><h3>人・労務</h3><p>雇用と社会保険の見直し。</p></article>
+    <article class="hp"><b>5</b><h3>AI・システム</h3><p>導入と社内ルールの整備。</p></article>
+  </div>
+  <div class="bar"><i id="hBar"></i></div>
+</div></section>
+
+<div class="label"><span class="tag">3</span><b>斜めに進む。</b>縦のスクロールで、画面全体が斜めに動いて、次のカードが現れます。</div>
+<section class="scene" id="s3"><div class="pin">
+  <div class="dStage" id="dS">
+    <article class="dc" style="left:6vw;top:10svh;background:var(--k1)"><h3>まず、悩みを選ぶ</h3><p>6つの入口から、近いものを。</p></article>
+    <article class="dc" style="left:40vw;top:40svh;background:var(--k2)"><h3>質問に答える</h3><p>数分で、状況の目安が分かる。</p></article>
+    <article class="dc" style="left:74vw;top:70svh;background:var(--k3)"><h3>結果を確かめる</h3><p>早めに動くとよい点を整理。</p></article>
+    <article class="dc" style="left:108vw;top:100svh;background:var(--k4)"><h3>必要なら相談する</h3><p>専門家が連携して対応。</p></article>
+  </div>
+</div></section>
+
+<div class="label"><span class="tag">4</span><b>扉が開く。</b>左右の扉が手前に開き、中の画面が現れます。</div>
+<section class="scene" id="s4"><div class="pin">
+  <div class="core"><h2>診断を、はじめましょう</h2><p>数分で答えられる簡易診断です。</p><button class="go" type="button">いま一番の悩みを選ぶ</button></div>
+  <div class="door l" id="dl">お悩み</div>
+  <div class="door r" id="dr">から</div>
+</div></section>
+<div class="end">以上です。気に入った動きを教えてください。</div>
+
+<script>
+(function(){
+  var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2}
+  var vh=innerHeight,vw=innerWidth;
+  function prog(el){var r=el.getBoundingClientRect();return clamp(-r.top/Math.max(1,r.height-vh),0,1)}
+
+  /* ---- 1 球体 → 平面 ---- */
+  var cv=document.getElementById('cv'),cx=cv.getContext('2d');
+  var s1=document.getElementById('s1'),c1a=document.getElementById('c1a'),c1b=document.getElementById('c1b');
+  var labels=['税務調査','帳簿','領収書','決算','節税','役員報酬','退職金','法人化','承継','相続','公益法人','会計基準','資金繰り','返済','再生','納税','労務','就業規則','社会保険','雇用','賃上げ','助成金','AI','システム','クラウド会計','電帳法','インボイス','内部統制','監査','月次','予算','設備投資','補助金','融資','M&A'];
+  var N=labels.length,COLS=5,ROWS=7;
+  var sph=[],i;
+  for(i=0;i<N;i++){var y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),th=i*2.399963;sph.push([Math.cos(th)*r,y,Math.sin(th)*r])}
+  var W=0,H=0,dpr=1,col=['#1f3b5c','#1f6a7a','#c98a1b','#6a4c93'],txt='#f3f5f7',frame=0;
+  function readColors(){var s=getComputedStyle(document.documentElement);col=['--k1','--k2','--k3','--k4'].map(function(k){return s.getPropertyValue(k).trim()||'#1f3b5c'});txt=s.getPropertyValue('--on').trim()||'#f3f5f7'}
+  function size(){dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0);vh=innerHeight;vw=innerWidth}
+  function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+  function draw(p,time){
+    cx.clearRect(0,0,W,H);
+    var t=ease(clamp((p-.12)/.62,0,1));
+    var R=Math.min(W,H)*.4,F=R*3.4;
+    var cw=Math.min(W/COLS*.92,H*.7/ROWS*.9),ch=Math.min(H*.7/ROWS,cw*1.25);
+    var ang=time*.00035+p*5,tilt=.35*(1-t);
+    var items=[];
+    for(var k=0;k<N;k++){
+      var s=sph[k],x=s[0]*R,y=s[1]*R,z=s[2]*R;
+      var ca=Math.cos(ang),sa=Math.sin(ang);
+      var x1=x*ca+z*sa,z1=-x*sa+z*ca;
+      var cb=Math.cos(tilt),sb=Math.sin(tilt);
+      var y1=y*cb-z1*sb,z2=y*sb+z1*cb;
+      var c=k%COLS,rw=Math.floor(k/COLS);
+      var gx=(c-(COLS-1)/2)*(W/COLS),gy=(rw-(ROWS-1)/2)*(ch*1.06)-H*.04;
+      var px=x1+(gx-x1)*t,py=y1+(gy-y1)*t,pz=z2*(1-t);
+      var sc=F/(F-pz);
+      var tw=(R*.4+(cw-R*.4)*t)*sc,th2=(R*.32+(ch-R*.32)*t)*sc;
+      var al=(.28+.72*((pz/R+1)/2))*(1-t)+t;
+      items.push({k:k,x:W/2+px*sc,y:H/2+py*sc,w:tw,h:th2,z:pz,a:al});
+    }
+    items.sort(function(a,b){return a.z-b.z});
+    for(i=0;i<items.length;i++){
+      var it=items[i];
+      cx.globalAlpha=clamp(it.a,0,1);
+      cx.fillStyle=col[Math.floor(it.k/9)%4];
+      rr(it.x-it.w/2,it.y-it.h/2,it.w,it.h,Math.min(14,it.h*.2));cx.fill();
+      cx.fillStyle=txt;cx.textAlign='center';cx.textBaseline='middle';
+      cx.font='700 '+Math.max(9,Math.min(15,it.h*.26))+'px "Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",sans-serif';
+      cx.fillText(labels[it.k],it.x,it.y,it.w-6);
+    }
+    cx.globalAlpha=1;
+  }
+
+  /* ---- 2 縦→横 ---- */
+  var s2=document.getElementById('s2'),hT=document.getElementById('hT'),hBar=document.getElementById('hBar');
+  function sizeH(){s2.style.height=(hT.scrollWidth-vw+vh)+'px'}
+
+  /* ---- 3 斜め ---- */
+  var s3=document.getElementById('s3'),dS=document.getElementById('dS');
+  function sizeD(){s3.style.height=(vh*3.2)+'px'}
+
+  /* ---- 4 扉 ---- */
+  var s4=document.getElementById('s4'),dl=document.getElementById('dl'),dr=document.getElementById('dr');
+
+  var running=false,lastT=0,vis=true;
+  function update(time){
+    vh=innerHeight;vw=innerWidth;
+    var p1=prog(s1);
+    if(frame++%40===0)readColors();
+    draw(rm?1:p1,time||0);
+    c1a.style.opacity=(1-clamp(p1/.12,0,1)).toFixed(2);
+    c1b.style.opacity=clamp((p1-.82)/.12,0,1).toFixed(2);
+    if(rm)return;
+    var p2=prog(s2),max2=hT.scrollWidth-vw;
+    hT.style.transform='translate3d('+(-p2*max2).toFixed(1)+'px,0,0)';
+    hBar.style.width=(p2*100).toFixed(1)+'%';
+    var p3=prog(s3);
+    dS.style.transform='translate3d('+(-p3*vw*1.1).toFixed(1)+'px,'+(-p3*vh*1.05).toFixed(1)+'px,0)';
+    var p4=ease(clamp(prog(s4)/.8,0,1));
+    dl.style.transform='rotateY('+(-96*p4).toFixed(1)+'deg)';
+    dr.style.transform='rotateY('+(96*p4).toFixed(1)+'deg)';
+    dl.style.visibility=dr.style.visibility=p4>=.995?'hidden':'visible';
+  }
+  function loop(t){running=false;update(t);var r=s1.getBoundingClientRect();if(vis&&!rm&&r.bottom>0&&r.top<vh){running=true;requestAnimationFrame(loop)}}
+  function kick(){if(!running){running=true;requestAnimationFrame(loop)}}
+  addEventListener('scroll',kick,{passive:true});
+  addEventListener('resize',function(){size();sizeH();sizeD();kick()});
+  document.addEventListener('visibilitychange',function(){vis=!document.hidden;kick()});
+  size();readColors();sizeH();sizeD();update(0);kick();
+})();
+</script>
+
+</body>
+</html>

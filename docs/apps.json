@@ -82,5 +82,19 @@
     "description": "お悩みを選ぶと6種類の簡易診断に分かれ、結果に関係する専門家を表示する試作版(内容は仮置き)",
     "path": "apps/shindan/",
     "icon": "🩺"
+  },
+  {
+    "id": "scroll-demo",
+    "name": "スクロール演出見本(重なる面・開く窓・のぞく次の画面)",
+    "description": "スクロールで次の画面が見える演出3種(重なる面・開く窓・のぞく次の画面)の試作",
+    "path": "apps/scroll-demo/",
+    "icon": "🎬"
+  },
+  {
+    "id": "scroll-demo2",
+    "name": "スクロール演出見本2(球体・横・斜め・扉)",
+    "description": "球体から平面・縦から横・斜め・扉が開く、スクロール連動の演出の試作",
+    "path": "apps/scroll-demo2/",
+    "icon": "🪐"
   }
 ]
