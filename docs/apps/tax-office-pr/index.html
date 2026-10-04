@@ -9,10 +9,28 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="坂口誠税理士事務所">
 <meta name="description" content="2026年10月1日、兵庫県神戸市に開業。国税局在籍37年、国際税務調査・査察部国際専門官を歴任した税理士 坂口誠と、事業再生を専門とする公認会計士 上原祐介のパートナー事務所。税務調査に強い顧問と事業再生支援を行います。">
-<title>坂口誠税理士事務所 × 上原祐介公認会計士事務所(神戸市) | 税務調査に強い顧問と事業再生支援</title>
+<title>(工事中) 坂口誠税理士事務所 × 上原祐介公認会計士事務所(神戸市) | 税務調査に強い顧問と事業再生支援</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fx.css">
 </head>
 <body>
+<script>try{if(sessionStorage.getItem('taxPrSplash')==='1')document.documentElement.classList.add('splash-seen');}catch(e){}</script>
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-fx fx-on-dark" id="splash-fx"></div>
+  <p class="splash-open">2026.10.01 兵庫県神戸市に開業</p>
+  <p class="splash-name">坂口誠税理士事務所<br>× 上原祐介公認会計士事務所</p>
+  <p class="splash-skip">タップでスキップ</p>
+</div>
+<div class="goal-overlay" id="goal-overlay" hidden>
+  <div class="goal-card" role="dialog" aria-modal="true" aria-label="送信ありがとうございます">
+    <div id="goal-host"></div>
+    <h3>ご相談ありがとうございます</h3>
+    <p>メールの下書きを開きます。内容をご確認のうえ送信してください。</p>
+    <button type="button" class="btn btn-outline" id="goal-close">閉じる</button>
+  </div>
+</div>
+
+<p class="wip-banner">（工事中）</p>
 
 <header class="site-header" id="top">
   <div class="header-inner">
@@ -50,6 +68,7 @@
         <a class="btn btn-outline" href="#contact">相談する</a>
       </div>
     </div>
+    <div class="hero-fx fx-on-dark" id="hero-fx" aria-hidden="true"></div>
     <div class="stat-row" id="stat-row">
       <div class="stat" data-target="37" data-suffix="年">
         <span class="stat-icon" aria-hidden="true">🏛️</span>
@@ -350,10 +369,9 @@
     </p>
 
     <div class="diagnosis" id="diagnosis-app">
-      <div class="diag-progress">
-        <div class="diag-progress-bar" id="diag-progress-bar"></div>
-      </div>
-      <div id="diag-question-wrap"></div>
+      <div class="dq-steps" id="dq-steps" aria-hidden="true"></div>
+      <div class="dq-stage" id="diag-question-wrap"></div>
+      <div class="diag-think" id="diag-think" hidden aria-live="polite"></div>
       <div class="diag-result" id="diag-result" hidden></div>
     </div>
   </section>
@@ -439,6 +457,7 @@
   <a href="../../">← ハブに戻る</a>
 </footer>
 
+<script src="fx.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
