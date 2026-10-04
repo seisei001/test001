@@ -1,0 +1,343 @@
+{
+ "id": "restructure",
+ "title": "資金繰り・借入返済・事業再生の簡易診断",
+ "intro": "資金繰りや借入返済、経営の状況について、9つの質問に答えるだけで、今の「緊急度」と「早めに動くとよい点」の目安がわかります。所要時間は2〜3分です。回答内容は、状況を整理するための参考としてご利用ください。",
+ "partner": "restructure",
+ "questions": [
+  {
+   "id": "q1",
+   "text": "現在の手元資金(預金など)で、毎月の支払いを何か月分まかなえそうですか。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "3か月分以上ある",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "1〜3か月分くらい",
+     "score": 1,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "1か月分に届かない",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "月末の支払いが厳しい月がある",
+     "score": 3,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q2",
+   "text": "借入金の返済状況に最も近いものはどれですか。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "順調に返済できている(または借入はない)",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "返済の負担が重く、条件の見直しを検討している",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "金融機関と条件変更について相談・協議している",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "返済が遅れている、または遅れそうである",
+     "score": 3,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q3",
+   "text": "税金や社会保険料(健康保険・厚生年金・労働保険など)の納付状況はいかがですか。",
+   "synergy": true,
+   "options": [
+    {
+     "label": "期限内に納付できている",
+     "score": 0,
+     "tags": [
+      "restructure",
+      "tax",
+      "labor"
+     ]
+    },
+    {
+     "label": "納付が遅れがちな月がある",
+     "score": 2,
+     "tags": [
+      "restructure",
+      "tax",
+      "labor"
+     ]
+    },
+    {
+     "label": "滞納がある、または分割での納付を相談している",
+     "score": 3,
+     "tags": [
+      "restructure",
+      "tax",
+      "labor"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q4",
+   "text": "直近の決算の状況について、最も近いものを選んでください。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "黒字である",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "赤字が1〜2期続いている",
+     "score": 1,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "赤字が3期以上続いている、または債務超過である",
+     "score": 3,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "よくわからない",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q5",
+   "text": "月次の試算表や資金繰り表(今後の入出金の見通し)を、どの程度把握できていますか。",
+   "synergy": true,
+   "options": [
+    {
+     "label": "毎月作成・確認し、数か月先まで見通している",
+     "score": 0,
+     "tags": [
+      "restructure",
+      "it"
+     ]
+    },
+    {
+     "label": "作成はしているが、確認は不定期である",
+     "score": 1,
+     "tags": [
+      "restructure",
+      "it"
+     ]
+    },
+    {
+     "label": "会計データの整備が追いつかず、数字をタイムリーに把握できていない",
+     "score": 3,
+     "tags": [
+      "restructure",
+      "it"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q6",
+   "text": "取引金融機関の担当者とは、どの程度お話しできていますか。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "定期的に業況を共有している",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "求められたときに応じる程度",
+     "score": 1,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "ほとんど話せていない、または話しづらい",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q7",
+   "text": "現在の経営上の悩みで、最も大きいものはどれですか。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "売上の減少",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "仕入・光熱費など、コストの増加",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "借入の負担が大きいこと",
+     "score": 3,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "人手不足や後継者の問題",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "特に大きな悩みはない",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q8",
+   "text": "売上に対して、人件費の負担はどの程度ですか。",
+   "synergy": true,
+   "options": [
+    {
+     "label": "無理なく収まっている",
+     "score": 0,
+     "tags": [
+      "restructure",
+      "labor"
+     ]
+    },
+    {
+     "label": "やや重いが、見直しの余地は検討できる",
+     "score": 1,
+     "tags": [
+      "restructure",
+      "labor"
+     ]
+    },
+    {
+     "label": "重く、資金繰りを圧迫していると感じる",
+     "score": 3,
+     "tags": [
+      "restructure",
+      "labor"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q9",
+   "text": "自社の事業や商品・サービスごとの収益性(利益が出ているか)を把握していますか。",
+   "synergy": false,
+   "options": [
+    {
+     "label": "部門・商品別に把握している",
+     "score": 0,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "全体の利益はおおよそ把握している",
+     "score": 1,
+     "tags": [
+      "restructure"
+     ]
+    },
+    {
+     "label": "ほとんど把握できていない",
+     "score": 2,
+     "tags": [
+      "restructure"
+     ]
+    }
+   ]
+  }
+ ],
+ "results": [
+  {
+   "min": 0,
+   "max": 8,
+   "level": "余裕あり",
+   "message": "緊急度は高くない状況と考えられます。今の良い状態を保つために、早めに動くとよい点は、月次の数字の確認と資金繰りの見通しを定期的に持つことです。",
+   "next_action": "定期的な資金繰りの見直しや、金融機関との情報共有を続けましょう。気になる点があれば、お気軽にご相談ください。",
+   "experts": [
+    "restructure"
+   ]
+  },
+  {
+   "min": 9,
+   "max": 17,
+   "level": "要注意",
+   "message": "いくつか気になる点が見られ、緊急度はやや高めです。今のうちに状況を整理しておくと、選択肢が広がりやすくなります。早めに動くとよい点は、資金繰り表の作成、納付状況の確認、収益性の把握です。",
+   "next_action": "自己判断で資金や支払いの対応を決めてしまう前に、一度ご相談ください。状況整理と計画づくりをお手伝いし、必要に応じて弁護士など他の専門家とも連携します。",
+   "experts": [
+    "restructure",
+    "tax"
+   ]
+  },
+  {
+   "min": 18,
+   "max": 27,
+   "level": "早急な相談を",
+   "message": "緊急度が高い状況の可能性があります。ただ、ここまで回答されたこと自体が、状況を整理する大切な第一歩です。お一人で抱え込まず、早めに専門家と状況を確認することをおすすめします。早めに動くとよい点は、手元資金と支払予定の整理、納付状況の確認です。",
+   "next_action": "自己判断で動く前に、できるだけ早くご相談ください。状況整理と計画づくりを支援し、必要に応じて弁護士・社会保険労務士など他の専門家とも連携します。結果をお約束するものではありません。",
+   "experts": [
+    "restructure",
+    "tax",
+    "labor"
+   ]
+  }
+ ],
+ "disclaimer": "本診断は簡易チェックであり、法的・財務的な判断や結果の保証ではありません。個別の状況によって適切な対応は異なります。具体的な対応については、専門家にご相談ください。"
+}

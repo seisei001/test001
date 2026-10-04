@@ -1,0 +1,19 @@
+{
+ "title": "お悩みから探す簡易診断",
+ "lead": "いま一番気になることを選んでください。数分で答えられる簡易診断をご案内します。",
+ "entries": [
+  {"id":"chosa","icon":"🔍","label":"税務調査が心配・連絡が来た","file":"tax-a-chosa.json"},
+  {"id":"setsuzei","icon":"💴","label":"節税・法人化・事業承継を考えたい","file":"tax-b-setsuzei.json"},
+  {"id":"koeki","icon":"🏛️","label":"公益法人・一般法人の会計と経理体制","file":"tax-c-koeki-keiri.json"},
+  {"id":"saisei","icon":"🧭","label":"資金繰り・借入返済が苦しい(事業再生)","file":"restructure.json"},
+  {"id":"romu","icon":"👥","label":"人・労務の悩み(雇用・社会保険・就業規則)","file":"labor.json"},
+  {"id":"ai","icon":"🤖","label":"AI・システム導入、業務効率化","file":"it-ai.json"}
+ ],
+ "other": "上のどれにも当てはまらない・まだはっきりしない",
+ "experts": {
+  "tax": {"name":"税理士","who":"運営者(元国税調査官)","note":"【仮】紹介文を入れる"},
+  "labor": {"name":"社会保険労務士","who":"パートナー(氏名・紹介文は仮)","note":"【仮】手続き代行・助成金申請・就業規則作成は社会保険労務士が担当します"},
+  "restructure": {"name":"公認会計士","who":"パートナー(氏名・紹介文は仮)","note":"【仮】状況整理と計画づくりを支援します。必要に応じて弁護士など他の専門家と連携します"},
+  "it": {"name":"AI・システム","who":"運営者(システム監査・開発の経験)","note":"【仮】導入の助言・社内ルールの整理など"}
+ }
+}
