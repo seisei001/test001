@@ -110,5 +110,12 @@
     "description": "右下の角から斜めにぱらぱらめくれるページ、波と進む線、全面ワイプ、暗い画面の大文字の試作",
     "path": "apps/scroll-demo4/",
     "icon": "⚡"
+  },
+  {
+    "id": "motion-lab",
+    "name": "動きの見本",
+    "description": "ゴール達成・回るキューブ・ファイルスキャン・成功チェックの自作アニメーション見本(権利フリー)",
+    "path": "apps/motion-lab/",
+    "icon": "🎬"
   }
 ]
