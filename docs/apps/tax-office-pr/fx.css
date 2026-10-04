@@ -99,3 +99,9 @@
   .splash{ display: none; }
   .dq-dot.is-now{ animation: none; }
 }
+
+/* ---------- 工事中の表示 ---------- */
+.wip-banner{ margin: 0; padding: 10px 16px 14px; text-align: center; font-weight: 800; letter-spacing: .12em; font-size: 1rem; color: #2a1600;
+  background: #ffd34d; position: relative; }
+.wip-banner::after{ content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+  background: repeating-linear-gradient(-45deg, #2a2a2a 0 10px, #ffd34d 10px 20px); }
