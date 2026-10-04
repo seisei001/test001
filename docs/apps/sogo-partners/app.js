@@ -250,7 +250,7 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
   }
   async function boot() {
     try {
-      const [s, p] = await Promise.all([fetch('data/sites.json').then((r) => r.json()), fetch('data/people_blocks.json').then((r) => r.json())]);
+      const [s, p] = await Promise.all([fetch('data/sites.json', { cache: 'no-cache' }).then((r) => r.json()), fetch('data/people_blocks.json', { cache: 'no-cache' }).then((r) => r.json())]);
       SITES = s; PB = p;
     } catch (e) { view.innerHTML = '<div class="wrap" style="padding:60px 20px"><p>データを読み込めませんでした。</p></div>'; return; }
     chrome();
