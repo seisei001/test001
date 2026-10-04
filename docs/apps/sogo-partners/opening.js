@@ -27,6 +27,7 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理
       ov.innerHTML = '<canvas aria-hidden="true"></canvas><div class="op-goal" aria-hidden="true"></div><button class="op-skip" type="button">スキップ ›</button>';
       document.body.appendChild(ov); document.body.style.overflow = 'hidden';
       const cv = ov.querySelector('canvas'), cx = cv.getContext('2d'), gh = ov.querySelector('.op-goal'), skip = ov.querySelector('.op-skip');
+      const oc = document.createElement('canvas'), ox = oc.getContext('2d');
       let W = 0, H = 0, dpr = 1, raf = 0, t0 = 0, done = false, goal = null, goalStarted = false, rects = [], snap = null;
       const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); layout(); };
 
@@ -84,12 +85,26 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理
           // 文字(専門分野の言葉 → 専門家の統合 → シナジー)
           WORDS.forEach(([w, s0, d, last, ver]) => {
             const p = seg(t, s0, s0 + d); if (p <= 0 || p >= 1) return;
-            // 薄い状態から現れて、上へ動いていく(最後の言葉は中央で止まり、場面の終わりで消える)
-            const a = last ? out(seg(p * d, 0, .6)) * (1 - seg(t, T.A, T.A + .4)) : Math.min(seg(p, 0, .15), 1 - seg(p, .15, 1));   // 薄く現れ、上へ進むほど透明になる
+            // 薄い状態から現れて上へ動き、左から背景色のボードがゆっくり通り過ぎて消える(最後の言葉は中央で止まり、場面の終わりで消える)
+            const a = last ? out(seg(p * d, 0, .6)) * (1 - seg(t, T.A, T.A + .4)) : seg(p, 0, .15);
             const ty = last ? lerp(70, 0, out(seg(p * d, 0, .7))) : lerp(50, -130, p);
-            cx.save(); cx.globalAlpha = a; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-            let f = ver ? fs * .4 : fs; cx.font = `900 ${f}px ${FONT}`; const mw = cx.measureText(w).width; if (mw > W * .88) { f = f * W * .88 / mw; cx.font = `900 ${f}px ${FONT}`; }
-            cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = 24; cx.fillStyle = ver ? '#ffd36b' : '#fff'; cx.fillText(w, mid.x, mid.y + ty); cx.restore();
+            let f = ver ? fs * .4 : fs; cx.font = `900 ${f}px ${FONT}`; const mw = cx.measureText(w).width; if (mw > W * .88) f = f * W * .88 / mw;
+            const col = ver ? '#ffd36b' : '#fff';
+            if (last) {
+              cx.save(); cx.globalAlpha = a; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.font = `900 ${f}px ${FONT}`;
+              cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = 24; cx.fillStyle = col; cx.fillText(w, mid.x, mid.y + ty); cx.restore(); return;
+            }
+            // 別の画面に文字を描き、左から消えていく部分を取り除いてから重ねる
+            const oh = Math.ceil(fs * 2), feather = W * .18, edge = seg(p, .3, 1) * (W + feather) - feather;
+            if (oc.width !== Math.ceil(W * dpr) || oc.height !== Math.ceil(oh * dpr)) { oc.width = Math.ceil(W * dpr); oc.height = Math.ceil(oh * dpr); }
+            ox.setTransform(dpr, 0, 0, dpr, 0, 0); ox.globalCompositeOperation = 'source-over'; ox.clearRect(0, 0, W, oh);
+            ox.textAlign = 'center'; ox.textBaseline = 'middle'; ox.font = `900 ${f}px ${FONT}`; ox.shadowColor = 'rgba(0,0,0,.45)'; ox.shadowBlur = 24; ox.fillStyle = col; ox.fillText(w, W / 2, oh / 2); ox.shadowBlur = 0;
+            if (edge > -feather) {
+              ox.globalCompositeOperation = 'destination-out';
+              const g = ox.createLinearGradient(edge - feather, 0, edge, 0); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+              ox.fillStyle = g; ox.fillRect(0, 0, Math.max(0, edge), oh); ox.globalCompositeOperation = 'source-over';
+            }
+            cx.globalAlpha = a; cx.drawImage(oc, 0, 0, oc.width, oc.height, 0, mid.y + ty - oh / 2, W, oh); cx.globalAlpha = 1;
           });
         }
         /* C: 円筒 → 球体 */
