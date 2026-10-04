@@ -4,6 +4,7 @@ window.Opening = (() => {
   'use strict';
   const reduce = FX.reduce;
   const KEY = 'sogoOpening';
+  const SPEED = .8;   // 全体の速さ(1が基準。.8なら80%の速さで、時間は1.25倍)
   // 各場面の終わり(秒)
   const T = { A: 7.75, B: 8.55, C: 9.25, D: 11.15, E1: 11.75, E2: 12.45, E3: 13.35 };   // 各場面の終わり(秒)
   // [言葉, 表示開始(秒), 表示時間(秒), 最後か, 版の表示か] 最初に「版」を表示してから、言葉が続く。 言葉は薄いところから現れて上へ動き、次の言葉が薄く現れる。最後の「シナジー」は中央で止まる
@@ -146,7 +147,7 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理
         const end = () => { if (goal) goal.stop(); ov.remove(); ov = null; document.body.style.overflow = ''; running = false; resolve(); };
         if (fast) { ov.animate([{ opacity: +ov.style.opacity || 1 }, { opacity: 0 }], { duration: 320, fill: 'forwards' }).onfinish = end; } else end();
       }
-      const loop = (now) => { if (done) return; const t = (now - t0) / 1000; frame(t); if (t >= T.E3) return finish(false); raf = requestAnimationFrame(loop); };
+      const loop = (now) => { if (done) return; const t = (now - t0) / 1000 * SPEED; frame(t); if (t >= T.E3) return finish(false); raf = requestAnimationFrame(loop); };
       goal = FX.goal(gh, { height: 1 }); // 高さは下で調整
       const sizeGoal = () => { const gw = Math.min(W * .74, 300); gh.style.width = gw + 'px'; goal.el.style.height = Math.round(gw * 150 / 216) + 'px'; };
       size(); sizeGoal(); addEventListener('resize', () => { size(); sizeGoal(); });
