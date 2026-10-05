@@ -48,7 +48,7 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理
       function layout() {
         const n = 16; rects = [];
         for (let i = 0; i < n; i++) {
-          const kind = i % 3, base = Math.max(26, W * .09);
+          const kind = i % 3, base = Math.max(26, Math.min(64, W * .09));
           const w = kind === 0 ? base * (1.8 + (i % 4) * .3) : kind === 1 ? base * (.8 + (i % 3) * .2) : base * 1.1;
           const h = kind === 0 ? base * (.8 + (i % 3) * .15) : kind === 1 ? base * (2 + (i % 4) * .4) : base * 1.1;
           rects.push({ i, w, h, x: ((i + .5) / n) * W + ((i * 37) % 11 - 5), y0: (i * 211) % (H + 240), vy: 70 + ((i * 53) % 110), c: COLS[i % COLS.length] });

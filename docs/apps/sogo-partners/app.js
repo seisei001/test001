@@ -58,6 +58,8 @@
       grp('公認会計士', [['/uehara', '上原 佑介', '事務所サイト'], ['/sakashita', '坂下 藤男']]) +
       grp('税理士', [['/honda', '本田 智広'], ['/sakaguchi', '坂口 誠']]) +
       grp('社会保険労務士', [['/sr', '日本綜合社会保険労務士法人'], ['/yamada', '山田 抄織'], ['/shafuku', '社会福祉法人サポートセンター']]);
+    $('gh-nav').insertAdjacentHTML('afterend', '<div class="modesw" role="group" aria-label="表示の切り替え"><button type="button" data-m="phone" aria-pressed="true">📱<span class="t"> スマホ</span></button><button type="button" data-m="pc" aria-pressed="false">🖥<span class="t"> パソコン</span></button></div>');
+    document.querySelectorAll('.modesw button').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.m === Mode.mode)); b.addEventListener('click', () => Mode.set(b.dataset.m)); });
     const btn = $('gh-menu'), menu = $('menu');
     const setMenu = (o) => { menu.hidden = false; menu.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); btn.textContent = o ? '閉じる' : 'メニュー'; document.body.style.overflow = o ? 'hidden' : ''; };
     btn.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
@@ -169,8 +171,8 @@
     if (sid === 'uehara' && page.id === 'services') extra = `<div class="cards">${s.pages.filter((p) => p.id.startsWith('s-')).map((p) => `<a class="lc" href="${href(p)}" style="--ac:${s.accent}" data-reveal><b>${esc(p.label)}</b><small>詳しく見る →</small></a>`).join('')}</div>`;
     if (isHome) extra = `<div class="cards">${s.pages.filter((p) => p.id !== 'home' && !p.id.startsWith('s-') && p.id !== 'privacy').map((p) => `<a class="lc" href="${href(p)}" data-reveal><b>${esc(p.label)}</b><small>ページを見る →</small></a>`).join('')}</div>`;
     return `${hero({ color: s.accent, crumb: ` / ${esc(s.name)}${isHome ? '' : ' / ' + esc(page.label)}`, kicker: s.kind, title: isHome ? esc(s.name) : esc(page.label), lead: isHome ? esc(HOME_LEAD[sid]) : esc(s.name), big: isHome ? s.short : page.label })}
-<nav class="tabs" aria-label="${esc(s.name)}のページ">${s.pages.map((p) => `<a href="${href(p)}" class="${p === page ? 'on' : ''}" style="--ac:${s.accent}">${esc(p.label)}</a>`).join('')}</nav>
-<div class="wrap body" style="--ac:${s.accent}">${body}${extra}${peopleChips(s.people)}</div>
+<div class="ms-layout"><nav class="tabs" aria-label="${esc(s.name)}のページ"><input class="tabsearch" type="search" placeholder="ページを検索" aria-label="ページを検索">${s.pages.map((p) => `<a href="${href(p)}" class="${p === page ? 'on' : ''}" style="--ac:${s.accent}">${esc(p.label)}</a>`).join('')}</nav>
+<div class="wrap body" style="--ac:${s.accent}">${body}${extra}${peopleChips(s.people)}</div></div>
 ${nxt ? `<a class="next" href="${href(nxt)}"><div class="wrap"><small>NEXT PAGE</small><p class="gtext" data-fill>${esc(nxt.label)}</p></div></a>` : `<a class="next" href="#/map"><div class="wrap"><small>BACK TO MAP</small><p class="gtext" data-fill>全ページへ</p></div></a>`}`;
   }
   function contactBody(sid, page) {
@@ -215,7 +217,7 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
     const parts = path.split('/').filter(Boolean); let html = '', title = '', after = null;
     const [a, b] = parts;
     if (!a || a === 'consult') { html = mainPage(); title = ''; after = () => { mountMain(); if (a === 'consult') setTimeout(() => $('consult').scrollIntoView({ behavior: 'auto' }), 60); }; }
-    else if (SITES[a]) { const pg = SITES[a].pages.find((p) => p.id === (b || 'home')); html = sitePage(a, b || 'home'); title = SITES[a].name + (pg && pg.id !== 'home' ? ' ' + pg.label : ''); after = () => { if (a !== 'shafuku' || b !== 'x') bindContact(a, b); }; }
+    else if (SITES[a]) { const pg = SITES[a].pages.find((p) => p.id === (b || 'home')); html = sitePage(a, b || 'home'); title = SITES[a].name + (pg && pg.id !== 'home' ? ' ' + pg.label : ''); after = () => { bindContact(a, b); bindSearch(); }; }
     else if (a === 'sakashita') { html = sakashitaPage(); title = '坂下 藤男'; after = () => bindForm([EMAIL.sakashita]); }
     else if (a === 'honda') { html = hondaPage(); title = '本田 智広'; }
     else if (a === 'yamada') { html = yamadaPage(); title = '山田 抄織'; }
@@ -227,12 +229,14 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
     setNav('/' + (a === 'consult' ? 'consult' : a || '')); if (!a) setNav('/');
     Scenes.init(view);
   }
+  function bindSearch() { const i = view.querySelector('.tabsearch'); if (!i) return; i.addEventListener('input', () => { const q = norm(i.value); view.querySelectorAll('.ms-layout .tabs a').forEach((a) => { a.style.display = !q || norm(a.textContent).includes(q) ? '' : 'none'; }); }); }
   function bindContact(sid, pid) { if (pid === 'contact' && sid !== 'uehara') bindForm([EMAIL.sr]); }
   function mountMain() {
     const fxh = $('hero-fx'); if (fxh) { const c = FX.cubes(fxh, { height: 190 }); c.start(); cleanup.push(() => c.stop()); }
     const dg = $('dg'); if (dg) Consult.mount(dg, { people: PEOPLE, sites: SITES, cleanup });
     const gc = $('go-consult'); if (gc) gc.addEventListener('click', (e) => { e.preventDefault(); $('consult').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); });
   }
+  const currentPath = () => (location.hash || '#/').slice(1) || '/';
   let first = true, busy = false;
   async function go() {
     if (busy) return; busy = true;
@@ -246,7 +250,7 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
       w.getAnimations().forEach((x) => x.cancel());
     }
     const wasFirst = first; first = false; busy = false;
-    if (wasFirst && (path === '/' || path === '/consult') && Opening.should()) Opening.play();
+    if (wasFirst && (path === '/' || path === '/consult')) Mode.ready.then(() => { if (Opening.should()) Opening.play(); });
   }
   async function versionCheck() {
     try {
@@ -263,7 +267,8 @@ ${mailForm([EMAIL.sakashita])}${peopleChips(['uehara', 'honda', 'yamada', 'sakag
       const [s, p] = await Promise.all([fetch('data/sites.json', { cache: 'no-cache' }).then((r) => r.json()), fetch('data/people_blocks.json', { cache: 'no-cache' }).then((r) => r.json())]);
       SITES = s; PB = p;
     } catch (e) { view.innerHTML = '<div class="wrap" style="padding:60px 20px"><p>データを読み込めませんでした。</p></div>'; return; }
-    chrome();
+    Mode.init(); chrome();
+    Mode.onChange = () => { render(currentPath()); };
     addEventListener('hashchange', () => { if (!location.hash || location.hash.startsWith('#/')) go(); });
     go();
   }

@@ -36,7 +36,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | novel-note | 📚 小説設定ノート | apps/novel-note/ | あらすじ・固有名詞辞書・伏線管理。**データ更新・データ形式・暗号化の手順は `novel-note-update` スキルに従う**。小説データは平文でリポジトリに置かず、`data/` に暗号化して置く(アプリ用の利用者の鍵+AI作業用のマスターキー。マスターキーは利用者の Google Drive にだけある)。アプリで作者が直した内容は端末に保存し、「データ更新を依頼」で依頼文(スキル名・作業・修正データ)としてコピーされる |
 | gif-gallery | 🎞️ アニメGIFギャラリー | apps/gif-gallery/ | 商用利用OKのゲーム素材アニメGIF 98件(`gifs/<cat>/` と `gifs/manifest.json`。cat=chara/item/effect/vehicle/world)。タップで再生/停止、ImageDecoderでコマ送り。素材追加時は manifest に作者・ライセンス・出典を必ず記入し、NC/ND は入れない。CC-BY/CC-BY-SA は利用時に作者表記が必要 |
 | motion-lab | 🎬 動きの見本 | apps/motion-lab/ | 自作アニメ4種(ゴール達成の矢と的、回る3Dキューブ、ファイルスキャン、成功チェック+紙吹雪)。外部素材・ライブラリなしの単一ファイルで、権利の問題なし |
-| sogo-partners | 🏢 総合パートナーズ | apps/sogo-partners/ | 統合サイト(ハッシュ遷移のSPA)。`data/sites.json`(①上原・②日本綜合社労士法人・③社福サポートの本文を取り込み)、`data/people_blocks.json`、`data/shindan/`(お悩み診断6種)。`util.js`(人物・拠点)、`scenes.js`(スクロール演出)、`fx.js/fx.css`(アニメ部品)、`consult.js`(診断)、`sakaguchi.js`(坂口誠ページ)。坂下藤男ページは名刺の内容。サイト最上部に「(工事中)」表示あり。**更新を公開するたびに `index.html` の `?v=`・`APP_VER` と `data/version.json` の値をそろえて変えること**(ブラウザが古い .js/.css を使い続けるのを防ぐ。画面最下部に「表示中の版」が出る) |
+| sogo-partners | 🏢 総合パートナーズ | apps/sogo-partners/ | 統合サイト(ハッシュ遷移のSPA)。`data/sites.json`(①上原・②日本綜合社労士法人・③社福サポートの本文を取り込み)、`data/people_blocks.json`、`data/shindan/`(お悩み診断6種)。`util.js`(人物・拠点)、`scenes.js`(スクロール演出)、`fx.js/fx.css`(アニメ部品)、`mode.js`(スマホ/パソコン切り替え。bodyに `mode-pc`/`mode-phone` を付与。クラス名 `.pc` は専門家カード用なので使わない)、`consult.js`(診断)、`sakaguchi.js`(坂口誠ページ)。坂下藤男ページは名刺の内容。サイト最上部に「(工事中)」表示あり。**更新を公開するたびに `index.html` の `?v=`・`APP_VER` と `data/version.json` の値をそろえて変えること**(ブラウザが古い .js/.css を使い続けるのを防ぐ。画面最下部に「表示中の版」が出る) |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 
