@@ -6,9 +6,21 @@ window.Opening = (() => {
   const KEY = 'sogoOpening';
   const SPEED = .8;   // 全体の速さ(1が基準。.8なら80%の速さで、時間は1.25倍)
   // 各場面の終わり(秒)
-  const T = { A: 7.75, B: 8.55, C: 9.25, D: 11.15, E1: 11.75, E2: 12.45, E3: 13.35 };   // 各場面の終わり(秒)
+  const T = { A: 7.75, B: 8.55, C: 9.25, D: 11.15, E1: 11.75, E2: 12.45, H: 14.65, E3: 15.75 };   // H: 強みを読ませる間   // 各場面の終わり(秒)
   // [言葉, 表示開始(秒), 表示時間(秒), 最後か, 版の表示か] 最初に「版」を表示してから、言葉が続く。 言葉は薄いところから現れて上へ動き、次の言葉が薄く現れる。最後の「シナジー」は中央で止まる
 const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理士', '社会保険労務士', '事業再生', '社会福祉法人', '公益法人', '国税調査対応', 'クラウド対応社労管理', '専門家の統合', 'シナジー'].map((w, i, a) => { const last = i === a.length - 1, s0 = .25 + i * .65; return [w, s0, last ? T.A + .4 - s0 : 1.5, last, i === 0]; });
+  // 最後の円柱に表示する、みなさんの強み [見出し, 強み, 色の番号]
+  const STRENGTHS = [
+    ['公認会計士 上原 佑介', '金融機関対応・M&A・事業承継', 0],
+    ['公認会計士 坂下 藤男', '監査・税務・会計・不正調査', 0],
+    ['税理士・社労士・行政書士 本田 智広', 'トリプルライセンス', 1],
+    ['税理士 坂口 誠', '国税局37年・税務調査対応', 1],
+    ['社会保険労務士 山田 抄織', '行政調査対応・助成金申請', 2],
+    ['日本綜合社会保険労務士法人', '大規模給与計算・換価の猶予', 2],
+    ['社会福祉法人サポートセンター', '処遇改善等加算・会計基準対応', 3],
+    ['事業再生', '中小企業の再生支援・事業計画', 0],
+    ['労務・会計・税務', 'あらゆる経営課題にワンストップ', 4]
+  ];
   const COLS = [[31, 106, 122], [201, 138, 27], [47, 111, 79], [217, 104, 74], [106, 76, 147], [43, 138, 156]];
   const FONT = '"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans",sans-serif';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -130,12 +142,22 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '公認会計士', '税理
           const p = ease(seg(t, T.D, T.E1)), w = lerp(2 * Rs, capW, p), h = lerp(2 * Rs, capH, p);
           capsule(mid.x, mid.y, w, h, teal, p); sphere(mid.x, mid.y, h / 2, teal, 1 - p);
         }
-        /* E2: 円筒 → 何本もの横長の円筒(縦に並ぶ) / E3: 縦スクロールへ */
+        /* E2: 円筒 → 何本もの横長の円筒(縦に並び、みなさんの強みを表示) / H: 読ませる間 / E3: 縦スクロールへ */
         else {
-          const M = 9, rowH = Math.max(44, capH * .8), gap = 14, pS = ease(seg(t, T.E1, T.E2)), sc = Math.pow(seg(t, T.E2, T.E3), 2) * (H + M * (rowH + gap));
+          const M = STRENGTHS.length, gap = 8, rowH = Math.min(66, Math.max(44, H * .8 / M - gap)), rw = Math.min(W * .92, 380);
+          const pS = ease(seg(t, T.E1, T.E2)), sc = Math.pow(seg(t, T.H, T.E3), 2) * (H + M * (rowH + gap));
+          const ta = ease(seg(pS, .5, 1));   // 文字は、広がりきる頃に現れる
           for (let j = 0; j < M; j++) {
-            const rw = capW * (.62 + ((j * 29) % 7) / 20), y = mid.y + (j - (M - 1) / 2) * (rowH + gap) * pS - sc;
-            capsule(mid.x, y, lerp(capW, rw, pS), lerp(capH, rowH, pS), COLS[j % COLS.length].map((v, k) => lerp(teal[k], v, pS)), 1);
+            const [lab, txt, ci] = STRENGTHS[j], y = mid.y + (j - (M - 1) / 2) * (rowH + gap) * pS - sc;
+            capsule(mid.x, y, lerp(capW, rw, pS), lerp(capH, rowH, pS), COLS[ci].map((v, k) => lerp(teal[k], v, pS)), 1);
+            if (ta > 0 && y > -rowH && y < H + rowH) {
+              cx.save(); cx.globalAlpha = ta; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.shadowColor = 'rgba(0,0,0,.35)'; cx.shadowBlur = 6; cx.fillStyle = '#fff';
+              const maxW = rw - rowH * .9;
+              let f1 = rowH * .27; cx.font = `700 ${f1}px ${FONT}`; const m1 = cx.measureText(lab).width; if (m1 > maxW) { f1 *= maxW / m1; cx.font = `700 ${f1}px ${FONT}`; }
+              cx.globalAlpha = ta * .88; cx.fillText(lab, mid.x, y - rowH * .2);
+              let f2 = rowH * .36; cx.font = `900 ${f2}px ${FONT}`; const m2 = cx.measureText(txt).width; if (m2 > maxW) { f2 *= maxW / m2; cx.font = `900 ${f2}px ${FONT}`; }
+              cx.globalAlpha = ta; cx.fillText(txt, mid.x, y + rowH * .17); cx.restore();
+            }
           }
           ov.style.opacity = String(1 - ease(seg(t, T.E3 - .55, T.E3)));
         }
