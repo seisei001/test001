@@ -53,16 +53,18 @@ window.Sakaguchi = (() => {
     ]
   };
 
-  function mount(el, ctx) {
-    el.innerHTML = `
-<div class="wrap body" style="--ac:${P}">
-  <section class="sec" id="cmp" data-reveal><span class="kicker">STRENGTH</span><h2>この事務所ならではの強み</h2><p>タブを切り替えて、違いを確認してください。</p>
+  const SEC = {
+    strength: () => `<section class="sec" id="cmp" data-reveal><span class="kicker">STRENGTH</span><h2>この事務所ならではの強み</h2><p>タブを切り替えて、違いを確認してください。</p>
     <div class="tabs2" id="cmp-tabs">${CMP.map((c, i) => `<button type="button" class="${i ? '' : 'on'}" data-i="${i}">${c[0]} ${esc(c[1])}</button>`).join('')}</div><div id="cmp-body"></div></section>
   <section class="sec" data-reveal><span class="kicker">CLIENTS</span><h2>こんな方をサポートしています</h2>
     <div class="card"><h3>🏢 中小企業の経営者の方</h3><ul><li>税務調査で指摘を受けないか不安がある</li><li>顧問税理士に相談しても、申告書の作成以上のことをしてくれない</li><li>システムや記帳の仕組みから見直したい</li><li>AIやシステムを活用した業務効率化を相談したい</li></ul></div></section>
-  <section class="sec" id="faq" data-reveal><span class="kicker">FAQ</span><h2>よくあるご質問</h2>${FAQ.map(([q, a]) => `<details class="card"><summary style="font-weight:900;cursor:pointer;min-height:32px">${esc(q)}</summary><p style="margin-top:8px">${esc(a)}</p></details>`).join('')}</section>
-  <section class="sec" id="contact" data-reveal><span class="kicker">CONTACT</span><h2>お問い合わせ</h2><p>まずは無料相談から。お問い合わせ先(電話・メール)は準備中です。</p></section>
-</div>`;
+  <section class="sec" data-reveal><span class="kicker">CAREER</span><h2>経歴</h2><ul class="tl">${TL.map(([i, w, t, d], k) => `<li data-reveal style="--d:${k % 3 * .06}s"><small class="note">${i} ${esc(w)}</small><h3 style="margin:2px 0;color:var(--fg)">${esc(t)}</h3><p>${esc(d)}</p></li>`).join('')}</ul></section>`,
+    faq: () => `<section class="sec" id="faq" data-reveal><span class="kicker">FAQ</span><h2>よくあるご質問</h2>${FAQ.map(([q, a]) => `<details class="card"><summary style="font-weight:900;cursor:pointer;min-height:32px">${esc(q)}</summary><p style="margin-top:8px">${esc(a)}</p></details>`).join('')}</section>`,
+    contact: () => `<section class="sec" id="contact" data-reveal><span class="kicker">CONTACT</span><h2>お問い合わせ</h2><p>まずは無料相談から。お問い合わせ先(電話・メール)は準備中です。</p><p><a class="btn gold" href="#/consult">先に、税務調査リスク診断を試す</a></p></section>`
+  };
+  function mount(el, ctx, which) {
+    el.innerHTML = `<div class="wrap body" style="--ac:${P}">${SEC[which]()}</div>`;
+    if (which !== 'strength') return;
     // 比較タブ
     const cb = el.querySelector('#cmp-body'), tabs = [...el.querySelectorAll('#cmp-tabs button')];
     const showCmp = (i) => { const c = CMP[i]; cb.innerHTML = `<div class="cmp"><div class="card g"><h3>一般的な税理士事務所</h3><p>${esc(c[2])}</p></div><div class="card u"><h3>${U.tickSvg.replace('class="tick"', 'class="tick" style="position:static;display:inline-block;vertical-align:-5px;margin-right:6px"')}坂口誠税理士事務所</h3><p>${esc(c[3])}</p></div></div>`; };

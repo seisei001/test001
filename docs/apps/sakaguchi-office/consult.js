@@ -124,7 +124,7 @@ window.Consult = (() => {
 <div class="gauge"><i></i></div><p class="gnum">状況の目安 <b>0</b> / ${max}</p>
 <p>${esc(r.message)}</p><h3>次の一歩</h3><p>${esc(r.next_action)}</p>
 ${cross.length ? `<h3>ほかの専門家の視点も関わりそうな点</h3>${cross.map((c) => `<div class="syn">${esc(c.text)}<div class="chips" style="margin-top:6px">${c.tags.map((t) => `<span class="chip">${esc(tn[t] || t)}も関係</span>`).join('')}</div></div>`).join('')}` : ''}
-${single ? '<p><a class="btn gold" href="#contact" data-scroll>この結果を添えて相談する</a></p>' : `<h3>相談できる専門家</h3>${ids.map((id) => { const p = people[id]; return `<a class="exp" href="#${p.route}">${U.monoC(p)}<span><b>${esc(p.name)}(${esc(p.role)})</b><small>${esc(NOTE[id] || '')}</small></span><span class="arrow">→</span></a>`; }).join('')}`}
+${single ? '<p><a class="btn gold" href="#/contact">この結果を添えて相談する</a></p>' : `<h3>相談できる専門家</h3>${ids.map((id) => { const p = people[id]; return `<a class="exp" href="#${p.route}">${U.monoC(p)}<span><b>${esc(p.name)}(${esc(p.role)})</b><small>${esc(NOTE[id] || '')}</small></span><span class="arrow">→</span></a>`; }).join('')}`}
 ${(RELATED[cid] || []).length ? `<h3>あわせて見るページ</h3><div class="chips">${RELATED[cid].map(([rt, l]) => `<a class="chip" href="#${rt}">${esc(l)}</a>`).join('')}</div>` : ''}
 <p class="note" style="margin-top:14px">${esc(cur.disclaimer)}</p>
 <p style="margin-top:12px"><button class="btn ghost sm" type="button" id="again">${single ? 'もう一度診断する' : '別の診断をする'}</button></p>`);
