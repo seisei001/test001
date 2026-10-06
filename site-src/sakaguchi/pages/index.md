@@ -44,6 +44,7 @@ description: 国税局37年の経験を持つ税理士 坂口誠の事務所(兵
 <dt>事務所名</dt><dd>坂口誠税理士事務所</dd>
 <dt>代表</dt><dd>税理士 坂口 誠</dd>
 <dt>所在地</dt><dd>{{address}}(<a href="{{map_url}}" rel="noopener" target="_blank">地図で見る</a>)</dd>
+<dt>アクセス</dt><dd>三ノ宮駅から徒歩約8分</dd>
 <dt>開業</dt><dd>2026年10月1日</dd>
 <dt>連絡先</dt><dd>電話・メールは準備中です。<a href="/contact/">お問い合わせのページ</a>をご覧ください。</dd>
 </dl>
