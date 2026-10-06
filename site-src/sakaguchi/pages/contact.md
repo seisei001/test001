@@ -14,6 +14,10 @@ description: 坂口誠税理士事務所(神戸市中央区小野柄通)への�
 <dt>電話・メール</dt><dd>準備中です</dd>
 </dl>
 
+## 地図・アクセス {#access}
+
+<div class="map-slot">{{map_embed}}</div>
+
 ## ご相談の流れ {#flow}
 
 1. お問い合わせ(方法は準備中です)

@@ -47,4 +47,5 @@ description: 国税局37年の経験を持つ税理士 坂口誠の事務所(兵
 <dt>開業</dt><dd>2026年10月1日</dd>
 <dt>連絡先</dt><dd>電話・メールは準備中です。<a href="/contact/">お問い合わせのページ</a>をご覧ください。</dd>
 </dl>
+<div class="map-slot">{{map_embed}}</div>
 </div></section>

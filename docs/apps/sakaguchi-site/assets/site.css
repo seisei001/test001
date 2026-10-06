@@ -118,6 +118,13 @@ a:hover { text-decoration-thickness: 2px; }
 .post-list a:hover .pt { text-decoration: underline; }
 .post-list p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
 
+/* 地図 */
+.map-slot { margin-top: 20px; }
+.mapbox { position: relative; aspect-ratio: 16 / 10; max-height: 420px; width: 100%; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg2); }
+.mapbox iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.maplinks { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 8px 0 0; }
+.maplinks a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; font-size: 15px; }
+
 /* フッター */
 .site-footer { background: var(--navy); color: #cfd8e3; padding: 32px 0 40px; margin-top: 24px; font-size: 14px; }
 .site-footer p { margin: 0 0 8px; }
