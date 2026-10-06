@@ -126,9 +126,23 @@
 
   /* ---------- スクロール連動 ---------- */
   const secs = $$('[data-nav]');
+  secs.forEach((s, i) => { if (i) s.dataset.no = String(i).padStart(2, '0'); });
+  $$('.h2').forEach((h) => { let i = 0; h.innerHTML = [...h.textContent].map((c) => c === ' ' ? ' ' : `<span class="ch" style="--i:${i++}">${esc(c)}</span>`).join(''); });
   $('#gnav').innerHTML = secs.slice(1).map((s) => `<a href="#${s.id}" data-go>${esc(s.dataset.nav)}</a>`).join('');
   $('#rail').innerHTML = secs.map((s) => `<a href="#${s.id}" data-go aria-label="${esc(s.dataset.nav)}"></a>`).join('');
-  const bindGo = (r) => $$('[data-go]', r).forEach((a) => { if (a._b) return; a._b = 1; a.addEventListener('click', (e) => { const t = $(a.getAttribute('href')); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); } }); });
+  const curtain = $('#curtain'); let busy = false;
+  const jump = (t) => {
+    if (busy) return;
+    if (reduce) { t.scrollIntoView(); return; }
+    busy = true; const n = secs.indexOf(t);
+    $('#clno').textContent = n > 0 ? String(n).padStart(2, '0') : 'TOP'; $('#clt').textContent = t.dataset.nav === 'TOP' ? '坂口誠税理士事務所' : (t.dataset.nav + (n > 0 ? '' : ''));
+    curtain.classList.remove('out'); curtain.classList.add('in');
+    setTimeout(() => {
+      window.scrollTo({ top: Math.max(0, t.getBoundingClientRect().top + scrollY - 0), behavior: 'instant' });
+      requestAnimationFrame(() => { curtain.classList.add('out'); setTimeout(() => { curtain.classList.remove('in', 'out'); busy = false; }, 800); });
+    }, 760);
+  };
+  const bindGo = (r) => $$('[data-go]', r).forEach((a) => { if (a._b) return; a._b = 1; a.addEventListener('click', (e) => { const t = $(a.getAttribute('href')); if (t) { e.preventDefault(); jump(t); } }); });
   bindGo(document);
 
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .15 });
@@ -138,6 +152,7 @@
   const prog = $('#progress i'), tl = $('#tl'), fill = $('#tlfill');
   const onScroll = () => {
     const h = document.documentElement; prog.style.width = (scrollY / Math.max(1, h.scrollHeight - innerHeight) * 100) + '%';
+    secs.forEach((s) => { const r = s.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) s.style.setProperty('--py', (r.top * -.18) + 'px'); });
     const r = tl.getBoundingClientRect(); fill.style.height = Math.max(0, Math.min(r.height - 6, innerHeight * .6 - r.top)) + 'px';
   };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
@@ -145,27 +160,76 @@
   // 数字のカウントアップ
   const cnt = (el) => { const to = +el.dataset.count, sf = el.dataset.suffix || ''; if (reduce) { el.textContent = to + sf; return; } const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1600); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))) + sf; if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
 
-  /* ---------- 背景(ゆっくり流れる金の線と、ポインタに反応する光) ---------- */
+  /* ---------- 背景(金の線+ポインタで歪む点の格子+クリックの波紋) ---------- */
   (() => {
-    const cv = $('#bg'), cx = cv.getContext('2d'); let W, H, dpr, px = .7, py = .2, tx = .7, ty = .2, vis = true;
-    const lines = Array.from({ length: 26 }, (_, i) => ({ y: Math.random(), s: .015 + Math.random() * .03, a: .05 + Math.random() * .12, p: Math.random() * 6 }));
+    const cv = $('#bg'), cx = cv.getContext('2d'); let W, H, dpr, px = .7, py = .2, tx = .7, ty = .2, vis = true; const rip = [];
+    const lines = Array.from({ length: 22 }, () => ({ y: Math.random(), s: .015 + Math.random() * .03, a: .04 + Math.random() * .09, p: Math.random() * 6 }));
     const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }; size(); addEventListener('resize', size);
     addEventListener('pointermove', (e) => { tx = e.clientX / innerWidth; ty = e.clientY / innerHeight; }, { passive: true });
+    $('#hero').addEventListener('pointerdown', (e) => { const r = cv.getBoundingClientRect(); rip.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }); });
     new IntersectionObserver((e) => { vis = e[0].isIntersecting; if (vis && !reduce) requestAnimationFrame(draw); }).observe(cv);
     function draw(t = 0) {
-      if (!vis) return; px += (tx - px) * .05; py += (ty - py) * .05; cx.clearRect(0, 0, W, H);
-      const g = cx.createRadialGradient(px * W, py * H, 0, px * W, py * H, Math.max(W, H) * .5); g.addColorStop(0, 'rgba(201,162,75,.16)'); g.addColorStop(1, 'rgba(201,162,75,0)'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+      if (!vis) return; px += (tx - px) * .08; py += (ty - py) * .08; cx.clearRect(0, 0, W, H);
+      const g = cx.createRadialGradient(px * W, py * H, 0, px * W, py * H, Math.max(W, H) * .5); g.addColorStop(0, 'rgba(201,162,75,.18)'); g.addColorStop(1, 'rgba(201,162,75,0)'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
       cx.lineWidth = 1;
-      for (const l of lines) { const y = ((l.y + t / 1000 * l.s) % 1) * H, d = Math.abs(y / H - py), a = l.a * (1 + Math.max(0, .25 - d) * 6); cx.strokeStyle = `rgba(201,162,75,${a})`; cx.beginPath(); cx.moveTo(0, y); for (let x = 0; x <= W; x += 40) cx.lineTo(x, y + Math.sin(x * .008 + t / 2500 + l.p) * 6); cx.stroke(); }
+      for (const l of lines) { const y = ((l.y + t / 1000 * l.s) % 1) * H; cx.strokeStyle = `rgba(201,162,75,${l.a})`; cx.beginPath(); cx.moveTo(0, y); for (let x = 0; x <= W; x += 40) cx.lineTo(x, y + Math.sin(x * .008 + t / 2500 + l.p) * 6); cx.stroke(); }
+      const S = W < 600 ? 30 : 38, mx = px * W, my = py * H, now = performance.now();
+      for (let i = rip.length - 1; i >= 0; i--) if (now - rip[i].t > 1600) rip.splice(i, 1);
+      for (let gx = S / 2; gx < W; gx += S) for (let gy = S / 2; gy < H; gy += S) {
+        let dx = 0, dy = 0, hot = 0; const ddx = gx - mx, ddy = gy - my, d = Math.hypot(ddx, ddy);
+        if (d < 150) { const k = (1 - d / 150); dx += ddx / (d || 1) * k * 22; dy += ddy / (d || 1) * k * 22; hot = k; }
+        for (const r of rip) { const age = (now - r.t) / 1600, rad = age * Math.max(W, H) * .6, rd = Math.hypot(gx - r.x, gy - r.y), w = Math.exp(-Math.pow((rd - rad) / 40, 2)) * (1 - age); if (w > .01) { dx += (gx - r.x) / (rd || 1) * w * 26; dy += (gy - r.y) / (rd || 1) * w * 26; hot = Math.max(hot, w); } }
+        cx.fillStyle = `rgba(230,207,148,${.14 + hot * .8})`; const s = 1.2 + hot * 2.6; cx.fillRect(gx + dx - s / 2, gy + dy - s / 2, s, s);
+      }
       if (!reduce) requestAnimationFrame(draw);
     }
     draw(0);
   })();
 
-  /* ---------- オープニング ---------- */
+  /* ---------- カーソル・磁石ボタン・カードの傾き ---------- */
+  if (matchMedia('(pointer: fine)').matches && !reduce) {
+    const cu = $('#cursor'); let cx_ = innerWidth / 2, cy_ = innerHeight / 2, mx_ = cx_, my_ = cy_; document.body.classList.add('has-cursor');
+    addEventListener('pointermove', (e) => { mx_ = e.clientX; my_ = e.clientY; }, { passive: true });
+    (function loop() { cx_ += (mx_ - cx_) * .2; cy_ += (my_ - cy_) * .2; cu.style.transform = `translate(${cx_}px,${cy_}px)`; requestAnimationFrame(loop); })();
+    document.addEventListener('pointerover', (e) => cu.classList.toggle('big', !!e.target.closest('a,button,summary,select,textarea')));
+    $$('.btn').forEach((b) => { b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * .18}px,${(e.clientY - r.top - r.height / 2) * .3}px)`; }); b.addEventListener('pointerleave', () => { b.style.transform = ''; }); });
+    $$('.pil').forEach((b) => { b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; b.style.transform = `perspective(700px) rotateX(${-y * 9}deg) rotateY(${x * 11}deg) translateY(-4px)`; }); b.addEventListener('pointerleave', () => { b.style.transform = ''; }); });
+  }
+
+  /* ---------- オープニング(文字の粒を散らせる/印を長押しして扉を開く) ---------- */
   const sp = $('#splash'); let started = false;
-  const start = () => { if (started) return; started = true; sp.classList.add('out'); document.body.classList.remove('lock'); setTimeout(() => sp.remove(), 800); $('#hero').classList.add('go'); $$('[data-count]').forEach(cnt); try { sessionStorage.setItem('sakaguchiOpening', '1'); } catch {} };
+  const start = () => { if (started) return; started = true; sp.classList.add('open'); document.body.classList.remove('lock'); setTimeout(() => sp.remove(), 1500); $('#hero').classList.add('go'); $$('[data-count]').forEach(cnt); try { sessionStorage.setItem('sakaguchiOpening', '1'); } catch {} };
   let seen = false; try { seen = sessionStorage.getItem('sakaguchiOpening') === '1'; } catch {}
   if (seen || reduce || /[?&]skip=1/.test(location.search)) { sp.remove(); start(); }
-  else { document.body.classList.add('lock'); sp.addEventListener('click', start); setTimeout(start, 3300); }
+  else {
+    document.body.classList.add('lock'); $('#skip').addEventListener('click', start);
+    const cv = $('#sc'), cx = cv.getContext('2d'); let W, H, dpr, P = [], px = -999, py = -999, prog = 0, holding = false, burst = 0, last = performance.now();
+    const build = () => {
+      dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const o = document.createElement('canvas'), ox = o.getContext('2d'), fs = Math.min(W * .8, H * .5); o.width = W; o.height = H; ox.fillStyle = '#fff'; ox.font = `900 ${fs}px "Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif`; ox.textAlign = 'center'; ox.textBaseline = 'middle'; ox.fillText('誠', W / 2, H * .36);
+      const d = ox.getImageData(0, 0, W, H).data, step = W < 600 ? 7 : 6; P = [];
+      for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) if (d[(y * W + x) * 4 + 3] > 128) { const a = Math.random() * 6.28, r = Math.max(W, H) * (.6 + Math.random() * .5); P.push({ x: W / 2 + Math.cos(a) * r, y: H / 2 + Math.sin(a) * r, tx: x, ty: y, vx: 0, vy: 0, s: 1.4 + Math.random() * 1.6 }); }
+    };
+    build(); addEventListener('resize', build);
+    sp.addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; }); sp.addEventListener('pointerleave', () => { px = py = -999; });
+    const hold = $('#hold'), bar = $('#hbar'), lab = $('#hlab');
+    const down = (e) => { if (e) e.preventDefault(); holding = true; hold.classList.add('on'); }; const up = () => { holding = false; hold.classList.remove('on'); };
+    hold.addEventListener('pointerdown', down); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+    hold.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { if (!e.repeat) down(e); else e.preventDefault(); } }); hold.addEventListener('keyup', up); hold.addEventListener('contextmenu', (e) => e.preventDefault());
+    const stamp = () => { burst = 1; lab.textContent = '開'; sp.classList.add('stamped'); P.forEach((p) => { const a = Math.atan2(p.y - H * .36, p.x - W / 2) + (Math.random() - .5) * .8, v = 8 + Math.random() * 18; p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; }); if (navigator.vibrate) try { navigator.vibrate(30); } catch {} setTimeout(start, 650); };
+    (function frame(now) {
+      if (!sp.isConnected) return; const dt = Math.min(2, (now - last) / 16.7); last = now;
+      if (!burst) { prog = Math.max(0, Math.min(1, prog + (holding ? dt / 66 : -dt / 40))); bar.style.strokeDashoffset = 1 - prog; if (prog >= 1) stamp(); }
+      cx.clearRect(0, 0, W, H); const pull = 1 + prog * 3;
+      for (const p of P) {
+        if (burst) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97; }
+        else {
+          const dx = p.x - px, dy = p.y - py, d = Math.hypot(dx, dy); if (d < 110) { const k = (1 - d / 110) * 9; p.vx += dx / (d || 1) * k; p.vy += dy / (d || 1) * k; }
+          p.vx += (p.tx - p.x) * .012 * pull; p.vy += (p.ty - p.y) * .012 * pull; p.vx *= .88; p.vy *= .88; p.x += p.vx * dt; p.y += p.vy * dt;
+        }
+        const sh = Math.hypot(p.tx - p.x, p.ty - p.y); cx.fillStyle = sh > 30 ? 'rgba(230,207,148,.9)' : `rgba(201,162,75,${.75 + prog * .25})`; cx.fillRect(p.x, p.y, p.s + prog * 1.2, p.s + prog * 1.2);
+      }
+      requestAnimationFrame(frame);
+    })(performance.now());
+  }
 })();

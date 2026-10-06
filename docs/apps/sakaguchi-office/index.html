@@ -13,16 +13,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261006b">
-<link rel="stylesheet" href="fx.css?v=20261006b">
+<link rel="stylesheet" href="style.css?v=20261006c">
+<link rel="stylesheet" href="fx.css?v=20261006c">
 </head>
 <body>
-<div class="splash" id="splash" role="img" aria-label="オープニング">
-  <svg viewBox="0 0 200 200" class="seal" aria-hidden="true"><circle cx="100" cy="100" r="86" pathLength="1"/><circle cx="100" cy="100" r="76" pathLength="1" class="in"/><text x="100" y="128" text-anchor="middle">誠</text></svg>
-  <p class="sp-1">SAKAGUCHI MAKOTO</p>
-  <h1 class="sp-2">坂口誠税理士事務所</h1>
-  <p class="sp-3">タップでスキップ</p>
+<div class="splash" id="splash" role="dialog" aria-label="オープニング">
+  <div class="door l"></div><div class="door r"></div>
+  <canvas id="sc" aria-hidden="true"></canvas>
+  <div class="sp-ui">
+    <p class="sp-1">SAKAGUCHI MAKOTO TAX OFFICE</p>
+    <h1 class="sp-2">坂口誠税理士事務所</h1>
+    <button class="hold" id="hold" type="button" aria-label="長押しして扉を開く"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="hbar" cx="50" cy="50" r="46" pathLength="1"/></svg><span id="hlab">長押し</span></button>
+    <p class="sp-3">印を長押しして、扉を開く　／　文字は指やマウスで散らせます</p>
+    <button class="sp-skip" id="skip" type="button">スキップ ›</button>
+  </div>
 </div>
+<div class="curtain" id="curtain" aria-hidden="true"><i class="st"></i><i class="st"></i><i class="st"></i><i class="st"></i><i class="st"></i><div class="cl"><small id="clno"></small><b id="clt"></b></div></div>
+<div class="cursor" id="cursor" aria-hidden="true"></div>
 
 <div class="progress" id="progress" aria-hidden="true"><i></i></div>
 <header class="top">
@@ -118,7 +125,7 @@
 <footer class="foot"><div class="wrap"><b>坂口誠税理士事務所</b><span>兵庫県神戸市（2026年10月1日開業）</span><small class="partner">パートナー：公認会計士 上原佑介（事業再生・M&amp;Aなど）</small><small>一部の情報は準備中です。表示中の版：<span id="ver"></span></small></div></footer>
 
 <script>window.APP_VER='20261006b';</script>
-<script src="fx.js?v=20261006b"></script>
-<script src="app.js?v=20261006b"></script>
+<script src="fx.js?v=20261006c"></script>
+<script src="app.js?v=20261006c"></script>
 </body>
 </html>
