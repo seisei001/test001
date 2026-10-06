@@ -19,7 +19,7 @@ import pathlib
 import re
 import shutil
 import sys
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
@@ -40,6 +40,12 @@ OUT = pathlib.Path(args.out) if args.out else DEFAULT_OUT
 TODAY = datetime.date.today().isoformat()
 SITE = CFG['site_name']
 errors, warnings = [], []
+_o = CFG['org']
+if _o.get('postal') and _o.get('street'):
+    ADDRESS = f'〒{_o["postal"]} {_o["region"]}{_o["locality"]}{_o["street"]}'
+else:
+    ADDRESS = f'{_o["region"]}{_o["locality"]}(詳しい住所は準備中です)'
+MAP_URL = 'https://www.google.com/maps/search/?api=1&query=' + quote(f'{_o["region"]}{_o["locality"]}{_o["street"]} {SITE}')
 
 
 # ---------- 文字列まわり ----------
@@ -282,7 +288,7 @@ def layout(*, title, desc, path, main, jsonld, og_type='website', nav_path=None,
     footer = (
         f'<footer class="site-footer"><div class="wrap">'
         f'<p class="f-name">{esc(SITE)}</p>'
-        f'<p>代表税理士 {esc(o["founder"])} ／ {esc(o["region"])}{esc(o["locality"])}(住所・連絡先は準備中です)</p>'
+        f'<p>代表税理士 {esc(o["founder"])}</p><p>{esc(ADDRESS)}</p>'
         f'<nav class="fnav" aria-label="フッター">{"".join(nav)}</nav>'
         f'<p class="copy">&copy; {esc(SITE)}</p></div></footer>'
     )
@@ -357,7 +363,8 @@ for f in sorted((ROOT / 'pages').glob('*.md')):
         continue
     slug = f.stem
     path = '/' if slug == 'index' else f'/{slug}/'
-    body_html = md(body).replace('{{latest_posts}}', post_list(posts[:3]))
+    body_html = (md(body).replace('{{latest_posts}}', post_list(posts[:3]))
+                 .replace('{{address}}', esc(ADDRESS)).replace('{{map_url}}', esc(MAP_URL)))
     jsonld = []
     if path == '/':
         jsonld = [ld_org(), ld_website()]
