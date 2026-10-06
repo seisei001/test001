@@ -1,2 +1,4 @@
 User-agent: *
-Disallow: /
+Allow: /
+
+Sitemap: https://seisei001.github.io/test001/apps/sakaguchi-site/sitemap.xml
