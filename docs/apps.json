@@ -131,5 +131,12 @@
     "description": "坂口誠個人の税理士事務所サイト。国税局37年の経験・調査への備え・リスク診断を重厚なデザインとスクロール演出で紹介(顔写真なし・提携は名称のみ)",
     "path": "apps/sakaguchi-office/",
     "icon": "⚖️"
+  },
+  {
+    "id": "sakaguchi-site",
+    "name": "坂口誠税理士事務所(SEO版ひな形)",
+    "description": "ページごとに独立したURL・本文HTML直書き・ブログ機能つきの、検索対象を意識した静的サイトのひな形(現在は検索除外の試作)",
+    "path": "apps/sakaguchi-site/",
+    "icon": "📰"
   }
 ]

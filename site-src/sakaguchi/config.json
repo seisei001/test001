@@ -1,0 +1,32 @@
+{
+  "site_name": "坂口誠税理士事務所",
+  "tagline": "国税局37年の経験を持つ税理士 坂口誠の事務所。税務調査への備え・システム・AI活用・公益法人対応。兵庫県神戸市。",
+  "base_url": "https://seisei001.github.io/test001/apps/sakaguchi-site",
+  "hub_url": "https://seisei001.github.io/test001/",
+  "hub_link": true,
+  "noindex": true,
+  "lang": "ja",
+  "theme_color": "#0f1f33",
+  "og_image": "",
+  "org": {
+    "type": "AccountingService",
+    "founder": "坂口 誠",
+    "founder_title": "税理士",
+    "region": "兵庫県",
+    "locality": "神戸市",
+    "postal": "",
+    "street": "",
+    "telephone": "",
+    "email": "",
+    "opening": "2026-10-01",
+    "knows_about": ["税務調査", "国際税務", "システム監査", "公益法人会計", "法人税", "相続税"]
+  },
+  "nav": [
+    ["ホーム", "/"],
+    ["強み・経歴", "/strength/"],
+    ["対応分野", "/services/"],
+    ["ブログ", "/blog/"],
+    ["Q&A", "/faq/"],
+    ["お問い合わせ", "/contact/"]
+  ]
+}
