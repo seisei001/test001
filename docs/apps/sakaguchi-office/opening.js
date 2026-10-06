@@ -30,7 +30,7 @@ const WORDS = ['版 ' + (window.APP_VER || '不明'), '大阪国税局', '税務
   const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
   let ov = null, running = false;
 
-  const should = () => { if (reduce) return false; if (/[?&]opening=1/.test(location.search)) return true; try { return sessionStorage.getItem(KEY) !== '1'; } catch { return true; } };
+  const should = () => { if (reduce) return false; if (/[?&]opening=0/.test(location.search)) return false; return true; };   // ページを開くたびに再生(スキップは右下のボタン、?opening=0 で省略)
 
   function play(opts = {}) {
     if (running || (reduce && !opts.force)) return Promise.resolve();

@@ -114,7 +114,7 @@
       w.getAnimations().forEach((x) => x.cancel());
     }
     const wasFirst = first; first = false; busy = false;
-    if (wasFirst && (path === '/' || path === '/consult')) Mode.ready.then(() => { if (Opening.should()) Opening.play(); });
+    if (wasFirst && path === '/') Mode.ready.then(() => { if (Opening.should()) Opening.play(); });
   }
   async function versionCheck() {
     try {
