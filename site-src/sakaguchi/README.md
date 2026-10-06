@@ -8,7 +8,7 @@
 - `pages/*.md` … 固定ページ(index.md=トップ、strength/services/faq/contact)
 - `posts/*.md` … ブログ記事(`_` で始まるファイルは対象外。`_template.md` が見本)
 - `assets/site.css` … デザイン(JavaScript不要)
-- `build.py` … 生成スクリプト(`python3 build.py`。`--drafts` で下書きも生成)
+- `build.py` … 生成スクリプト(`python3 build.py`。`--drafts` で下書きも生成。`--preview` で下書きを含む非公開の確認用ページ `docs/apps/sakaguchi-preview/` を生成)
 
 ## 記事の追加手順
 1. `posts/_template.md` をコピーして `posts/記事名.md` を作る

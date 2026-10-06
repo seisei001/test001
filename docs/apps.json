@@ -138,5 +138,12 @@
     "description": "ページごとに独立したURL・本文HTML直書き・ブログ機能つきの、検索対象を意識した静的サイトのひな形(現在は検索除外の試作)",
     "path": "apps/sakaguchi-site/",
     "icon": "📰"
+  },
+  {
+    "id": "sakaguchi-preview",
+    "name": "坂口誠税理士事務所(下書き確認用)",
+    "description": "公開前のブログ記事の下書きを確認するための非公開ページ(検索に載らない設定。公開サイトとは別)",
+    "path": "apps/sakaguchi-preview/blog/",
+    "icon": "📝"
   }
 ]

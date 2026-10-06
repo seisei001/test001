@@ -29,14 +29,20 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--drafts', action='store_true', help='下書きも生成する')
 ap.add_argument('--local', action='store_true', help='base_urlをlocalhost:8765にする')
 ap.add_argument('--out', help='出力先(省略時はdocs/apps/sakaguchi-site)')
+ap.add_argument('--preview', action='store_true', help='下書き確認用(docs/apps/sakaguchi-preview・検索除外・下書き込み)')
 args = ap.parse_args()
 
 CFG = json.loads((ROOT / 'config.json').read_text('utf-8'))
+if args.preview:
+    args.drafts = True
+    CFG['base_url'] = CFG['base_url'].replace('sakaguchi-site', 'sakaguchi-preview')
+    CFG['noindex'] = True
+    CFG['hub_link'] = True
 if args.local:
     CFG['base_url'] = 'http://localhost:8765'
 BASE = CFG['base_url'].rstrip('/')
 BP = urlparse(BASE).path.rstrip('/')          # 例: /test001/apps/sakaguchi-site (独自ドメインなら空)
-OUT = pathlib.Path(args.out) if args.out else DEFAULT_OUT
+OUT = pathlib.Path(args.out) if args.out else (REPO / 'docs' / 'apps' / 'sakaguchi-preview' if args.preview else DEFAULT_OUT)
 TODAY = datetime.date.today().isoformat()
 SITE = CFG['site_name']
 errors, warnings = [], []
