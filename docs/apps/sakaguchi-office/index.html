@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="坂口誠税理士事務所">
+<meta name="description" content="国税局37年の経験を持つ税理士 坂口誠の事務所。税務調査対応・システム・AI活用・公益法人対応。兵庫県神戸市。">
+<title>坂口誠税理士事務所</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=20261006a">
+<link rel="stylesheet" href="fx.css?v=20261006a">
+</head>
+<body>
+<div class="splash" id="splash" role="img" aria-label="オープニング">
+  <svg viewBox="0 0 200 200" class="seal" aria-hidden="true"><circle cx="100" cy="100" r="86" pathLength="1"/><circle cx="100" cy="100" r="76" pathLength="1" class="in"/><text x="100" y="128" text-anchor="middle">誠</text></svg>
+  <p class="sp-1">SAKAGUCHI MAKOTO</p>
+  <h1 class="sp-2">坂口誠税理士事務所</h1>
+  <p class="sp-3">タップでスキップ</p>
+</div>
+
+<div class="progress" id="progress" aria-hidden="true"><i></i></div>
+<header class="top">
+  <a class="back-link" href="../../">← ハブに戻る</a>
+  <a class="brand" href="#top">坂口誠<span>税理士事務所</span></a>
+  <nav class="gnav" id="gnav" aria-label="ページ内移動"></nav>
+</header>
+<nav class="rail" id="rail" aria-label="セクション"></nav>
+
+<main id="top">
+  <section class="hero" id="hero" data-nav="TOP">
+    <canvas id="bg" aria-hidden="true"></canvas>
+    <div class="wrap hero-in">
+      <p class="eyebrow">2026年10月1日　兵庫県神戸市に開業</p>
+      <h2 class="h-display"><span class="ln">調べる側に、</span><span class="ln">三十七年いた。</span><span class="ln gold">だから、守れる。</span></h2>
+      <p class="lead">元・大阪国税局。税務調査、国際税務、査察、そしてシステム。国税の内側を知り尽くした税理士が、あなたの会社の「備え」を構造から組み立てます。</p>
+      <div class="cta"><a class="btn gold" href="#risk" data-go>税務調査リスク診断（無料）</a><a class="btn ghost" href="#history" data-go>経歴を見る</a></div>
+      <div class="stats" id="stats">
+        <div class="stat"><b data-count="37" data-suffix="年">0</b><span>国税局でのキャリア</span></div>
+        <div class="stat"><b data-count="100" data-suffix="%">0</b><span>登録後の税務調査 申告是認率</span></div>
+        <div class="stat"><b>不起訴</b><span>査察（捜査）対応で立件を阻止</span></div>
+      </div>
+    </div>
+    <a class="scroll-cue" href="#core" data-go aria-label="下へ">SCROLL</a>
+  </section>
+
+  <section class="sec" id="core" data-nav="専門性">
+    <div class="wrap">
+      <p class="kicker rv">01 — EXPERTISE</p><h2 class="h2 rv">三つの専門性が、重なる場所。</h2>
+      <p class="sub rv">カードを選ぶと詳しい内容が開きます。</p>
+      <div class="pillars" id="pillars"></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="flow" data-nav="調査の備え">
+    <div class="wrap">
+      <p class="kicker rv">02 — METHOD</p><h2 class="h2 rv">調査官が見る順に、備えを組む。</h2>
+      <p class="sub rv">証憑 → 仕訳 → 税務判断。バラバラに整えず、一本の線として構造化します。段階を選んでください。</p>
+      <div class="flow" id="flowBox"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="cmp" data-nav="強み">
+    <div class="wrap">
+      <p class="kicker rv">03 — STRENGTH</p><h2 class="h2 rv">一般的な事務所との違い。</h2>
+      <div class="tabs" id="cmpTabs" role="tablist"></div><div id="cmpBody" class="cmp"></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="history" data-nav="経歴">
+    <div class="wrap">
+      <p class="kicker rv">04 — HISTORY</p><h2 class="h2 rv">経歴</h2>
+      <p class="sub rv">「調べる側」としての37年間が、いまの顧問業務の土台です。</p>
+      <ol class="tl" id="tl"></ol>
+    </div>
+  </section>
+
+  <section class="sec" id="work" data-nav="業務">
+    <div class="wrap">
+      <p class="kicker rv">05 — SERVICES</p><h2 class="h2 rv">対応する業務。</h2>
+      <div class="chips" id="chips"></div><div class="chip-panel" id="chipPanel"></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="partner" data-nav="連携">
+    <div class="wrap">
+      <p class="kicker rv">06 — NETWORK</p><h2 class="h2 rv">必要なときは、専門家と連携します。</h2>
+      <p class="sub rv">顧問先に必要な分野だけを、提携する専門家と組んで対応します。窓口は坂口が一本化します。</p>
+      <div class="net rv">
+        <div class="core">坂口誠<small>税理士事務所</small></div>
+        <ul>
+          <li>事業再生<small>公認会計士（提携）</small></li>
+          <li>労務・社会保険<small>社会保険労務士（提携）</small></li>
+          <li>社会福祉法人<small>専門サポート（提携）</small></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="risk" data-nav="診断">
+    <div class="wrap narrow">
+      <p class="kicker rv">07 — CHECK</p><h2 class="h2 rv">簡易・税務調査リスク診断</h2>
+      <p class="sub rv">6つの質問で、調査対象になりやすい傾向を確認できます。参考情報であり、正式な税務判断ではありません。</p>
+      <div class="dg" id="dg"></div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="faq" data-nav="Q&A">
+    <div class="wrap narrow">
+      <p class="kicker rv">08 — Q&amp;A</p><h2 class="h2 rv">よくあるご質問</h2>
+      <div id="faqList"></div>
+    </div>
+  </section>
+
+  <section class="sec contact" id="contact" data-nav="相談">
+    <div class="wrap narrow">
+      <p class="kicker rv">09 — CONTACT</p><h2 class="h2 rv">まずは、無料相談から。</h2>
+      <p class="sub rv">お問い合わせ先（電話・メール）は準備中です。ご相談の概要をここでまとめておくと、連絡がスムーズです。</p>
+      <form class="form rv" id="cform" onsubmit="return false">
+        <label>ご相談の種類<select id="ctype"><option>税務調査への備え・対応</option><option>顧問契約のご相談</option><option>相続税・個人の申告</option><option>公益法人・法人設立</option><option>システム・AI活用</option><option>その他</option></select></label>
+        <label>ご相談の概要<textarea id="cmsg" rows="5" placeholder="例：来期の決算前に、調査で指摘されやすい点を確認したい"></textarea></label>
+        <button class="btn gold" id="ccopy" type="button">相談メモを作成してコピー</button>
+        <p class="note" id="cnote" role="status">連絡先が確定するまでの暫定機能です。コピーした文面は、のちほどお送りください。</p>
+      </form>
+    </div>
+  </section>
+</main>
+<footer class="foot"><div class="wrap"><b>坂口誠税理士事務所</b><span>兵庫県神戸市（2026年10月1日開業）</span><small>一部の情報は準備中です。表示中の版：<span id="ver"></span></small></div></footer>
+
+<script>window.APP_VER='20261006a';</script>
+<script src="fx.js?v=20261006a"></script>
+<script src="app.js?v=20261006a"></script>
+</body>
+</html>
