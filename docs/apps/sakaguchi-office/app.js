@@ -1,235 +1,104 @@
-/* 坂口誠税理士事務所 個人サイト。内容は既存の「税理士事務所PRサイト」の記載に基づく(未確定は準備中) */
+/* 坂口誠税理士事務所(個人サイト)。演出部品(オープニング・Scenes・FX)は総合パートナーズ版をそのまま使用 */
 (() => {
   'use strict';
-  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const { esc, BRAND, PEOPLE } = U;
+  const $ = (id) => document.getElementById(id);
+  const view = $('view');
+  const reduce = Scenes.reduce;
+  let cleanup = [];
+  const NAV = [['hero', 'ホーム'], ['strength', '強み'], ['history', '経歴'], ['topics', '専門分野'], ['consult', '診断'], ['faq', 'Q&A'], ['contact', '相談']];
 
-  const PILLARS = [
-    ['国税の内部構造を理解している税理士', '調査官の思考パターン、勘定科目の着眼点、資料の評価基準を熟知。国税内部のシステム・データ構造についても深い理解を持つ。'],
-    ['調査に強い税理士', '調査官が疑うポイントを事前に予測。証憑 → 仕訳 → 税務判断を一気通貫で構造化し、調査対応を型にする。'],
-    ['AIを税務実務に統合できる技術者', 'Transformerや重み行列などAIの構造を研究者レベルで理解。複数のAIプロバイダを横断利用できる会話ログ×RAG基盤「raglog」(開発中・コンセプト)を構築。将来的には条文ベースのRAGなど、税務実務への応用を目指している。']
-  ];
-  const FLOW = [
-    ['証憑', '根拠となる資料を揃える', '請求書・契約書・領収書など、取引の事実を裏づける資料を、調査官が評価する基準に沿って整えます。', ['資料の評価基準を踏まえた整理', '取引の事実関係の裏づけ']],
-    ['仕訳', '勘定科目の着眼点を押さえる', '調査官が着目する勘定科目を事前に予測し、仕訳の根拠と一貫性を確認します。', ['調査官が疑うポイントの事前予測', '処理の一貫性の確認']],
-    ['税務判断', '条文・通達・実務で結論を出す', '証憑と仕訳を受けて、条文・通達・実務を統合した「根拠ある税務判断」を行います。', ['根拠を説明できる判断', '調査対応を「型」にする']]
-  ];
-  const CMP = [
-    ['税務調査対応', '調査の連絡が来てから資料をそろえ、当日は調査官の質問に受け身で対応することが多い。', '国税局で税務調査官・国際税務調査・査察部国際専門官などを歴任。税理士登録後、通常の税務調査は対応した案件すべてが申告是認。査察部による捜査(査察)を受けた案件では、不起訴という形で立件を阻止した実績もある。'],
-    ['システム・AI活用', '紙の資料や手作業でのチェックが中心で、システムやAIの活用相談までは踏み込みにくい。', '国税局の大型コンピュータのプログラマー・システムエンジニアを経験し、システム監査手法を用いた大規模法人の調査も担当。近年はAIの構造についても研究者レベルの理解を深め、複数のAIを横断利用できるRAG基盤「raglog」を開発中。'],
-    ['公益法人対応', '公益法人特有の会計基準や認定事務に対応できる事務所は限られている。', '国税局在籍時には消費税における「固有法人」(公益法人等)の申告実務に携わり、税理士登録後は公益法人の申請承認・新会計基準への移行に関する事務にも対応。']
+  const WORDS = [['税務調査', 0], ['国際税務', 0], ['査察', 0], ['申告是認', 0], ['証憑', 0], ['仕訳', 0], ['税務判断', 0], ['論点予測', 0],
+    ['システム監査', 1], ['大型コンピュータ', 1], ['AI', 1], ['RAG', 1], ['raglog', 1], ['Transformer', 1],
+    ['公益法人会計', 2], ['固有法人', 2], ['新会計基準', 2], ['申請承認', 2], ['法人設立', 2],
+    ['法人税', 3], ['所得税', 3], ['相続税', 3], ['消費税', 3], ['記帳', 3], ['決算書', 3], ['ワンストップ', 4]];
+  const CATS = [['税務調査', '#1f6a7a'], ['システム・AI', '#6a4c93'], ['公益法人', '#c4553a'], ['申告・相続', '#2f6f4f'], ['総合', '#a8710f']];
+  const STRENGTHS = [
+    { c: '#1f6a7a', k: '国税の内側', t: '国税の内部構造を理解している税理士', li: ['調査官の思考パターン、勘定科目の着眼点、資料の評価基準を熟知', '国税内部のシステム・データ構造についても深い理解'], go: [['history', '経歴を見る']] },
+    { c: '#a8710f', k: '調査対応', t: '調査に強い税理士', li: ['調査官が疑うポイントを事前に予測', '証憑 → 仕訳 → 税務判断を一気通貫で構造化し、調査対応を型にする', '登録後の通常の税務調査は、対応した案件すべてが申告是認'], go: [['consult', 'リスク診断へ']] },
+    { c: '#c4553a', k: '査察対応', t: '査察(捜査)にも対応', li: ['査察部による捜査を受けた案件で、不起訴という形で立件を阻止', '国際税務調査・査察部国際専門官を歴任'], go: [['contact', '相談する']] },
+    { c: '#6a4c93', k: 'システム・AI', t: 'AIを税務実務に統合できる技術者', li: ['国税局の大型コンピュータのプログラマー・SEを経験', 'Transformerや重み行列などAIの構造を研究者レベルで理解', '会話ログ×RAG基盤「raglog」を開発中(コンセプト)'], go: [['topics', '専門分野を見る']] },
+    { c: '#2f6f4f', k: '公益法人・申告', t: '公益法人から相続・設立まで', li: ['公益法人の申請承認・新会計基準への移行に関する事務に対応', '法人税・個人所得税・相続税の申告、中小企業の設立支援'], go: [['faq', 'よくある質問']] }
   ];
   const TL = [
-    ['昭和61年(1986年)4月1日', '大阪国税局に入庁', 'その後4年間、中小企業の税務調査を担当。'],
-    ['在職中', '国税局の大型コンピュータのプログラマー・システムエンジニアに', 'その後、システム監査手法を用いた大規模法人の税務調査を担当。'],
-    ['在職中', '国際税務調査、査察部国際専門官などを歴任', 'あわせて、消費税における「固有法人」(公益法人等)の申告実務にも携わる。'],
-    ['令和5年(2023年)7月10日', '大阪国税局を退職、税理士登録', '37年3ヶ月の国税局でのキャリアを経て、税理士として活動を開始。'],
-    ['税理士登録後', '査察対応で不起訴、通常の税務調査は全件申告是認', '査察部による捜査を受けた案件に対応し、不起訴という形で立件を阻止。ほかの税務調査にも対応し、通常の税務調査はすべて申告是認。'],
-    ['現在', 'AIを活用した業務効率化にも取り組む', '複数のAIを横断利用できる会話ログ×RAG基盤「raglog」(開発中)を構築。将来的には条文ベースのRAGなど、税務実務への応用も目指している。'],
-    ['令和8年(2026年)10月1日', '兵庫県神戸市に「坂口誠税理士事務所」を開業', '国税局で培った知見をもとに、中小企業の経営者を税務の面から支える。']
+    ['昭61', '昭和61年(1986年)4月1日', '大阪国税局に入庁', 'その後4年間、中小企業の税務調査を担当。', '#1f6a7a'],
+    ['SE', '在職中', '大型コンピュータのプログラマー・SEに', 'その後、システム監査手法を用いた大規模法人の税務調査を担当。', '#6a4c93'],
+    ['国際', '在職中', '国際税務調査・査察部国際専門官など', 'あわせて、消費税における「固有法人」(公益法人等)の申告実務にも携わる。', '#2b8a9c'],
+    ['R5', '令和5年(2023年)7月10日', '大阪国税局を退職、税理士登録', '37年3ヶ月のキャリアを経て、税理士として活動を開始。', '#a8710f'],
+    ['実績', '税理士登録後', '査察で不起訴・調査は全件申告是認', '査察部による捜査を受けた案件で立件を阻止。通常の税務調査はすべて申告是認。', '#c4553a'],
+    ['AI', '現在', 'AIを活用した業務効率化にも取り組む', '会話ログ×RAG基盤「raglog」(開発中)。将来は条文ベースのRAGなど税務実務への応用を目指す。', '#2f6f4f'],
+    ['開業', '令和8年(2026年)10月1日', '神戸市に坂口誠税理士事務所を開業', '国税局で培った知見をもとに、中小企業の経営者を税務の面から支える。', '#8a5a12']
   ];
-  const WORK = [
-    ['税務調査対応', '調査前の備えから、立会い・対応まで。査察(捜査)対応の経験も踏まえ、論点予測・資料整理・一貫性を構造化します。'],
-    ['法人税・個人所得税', '法人税申告(数十件)、個人所得税申告(数十件)の実績。記帳から決算書・申告書まで一貫して対応します。'],
-    ['相続税', '相続税申告(数件)の実績があります。'],
-    ['法人設立支援', '中小企業の設立を、記帳〜決算書〜申告書まで一貫して支援します。'],
-    ['公益法人', '公益法人の申請承認・新会計基準への移行に関する事務にも対応します。'],
-    ['システム・AI活用', '仕組みの見直しや、AIを活用した業務効率化のご相談に対応します。']
-  ];
-  const FAQ = [
-    ['顧問料はどのくらいですか?', '会社の規模や依頼内容によって異なります。まずは無料相談でお気軽にお問い合わせください。(料金体系は準備中です)'],
-    ['対応エリアはどこですか?', 'オンライン面談を中心に全国対応しています。(対応エリアは準備中です)'],
-    ['個人の確定申告も依頼できますか?', '対応可能です。相続税申告・個人の所得税申告の実績もございます。'],
-    ['事業再生などの相談もできますか?', 'パートナーの公認会計士 上原佑介と連携して対応できます。まずは坂口にご相談ください。']
-  ];
-  const QS = [
-    ['税務署への提出書類(申告書・決算書)の作成体制は?', [['顧問税理士に一任し、内容も共有・確認している', 0], ['自社で作成し、税理士のチェックは受けていない', 2], ['自己流で作成している', 3]]],
-    ['現金での取引(現金商売・経費の現金精算など)の割合は?', [['ほとんどない', 0], ['一部ある', 1], ['多い', 2]]],
-    ['直近で税務調査を受けたのはいつ頃ですか?', [['5年以内に受けた', 1], ['5〜9年前、または一度も受けたことがない(開業5年以上)', 2], ['10年以上前、または開業から一度も接触がない', 3]]],
-    ['ここ数年の売上・利益の推移は?', [['安定して推移している', 0], ['大きく増減した年がある', 2]]],
-    ['役員報酬の変更や、同族間・関係会社間の取引はありますか?', [['特にない', 0], ['ある(役員報酬変更・同族間取引など)', 2]]],
-    ['インボイス制度・消費税の課税事業者選択への対応状況は?', [['税理士と相談のうえ、適切に対応済み', 0], ['自分で対応したが、あまり自信がない', 2]]]
-  ];
-  const MAX = QS.reduce((a, q) => a + Math.max(...q[1].map((o) => o[1])), 0);
-  const RES = [
-    [3, '傾向:低め', '大きな懸念材料は少なそうです。日頃の記帳・証憑管理を継続することが最大の予防策です。定期的な顧問チェックをおすすめします。'],
-    [7, '傾向:中程度', 'いくつか、調査官が着目しやすいポイントが見られます。決算前のタイミングで一度、国税局出身の税理士によるセルフチェックを受けておくと安心です。'],
-    [99, '傾向:高め', '複数の項目で、税務調査時に指摘を受けやすい傾向が見られます。早めの記帳・申告内容の見直しをおすすめします。']
-  ];
-  let diagSummary = '';
 
-  /* ---------- 組み立て ---------- */
-  $('#ver').textContent = window.APP_VER;
-  $('#pillars').innerHTML = PILLARS.map((p, i) => `<button class="pil rv" type="button" aria-expanded="false"><span class="no">0${i + 1}</span><h3>${esc(p[0])}</h3><p>${esc(p[1])}</p><span class="more">タップして詳しく ＋</span></button>`).join('');
-  $$('.pil').forEach((b) => {
-    b.addEventListener('click', () => { const o = !b.classList.contains('open'); $$('.pil').forEach((x) => { x.classList.remove('open'); x.setAttribute('aria-expanded', 'false'); }); b.classList.toggle('open', o); b.setAttribute('aria-expanded', String(o)); });
-    b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(); b.style.setProperty('--mx', (e.clientX - r.left) + 'px'); b.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
-  });
-  $('#tl').innerHTML = '<span class="fill" id="tlfill"></span>' + TL.map(([d, t, p]) => `<li class="rv"><time>${esc(d)}</time><h3>${esc(t)}</h3><p>${esc(p)}</p></li>`).join('');
-  $('#faqList').innerHTML = FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('');
-  $$('.rv').forEach((e, i) => { e.style.transitionDelay = (i % 3) * 0.08 + 's'; });
-
-  // 調査の備え(3段階)
-  const fb = $('#flowBox'); let fi = 0;
-  fb.innerHTML = `<div class="flow-steps"><i id="fprog"></i>${FLOW.map((f, i) => `<button class="fs" type="button" data-i="${i}"><b>${i + 1}</b>${f[0]}</button>`).join('')}</div><div class="flow-panel" id="fpanel"></div>`;
-  const showFlow = (i) => {
-    fi = i; const f = FLOW[i];
-    $$('.fs', fb).forEach((b, k) => { b.classList.toggle('on', k === i); b.classList.toggle('done', k < i); });
-    $('#fprog').style.width = (i / 2 * 68) + '%';
-    $('#fpanel').innerHTML = `<h3>${esc(f[1])}</h3><p>${esc(f[2])}</p><ul>${f[3].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${i === 2 ? '<div id="fxc"></div>' : ''}`;
-    if (!reduce) $('#fpanel').animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'ease-out' });
-    if (i === 2) { const c = FX.check($('#fxc'), { height: 120 }); c.play(); }
-  };
-  $$('.fs', fb).forEach((b) => b.addEventListener('click', () => showFlow(+b.dataset.i)));
-  showFlow(0);
-
-  // 比較タブ
-  $('#cmpTabs').innerHTML = CMP.map((c, i) => `<button type="button" role="tab" class="${i ? '' : 'on'}" data-i="${i}">${esc(c[0])}</button>`).join('');
-  const showCmp = (i) => { $$('#cmpTabs button').forEach((b, k) => b.classList.toggle('on', k === i)); $('#cmpBody').innerHTML = `<div class="c"><h3>一般的な事務所</h3><p>${esc(CMP[i][1])}</p></div><div class="c me"><h3>坂口誠税理士事務所</h3><p>${esc(CMP[i][2])}</p></div>`; };
-  $$('#cmpTabs button').forEach((b) => b.addEventListener('click', () => showCmp(+b.dataset.i))); showCmp(0);
-
-  // 業務チップ
-  $('#chips').innerHTML = WORK.map((w, i) => `<button type="button" class="${i ? '' : 'on'}" data-i="${i}">${esc(w[0])}</button>`).join('');
-  const showWork = (i) => { $$('#chips button').forEach((b, k) => b.classList.toggle('on', k === i)); $('#chipPanel').innerHTML = `<h3>${esc(WORK[i][0])}</h3><p>${esc(WORK[i][1])}</p>`; };
-  $$('#chips button').forEach((b) => b.addEventListener('click', () => showWork(+b.dataset.i))); showWork(0);
-
-  /* ---------- 診断 ---------- */
-  function diag() {
-    const box = $('#dg'); let n = 0, score = 0;
-    const ask = () => {
-      if (n >= QS.length) return result();
-      const [q, os] = QS[n];
-      box.innerHTML = `<div class="bar"><i style="width:${n / QS.length * 100}%"></i></div><div class="q-no">QUESTION ${n + 1} / ${QS.length}</div><h3>${esc(q)}</h3>${os.map((o, i) => `<button class="opt" type="button" data-i="${i}">${esc(o[0])}</button>`).join('')}`;
-      $$('.opt', box).forEach((b) => b.addEventListener('click', () => { score += os[+b.dataset.i][1]; n++; ask(); }));
-    };
-    const result = () => {
-      const r = RES.find((x) => score <= x[0]); const len = 251.3; // 半円の弧長
-      diagSummary = `【税務調査リスク診断】${r[1]}(スコア ${score}/${MAX})`;
-      box.innerHTML = `<div class="res"><svg class="gauge" viewBox="0 0 200 110" aria-hidden="true"><path class="tr" d="M20 100 A80 80 0 0 1 180 100"/><path class="pg" id="pg" d="M20 100 A80 80 0 0 1 180 100" style="--len:${len}"/></svg><div class="lv">${r[1]}</div><div id="fxr"></div><p>${esc(r[2])}</p><p class="dis">※ 一般的な傾向をもとにした簡易チェックであり、正式な税務判断・保証ではありません。</p><div class="acts"><a class="btn gold" href="#contact" data-go>この結果を添えて相談する</a><button class="btn ghost" type="button" id="again">もう一度診断する</button></div></div>`;
-      requestAnimationFrame(() => requestAnimationFrame(() => { $('#pg').style.strokeDashoffset = len * (1 - Math.min(1, score / MAX)); }));
-      FX.check($('#fxr'), { height: 90, confetti: false }).play();
-      $('#again').addEventListener('click', () => { n = 0; score = 0; ask(); });
-      bindGo(box);
-    };
-    ask();
-  }
-  diag();
-
-  /* ---------- 相談メモ ---------- */
-  $('#ccopy').addEventListener('click', async () => {
-    const t = `【坂口誠税理士事務所 相談メモ】\n種類:${$('#ctype').value}\n概要:${$('#cmsg').value.trim() || '(未記入)'}\n${diagSummary}`;
-    let ok = false; try { await navigator.clipboard.writeText(t); ok = true; } catch {}
-    $('#cnote').textContent = ok ? 'コピーしました。連絡先が決まり次第、この文面をお送りください。' : '自動コピーできませんでした。下の文面を手動でコピーしてください:\n' + t;
-    $('#cnote').style.whiteSpace = 'pre-wrap';
-  });
-
-  /* ---------- スクロール連動 ---------- */
-  const secs = $$('[data-nav]');
-  secs.forEach((s, i) => { if (i) s.dataset.no = String(i).padStart(2, '0'); });
-  $$('.h2').forEach((h) => { let i = 0; h.innerHTML = [...h.textContent].map((c) => c === ' ' ? ' ' : `<span class="ch" style="--i:${i++}">${esc(c)}</span>`).join(''); });
-  $('#gnav').innerHTML = secs.slice(1).map((s) => `<a href="#${s.id}" data-go>${esc(s.dataset.nav)}</a>`).join('');
-  $('#rail').innerHTML = secs.map((s) => `<a href="#${s.id}" data-go aria-label="${esc(s.dataset.nav)}"></a>`).join('');
-  const curtain = $('#curtain'); let busy = false;
-  const jump = (t) => {
-    if (busy) return;
-    if (reduce) { t.scrollIntoView(); return; }
-    busy = true; const n = secs.indexOf(t);
-    $('#clno').textContent = n > 0 ? String(n).padStart(2, '0') : 'TOP'; $('#clt').textContent = t.dataset.nav === 'TOP' ? '坂口誠税理士事務所' : (t.dataset.nav + (n > 0 ? '' : ''));
-    curtain.classList.remove('out'); curtain.classList.add('in');
-    setTimeout(() => {
-      window.scrollTo({ top: Math.max(0, t.getBoundingClientRect().top + scrollY - 0), behavior: 'instant' });
-      requestAnimationFrame(() => { curtain.classList.add('out'); setTimeout(() => { curtain.classList.remove('in', 'out'); busy = false; }, 800); });
-    }, 760);
-  };
-  const bindGo = (r) => $$('[data-go]', r).forEach((a) => { if (a._b) return; a._b = 1; a.addEventListener('click', (e) => { const t = $(a.getAttribute('href')); if (t) { e.preventDefault(); jump(t); } }); });
-  bindGo(document);
-
-  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .15 });
-  $$('.rv').forEach((e) => io.observe(e));
-  const cur = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { const i = secs.indexOf(e.target); $$('#gnav a').forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); $$('#rail a').forEach((a, k) => a.classList.toggle('on', k === i)); } }), { rootMargin: '-45% 0px -50% 0px' });
-  secs.forEach((s) => cur.observe(s));
-  const prog = $('#progress i'), tl = $('#tl'), fill = $('#tlfill');
-  const onScroll = () => {
-    const h = document.documentElement; prog.style.width = (scrollY / Math.max(1, h.scrollHeight - innerHeight) * 100) + '%';
-    secs.forEach((s) => { const r = s.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) s.style.setProperty('--py', (r.top * -.18) + 'px'); });
-    const r = tl.getBoundingClientRect(); fill.style.height = Math.max(0, Math.min(r.height - 6, innerHeight * .6 - r.top)) + 'px';
-  };
-  addEventListener('scroll', onScroll, { passive: true }); onScroll();
-
-  // 数字のカウントアップ
-  const cnt = (el) => { const to = +el.dataset.count, sf = el.dataset.suffix || ''; if (reduce) { el.textContent = to + sf; return; } const t0 = performance.now(); const f = (t) => { const k = Math.min(1, (t - t0) / 1600); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))) + sf; if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
-
-  /* ---------- 背景(金の線+ポインタで歪む点の格子+クリックの波紋) ---------- */
-  (() => {
-    const cv = $('#bg'), cx = cv.getContext('2d'); let W, H, dpr, px = .7, py = .2, tx = .7, ty = .2, vis = true; const rip = [];
-    const lines = Array.from({ length: 22 }, () => ({ y: Math.random(), s: .015 + Math.random() * .03, a: .04 + Math.random() * .09, p: Math.random() * 6 }));
-    const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }; size(); addEventListener('resize', size);
-    addEventListener('pointermove', (e) => { tx = e.clientX / innerWidth; ty = e.clientY / innerHeight; }, { passive: true });
-    $('#hero').addEventListener('pointerdown', (e) => { const r = cv.getBoundingClientRect(); rip.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }); });
-    new IntersectionObserver((e) => { vis = e[0].isIntersecting; if (vis && !reduce) requestAnimationFrame(draw); }).observe(cv);
-    function draw(t = 0) {
-      if (!vis) return; px += (tx - px) * .08; py += (ty - py) * .08; cx.clearRect(0, 0, W, H);
-      const g = cx.createRadialGradient(px * W, py * H, 0, px * W, py * H, Math.max(W, H) * .5); g.addColorStop(0, 'rgba(201,162,75,.18)'); g.addColorStop(1, 'rgba(201,162,75,0)'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
-      cx.lineWidth = 1;
-      for (const l of lines) { const y = ((l.y + t / 1000 * l.s) % 1) * H; cx.strokeStyle = `rgba(201,162,75,${l.a})`; cx.beginPath(); cx.moveTo(0, y); for (let x = 0; x <= W; x += 40) cx.lineTo(x, y + Math.sin(x * .008 + t / 2500 + l.p) * 6); cx.stroke(); }
-      const S = W < 600 ? 30 : 38, mx = px * W, my = py * H, now = performance.now();
-      for (let i = rip.length - 1; i >= 0; i--) if (now - rip[i].t > 1600) rip.splice(i, 1);
-      for (let gx = S / 2; gx < W; gx += S) for (let gy = S / 2; gy < H; gy += S) {
-        let dx = 0, dy = 0, hot = 0; const ddx = gx - mx, ddy = gy - my, d = Math.hypot(ddx, ddy);
-        if (d < 150) { const k = (1 - d / 150); dx += ddx / (d || 1) * k * 22; dy += ddy / (d || 1) * k * 22; hot = k; }
-        for (const r of rip) { const age = (now - r.t) / 1600, rad = age * Math.max(W, H) * .6, rd = Math.hypot(gx - r.x, gy - r.y), w = Math.exp(-Math.pow((rd - rad) / 40, 2)) * (1 - age); if (w > .01) { dx += (gx - r.x) / (rd || 1) * w * 26; dy += (gy - r.y) / (rd || 1) * w * 26; hot = Math.max(hot, w); } }
-        cx.fillStyle = `rgba(230,207,148,${.14 + hot * .8})`; const s = 1.2 + hot * 2.6; cx.fillRect(gx + dx - s / 2, gy + dy - s / 2, s, s);
-      }
-      if (!reduce) requestAnimationFrame(draw);
-    }
-    draw(0);
-  })();
-
-  /* ---------- カーソル・磁石ボタン・カードの傾き ---------- */
-  if (matchMedia('(pointer: fine)').matches && !reduce) {
-    const cu = $('#cursor'); let cx_ = innerWidth / 2, cy_ = innerHeight / 2, mx_ = cx_, my_ = cy_; document.body.classList.add('has-cursor');
-    addEventListener('pointermove', (e) => { mx_ = e.clientX; my_ = e.clientY; }, { passive: true });
-    (function loop() { cx_ += (mx_ - cx_) * .2; cy_ += (my_ - cy_) * .2; cu.style.transform = `translate(${cx_}px,${cy_}px)`; requestAnimationFrame(loop); })();
-    document.addEventListener('pointerover', (e) => cu.classList.toggle('big', !!e.target.closest('a,button,summary,select,textarea')));
-    $$('.btn').forEach((b) => { b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * .18}px,${(e.clientY - r.top - r.height / 2) * .3}px)`; }); b.addEventListener('pointerleave', () => { b.style.transform = ''; }); });
-    $$('.pil').forEach((b) => { b.addEventListener('pointermove', (e) => { const r = b.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; b.style.transform = `perspective(700px) rotateX(${-y * 9}deg) rotateY(${x * 11}deg) translateY(-4px)`; }); b.addEventListener('pointerleave', () => { b.style.transform = ''; }); });
+  function chrome() {
+    $('gh-brand').innerHTML = `${esc(BRAND)}<small>税理士 坂口 誠</small>`;
+    $('gh-nav').innerHTML = NAV.map(([id, l]) => `<a href="#${id}" data-scroll>${esc(l)}</a>`).join('');
+    $('menu').innerHTML = '<h3>MENU</h3>' + NAV.map(([id, l]) => `<a href="#${id}" data-scroll>${esc(l)}</a>`).join('');
+    $('gh-nav').insertAdjacentHTML('afterend', '<div class="modesw" role="group" aria-label="表示の切り替え"><button type="button" data-m="phone" aria-pressed="true">📱<span class="t"> スマホ</span></button><button type="button" data-m="pc" aria-pressed="false">🖥<span class="t"> パソコン</span></button></div>');
+    document.querySelectorAll('.modesw button').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.m === Mode.mode)); b.addEventListener('click', () => Mode.set(b.dataset.m)); });
+    const btn = $('gh-menu'), menu = $('menu');
+    const setMenu = (o) => { menu.hidden = false; menu.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); btn.textContent = o ? '閉じる' : 'メニュー'; document.body.style.overflow = o ? 'hidden' : ''; };
+    btn.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
+    $('gf').innerHTML = `<div class="wrap"><h3>${esc(BRAND)}</h3><p>兵庫県神戸市(2026年10月1日開業)。連絡先は準備中です。</p><p><a href="#hero" data-scroll>ページ上部へ</a> / <a href="#" id="replay">オープニングをもう一度見る</a> / <a href="../../">ハブに戻る</a></p><p style="opacity:.75;font-size:.76rem">パートナー:公認会計士 上原佑介(事業再生・M&amp;Aなど)</p><p style="opacity:.6;font-size:.72rem">表示中の版: ${esc(window.APP_VER || '不明(古い表示です。再読み込みしてください)')}</p></div>`;
+    $('replay').addEventListener('click', (e) => { e.preventDefault(); window.scrollTo(0, 0); Opening.play({ force: true }); });
+    document.addEventListener('click', (e) => { const a = e.target.closest('[data-scroll]'); if (!a) return; const t = document.getElementById((a.getAttribute('href') || '').slice(1)); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); } });
   }
 
-  /* ---------- オープニング(文字の粒を散らせる/印を長押しして扉を開く) ---------- */
-  const sp = $('#splash'); let started = false;
-  const start = () => { if (started) return; started = true; sp.classList.add('open'); document.body.classList.remove('lock'); setTimeout(() => sp.remove(), 1500); $('#hero').classList.add('go'); $$('[data-count]').forEach(cnt); try { sessionStorage.setItem('sakaguchiOpening', '1'); } catch {} };
-  let seen = false; try { seen = sessionStorage.getItem('sakaguchiOpening') === '1'; } catch {}
-  if (seen || reduce || /[?&]skip=1/.test(location.search)) { sp.remove(); start(); }
-  else {
-    document.body.classList.add('lock'); $('#skip').addEventListener('click', start);
-    const cv = $('#sc'), cx = cv.getContext('2d'); let W, H, dpr, P = [], px = -999, py = -999, prog = 0, holding = false, burst = 0, last = performance.now();
-    const build = () => {
-      dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const o = document.createElement('canvas'), ox = o.getContext('2d'), fs = Math.min(W * .8, H * .5); o.width = W; o.height = H; ox.fillStyle = '#fff'; ox.font = `900 ${fs}px "Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif`; ox.textAlign = 'center'; ox.textBaseline = 'middle'; ox.fillText('誠', W / 2, H * .36);
-      const d = ox.getImageData(0, 0, W, H).data, step = W < 600 ? 7 : 6; P = [];
-      for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) if (d[(y * W + x) * 4 + 3] > 128) { const a = Math.random() * 6.28, r = Math.max(W, H) * (.6 + Math.random() * .5); P.push({ x: W / 2 + Math.cos(a) * r, y: H / 2 + Math.sin(a) * r, tx: x, ty: y, vx: 0, vy: 0, s: 1.4 + Math.random() * 1.6 }); }
-    };
-    build(); addEventListener('resize', build);
-    sp.addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; }); sp.addEventListener('pointerleave', () => { px = py = -999; });
-    const hold = $('#hold'), bar = $('#hbar'), lab = $('#hlab');
-    const down = (e) => { if (e) e.preventDefault(); holding = true; hold.classList.add('on'); }; const up = () => { holding = false; hold.classList.remove('on'); };
-    hold.addEventListener('pointerdown', down); addEventListener('pointerup', up); addEventListener('pointercancel', up);
-    hold.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { if (!e.repeat) down(e); else e.preventDefault(); } }); hold.addEventListener('keyup', up); hold.addEventListener('contextmenu', (e) => e.preventDefault());
-    const stamp = () => { burst = 1; lab.textContent = '開'; sp.classList.add('stamped'); P.forEach((p) => { const a = Math.atan2(p.y - H * .36, p.x - W / 2) + (Math.random() - .5) * .8, v = 8 + Math.random() * 18; p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; }); if (navigator.vibrate) try { navigator.vibrate(30); } catch {} setTimeout(start, 650); };
-    (function frame(now) {
-      if (!sp.isConnected) return; const dt = Math.min(2, (now - last) / 16.7); last = now;
-      if (!burst) { prog = Math.max(0, Math.min(1, prog + (holding ? dt / 66 : -dt / 40))); bar.style.strokeDashoffset = 1 - prog; if (prog >= 1) stamp(); }
-      cx.clearRect(0, 0, W, H); const pull = 1 + prog * 3;
-      for (const p of P) {
-        if (burst) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97; }
-        else {
-          const dx = p.x - px, dy = p.y - py, d = Math.hypot(dx, dy); if (d < 110) { const k = (1 - d / 110) * 9; p.vx += dx / (d || 1) * k; p.vy += dy / (d || 1) * k; }
-          p.vx += (p.tx - p.x) * .012 * pull; p.vy += (p.ty - p.y) * .012 * pull; p.vx *= .88; p.vy *= .88; p.x += p.vx * dt; p.y += p.vy * dt;
-        }
-        const sh = Math.hypot(p.tx - p.x, p.ty - p.y); cx.fillStyle = sh > 30 ? 'rgba(230,207,148,.9)' : `rgba(201,162,75,${.75 + prog * .25})`; cx.fillRect(p.x, p.y, p.s + prog * 1.2, p.s + prog * 1.2);
-      }
-      requestAnimationFrame(frame);
-    })(performance.now());
+  function mainPage() {
+    const nums = [['37', '', '年', '国税局でのキャリア'], ['100', '', '%', '登録後の税務調査 申告是認率'], ['', '不起訴', '', '査察対応で立件を阻止']];
+    return `
+<section class="hero" id="hero" data-bg="#0f1f33" data-dark="1"><div class="wrap">
+  <span class="kicker" style="color:#ffd36b">2026年10月1日 兵庫県神戸市に開業</span>
+  <h1>調べる側に、三十七年。<br><em>だから、守れる。</em></h1>
+  <p class="lead">元・大阪国税局。税務調査、国際税務、査察、そしてシステム。国税の内側を知り尽くした税理士が、あなたの会社の「備え」を構造から組み立てます。</p>
+  <div class="nums">${nums.map(([n, w, s, a]) => `<div class="num"><b${n ? ` data-count="${n}"` : ' style="font-size:1.05rem"'}>${n ? '0' : w}</b>${s ? `<span style="display:inline">${s}</span>` : ''}<span>${a}</span></div>`).join('')}</div>
+  <p style="margin-top:14px"><a class="btn gold" href="#consult" data-scroll>税務調査リスク診断(無料)</a> <a class="btn ghost" href="#history" data-scroll style="color:#fff">経歴を見る</a></p>
+</div><div class="hero-fx fx-on-dark" id="hero-fx" aria-hidden="true"></div><p class="hint">SCROLL ↓</p></section>
+
+<div class="label" id="strength"><span class="kicker">STRENGTH</span><h2>坂口誠の強みを、一目で。</h2><p>5つの強みが重なって、ひとつの力になります。下へスクロールすると、次の強みが重なります。</p></div>
+<section class="stack" data-scene="stack">${STRENGTHS.map((s, i) => `<article class="sc" style="--i:${i};background:${s.c}"><span class="no">${i + 1}</span><span class="kicker">${esc(s.k)}</span><h3>${esc(s.t)}</h3><ul>${s.li.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><div class="go">${s.go.map(([r, l]) => `<a href="#${r}" data-scroll>${esc(l)} →</a>`).join('')}</div></article>`).join('')}</section>
+
+<div class="label" id="history"><span class="kicker">HISTORY</span><h2>経歴。</h2><p>縦にスクロールすると、横に進みます。「調べる側」としての37年間が、いまの顧問業務の土台です。</p></div>
+<section class="hs" data-scene="hscroll"><div class="pin"><div class="hT">${TL.map(([m, d, t, p, c]) => `<div class="pc" style="background:${c}"><span class="mono" aria-hidden="true">${esc(m)}</span><span class="role">${esc(d)}</span><h3 style="font-size:1.35rem">${esc(t)}</h3><p>${esc(p)}</p></div>`).join('')}</div><div class="hbar"><i></i></div></div></section>
+
+<div class="label" id="topics"><span class="kicker">TOPICS</span><h2>対応する分野。</h2><p>回る球体のキーワードが、平面に広がり、縦の一覧になります。</p></div>
+<section class="sph" data-scene="sphere" data-words='${esc(JSON.stringify(WORDS))}' data-cats='${esc(JSON.stringify(CATS))}'><div class="pin"><canvas aria-hidden="true"></canvas>
+  <div class="cap top"><h2>調査・システム・公益法人・申告まで</h2><p>下へスクロール</p></div>
+  <div class="cap bot" style="opacity:0"><h2>ばらばらの悩みを、ひとつの窓口に</h2></div>
+  <div class="cap top" style="opacity:0"><h2>分野を選んで、読み進める</h2><p>下へスクロール</p></div></div></section>
+
+<section class="win" data-scene="window"><div class="pin">
+  <div class="cur"><span class="kicker" style="color:var(--teal)">NEXT</span><h2>まず、いまの状況を確認する</h2><p>6つの質問に答えるだけです。</p></div>
+  <div class="nxt"><span class="kicker">次の画面</span><h2>調査対象になりやすい傾向の目安が分かります</h2><p>質問に答えると、気になる点と次の一歩が表示されます。</p></div></div></section>
+<section class="doors" data-scene="doors"><div class="pin"><div class="core"><h2>診断を、はじめましょう</h2><p>数分で答えられる簡易診断です。</p><a class="btn gold" href="#consult" data-scroll>税務調査リスクを確かめる</a></div><div class="door l">税務調査</div><div class="door r">リスク診断</div></div></section>
+
+<section class="consult" id="consult" data-bg="#e6ecf1"><div class="wrap"><span class="kicker" style="color:var(--teal)">CHECK</span><h2>簡易・税務調査リスク診断</h2><p class="note" style="font-size:.9rem">診断結果は参考情報であり、正式な税務判断ではありません。</p></div><div class="wrap"><div class="dg" id="dg"></div></div></section>
+
+<div id="s5"></div>
+<section class="peek"><div class="wrap"><p class="gtext" data-fill>Contact</p><h3>まずは、無料相談から</h3><p>お問い合わせ先(電話・メール)は準備中です。</p></div></section>`;
   }
+
+  async function render() {
+    cleanup.forEach((f) => f()); cleanup = []; Scenes.destroy();
+    view.innerHTML = mainPage();
+    const fxh = $('hero-fx'); if (fxh) { const c = FX.cubes(fxh, { height: 190 }); c.start(); cleanup.push(() => c.stop()); }
+    Consult.mount($('dg'), { people: PEOPLE, sites: null, cleanup }, Sakaguchi.RISK);
+    Sakaguchi.mount($('s5'), { cleanup });
+    document.title = BRAND;
+    Scenes.init(view);
+  }
+  async function versionCheck() {
+    try {
+      const r = await fetch('data/version.json?t=' + Date.now(), { cache: 'no-store' }), j = await r.json();
+      if (j.v && j.v !== window.APP_VER) { const k = 'sakaguchiRetry'; if (sessionStorage.getItem(k) === j.v) return; sessionStorage.setItem(k, j.v); location.replace(location.pathname + '?r=' + j.v + location.hash); }
+    } catch {}
+  }
+  function boot() {
+    versionCheck(); Mode.init(); chrome();
+    Mode.onChange = () => { render(); };
+    render();
+    Mode.ready.then(() => { if (Opening.should()) Opening.play(); });
+  }
+  boot();
 })();
