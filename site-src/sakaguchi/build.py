@@ -46,6 +46,8 @@ if _o.get('postal') and _o.get('street'):
 else:
     ADDRESS = f'{_o["region"]}{_o["locality"]}(詳しい住所は準備中です)'
 _q = re.sub(r'\s*\d+F$', '', f'{_o["region"]}{_o["locality"]}{_o["street"]}')   # 末尾の階数(7Fなど)を除く
+EMAIL = _o.get('email', '')
+EMAIL_LINK = f'<a href="mailto:{EMAIL}">{EMAIL}</a>' if EMAIL else '準備中です'
 MAP_URL = 'https://www.google.com/maps/search/?api=1&query=' + quote(_q)
 MAP_DIR = 'https://www.google.com/maps/dir/?api=1&destination=' + quote(_q)
 MAP_EMBED = (
@@ -296,6 +298,7 @@ def layout(*, title, desc, path, main, jsonld, og_type='website', nav_path=None,
         f'<footer class="site-footer"><div class="wrap">'
         f'<p class="f-name">{esc(SITE)}</p>'
         f'<p>代表税理士 {esc(o["founder"])}</p><p>{esc(ADDRESS)}</p>'
+        + (f'<p>メール: <a href="mailto:{esc(o["email"])}">{esc(o["email"])}</a></p>' if o.get('email') else '') +
         f'<nav class="fnav" aria-label="フッター">{"".join(nav)}</nav>'
         f'<p class="copy">&copy; {esc(SITE)}</p></div></footer>'
     )
@@ -372,7 +375,7 @@ for f in sorted((ROOT / 'pages').glob('*.md')):
     path = '/' if slug == 'index' else f'/{slug}/'
     body_html = (md(body).replace('{{latest_posts}}', post_list(posts[:3]))
                  .replace('{{address}}', esc(ADDRESS)).replace('{{map_url}}', esc(MAP_URL))
-                 .replace('{{map_embed}}', MAP_EMBED))
+                 .replace('{{map_embed}}', MAP_EMBED).replace('{{email_link}}', EMAIL_LINK))
     jsonld = []
     if path == '/':
         jsonld = [ld_org(), ld_website()]
