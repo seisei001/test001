@@ -119,3 +119,5 @@ details p{ margin:0 0 18px; color:#c3cde0; animation:up .4s ease; }
 .foot{ border-top:1px solid var(--line); padding:34px 0 40px; background:var(--navy-deep); } .foot .wrap{ display:grid; gap:4px; } .foot b{ font:900 1.05rem var(--serif); letter-spacing:.1em; } .foot span,.foot small{ color:var(--muted); font-size:.8rem; }
 .fx-stage{ margin-top:10px; }
 @media(max-width:560px){ .back-link{ font-size:.7rem; } .brand span{ display:none; } .stat span{ font-size:.66rem; } }
+
+.foot .partner{ font-size:.72rem; opacity:.8; }
