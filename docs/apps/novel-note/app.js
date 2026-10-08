@@ -40,7 +40,7 @@
   let base = null;       // 読み込んだままの作品データ(AIが作成したもの)
   let work = null;       // 表示用: base に作者の修正を重ねたもの
   let edits = emptyEdits();
-  const ui = { termQuery: '', termCat: 'all', threadQuery: '', threadStatus: 'all', threadKind: 'all' };
+  const ui = { epQuery: '', epPage: 0, termQuery: '', termCat: 'all', threadQuery: '', threadStatus: 'all', threadKind: 'all' };
 
   // ---------- 保存(IndexedDB。使えない環境ではメモリだけ) ----------
   const idb = (() => {
@@ -651,22 +651,59 @@
     });
   }
 
+  const EP_PAGE = 50;
   function renderEpisodeList() {
+    const eps = work.episodes;
+    const pages = Math.max(1, Math.ceil(eps.length / EP_PAGE));
+    if (ui.epPage >= pages) ui.epPage = pages - 1;
     let html = jumpForm();
-    html += '<ul class="list">';
-    let chapter = null;
-    for (const e of work.episodes) {
-      if (e.chapter !== chapter) {
-        chapter = e.chapter;
-        html += `<li class="chapter-head">${esc(chapter)}</li>`;
-      }
-      html += `<li><a class="item" href="#ep/${e.no}">
-        <div class="item-head"><span class="ep-no">${epLabel(e.no)}</span><span class="item-title">${esc(e.title)}</span></div>
-        <div class="item-sub clamp2">${esc(e.summary)}</div></a></li>`;
-    }
-    html += '</ul>';
+    html += `<input type="search" id="ep-q" placeholder="あらすじ・タイトルを検索" value="${esc(ui.epQuery)}" aria-label="あらすじを検索">
+      <div class="chips" id="ep-pages"></div>
+      <div id="ep-list"></div>`;
     view.innerHTML = html;
     bindJump();
+    const listEl = document.getElementById('ep-list');
+    const pagesEl = document.getElementById('ep-pages');
+    const draw = () => {
+      const q = ui.epQuery.trim();
+      const ws = words(q);
+      const hit = (e) => { const h = norm(`${e.title} ${e.summary}`); return ws.every((w) => h.includes(w)); };
+      let list;
+      if (q) {
+        list = eps.filter(hit);
+        pagesEl.innerHTML = '';
+      } else {
+        list = eps.slice(ui.epPage * EP_PAGE, (ui.epPage + 1) * EP_PAGE);
+        pagesEl.innerHTML = Array.from({ length: pages }, (_, i) => {
+          const from = eps[i * EP_PAGE].no;
+          const to = eps[Math.min(eps.length, (i + 1) * EP_PAGE) - 1].no;
+          return `<button type="button" class="chip ${i === ui.epPage ? 'on' : ''}" data-p="${i}">${from}〜${to}</button>`;
+        }).join('');
+      }
+      let h = q ? `<p class="muted">${list.length}件 見つかりました</p>` : '';
+      h += '<ul class="list">';
+      let chapter = null;
+      for (const e of list) {
+        if (!q && e.chapter !== chapter) {
+          chapter = e.chapter;
+          h += `<li class="chapter-head">${esc(chapter)}</li>`;
+        }
+        h += `<li><a class="item" href="#ep/${e.no}">
+          <div class="item-head"><span class="ep-no">${epLabel(e.no)}</span><span class="item-title">${highlight(e.title, q)}</span></div>
+          <div class="item-sub">${highlight(e.summary, q)}</div></a></li>`;
+      }
+      h += '</ul>';
+      listEl.innerHTML = h;
+    };
+    draw();
+    document.getElementById('ep-q').addEventListener('input', (ev) => { ui.epQuery = ev.target.value; draw(); });
+    pagesEl.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-p]');
+      if (!b) return;
+      ui.epPage = parseInt(b.dataset.p, 10);
+      draw();
+      window.scrollTo(0, 0);
+    });
   }
 
   function renderEpisode(n) {
