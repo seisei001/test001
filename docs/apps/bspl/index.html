@@ -94,6 +94,11 @@ nav.tabs button.on{color:var(--accent);font-weight:700;}
 .note li{margin-bottom:4px;}
 .opline{display:grid;grid-template-columns:1fr 130px;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);}
 .opline input{text-align:right;}
+.rbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rimg{display:block;max-width:100%;max-height:180px;object-fit:contain;margin:10px 0;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;}
+.ritems{font-size:.82rem;margin-top:8px;}
+.ritems .ln{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dashed var(--border);}
+.ritems .ln span:first-child{overflow-wrap:anywhere;}
 @media print{
   body{background:#fff;color:#000;}
   header,nav.tabs,.noprint,.toast,.overlay{display:none !important;}
@@ -121,6 +126,8 @@ nav.tabs button.on{color:var(--accent);font-weight:700;}
 <div class="overlay" id="overlay" hidden><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="application/json,.json" hidden>
+<input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="libIn" accept="image/*" hidden>
 
 <!-- ===== 会計の計算部分(画面に依存しない) ===== -->
 <script id="core">
@@ -301,7 +308,94 @@ function parseYen(s){
   s=String(s==null?'':s).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[^0-9]/g,'');
   return s?parseInt(s,10):0;
 }
-root.BSPL={BASE:BASE,MAX_CUSTOM:MAX_CUSTOM,getAccounts:getAccounts,accountMap:accountMap,selectGroups:selectGroups,emptyStore:emptyStore,uid:uid,
+/* ---- レシート読み取り(AIの返答の検証) ---- */
+var FIXED_ASSETS=['tools','veh','bldg','bldgAcc','mach'];
+function receiptAccounts(store){
+  return getAccounts(store).filter(function(a){return a.group==='exp'||a.id==='purchase'||FIXED_ASSETS.indexOf(a.id)>=0;});
+}
+function buildReceiptPrompt(store){
+  var list=receiptAccounts(store).map(function(a){return a.id+'='+a.name;}).join(' / ');
+  return [
+    'あなたは日本のレシート・領収書の読み取り担当です。画像を読み取り、次の形式のJSONだけを返してください。',
+    '厳守: 読めない項目は推測で補わず null にする。金額は円の整数(カンマ・円記号なし)。',
+    '{',
+    ' "is_receipt": レシートか領収書として読めるなら true、そうでなければ false,',
+    ' "date": "YYYY-MM-DD"(和暦は西暦に直す。年が2桁なら20XX年。読めなければ null),',
+    ' "store": 店名または発行者名(読めなければ null),',
+    ' "total": 税込のお支払い合計の整数(「お預り」「お釣り」「ポイント」は合計ではない。読めなければ null),',
+    ' "items": [{"name": 品名, "amount": 印字された金額の整数(値引きは負の数)}](読み取れる範囲で。なければ空配列),',
+    ' "invoice_number": "T"と13桁の登録番号(なければ null),',
+    ' "account_id": 事業の経費として最も近い勘定科目のidを1つ(迷えば miscExp)。候補: '+list+',',
+    ' "note": 自信のない点や注意点を短く(なければ null)',
+    '}'
+  ].join('\n');
+}
+function toInt(v){
+  if(typeof v==='number'&&isFinite(v))return Math.round(v);
+  if(typeof v==='string'){
+    var s=v.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[,，円¥￥\s]/g,'').replace(/^[−－ー]/,'-');
+    if(/^-?\d+$/.test(s))return parseInt(s,10);
+  }
+  return null;
+}
+function extractJson(text){
+  if(typeof text!=='string')return null;
+  var s=text.replace(/```(?:json)?/gi,'');
+  var a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<=a)return null;
+  try{return JSON.parse(s.slice(a,b+1));}catch(e){return null;}
+}
+function parseReceipt(text,store,nowYear){
+  var raw=extractJson(text);
+  if(!raw||typeof raw!=='object')return {ok:false,msg:'読み取り結果を解釈できませんでした。もう一度試してください'};
+  if(raw.is_receipt===false)return {ok:false,msg:'レシートとして読み取れませんでした。撮り直してください'};
+  var warn=[];var r={date:null,store:null,total:null,items:[],invoice:null,account:null,note:null,warn:warn,itemsSum:0,sumDiff:null};
+  if(validDate(raw.date)){
+    r.date=raw.date;var y=parseInt(raw.date.slice(0,4),10);
+    if(nowYear&&(y>nowYear+1||y<nowYear-6))warn.push('日付の年('+y+')が通常の範囲と違います。写真と見比べてください');
+  }else warn.push('日付が読み取れませんでした(いまの入力欄の日付のままです)');
+  if(typeof raw.store==='string'&&raw.store.trim())r.store=raw.store.trim().slice(0,60);
+  var t=toInt(raw.total);
+  if(t!==null&&t>0)r.total=t;else warn.push('合計金額が読み取れませんでした。手で入力してください');
+  if(Array.isArray(raw.items)){
+    raw.items.slice(0,60).forEach(function(it){
+      if(!it||typeof it!=='object')return;
+      var a=toInt(it.amount);if(a===null)return;
+      r.items.push({name:String(it.name==null?'':it.name).trim().slice(0,40),amount:a});
+    });
+  }
+  r.itemsSum=sum(r.items,function(x){return x.amount;});
+  if(r.total!==null&&r.items.length)r.sumDiff=r.itemsSum-r.total;
+  if(typeof raw.invoice_number==='string'){
+    var inv=raw.invoice_number.replace(/[\s\-ー－]/g,'').toUpperCase();
+    if(/^T\d{13}$/.test(inv))r.invoice=inv;
+  }
+  var ok=receiptAccounts(store).some(function(a){return a.id===raw.account_id;});
+  if(ok)r.account=raw.account_id;else warn.push('勘定科目を判断できませんでした。選んでください');
+  if(typeof raw.note==='string'&&raw.note.trim())r.note=raw.note.trim().slice(0,120);
+  return {ok:true,receipt:r};
+}
+function extractGeminiText(resp){
+  if(!resp||typeof resp!=='object')return {ok:false,msg:'応答が空でした'};
+  var c=resp.candidates&&resp.candidates[0];
+  if(!c||!c.content||!Array.isArray(c.content.parts)){
+    var br=resp.promptFeedback&&resp.promptFeedback.blockReason;
+    return {ok:false,msg:br?'安全フィルタで止められました('+br+')':'読み取り結果が得られませんでした'+(c&&c.finishReason?'('+c.finishReason+')':'')};
+  }
+  var t=c.content.parts.filter(function(p){return p&&typeof p.text==='string'&&!p.thought;}).map(function(p){return p.text;}).join('');
+  if(!t.trim())return {ok:false,msg:'読み取り結果が空でした'};
+  return {ok:true,text:t};
+}
+function describeApiError(status,message){
+  var m=String(message||'').slice(0,120);
+  if(status===400)return /api key/i.test(m)?'APIキーが正しくありません。設定を確認してください':'リクエストが受け付けられませんでした'+(m?'('+m+')':'');
+  if(status===401||status===403)return 'APIキーが無効か、権限がありません。設定を確認してください';
+  if(status===404)return 'モデル名が見つかりません。設定のモデル名を確認してください';
+  if(status===429)return '無料枠の上限に達しました。しばらく待つか、日を改めて試してください';
+  if(status>=500)return 'Google側の一時的な障害です。少し待ってもう一度試してください';
+  return 'エラーが発生しました(コード '+status+')';
+}
+root.BSPL={BASE:BASE,MAX_CUSTOM:MAX_CUSTOM,buildReceiptPrompt:buildReceiptPrompt,parseReceipt:parseReceipt,extractGeminiText:extractGeminiText,describeApiError:describeApiError,receiptAccounts:receiptAccounts,toInt:toInt,getAccounts:getAccounts,accountMap:accountMap,selectGroups:selectGroups,emptyStore:emptyStore,uid:uid,
   validDate:validDate,yearOf:yearOf,normalizeStore:normalizeStore,yearCfg:yearCfg,entriesOfYear:entriesOfYear,computeLedger:computeLedger,
   computePL:computePL,computeBS:computeBS,carryOver:carryOver,hasData:hasData,validateEntry:validateEntry,buildSimple:buildSimple,fmt:fmt,parseYen:parseYen};
 })(typeof window!=='undefined'?window:this);
@@ -338,6 +432,9 @@ var S={tab:'input',year:defaultYear(),mode:'simple',stmt:'pl',month:'all',q:'',e
 
 var $=function(id){return document.getElementById(id);};
 var fmt=B.fmt;
+/* APIキー等は仕訳データとは別に、この端末のブラウザにだけ保存する(バックアップには含めない) */
+function gget(k){try{return localStorage.getItem('bspl.g.'+k)||'';}catch(e){return '';}}
+function gset(k,v){try{if(v)localStorage.setItem('bspl.g.'+k,v);else localStorage.removeItem('bspl.g.'+k);}catch(e){}}
 function fz(n){return n===0?'<span class="z">—</span>':(n<0?'<span class="neg">'+fmt(n)+'</span>':fmt(n));}
 function nameOf(id){var m=B.accountMap(store);return m[id]?m[id].name:id;}
 function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show');},2200);}
@@ -445,14 +542,38 @@ function recentList(){
 }
 function viewInput(){
   return '<div class="seg"><button data-act="mode" data-v="simple" class="'+(S.mode==='simple'?'on':'')+'">かんたん入力</button><button data-act="mode" data-v="journal" class="'+(S.mode==='journal'?'on':'')+'">仕訳入力</button></div>'+
-    (S.mode==='simple'?simpleForm():journalForm())+recentList();
+    (S.mode==='simple'?(S.simple.kind==='out'?rcptPanel():'')+simpleForm():journalForm())+recentList();
+}
+function rcptPanel(){
+  var R=S.rcpt;var h='<div class="panel"><h2>📷 レシートから入力</h2>';
+  if(!R){
+    return h+'<div class="rbtns"><button data-act="pickCam">撮影する</button><button class="sec" data-act="pickLib">写真から選ぶ</button></div>'+
+      '<div class="hint">'+(gget('key')?'AIが読み取った内容を下の入力欄に入れます。写真は保存しません。':'使うには、「設定」でAPIキーの登録が必要です。')+'</div></div>';
+  }
+  h+='<img class="rimg" src="'+R.img+'" alt="レシートの写真" data-act="rcptZoom">';
+  if(R.state==='busy'||R.state==='idle')return h+'<div class="hint">読み取り中です…(数秒かかります)</div></div>';
+  if(R.state==='error'){
+    return h+'<div class="err">'+esc(R.msg)+'</div><div class="actions"><button class="sec" data-act="rcptDrop">破棄</button><button data-act="rcptRetry">'+(gget('key')?'もう一度読み取る':'設定を開く')+'</button></div></div>';
+  }
+  var r=R.r;
+  h+='<div class="hint" style="margin:0">下の入力欄に反映しました。<b>写真と見比べて確認</b>してから保存してください。</div>';
+  if(r.items.length){
+    h+='<div class="ritems">'+r.items.slice(0,10).map(function(x){return '<div class="ln"><span>'+esc(x.name||'(品名なし)')+'</span><span>'+fmt(x.amount)+'</span></div>';}).join('')+
+      (r.items.length>10?'<div class="hint">ほか'+(r.items.length-10)+'行</div>':'')+'</div>';
+  }
+  if(r.sumDiff!==null){
+    h+='<div class="hint">内訳の合計 '+fmt(r.itemsSum)+'円 / 合計 '+fmt(r.total)+'円 '+(r.sumDiff===0?'<span class="ok">(一致)</span>':'(差 '+fmt(r.sumDiff)+'円。外税表示や値引きの場合は正常なこともあります)')+'</div>';
+  }
+  if(r.warn.length)h+='<div class="warn" style="margin-top:8px">'+r.warn.map(esc).join('<br>')+'</div>';
+  if(r.note)h+='<div class="hint">AIのメモ: '+esc(r.note)+'</div>';
+  return h+'<div class="actions"><button class="sec" data-act="rcptDrop">破棄</button></div></div>';
 }
 
 /* ---------- 仕訳帳タブ ---------- */
 function entryCard(e){
   var total=0;e.lines.forEach(function(l){if(l.side==='D')total+=l.amount;});
   var col=function(side){return e.lines.filter(function(l){return l.side===side;}).map(function(l){return '<div class="ln"><span>'+esc(nameOf(l.acct))+'</span><span>'+fmt(l.amount)+'</span></div>';}).join('');};
-  return '<div class="entry"><div class="eh"><span class="d">'+e.date.slice(5).replace('-','/')+'</span><span class="ds">'+esc(e.desc||'(摘要なし)')+'</span><span class="am">'+fmt(total)+'</span></div>'+
+  return '<div class="entry"><div class="eh"><span class="d">'+e.date.slice(5).replace('-','/')+'</span><span class="ds">'+(e.src==='receipt'?'📷 ':'')+esc(e.desc||'(摘要なし)')+'</span><span class="am">'+fmt(total)+'</span></div>'+
     '<div class="cols"><div><div class="ct">借方</div>'+col('D')+'</div><div><div class="ct">貸方</div>'+col('C')+'</div></div>'+
     '<div class="ea"><button class="sec sm" data-act="edit" data-id="'+esc(e.id)+'">編集</button><button class="dng sm" data-act="del" data-id="'+esc(e.id)+'">削除</button></div></div>';
 }
@@ -577,6 +698,12 @@ function viewSet(){
     '<label>期末棚卸高(売上原価の計算に使います)</label><input type="text" inputmode="numeric" data-f="cfg.endInv" value="'+(cfg.endInv?cfg.endInv:'')+'" placeholder="0">'+
     '<label>青色申告特別控除額</label><select data-f="cfg.deduction">'+ded.map(function(v){return '<option value="'+v+'"'+(v===cfg.deduction?' selected':'')+'>'+(v?fmt(v)+'円':'控除しない')+'</option>';}).join('')+'</select>'+
     '<div class="hint">控除額は、控除前の所得金額を超えない範囲で自動的に調整します。どの額が使えるかは要件(帳簿・電子申告など)で決まります。</div></div>'+
+    '<div class="panel"><h2>レシート読み取り(AI)</h2>'+
+    '<div class="hint" style="margin:0 0 4px">GoogleのGemini API(無料枠)を使います。キーは Google AI Studio(aistudio.google.com/apikey)で作成します。作成後に「制限を追加」から「Gemini API のみに制限」を設定してください(未設定だと拒否される場合があります)。</div>'+
+    '<label>APIキー</label><input type="password" autocomplete="off" autocapitalize="off" spellcheck="false" data-f="g.key" value="'+esc(gget('key'))+'" placeholder="AIza…">'+
+    '<label>モデル名</label><input type="text" autocapitalize="off" spellcheck="false" data-f="g.model" value="'+esc(gget('model'))+'" placeholder="'+DEFAULT_MODEL+'">'+
+    '<div class="hint">キーはこの端末のブラウザにだけ保存し、バックアップには含めません。パスワードと同様に他人へ渡さないでください。写真は読み取りのためGoogleへ送信され、無料枠では製品改善に使われる場合があります。顧客の書類や、個人情報が写るものには使わないでください。</div>'+
+    '<div style="margin-top:8px"><button class="dng sm" data-act="clearKey">キーを消去</button></div></div>'+
     '<div class="panel"><h2>期首残高(1月1日)</h2><div class="hint" style="margin:0 0 8px">前年末の残高を入れます。元入金は自動計算です(資産 − 負債)。</div>'+
     '<div class="jtot" style="margin:0 0 6px"><span>元入金(自動)</span><span id="capLive">'+capitalText()+'</span></div>'+
     '<button class="sec sm" data-act="carry"'+(prevHas?'':' disabled')+'>前年の期末から引き継ぐ</button>'+
@@ -591,7 +718,7 @@ function viewSet(){
     '<li>消費税の区分は扱いません(税込経理)。</li>'+
     '<li>減価償却は直接法(資産を直接減らす)です。</li>'+
     '<li>引当金は貸倒引当金のみです。</li>'+
-    '<li>レシートの撮影・読み取りは次の段階で追加します。</li></ul></div>';
+    '<li>レシートの読み取りはAIが行います。読み違いがあるため、必ず写真と見比べて確認してください。</li></ul></div>';
 }
 
 /* ---------- 全体の描画 ---------- */
@@ -626,6 +753,7 @@ function setField(path,val){
     if(p[1]==='month')S.month=val;else S.q=val;
     $('jList').innerHTML=journalListHtml();return;
   }
+  if(p[0]==='g'){gset(p[1],String(val).trim());return;}
   if(p[0]==='cfg'){
     var c=store.years[S.year]||(store.years[S.year]={endInv:0,deduction:650000});
     if(p[1]==='endInv')c.endInv=B.parseYen(val);else c.deduction=parseInt(val,10)||0;
@@ -659,17 +787,104 @@ function download(name,text,type){
   setTimeout(function(){URL.revokeObjectURL(url);},1000);
 }
 
+/* ---------- レシート読み取り(Gemini API) ---------- */
+var GEMINI_BASE='https://generativelanguage.googleapis.com/v1beta/models/';
+var DEFAULT_MODEL='gemini-3.5-flash-lite';
+function mkErr(msg){var e=new Error(msg);e.userMsg=msg;return e;}
+function shrink(file){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file);var im=new Image();
+    im.onload=function(){
+      var max=2000,w=im.naturalWidth||im.width,h=im.naturalHeight||im.height,s=Math.min(1,max/Math.max(w,h));
+      var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',0.85));
+    };
+    im.onerror=function(){URL.revokeObjectURL(url);reject(new Error('img'));};
+    im.src=url;
+  });
+}
+function callGemini(key,model,dataUrl){
+  var b64=dataUrl.slice(dataUrl.indexOf(',')+1);
+  var name=String(model).replace(/^models\//,'');
+  var body={contents:[{role:'user',parts:[{text:B.buildReceiptPrompt(store)},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],
+    generationConfig:{temperature:0,response_mime_type:'application/json'}};
+  var ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+  var timer=ctrl?setTimeout(function(){ctrl.abort();},60000):null;
+  var done=function(){if(timer)clearTimeout(timer);};
+  return fetch(GEMINI_BASE+encodeURIComponent(name)+':generateContent',{method:'POST',
+    headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal:ctrl?ctrl.signal:undefined})
+  .then(function(res){
+    return res.text().then(function(t){
+      if(!res.ok){var m='';try{m=JSON.parse(t).error.message||'';}catch(e){}throw mkErr(B.describeApiError(res.status,m));}
+      var j;try{j=JSON.parse(t);}catch(e){throw mkErr('応答を解釈できませんでした');}
+      var x=B.extractGeminiText(j);if(!x.ok)throw mkErr(x.msg);
+      return x.text;
+    });
+  },function(e){
+    throw mkErr(e&&e.name==='AbortError'?'時間切れになりました。もう一度試してください':'通信に失敗しました。ネットワークを確認してください(ブラウザの制限で呼び出せない場合もあります)');
+  }).then(function(v){done();return v;},function(e){done();throw e;});
+}
+function applyReceipt(r){
+  var s=S.simple;s.kind='out';
+  if(r.date)s.date=r.date;
+  s.desc=((r.store||'')+(r.invoice?' '+r.invoice:'')).trim();
+  s.amount=r.total?String(r.total):'';
+  if(r.account)s.acct=r.account;
+  s.ratio='100';
+  S.rcpt.state='done';S.rcpt.r=r;S.mode='simple';
+  render();
+}
+function runRead(){
+  var R=S.rcpt;if(!R)return;
+  var key=gget('key');
+  if(!key){R.state='error';R.msg='APIキーが未設定です。「設定」で登録してください。';render();return;}
+  if(gget('consent')!=='1'){
+    if(!confirm('レシートの写真を、読み取りのためGoogleのサーバーへ送信します。\n\n無料枠では、送った内容がGoogleの製品改善に使われる場合があります。顧客の書類や、個人情報が写るものには使わないでください。\n\n送信しますか?')){
+      R.state='error';R.msg='送信を取りやめました。';render();return;
+    }
+    gset('consent','1');
+  }
+  R.state='busy';render();
+  var id=R.id;
+  callGemini(key,gget('model')||DEFAULT_MODEL,R.img).then(function(text){
+    if(!S.rcpt||S.rcpt.id!==id)return;
+    var p=B.parseReceipt(text,store,new Date().getFullYear());
+    if(!p.ok){S.rcpt.state='error';S.rcpt.msg=p.msg;render();return;}
+    applyReceipt(p.receipt);
+  }).catch(function(err){
+    if(!S.rcpt||S.rcpt.id!==id)return;
+    S.rcpt.state='error';S.rcpt.msg=(err&&err.userMsg)||'読み取りに失敗しました';render();
+  });
+}
+function handleFile(file){
+  if(!file)return;
+  shrink(file).then(function(img){S.rcpt={id:B.uid(),img:img,state:'idle'};S.tab='input';S.mode='simple';S.simple.kind='out';runRead();},
+    function(){toast('画像を開けませんでした');});
+}
+
 var ACT={
+  pickCam:function(){$('camIn').click();},
+  pickLib:function(){$('libIn').click();},
+  rcptRetry:function(){if(!gget('key')){S.tab='set';render();window.scrollTo(0,0);return;}runRead();},
+  rcptDrop:function(){S.rcpt=null;render();},
+  rcptZoom:function(){
+    if(!S.rcpt)return;
+    $('sheet').innerHTML='<img src="'+S.rcpt.img+'" alt="レシートの写真" style="width:100%;border-radius:8px"><div class="actions"><button data-act="closeSheet">閉じる</button></div>';
+    $('overlay').hidden=false;
+  },
+  clearKey:function(){gset('key','');toast('APIキーを消去しました');render();},
   tab:function(el){S.tab=el.dataset.v;render();window.scrollTo(0,0);},
   mode:function(el){S.mode=el.dataset.v;render();},
-  kind:function(el){var s=S.simple;s.kind=el.dataset.v;s.acct=s.kind==='out'?'supply':'sales';s.pay=s.kind==='out'?'cash':'dep';render();},
+  kind:function(el){var s=S.simple;S.rcpt=null;s.kind=el.dataset.v;s.acct=s.kind==='out'?'supply':'sales';s.pay=s.kind==='out'?'cash':'dep';render();},
   ratio:function(el){S.simple.ratio=el.dataset.v;render();},
   saveSimple:function(){
     var p=simplePreview();if(p.msg){toast(p.msg);return;}
     var s=S.simple;
-    var entry={id:B.uid(),ts:Date.now(),date:s.date,desc:s.desc.trim(),src:'manual',lines:p.lines};
+    var fromReceipt=!!(S.rcpt&&S.rcpt.state==='done'&&s.kind==='out');
+    var entry={id:B.uid(),ts:Date.now(),date:s.date,desc:s.desc.trim(),src:fromReceipt?'receipt':'manual',lines:p.lines};
     var prevEdit=S.editId;S.editId=null;
-    if(saveEntry(entry)){s.amount='';s.desc='';toast('保存しました');render();}else S.editId=prevEdit;
+    if(saveEntry(entry)){s.amount='';s.desc='';S.rcpt=null;toast('保存しました');render();}else S.editId=prevEdit;
   },
   side:function(el){S.draft.lines[+el.dataset.i].side=el.dataset.v;render();},
   addrow:function(){S.draft.lines.push(blankLine('D'));render();},
@@ -744,6 +959,9 @@ document.addEventListener('click',function(e){
   var el=e.target.closest&&e.target.closest('[data-act]');
   if(el&&ACT[el.dataset.act]){ACT[el.dataset.act](el);return;}
   if(e.target===$('overlay'))$('overlay').hidden=true;
+});
+['camIn','libIn'].forEach(function(id){
+  $(id).addEventListener('change',function(e){var f=e.target.files&&e.target.files[0];e.target.value='';handleFile(f);});
 });
 $('fileIn').addEventListener('change',function(e){
   var f=e.target.files&&e.target.files[0];if(!f)return;
