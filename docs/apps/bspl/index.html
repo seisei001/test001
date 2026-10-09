@@ -175,7 +175,65 @@ function selectGroups(store,pred){
   var accts=getAccounts(store).filter(function(a){return !a.sys&&(!pred||pred(a));});
   return defs.map(function(d){return {label:d[0],accts:accts.filter(function(a){return d[1].indexOf(a.group)>=0;})};}).filter(function(g){return g.accts.length;});
 }
-function emptyStore(){return {v:1,entries:[],openings:{},years:{},custom:[],meta:{lastBackup:null}};}
+var DEFAULT_USER={id:'000001',name:'坂口誠税理士事務所',address:'神戸市中央区小野柄通3-2-22-7F'};
+function utf8Bytes(str){
+  var out=[];
+  if(typeof TextEncoder!=='undefined'){return Array.prototype.slice.call(new TextEncoder().encode(str));}
+  var e=unescape(encodeURIComponent(str));
+  for(var i=0;i<e.length;i++)out.push(e.charCodeAt(i));
+  return out;
+}
+var SHA_K=(function(){
+  var k=[],n=2,c=0;
+  while(c<64){var p=true;for(var i=2;i*i<=n;i++){if(n%i===0){p=false;break;}}
+    if(p){k.push(Math.floor((Math.pow(n,1/3)%1)*4294967296)>>>0);c++;}n++;}
+  return k;
+})();
+function sha256Hex(str){
+  var b=utf8Bytes(String(str));var l=b.length;
+  b.push(0x80);while(b.length%64!==56)b.push(0);
+  var hi=Math.floor(l/536870912),lo=(l*8)>>>0;
+  b.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+  var H=[],n=2,c=0;
+  while(c<8){var p=true;for(var i=2;i*i<=n;i++){if(n%i===0){p=false;break;}}
+    if(p){H.push(Math.floor((Math.sqrt(n)%1)*4294967296)>>>0);c++;}n++;}
+  var rot=function(x,r){return (x>>>r)|(x<<(32-r));};
+  for(var o=0;o<b.length;o+=64){
+    var w=[];
+    for(var t=0;t<16;t++)w[t]=((b[o+4*t]<<24)|(b[o+4*t+1]<<16)|(b[o+4*t+2]<<8)|b[o+4*t+3])>>>0;
+    for(t=16;t<64;t++){
+      var s0=rot(w[t-15],7)^rot(w[t-15],18)^(w[t-15]>>>3);
+      var s1=rot(w[t-2],17)^rot(w[t-2],19)^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)>>>0;
+    }
+    var a=H[0],bb=H[1],cc=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(t=0;t<64;t++){
+      var S1=rot(e,6)^rot(e,11)^rot(e,25);
+      var ch=(e&f)^(~e&g);
+      var t1=(h+S1+ch+SHA_K[t]+w[t])>>>0;
+      var S0=rot(a,2)^rot(a,13)^rot(a,22);
+      var mj=(a&bb)^(a&cc)^(bb&cc);
+      var t2=(S0+mj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=cc;cc=bb;bb=a;a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+bb)>>>0;H[2]=(H[2]+cc)>>>0;H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  return H.map(function(x){return ('00000000'+x.toString(16)).slice(-8);}).join('');
+}
+function userDigest(u){return sha256Hex(JSON.stringify(['bspl-user-v1',u.id,u.name,u.address,u.registeredAt]));}
+function makeUser(id,name,address,registeredAt){
+  var u={id:String(id),name:String(name),address:String(address),registeredAt:registeredAt||new Date().toISOString()};
+  u.hash=userDigest(u);return u;
+}
+function verifyUser(u){return !!(u&&typeof u.hash==='string'&&u.hash===userDigest(u));}
+function ensureUsers(s){
+  if(!Array.isArray(s.users))s.users=[];
+  if(!s.users.some(function(u){return u.id===DEFAULT_USER.id;}))s.users.unshift(makeUser(DEFAULT_USER.id,DEFAULT_USER.name,DEFAULT_USER.address));
+  if(!s.currentUser||!s.users.some(function(u){return u.id===s.currentUser;}))s.currentUser=s.users[0].id;
+  return s;
+}
+function emptyStore(){return ensureUsers({v:1,entries:[],openings:{},years:{},custom:[],meta:{lastBackup:null},users:[],currentUser:null});}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function validDate(s){
   if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
@@ -188,7 +246,7 @@ function normalizeStore(o){
   if(!o||typeof o!=='object')return s;
   if(Array.isArray(o.entries)){
     s.entries=o.entries.filter(function(e){return e&&Array.isArray(e.lines)&&validDate(e.date);}).map(function(e){
-      return {id:String(e.id||uid()),ts:Number(e.ts)||0,date:e.date,desc:String(e.desc||'').slice(0,200),src:e.src||'manual',
+      return {id:String(e.id||uid()),uid:String(e.uid||DEFAULT_USER.id),ts:Number(e.ts)||0,date:e.date,desc:String(e.desc||'').slice(0,200),src:e.src||'manual',
         lines:e.lines.map(function(l){return {acct:String(l.acct),side:l.side==='C'?'C':'D',amount:Math.round(Number(l.amount))||0};})};
     });
   }
@@ -209,7 +267,14 @@ function normalizeStore(o){
     s.custom=o.custom.filter(function(c){return c&&c.id&&c.name;}).slice(0,MAX_CUSTOM).map(function(c){return {id:String(c.id),name:String(c.name).slice(0,20)};});
   }
   if(o.meta&&o.meta.lastBackup)s.meta.lastBackup=o.meta.lastBackup;
-  return s;
+  if(Array.isArray(o.users)){
+    var seen={};
+    var us=o.users.filter(function(u){return u&&u.id&&u.name&&!seen[u.id]&&(seen[u.id]=1);}).slice(0,50).map(function(u){
+      return {id:String(u.id),name:String(u.name).slice(0,100),address:String(u.address||'').slice(0,200),registeredAt:String(u.registeredAt||''),hash:String(u.hash||'')};
+    });
+    s.users=us;s.currentUser=o.currentUser?String(o.currentUser):null;
+  }else{s.users=[];s.currentUser=null;}
+  return ensureUsers(s);
 }
 function yearCfg(store,year){
   var c=(store.years&&store.years[year])||{};
@@ -395,7 +460,7 @@ function describeApiError(status,message){
   if(status>=500)return 'Google側の一時的な障害です。少し待ってもう一度試してください';
   return 'エラーが発生しました(コード '+status+')';
 }
-root.BSPL={BASE:BASE,MAX_CUSTOM:MAX_CUSTOM,buildReceiptPrompt:buildReceiptPrompt,parseReceipt:parseReceipt,extractGeminiText:extractGeminiText,describeApiError:describeApiError,receiptAccounts:receiptAccounts,toInt:toInt,getAccounts:getAccounts,accountMap:accountMap,selectGroups:selectGroups,emptyStore:emptyStore,uid:uid,
+root.BSPL={BASE:BASE,MAX_CUSTOM:MAX_CUSTOM,buildReceiptPrompt:buildReceiptPrompt,parseReceipt:parseReceipt,extractGeminiText:extractGeminiText,describeApiError:describeApiError,receiptAccounts:receiptAccounts,toInt:toInt,getAccounts:getAccounts,accountMap:accountMap,selectGroups:selectGroups,emptyStore:emptyStore,uid:uid,DEFAULT_USER:DEFAULT_USER,sha256Hex:sha256Hex,makeUser:makeUser,verifyUser:verifyUser,userDigest:userDigest,ensureUsers:ensureUsers,
   validDate:validDate,yearOf:yearOf,normalizeStore:normalizeStore,yearCfg:yearCfg,entriesOfYear:entriesOfYear,computeLedger:computeLedger,
   computePL:computePL,computeBS:computeBS,carryOver:carryOver,hasData:hasData,validateEntry:validateEntry,buildSimple:buildSimple,fmt:fmt,parseYen:parseYen};
 })(typeof window!=='undefined'?window:this);
@@ -407,7 +472,7 @@ root.BSPL={BASE:BASE,MAX_CUSTOM:MAX_CUSTOM,buildReceiptPrompt:buildReceiptPrompt
 'use strict';
 var B=window.BSPL;
 var KEY='bspl.v1';
-var store=load();
+var store=load();save();
 function load(){
   try{var raw=localStorage.getItem(KEY);if(raw)return B.normalizeStore(JSON.parse(raw));}catch(e){}
   return B.emptyStore();
@@ -686,6 +751,20 @@ function viewStmt(){
 function capitalText(){
   var L=B.computeLedger(store,S.year);return fmt(L.capital.open);
 }
+function userPanel(){
+  var u=null;store.users.forEach(function(x){if(x.id===store.currentUser)u=x;});
+  if(!u)return '';
+  var ok=B.verifyUser(u);
+  return '<div class="panel"><h2>利用者情報</h2>'+
+    '<div class="opline"><span>利用者ID</span><b>'+esc(u.id)+'</b></div>'+
+    '<div class="opline"><span>名称</span><b>'+esc(u.name)+'</b></div>'+
+    '<div class="opline"><span>住所</span><b>'+esc(u.address)+'</b></div>'+
+    '<div class="opline"><span>登録日時</span><span>'+esc(u.registeredAt.slice(0,19).replace('T',' '))+' (UTC)</span></div>'+
+    '<div class="opline"><span>検証コード</span><code style="font-size:.7rem;word-break:break-all">'+esc(u.hash.slice(0,16))+'…</code></div>'+
+    '<div id="userChk" class="hint" style="margin:6px 0">'+(ok?'':'⚠ 登録情報が変更されています。')+'</div>'+
+    '<button class="sec sm" data-act="verifyUser">登録情報を検証する</button>'+
+    '<div class="hint">検証コードは、登録情報から計算した指紋(SHA-256)です。後から内容が書き換わっていないかを確かめるためのもので、端末内で完結するため、悪意ある改ざんを完全に防ぐものではありません。</div></div>';
+}
 function viewSet(){
   var cfg=B.yearCfg(store,S.year);var op=store.openings[S.year]||{};var accts=B.getAccounts(store);
   var line=function(a){return '<div class="opline"><span>'+esc(a.id==='inv'?'棚卸資産(期首棚卸高)':a.name)+'</span><input type="text" inputmode="numeric" data-f="op.'+a.id+'" value="'+(op[a.id]?esc(String(op[a.id])):'')+'" placeholder="0"></div>';};
@@ -694,7 +773,7 @@ function viewSet(){
   var ded=[650000,550000,100000,0];
   var prevHas=B.hasData(store,String(parseInt(S.year,10)-1));
   var custom=store.custom.map(function(c){return '<div class="opline"><span>'+esc(c.name)+'</span><button class="dng sm" data-act="delExp" data-id="'+esc(c.id)+'">削除</button></div>';}).join('');
-  return '<div class="panel"><h2>'+S.year+'年分の設定</h2>'+
+  return userPanel()+'<div class="panel"><h2>'+S.year+'年分の設定</h2>'+
     '<label>期末棚卸高(売上原価の計算に使います)</label><input type="text" inputmode="numeric" data-f="cfg.endInv" value="'+(cfg.endInv?cfg.endInv:'')+'" placeholder="0">'+
     '<label>青色申告特別控除額</label><select data-f="cfg.deduction">'+ded.map(function(v){return '<option value="'+v+'"'+(v===cfg.deduction?' selected':'')+'>'+(v?fmt(v)+'円':'控除しない')+'</option>';}).join('')+'</select>'+
     '<div class="hint">控除額は、控除前の所得金額を超えない範囲で自動的に調整します。どの額が使えるかは要件(帳簿・電子申告など)で決まります。</div></div>'+
@@ -773,9 +852,10 @@ $('yearSel').addEventListener('change',function(e){S.year=e.target.value;render(
 function saveEntry(entry){
   var v=B.validateEntry(entry,store);
   if(!v.ok){toast(v.msg);return false;}
+  entry.uid=store.currentUser;
   if(S.editId){
     var i=store.entries.findIndex(function(x){return x.id===S.editId;});
-    if(i>=0){entry.id=store.entries[i].id;entry.ts=store.entries[i].ts;store.entries[i]=entry;}
+    if(i>=0){entry.id=store.entries[i].id;entry.ts=store.entries[i].ts;entry.uid=store.entries[i].uid||store.currentUser;store.entries[i]=entry;}
     else store.entries.push(entry);
   }else store.entries.push(entry);
   S.year=B.yearOf(entry.date);
@@ -949,10 +1029,15 @@ var ACT={
     });
     download('shiwakecho-'+S.year+'.csv','﻿'+rows.join('\r\n'),'text/csv;charset=utf-8');
   },
+  verifyUser:function(){
+    var bad=store.users.filter(function(u){return !B.verifyUser(u);});
+    var el=$('userChk');var msg=bad.length?'⚠ 不一致: '+bad.map(function(u){return u.id;}).join(',')+'(登録情報が登録時と異なります)':'✓ 登録情報は登録時から変更されていません('+store.users.length+'件を確認)';
+    if(el)el.textContent=msg;toast(bad.length?'不一致があります':'検証OK');
+  },
   wipe:function(){
     if(!confirm('すべてのデータを削除します。元に戻せません。よろしいですか?'))return;
     if(!confirm('本当に削除しますか?(バックアップは取りましたか?)'))return;
-    store=B.emptyStore();save();S.editId=null;toast('削除しました');render();
+    var keep=store.users,cur=store.currentUser;store=B.emptyStore();store.users=keep;store.currentUser=cur;save();S.editId=null;toast('削除しました');render();
   }
 };
 document.addEventListener('click',function(e){
