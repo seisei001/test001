@@ -39,6 +39,12 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | sogo-partners | 🏢 総合パートナーズ | apps/sogo-partners/ | 統合サイト(ハッシュ遷移のSPA)。`data/sites.json`(①上原・②日本綜合社労士法人・③社福サポートの本文を取り込み)、`data/people_blocks.json`、`data/shindan/`(お悩み診断6種)。`util.js`(人物・拠点)、`scenes.js`(スクロール演出)、`fx.js/fx.css`(アニメ部品)、`mode.js`(スマホ/パソコン切り替え。bodyに `mode-pc`/`mode-phone` を付与。クラス名 `.pc` は専門家カード用なので使わない)、`consult.js`(診断)、`sakaguchi.js`(坂口誠ページ)。坂下藤男ページは名刺の内容。サイト最上部に「(工事中)」表示あり。**更新を公開するたびに `index.html` の `?v=`・`APP_VER` と `data/version.json` の値をそろえて変えること**(ブラウザが古い .js/.css を使い続けるのを防ぐ。画面最下部に「表示中の版」が出る) |
 | sakaguchi-office | ⚖️ 坂口誠税理士事務所 | apps/sakaguchi-office/ | 坂口誠個人のサイト(統合サイトは没。顔出しなし・他の専門家は出さず、上原佑介はフッターに「パートナー」と小さく1行のみ)。**総合パートナーズ版の演出をそのまま流用**(`opening.js`=四角→円筒→球→GOAL→円筒、`scenes.js`=重なる面/横スクロール/球体/窓/扉、`fx.js/fx.css`、`mode.js`)。総合版と同じハッシュルーター+ワイプ遷移(`#/`=演出のトップ、`#/strength` `#/consult` `#/faq` `#/contact`)。`app.js`=ページ本体、`sakaguchi.js`=比較タブ・FAQ・リスク診断データ(RISK)、`consult.js`=診断UI(単独モード)。**演出部品は勝手に作り直さず、sogo-partners側と同期して使う**。連絡先・料金は準備中。更新時は `index.html` の `?v=`・`APP_VER` と `data/version.json` をそろえる |
 | key-journal | ⌨️ キー仕訳(試作) | apps/key-journal/ | キーボード特化の仕訳入力(単一ファイル)。F2=仕訳日記帳(1行・金額は反対側へ自動入力)、F3=振替伝票(複数行・借貸合計と差引表示・空の金額欄で「+」=差額入力)。科目はコード/ローマ字/ひらがな/名称で検索(`ACCOUNTS` 配列、読み付き)。保存は localStorage(`journal`)、CSV出力あり。弥生の画面・名称は模倣せず独自デザイン |
+| raglog | 🧠 育てる質問箱 | apps/raglog/ | 会話やWebページを取り込み、質問のたびに関連情報を探してAIに渡す学習型メモ |
+| bspl | 📒 個人事業 決算書(試作) | apps/bspl/ | レシート撮影→AI(Gemini、自分のAPIキー)で仕訳下書き→青色申告決算書の様式でPL/BSを出力。データは端末内のみ |
+| shindan | 🩺 お悩み別簡易診断(試作) | apps/shindan/ | お悩みを選ぶと6種の簡易診断に分かれる試作(内容は仮置き) |
+| scroll-demo〜4 | 🎬🪐🌊⚡ スクロール演出見本1〜4 | apps/scroll-demo{,2,3,4}/ | スクロール連動演出の試作。本番サイトへ使う前の見本 |
+| sakaguchi-site | 📰 坂口誠税理士事務所(SEO版ひな形) | apps/sakaguchi-site/ | ページごと独立URL・ブログ付きの静的サイト試作。内部リンクは意図的に `/test001/apps/...` の絶対パス(検索除外中)。ソースは `site-src/sakaguchi` |
+| sakaguchi-preview | 📝 坂口誠税理士事務所(下書き確認用) | apps/sakaguchi-preview/blog/ | 公開前ブログ記事の確認用非公開ページ。同じく絶対パス前提 |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 
