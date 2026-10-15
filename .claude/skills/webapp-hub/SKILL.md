@@ -38,7 +38,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | motion-lab | 🎬 動きの見本 | apps/motion-lab/ | 自作アニメ4種(ゴール達成の矢と的、回る3Dキューブ、ファイルスキャン、成功チェック+紙吹雪)。外部素材・ライブラリなしの単一ファイルで、権利の問題なし |
 | sogo-partners | 🏢 総合パートナーズ | apps/sogo-partners/ | 統合サイト(ハッシュ遷移のSPA)。`data/sites.json`(①上原・②日本綜合社労士法人・③社福サポートの本文を取り込み)、`data/people_blocks.json`、`data/shindan/`(お悩み診断6種)。`util.js`(人物・拠点)、`scenes.js`(スクロール演出)、`fx.js/fx.css`(アニメ部品)、`mode.js`(スマホ/パソコン切り替え。bodyに `mode-pc`/`mode-phone` を付与。クラス名 `.pc` は専門家カード用なので使わない)、`consult.js`(診断)、`sakaguchi.js`(坂口誠ページ)。坂下藤男ページは名刺の内容。サイト最上部に「(工事中)」表示あり。**更新を公開するたびに `index.html` の `?v=`・`APP_VER` と `data/version.json` の値をそろえて変えること**(ブラウザが古い .js/.css を使い続けるのを防ぐ。画面最下部に「表示中の版」が出る) |
 | sakaguchi-office | ⚖️ 坂口誠税理士事務所 | apps/sakaguchi-office/ | 坂口誠個人のサイト(統合サイトは没。顔出しなし・他の専門家は出さず、上原佑介はフッターに「パートナー」と小さく1行のみ)。**総合パートナーズ版の演出をそのまま流用**(`opening.js`=四角→円筒→球→GOAL→円筒、`scenes.js`=重なる面/横スクロール/球体/窓/扉、`fx.js/fx.css`、`mode.js`)。総合版と同じハッシュルーター+ワイプ遷移(`#/`=演出のトップ、`#/strength` `#/consult` `#/faq` `#/contact`)。`app.js`=ページ本体、`sakaguchi.js`=比較タブ・FAQ・リスク診断データ(RISK)、`consult.js`=診断UI(単独モード)。**演出部品は勝手に作り直さず、sogo-partners側と同期して使う**。連絡先・料金は準備中。更新時は `index.html` の `?v=`・`APP_VER` と `data/version.json` をそろえる |
-| key-journal | ⌨️ キー仕訳(試作) | apps/key-journal/ | キーボード特化の仕訳入力(単一ファイル)。F2=簡単入力(借1・貸1)、F3=振替入力(複数行)。科目マスタは `ACCOUNTS` 配列、保存は localStorage(`journal`)、CSV出力あり。弥生の画面・名称は模倣せず独自デザイン |
+| key-journal | ⌨️ キー仕訳(試作) | apps/key-journal/ | キーボード特化の仕訳入力(単一ファイル)。F2=仕訳日記帳(1行・金額は反対側へ自動入力)、F3=振替伝票(複数行・借貸合計と差引表示・空の金額欄で「+」=差額入力)。科目はコード/ローマ字/ひらがな/名称で検索(`ACCOUNTS` 配列、読み付き)。保存は localStorage(`journal`)、CSV出力あり。弥生の画面・名称は模倣せず独自デザイン |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 

@@ -10,76 +10,79 @@
 <meta name="apple-mobile-web-app-title" content="キー仕訳">
 <title>キー仕訳</title>
 <style>
-:root{color-scheme:light dark;--bg:#f5f6f8;--fg:#1f2430;--card:#fff;--line:#d5d9e0;--acc:#1f6feb;--ng:#c62828;--ok:#2e7d32;--mut:#6b7280}
+:root{color-scheme:light dark;--bg:#f5f6f8;--fg:#1f2430;--card:#fff;--line:#d5d9e0;--acc:#2563eb;--ng:#c62828;--ok:#2e7d32;--mut:#6b7280}
 @media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e6e8ec;--card:#1d2026;--line:#363b45;--acc:#5b9dff;--ng:#ff6b6b;--ok:#6fcf7f;--mut:#9aa3b0}}
-*{box-sizing:border-box}
-body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif}
-main{max-width:980px;margin:0 auto;padding:16px}
-h1{font-size:20px;margin:0 0 12px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}
+a.back{color:var(--mut);text-decoration:none;font-size:13px}
+h1{font-size:20px;margin:4px 0 12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
 .tabs{display:flex;gap:8px;margin-bottom:12px}
 .tabs button{flex:1;min-height:44px;padding:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer;font:inherit}
 .tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 input{font:inherit;font-size:16px;min-height:44px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
 input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
-label{font-size:12px;color:var(--mut);display:block}
-.row{display:grid;gap:8px;align-items:end}
-.simple{grid-template-columns:110px 1fr 1fr 130px 1.2fr}
-.sides{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
-.line{display:grid;grid-template-columns:1fr 120px;gap:6px;margin-bottom:6px}
-.side h3{margin:0 0 6px;font-size:14px}
-.tot{font-size:13px;color:var(--mut);text-align:right}
-.status{margin-top:8px;font-weight:600}
-.ok{color:var(--ok)}.ng{color:var(--ng)}
-.hint{font-size:12px;color:var(--mut);margin-top:8px}
+input.amt{text-align:right}
+label,.hd{font-size:12px;color:var(--mut);display:block}
+.g1{display:grid;gap:8px;grid-template-columns:100px 1.3fr 110px 1.3fr 110px 1.4fr;align-items:end}
+.g2{display:grid;gap:6px;grid-template-columns:1.3fr 120px 1.3fr 120px 1.4fr;margin-bottom:6px}
+.foot{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:10px;font-size:14px;align-items:baseline}
+.foot b{font-variant-numeric:tabular-nums;font-size:17px}
+.okc{color:var(--ok)}.ngc{color:var(--ng)}
+.hint{font-size:12px;color:var(--mut);margin-top:10px}
 kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:11px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 tr.first td{border-top:2px solid var(--line)}
-.sm{min-height:44px;padding:2px 12px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:6px;cursor:pointer}
+.sm{min-height:44px;padding:2px 12px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:6px;cursor:pointer;font:inherit;font-size:13px}
 .top{display:flex;justify-content:space-between;align-items:center}
-#dd{position:absolute;z-index:9;background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0004;max-height:240px;overflow:auto;display:none;min-width:200px}
-#dd div{padding:5px 10px;cursor:pointer}
+#dd{position:absolute;z-index:9;background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0004;max-height:260px;overflow:auto;display:none;min-width:220px}
+#dd div{padding:6px 10px;cursor:pointer;white-space:nowrap}
+#dd div small{color:inherit;opacity:.6;margin-left:8px}
 #dd div.sel{background:var(--acc);color:#fff}
-@media(max-width:700px){.simple{grid-template-columns:1fr 1fr}.sides{grid-template-columns:1fr}}
+@media(max-width:760px){.g1,.g2{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 <main>
-<a href="../../" style="color:var(--mut);text-decoration:none;font-size:13px">← ハブに戻る</a>
-<div class="top"><h1>⌨️ キー仕訳(試作)</h1><div><button class="sm" id="csv">CSV出力</button></div></div>
+<a class="back" href="../../">← ハブに戻る</a>
+<div class="top"><h1>⌨️ キー仕訳(試作)</h1><button class="sm" id="csv">CSV出力</button></div>
 
 <div class="card">
   <div class="tabs">
-    <button id="tS" class="on">① 簡単入力(借方1・貸方1) <kbd>F2</kbd></button>
-    <button id="tC">② 振替入力(複数行) <kbd>F3</kbd></button>
+    <button id="tS" class="on">① 仕訳日記帳(1行入力) <kbd>F2</kbd></button>
+    <button id="tC">② 振替伝票(複数行) <kbd>F3</kbd></button>
   </div>
 
   <div id="pS">
-    <div class="row simple">
-      <div><label>日付</label><input data-f id="s_date" placeholder="MMDD"></div>
-      <div><label>借方科目</label><input data-f class="ac" id="s_dr" autocomplete="off"></div>
-      <div><label>貸方科目</label><input data-f class="ac" id="s_cr" autocomplete="off"></div>
-      <div><label>金額</label><input data-f id="s_amt" inputmode="numeric" style="text-align:right"></div>
-      <div><label>摘要</label><input data-f id="s_memo"></div>
+    <div class="g1">
+      <div><label>日付</label><input data-f data-k="date" id="s_date" placeholder="MMDD"></div>
+      <div><label>借方科目</label><input data-f data-k="dracc" class="ac" id="s_dracc" autocomplete="off"></div>
+      <div><label>借方金額</label><input data-f data-k="dramt" class="amt" id="s_dramt" inputmode="numeric"></div>
+      <div><label>貸方科目</label><input data-f data-k="cracc" class="ac" id="s_cracc" autocomplete="off"></div>
+      <div><label>貸方金額</label><input data-f data-k="cramt" class="amt" id="s_cramt" inputmode="numeric"></div>
+      <div><label>摘要</label><input data-f data-k="memo" id="s_memo"></div>
     </div>
   </div>
 
   <div id="pC" hidden>
-    <div class="row" style="grid-template-columns:110px"><div><label>日付</label><input data-f id="c_date" placeholder="MMDD"></div></div>
-    <div class="sides">
-      <div class="side"><h3>借方</h3><div id="dr"></div><div class="tot" id="drT"></div></div>
-      <div class="side"><h3>貸方</h3><div id="cr"></div><div class="tot" id="crT"></div></div>
+    <div style="max-width:120px;margin-bottom:8px"><label>日付</label><input data-f data-k="date" id="c_date" placeholder="MMDD"></div>
+    <div class="g2" style="margin-bottom:2px"><span class="hd">借方科目</span><span class="hd">借方金額</span><span class="hd">貸方科目</span><span class="hd">貸方金額</span><span class="hd">摘要</span></div>
+    <div id="rows"></div>
+    <div class="foot">
+      <span>借方合計 <b id="tDr">0</b></span>
+      <span>貸方合計 <b id="tCr">0</b></span>
+      <span>差引 <b id="tDf">0</b></span>
+      <span class="hd" id="plusHint"></span>
     </div>
-    <div class="status" id="bal"></div>
-    <div style="margin-top:8px"><label>摘要</label><input id="c_memo"></div>
   </div>
 
   <div class="hint">
-    科目:コード・名称・一部の文字で絞込み →<kbd>↑</kbd><kbd>↓</kbd>で選択 →<kbd>Enter</kbd>で確定して次へ ／
-    <kbd>Shift+Enter</kbd> 前の欄へ ／ 金額は <code>1200+300</code> のような式も可 ／
-    振替入力:科目が空欄で<kbd>Enter</kbd>=その側の入力終了、<kbd>Ctrl+Enter</kbd>=登録
+    科目:<b>ローマ字</b>(例 <code>genkin</code>)・ひらがな・<b>コード番号</b>・名称の一部で入力 → <kbd>Enter</kbd>で確定して次へ ／ <kbd>↑</kbd><kbd>↓</kbd>で候補選択 ／ <kbd>Shift+Enter</kbd> 前の欄へ<br>
+    ①:貸方(または借方)の金額を入れると、反対側にも同じ金額が入ります。<br>
+    ②:金額欄が空の状態で <kbd>+</kbd> を押すと、貸借が一致する差引金額が入ります。科目が空で <kbd>Enter</kbd> = その欄を飛ばす。貸借一致後、次の空行の借方科目で <kbd>Enter</kbd> または <kbd>Ctrl+Enter</kbd> = 登録
   </div>
 </div>
 
@@ -94,26 +97,80 @@ tr.first td{border-top:2px solid var(--line)}
 <div id="dd"></div>
 
 <script>
-// ---- 勘定科目(独自の簡易マスタ。コード体系は自由に変更可) ----
+// ---- 勘定科目マスタ(独自の簡易版。[コード, 名称, 読み]) ----
 const ACCOUNTS=[
-[101,"現金"],[102,"普通預金"],[103,"当座預金"],[111,"売掛金"],[112,"受取手形"],[121,"商品"],[131,"前払金"],[132,"立替金"],[141,"事業主貸"],
-[151,"建物"],[152,"車両運搬具"],[153,"工具器具備品"],
-[201,"買掛金"],[202,"未払金"],[203,"預り金"],[204,"前受金"],[205,"借入金"],[211,"未払消費税"],[241,"事業主借"],[251,"元入金"],
-[401,"売上高"],[411,"雑収入"],
-[501,"仕入高"],[601,"給料賃金"],[602,"外注費"],[603,"旅費交通費"],[604,"通信費"],[605,"消耗品費"],[606,"水道光熱費"],[607,"地代家賃"],
-[608,"広告宣伝費"],[609,"接待交際費"],[610,"支払手数料"],[611,"租税公課"],[612,"保険料"],[613,"減価償却費"],[614,"新聞図書費"],[615,"諸会費"],[616,"雑費"]
-].map(([c,n])=>({c:String(c),n}));
+[101,"現金","げんきん"],[102,"普通預金","ふつうよきん"],[103,"当座預金","とうざよきん"],[111,"売掛金","うりかけきん"],[112,"受取手形","うけとりてがた"],
+[121,"商品","しょうひん"],[131,"前払金","まえばらいきん"],[132,"立替金","たてかえきん"],[141,"事業主貸","じぎょうぬしかし"],
+[151,"建物","たてもの"],[152,"車両運搬具","しゃりょううんぱんぐ"],[153,"工具器具備品","こうぐきぐびひん"],
+[201,"買掛金","かいかけきん"],[202,"未払金","みばらいきん"],[203,"預り金","あずかりきん"],[204,"前受金","まえうけきん"],[205,"借入金","かりいれきん"],
+[211,"未払消費税","みはらいしょうひぜい"],[241,"事業主借","じぎょうぬしかり"],[251,"元入金","もといれきん"],
+[401,"売上高","うりあげだか"],[411,"雑収入","ざつしゅうにゅう"],[501,"仕入高","しいれだか"],
+[601,"給料賃金","きゅうりょうちんぎん"],[602,"外注費","がいちゅうひ"],[603,"旅費交通費","りょひこうつうひ"],[604,"通信費","つうしんひ"],
+[605,"消耗品費","しょうもうひんひ"],[606,"水道光熱費","すいどうこうねつひ"],[607,"地代家賃","ちだいやちん"],[608,"広告宣伝費","こうこくせんでんひ"],
+[609,"接待交際費","せったいこうさいひ"],[610,"支払手数料","しはらいてすうりょう"],[611,"租税公課","そぜいこうか"],[612,"保険料","ほけんりょう"],
+[613,"減価償却費","げんかしょうきゃくひ"],[614,"新聞図書費","しんぶんとしょひ"],[615,"諸会費","しょかいひ"],[616,"雑費","ざっぴ"]
+].map(([c,n,y])=>({c:String(c),n,y}));
+
+// ---- ローマ字 → ひらがな ----
+const RT={};
+(()=>{
+  const V="aiueo",rows={k:"かきくけこ",s:"さしすせそ",t:"たちつてと",n:"なにぬねの",h:"はひふへほ",m:"まみむめも",r:"らりるれろ",g:"がぎぐげご",z:"ざじずぜぞ",d:"だぢづでど",b:"ばびぶべぼ",p:"ぱぴぷぺぽ"};
+  [..."あいうえお"].forEach((k,i)=>RT[V[i]]=k);
+  for(const c in rows){[...rows[c]].forEach((k,i)=>RT[c+V[i]]=k);
+    if("kgnhmrbpszdt".includes(c)){const i1=rows[c][1];RT[c+"ya"]=i1+"ゃ";RT[c+"yu"]=i1+"ゅ";RT[c+"yo"]=i1+"ょ"}}
+  Object.assign(RT,{ya:"や",yu:"ゆ",yo:"よ",wa:"わ",wo:"を",si:"し",ti:"ち",tu:"つ",hu:"ふ",zi:"じ",di:"ぢ",du:"づ",shi:"し",chi:"ち",tsu:"つ",fu:"ふ",ji:"じ",
+    sha:"しゃ",shu:"しゅ",sho:"しょ",she:"しぇ",cha:"ちゃ",chu:"ちゅ",cho:"ちょ",che:"ちぇ",ja:"じゃ",ju:"じゅ",jo:"じょ",je:"じぇ",cya:"ちゃ",cyu:"ちゅ",cyo:"ちょ",
+    fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",xtu:"っ",ltu:"っ",xa:"ぁ",xi:"ぃ",xu:"ぅ",xe:"ぇ",xo:"ぉ",xya:"ゃ",xyu:"ゅ",xyo:"ょ",la:"ぁ",li:"ぃ",lu:"ぅ",le:"ぇ",lo:"ぉ","-":"ー"});
+})();
+function toKana(s){
+  let out="",i=0;
+  while(i<s.length){
+    const c=s[i],n=s[i+1];
+    if(c===n&&/[bcdfghjklmpqrstvwxyz]/.test(c)){out+="っ";i++;continue}
+    let hit=false;
+    for(const L of [3,2,1]){const k=s.substr(i,L);if(RT[k]){out+=RT[k];i+=L;hit=true;break}}
+    if(hit)continue;
+    if(c==="n"){
+      if(n==="n"){out+="ん";i+=(s[i+2]&&/[aiueoy]/.test(s[i+2]))?1:2;continue}
+      if(n==="'"){out+="ん";i+=2;continue}
+      if(n&&!/[aiueoy]/.test(n)){out+="ん";i++;continue}
+    }
+    out+=c;i++;
+  }
+  return out;
+}
+function pendingKana(p){ // 打ちかけのローマ字(例 "g")が次に取り得る先頭のかな
+  const set=new Set();
+  for(const k in RT)if(k.startsWith(p))set.add(RT[k][0]);
+  if(p==="n")set.add("ん");
+  return [...set];
+}
+function candidates(q){
+  q=q.normalize("NFKC").trim();
+  if(!q)return ACCOUNTS;
+  if(/^\d+$/.test(q))return ACCOUNTS.filter(a=>a.c.startsWith(q));
+  const conv=/^[a-z'\-]+$/i.test(q)?toKana(q.toLowerCase()):q.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+  const m=conv.replace(/[a-z']+$/i,""),p=conv.slice(m.length);
+  const pre=p?pendingKana(p.toLowerCase()):[""];
+  return ACCOUNTS.filter(a=>a.n.includes(q)||pre.some(x=>a.y.startsWith(m+x)));
+}
+function accOf(v){
+  v=v.normalize("NFKC").trim();if(!v)return null;
+  const tok=v.split(/\s+/)[0];
+  return ACCOUNTS.find(a=>a.c===tok)||ACCOUNTS.find(a=>a.n===tok||a.n===v)||null;
+}
+
 const $=s=>document.querySelector(s);
 const fmt=n=>n.toLocaleString("ja-JP");
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const year=new Date().getFullYear();
 let data=[];try{data=JSON.parse(localStorage.getItem("journal")||"[]")}catch(e){}
 const save=()=>{try{localStorage.setItem("journal",JSON.stringify(data))}catch(e){}};
 const accName=c=>(ACCOUNTS.find(a=>a.c===c)||{}).n||c;
-const byInput=v=>{v=v.trim();return ACCOUNTS.find(a=>a.c===v)||ACCOUNTS.find(a=>a.n===v)};
+const flash=t=>{t.style.outline="2px solid var(--ng)";setTimeout(()=>t.style.outline="",600)};
 
-// ---- 入力値の解釈 ----
 function parseDate(v){
-  v=v.replace(/[^\d]/g,"");
+  v=v.normalize("NFKC").replace(/[^\d]/g,"");
   let y=year,m,d;
   if(v.length===8){y=+v.slice(0,4);m=+v.slice(4,6);d=+v.slice(6,8)}
   else if(v.length===4){m=+v.slice(0,2);d=+v.slice(2,4)}
@@ -124,142 +181,177 @@ function parseDate(v){
   return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 }
 function parseAmt(v){
-  v=v.replace(/[,，\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  v=v.normalize("NFKC").replace(/[,\s円]/g,"");
   if(!/^[\d+\-*]+$/.test(v))return 0;
   try{const r=Function(`"use strict";return(${v})`)();return Number.isFinite(r)&&r>0?Math.round(r):0}catch(e){return 0}
 }
 
-// ---- 科目オートコンプリート ----
+// ---- 科目の候補表示 ----
 const dd=$("#dd");let ddIn=null,ddList=[],ddIdx=0;
+const ddOn=()=>dd.style.display==="block";
 function ddShow(inp){
-  ddIn=inp;const q=inp.value.trim();
-  ddList=q?ACCOUNTS.filter(a=>a.c.startsWith(q)||a.n.includes(q)):ACCOUNTS.slice();
-  ddIdx=0;
+  ddIn=inp;ddList=candidates(inp.value);ddIdx=0;
   if(!ddList.length){dd.style.display="none";return}
   const r=inp.getBoundingClientRect();
   dd.style.left=r.left+scrollX+"px";dd.style.top=r.bottom+scrollY+2+"px";dd.style.display="block";
-  dd.innerHTML=ddList.map((a,i)=>`<div data-i="${i}" class="${i?"":"sel"}">${a.c} ${a.n}</div>`).join("");
+  dd.innerHTML=ddList.map((a,i)=>`<div data-i="${i}" class="${i?"":"sel"}">${a.c} ${a.n}<small>${a.y}</small></div>`).join("");
 }
 function ddMove(d){
   ddIdx=(ddIdx+d+ddList.length)%ddList.length;
   [...dd.children].forEach((e,i)=>e.classList.toggle("sel",i===ddIdx));
   dd.children[ddIdx].scrollIntoView({block:"nearest"});
 }
-const ddHide=()=>{dd.style.display="none";ddIn=null};
+const ddHide=()=>{dd.style.display="none"};
 dd.addEventListener("mousedown",e=>{
-  const i=e.target.dataset.i;if(i==null)return;e.preventDefault();
-  ddIn.value=ddList[i].c+" "+ddList[i].n;const x=ddIn;ddHide();next(x,1);
+  const i=e.target.closest("[data-i]");if(!i)return;e.preventDefault();
+  const a=ddList[+i.dataset.i],x=ddIn;x.value=a.c+" "+a.n;ddHide();next(x,1);
 });
 
 // ---- 欄の移動 ----
-function fields(){return [...document.querySelectorAll("#pS:not([hidden]) [data-f],#pC:not([hidden]) [data-f],#pC:not([hidden]) #c_memo")]
-  .filter(e=>e.offsetParent)}
-function next(el,d){const f=fields(),i=f.indexOf(el)+d;if(f[i]){f[i].focus();f[i].select&&f[i].select()}return f[i]}
+let mode="S";
+const fields=()=>[...document.querySelectorAll(mode==="S"?"#pS [data-f]":"#pC [data-f]")];
+function next(el,d){const f=fields(),i=f.indexOf(el)+d;if(f[i]){f[i].focus();return f[i]}}
+const k=t=>t.dataset.k;
 
-document.addEventListener("input",e=>{if(e.target.classList.contains("ac"))ddShow(e.target);if(mode==="C")updBal()});
-document.addEventListener("focusin",e=>{
+// ---- 全体のイベント ----
+document.addEventListener("input",e=>{
   const t=e.target;
-  if(t.classList.contains("ac"))ddShow(t);else ddHide();
-  if(t.dataset.amt!==undefined&&!t.value){const d=diff(t.dataset.amt);if(d>0)t.value=d;}
-  t.select&&t.select();
+  if(t.classList.contains("ac"))ddShow(t);
+  if(mode==="S"&&k(t)==="dramt")$("#s_cramt").value=t.value;
+  if(mode==="S"&&k(t)==="cramt")$("#s_dramt").value=t.value;
+  if(mode==="C")updTot();
 });
-
+document.addEventListener("focusin",e=>{
+  const t=e.target;if(!t.matches||!t.matches("input"))return;
+  if(!t.classList.contains("ac"))ddHide();
+  t.select();
+  if(mode==="C")updTot();
+});
 function resolveAcc(inp){
-  if(ddIn===inp&&ddList.length&&dd.style.display==="block"){const a=ddList[ddIdx];inp.value=a.c+" "+a.n;return a}
-  return byInput(inp.value.split(" ")[0])||byInput(inp.value);
+  if(ddOn()&&ddIn===inp&&ddList.length){const a=ddList[ddIdx];inp.value=a.c+" "+a.n;return a}
+  return accOf(inp.value);
 }
-
 document.addEventListener("keydown",e=>{
   const t=e.target;
-  if(e.key==="F2"){e.preventDefault();setMode("S");return}
-  if(e.key==="F3"){e.preventDefault();setMode("C");return}
-  if(!t.matches("input"))return;
-  if(t.classList.contains("ac")&&dd.style.display==="block"){
-    if(e.key==="ArrowDown"){e.preventDefault();return ddMove(1)}
-    if(e.key==="ArrowUp"){e.preventDefault();return ddMove(-1)}
+  if(e.key==="F2"){e.preventDefault();return setMode("S")}
+  if(e.key==="F3"){e.preventDefault();return setMode("C")}
+  if(!t.matches||!t.matches("input[data-f]"))return;
+  const isAcc=t.classList.contains("ac");
+  if(isAcc){
+    if(e.key==="ArrowDown"){e.preventDefault();if(ddOn())ddMove(1);else ddShow(t);return}
+    if(e.key==="ArrowUp"&&ddOn()){e.preventDefault();return ddMove(-1)}
     if(e.key==="Escape"){ddHide();return}
   }
-  if(e.key==="Enter"&&e.ctrlKey&&mode==="C"){e.preventDefault();return regC()}
-  if(e.key!=="Enter")return;
-  e.preventDefault();
-  if(e.shiftKey)return next(t,-1);
-  // 科目欄
-  if(t.classList.contains("ac")){
-    if(mode==="C"&&!t.value.trim())return endSide(t);
-    const a=resolveAcc(t);
-    if(!a){t.style.outline="2px solid var(--ng)";setTimeout(()=>t.style.outline="",600);return}
-    ddHide();
-    return next(t,1);
-  }
-  if(t.id==="s_date"||t.id==="c_date"){if(!parseDate(t.value))return flash(t);return next(t,1)}
-  if(t.id==="s_memo")return regS();
-  if(mode==="S"&&t.id==="s_amt"){if(!parseAmt(t.value))return flash(t);t.value=parseAmt(t.value);return next(t,1)}
-  if(t.dataset.amt!==undefined){ // 振替の金額欄
-    const v=parseAmt(t.value);if(!v)return flash(t);t.value=v;updBal();
-    const side=t.dataset.amt,box=$("#"+side),last=box.lastElementChild;
-    if(t.closest(".line")===last){const l=addLine(side);l.querySelector("input").focus()}
-    else next(t,1);
+  // 「+」= 差引金額(振替伝票・空の金額欄)
+  if((e.key==="+"||e.key==="＋")&&mode==="C"&&k(t).endsWith("amt")&&!t.value.trim()){
+    e.preventDefault();
+    const side=k(t).slice(0,2),other=side==="dr"?"cr":"dr";
+    const d=sumSide(other)-sumSide(side);
+    if(d>0){t.value=d;updTot()}else flash(t);
     return;
   }
-  if(t.id==="c_memo")return regC();
-});
-const flash=t=>{t.style.outline="2px solid var(--ng)";setTimeout(()=>t.style.outline="",600)};
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  if(e.ctrlKey&&mode==="C")return regC();
+  if(e.shiftKey)return next(t,-1);
+  const key=k(t);
 
-// ---- ① 簡単入力 ----
+  if(key==="date"){if(!parseDate(t.value))return flash(t);return next(t,1)}
+
+  if(isAcc){
+    if(!t.value.trim()||(!ddOn()&&!accOf(t.value))){
+      if(mode==="S"||t.value.trim())return flash(t);
+      // 振替伝票:空欄は飛ばす
+      if(key==="dracc"){
+        const row=t.closest(".g2"),last=row===$("#rows").lastElementChild;
+        if(last&&rowBlank(row)&&sumSide("dr")>0&&sumSide("dr")===sumSide("cr"))return regC();
+      }
+      return next(t,2);
+    }
+    const a=resolveAcc(t);if(!a)return flash(t);
+    ddHide();return next(t,1);
+  }
+  if(key.endsWith("amt")){
+    const v=parseAmt(t.value);
+    if(mode==="S"&&key==="dramt"&&!t.value.trim())return next(t,1); // 借方金額は空のままでも可(貸方から入れる)
+    if(!v)return flash(t);
+    t.value=v;
+    if(mode==="S"){$("#s_dramt").value=v;$("#s_cramt").value=v}
+    else updTot();
+    return next(t,1);
+  }
+  if(key==="memo"){
+    if(mode==="S")return regS();
+    const row=t.closest(".g2");
+    if(row===$("#rows").lastElementChild){
+      if(rowBlank(row)){if(sumSide("dr")>0&&sumSide("dr")===sumSide("cr"))return regC();return flash(t)}
+      addRow();
+    }
+    return row.nextElementSibling.querySelector("input").focus();
+  }
+});
+
+// ---- ① 仕訳日記帳 ----
 function regS(){
-  const date=parseDate($("#s_date").value),dr=resolveAcc2($("#s_dr")),cr=resolveAcc2($("#s_cr")),amt=parseAmt($("#s_amt").value);
-  if(!date)return flash($("#s_date"));if(!dr)return flash($("#s_dr"));if(!cr)return flash($("#s_cr"));if(!amt)return flash($("#s_amt"));
+  const date=parseDate($("#s_date").value),dr=accOf($("#s_dracc").value),cr=accOf($("#s_cracc").value);
+  const amt=parseAmt($("#s_cramt").value)||parseAmt($("#s_dramt").value);
+  if(!date)return flash($("#s_date"));if(!dr)return flash($("#s_dracc"));if(!cr)return flash($("#s_cracc"));if(!amt)return flash($("#s_cramt"));
   data.push({id:Date.now(),date,memo:$("#s_memo").value,dr:[{a:dr.c,v:amt}],cr:[{a:cr.c,v:amt}]});
   save();render();
-  ["s_dr","s_cr","s_amt","s_memo"].forEach(i=>$("#"+i).value="");
-  $("#s_dr").focus();
+  ["s_dracc","s_dramt","s_cracc","s_cramt","s_memo"].forEach(i=>$("#"+i).value="");
+  $("#s_dracc").focus();
 }
-const resolveAcc2=i=>byInput(i.value.split(" ")[0])||byInput(i.value);
 
-// ---- ② 振替入力 ----
-function addLine(side){
-  const d=document.createElement("div");d.className="line";
-  d.innerHTML=`<input data-f class="ac" autocomplete="off" placeholder="科目"><input data-f data-amt="${side}" inputmode="numeric" style="text-align:right" placeholder="金額">`;
-  $("#"+side).appendChild(d);return d;
+// ---- ② 振替伝票 ----
+function addRow(){
+  const d=document.createElement("div");d.className="g2";
+  d.innerHTML=`<input data-f data-k="dracc" class="ac" autocomplete="off"><input data-f data-k="dramt" class="amt" inputmode="numeric">
+  <input data-f data-k="cracc" class="ac" autocomplete="off"><input data-f data-k="cramt" class="amt" inputmode="numeric"><input data-f data-k="memo">`;
+  $("#rows").appendChild(d);return d;
 }
-function sum(side){return [...$("#"+side).querySelectorAll("[data-amt]")].reduce((s,i)=>s+parseAmt(i.value),0)}
-function diff(side){const o=side==="dr"?"cr":"dr";return Math.max(0,sum(o)-sum(side))}
-function updBal(){
-  const d=sum("dr"),c=sum("cr");
-  $("#drT").textContent="合計 "+fmt(d);$("#crT").textContent="合計 "+fmt(c);
-  const b=$("#bal");
-  if(!d&&!c)b.textContent="";
-  else if(d===c){b.textContent="✔ 貸借一致";b.className="status ok"}
-  else{b.textContent=`✖ 貸借不一致(差額 ${fmt(Math.abs(d-c))})`;b.className="status ng"}
-}
-function endSide(t){
-  const inDr=!!t.closest("#dr");
-  if(inDr){const c=$("#cr").querySelector("input");c.focus();return}
-  $("#c_memo").focus();
-}
-function readSide(side){
-  const out=[];
-  for(const l of $("#"+side).children){
-    const [a,v]=l.querySelectorAll("input");
-    if(!a.value.trim()&&!v.value.trim())continue;
-    const acc=resolveAcc2(a),amt=parseAmt(v.value);
-    if(!acc||!amt){flash(!acc?a:v);return null}
-    out.push({a:acc.c,v:amt});
+const rowBlank=r=>[...r.querySelectorAll("input")].every(i=>!i.value.trim());
+function sumSide(s){return [...document.querySelectorAll(`#rows [data-k="${s}amt"]`)].reduce((a,i)=>a+parseAmt(i.value),0)}
+function updTot(){
+  const d=sumSide("dr"),c=sumSide("cr");
+  $("#tDr").textContent=fmt(d);$("#tCr").textContent=fmt(c);
+  const f=$("#tDf");
+  if(d===c){f.textContent=d?"0 ✔ 一致":"0";f.className=d?"okc":""}
+  else{f.textContent=(d>c?"借方超過 ":"貸方超過 ")+fmt(Math.abs(d-c));f.className="ngc"}
+  const t=document.activeElement,h=$("#plusHint");
+  h.textContent="";
+  if(t&&t.dataset&&t.dataset.k&&t.dataset.k.endsWith("amt")&&!t.value.trim()){
+    const side=t.dataset.k.slice(0,2),df=sumSide(side==="dr"?"cr":"dr")-sumSide(side);
+    if(df>0)h.textContent=`「+」で差引 ${fmt(df)} を入力`;
   }
-  return out;
+}
+function readRows(){
+  const dr=[],cr=[];let memo="";
+  for(const r of $("#rows").children){
+    const g=n=>r.querySelector(`[data-k="${n}"]`);
+    for(const [ak,vk,arr] of [["dracc","dramt",dr],["cracc","cramt",cr]]){
+      const a=g(ak),v=g(vk);
+      if(!a.value.trim()&&!v.value.trim())continue;
+      const acc=accOf(a.value),amt=parseAmt(v.value);
+      if(!acc){flash(a);return null}if(!amt){flash(v);return null}
+      arr.push({a:acc.c,v:amt});
+    }
+    if(!memo)memo=g("memo").value;
+  }
+  return {dr,cr,memo};
 }
 function regC(){
   const date=parseDate($("#c_date").value);if(!date)return flash($("#c_date"));
-  const dr=readSide("dr"),cr=readSide("cr");if(!dr||!cr)return;
-  if(!dr.length||!cr.length||sum("dr")!==sum("cr"))return flash($("#bal"));
-  data.push({id:Date.now(),date,memo:$("#c_memo").value,dr,cr});save();render();resetC();
+  const r=readRows();if(!r)return;
+  const d=r.dr.reduce((a,x)=>a+x.v,0),c=r.cr.reduce((a,x)=>a+x.v,0);
+  if(!r.dr.length||!r.cr.length||d!==c)return flash($("#tDf"));
+  data.push({id:Date.now(),date,memo:r.memo,dr:r.dr,cr:r.cr});save();render();resetC();
 }
 function resetC(){
-  $("#dr").innerHTML="";$("#cr").innerHTML="";addLine("dr");addLine("cr");$("#c_memo").value="";updBal();
-  $("#dr").querySelector("input").focus();
+  $("#rows").innerHTML="";addRow();updTot();
+  $("#rows").querySelector("input").focus();
 }
 
-// ---- 一覧 ----
+// ---- 一覧・CSV ----
 function render(){
   const rows=[...data].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
   $("#empty").style.display=rows.length?"none":"block";
@@ -275,7 +367,6 @@ function render(){
     return h;
   }).join("");
 }
-const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 $("#list").addEventListener("click",e=>{
   const id=e.target.dataset.del;if(!id||!confirm("この仕訳を削除しますか?"))return;
   data=data.filter(j=>String(j.id)!==id);save();render();
@@ -292,20 +383,18 @@ $("#csv").onclick=()=>{
 };
 
 // ---- モード切替 ----
-let mode="S";
 function setMode(m){
+  const from=$(mode==="S"?"#s_date":"#c_date"),to=$(m==="S"?"#s_date":"#c_date");
+  if(m!==mode&&from.value)to.value=from.value;
   mode=m;ddHide();
   $("#pS").hidden=m!=="S";$("#pC").hidden=m!=="C";
   $("#tS").classList.toggle("on",m==="S");$("#tC").classList.toggle("on",m==="C");
-  if(m==="C"&&!$("#dr").children.length){addLine("dr");addLine("cr");updBal()}
-  const dflt=$(m==="S"?"#s_date":"#c_date");
-  const other=$(m==="S"?"#c_date":"#s_date");
-  if(!dflt.value&&other.value)dflt.value=other.value;
-  dflt.focus();
+  if(m==="C"&&!$("#rows").children.length){addRow();updTot()}
+  to.focus();
 }
 $("#tS").onclick=()=>setMode("S");$("#tC").onclick=()=>setMode("C");
-$("#s_date").value=String(new Date().getMonth()+1).padStart(2,"0")+String(new Date().getDate()).padStart(2,"0");
-render();$("#s_dr").focus();
+{const n=new Date();$("#s_date").value=String(n.getMonth()+1).padStart(2,"0")+String(n.getDate()).padStart(2,"0")}
+render();$("#s_dracc").focus();
 </script>
 </body>
 </html>
