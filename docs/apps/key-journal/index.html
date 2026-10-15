@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="キー仕訳">
+<title>キー仕訳</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f6f8;--fg:#1f2430;--card:#fff;--line:#d5d9e0;--acc:#1f6feb;--ng:#c62828;--ok:#2e7d32;--mut:#6b7280}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e6e8ec;--card:#1d2026;--line:#363b45;--acc:#5b9dff;--ng:#ff6b6b;--ok:#6fcf7f;--mut:#9aa3b0}}
+*{box-sizing:border-box}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;min-height:44px;padding:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer;font:inherit}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+input{font:inherit;font-size:16px;min-height:44px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+label{font-size:12px;color:var(--mut);display:block}
+.row{display:grid;gap:8px;align-items:end}
+.simple{grid-template-columns:110px 1fr 1fr 130px 1.2fr}
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.line{display:grid;grid-template-columns:1fr 120px;gap:6px;margin-bottom:6px}
+.side h3{margin:0 0 6px;font-size:14px}
+.tot{font-size:13px;color:var(--mut);text-align:right}
+.status{margin-top:8px;font-weight:600}
+.ok{color:var(--ok)}.ng{color:var(--ng)}
+.hint{font-size:12px;color:var(--mut);margin-top:8px}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.first td{border-top:2px solid var(--line)}
+.sm{min-height:44px;padding:2px 12px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:6px;cursor:pointer}
+.top{display:flex;justify-content:space-between;align-items:center}
+#dd{position:absolute;z-index:9;background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0004;max-height:240px;overflow:auto;display:none;min-width:200px}
+#dd div{padding:5px 10px;cursor:pointer}
+#dd div.sel{background:var(--acc);color:#fff}
+@media(max-width:700px){.simple{grid-template-columns:1fr 1fr}.sides{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<a href="../../" style="color:var(--mut);text-decoration:none;font-size:13px">← ハブに戻る</a>
+<div class="top"><h1>⌨️ キー仕訳(試作)</h1><div><button class="sm" id="csv">CSV出力</button></div></div>
+
+<div class="card">
+  <div class="tabs">
+    <button id="tS" class="on">① 簡単入力(借方1・貸方1) <kbd>F2</kbd></button>
+    <button id="tC">② 振替入力(複数行) <kbd>F3</kbd></button>
+  </div>
+
+  <div id="pS">
+    <div class="row simple">
+      <div><label>日付</label><input data-f id="s_date" placeholder="MMDD"></div>
+      <div><label>借方科目</label><input data-f class="ac" id="s_dr" autocomplete="off"></div>
+      <div><label>貸方科目</label><input data-f class="ac" id="s_cr" autocomplete="off"></div>
+      <div><label>金額</label><input data-f id="s_amt" inputmode="numeric" style="text-align:right"></div>
+      <div><label>摘要</label><input data-f id="s_memo"></div>
+    </div>
+  </div>
+
+  <div id="pC" hidden>
+    <div class="row" style="grid-template-columns:110px"><div><label>日付</label><input data-f id="c_date" placeholder="MMDD"></div></div>
+    <div class="sides">
+      <div class="side"><h3>借方</h3><div id="dr"></div><div class="tot" id="drT"></div></div>
+      <div class="side"><h3>貸方</h3><div id="cr"></div><div class="tot" id="crT"></div></div>
+    </div>
+    <div class="status" id="bal"></div>
+    <div style="margin-top:8px"><label>摘要</label><input id="c_memo"></div>
+  </div>
+
+  <div class="hint">
+    科目:コード・名称・一部の文字で絞込み →<kbd>↑</kbd><kbd>↓</kbd>で選択 →<kbd>Enter</kbd>で確定して次へ ／
+    <kbd>Shift+Enter</kbd> 前の欄へ ／ 金額は <code>1200+300</code> のような式も可 ／
+    振替入力:科目が空欄で<kbd>Enter</kbd>=その側の入力終了、<kbd>Ctrl+Enter</kbd>=登録
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr><th>日付</th><th>借方</th><th class="n">金額</th><th>貸方</th><th class="n">金額</th><th>摘要</th><th></th></tr></thead>
+    <tbody id="list"></tbody>
+  </table>
+  <div id="empty" class="hint">まだ仕訳がありません。</div>
+</div>
+</main>
+<div id="dd"></div>
+
+<script>
+// ---- 勘定科目(独自の簡易マスタ。コード体系は自由に変更可) ----
+const ACCOUNTS=[
+[101,"現金"],[102,"普通預金"],[103,"当座預金"],[111,"売掛金"],[112,"受取手形"],[121,"商品"],[131,"前払金"],[132,"立替金"],[141,"事業主貸"],
+[151,"建物"],[152,"車両運搬具"],[153,"工具器具備品"],
+[201,"買掛金"],[202,"未払金"],[203,"預り金"],[204,"前受金"],[205,"借入金"],[211,"未払消費税"],[241,"事業主借"],[251,"元入金"],
+[401,"売上高"],[411,"雑収入"],
+[501,"仕入高"],[601,"給料賃金"],[602,"外注費"],[603,"旅費交通費"],[604,"通信費"],[605,"消耗品費"],[606,"水道光熱費"],[607,"地代家賃"],
+[608,"広告宣伝費"],[609,"接待交際費"],[610,"支払手数料"],[611,"租税公課"],[612,"保険料"],[613,"減価償却費"],[614,"新聞図書費"],[615,"諸会費"],[616,"雑費"]
+].map(([c,n])=>({c:String(c),n}));
+const $=s=>document.querySelector(s);
+const fmt=n=>n.toLocaleString("ja-JP");
+const year=new Date().getFullYear();
+let data=[];try{data=JSON.parse(localStorage.getItem("journal")||"[]")}catch(e){}
+const save=()=>{try{localStorage.setItem("journal",JSON.stringify(data))}catch(e){}};
+const accName=c=>(ACCOUNTS.find(a=>a.c===c)||{}).n||c;
+const byInput=v=>{v=v.trim();return ACCOUNTS.find(a=>a.c===v)||ACCOUNTS.find(a=>a.n===v)};
+
+// ---- 入力値の解釈 ----
+function parseDate(v){
+  v=v.replace(/[^\d]/g,"");
+  let y=year,m,d;
+  if(v.length===8){y=+v.slice(0,4);m=+v.slice(4,6);d=+v.slice(6,8)}
+  else if(v.length===4){m=+v.slice(0,2);d=+v.slice(2,4)}
+  else if(v.length===3){m=+v.slice(0,1);d=+v.slice(1,3)}
+  else return null;
+  const t=new Date(y,m-1,d);
+  if(t.getMonth()!==m-1||t.getDate()!==d)return null;
+  return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+function parseAmt(v){
+  v=v.replace(/[,，\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  if(!/^[\d+\-*]+$/.test(v))return 0;
+  try{const r=Function(`"use strict";return(${v})`)();return Number.isFinite(r)&&r>0?Math.round(r):0}catch(e){return 0}
+}
+
+// ---- 科目オートコンプリート ----
+const dd=$("#dd");let ddIn=null,ddList=[],ddIdx=0;
+function ddShow(inp){
+  ddIn=inp;const q=inp.value.trim();
+  ddList=q?ACCOUNTS.filter(a=>a.c.startsWith(q)||a.n.includes(q)):ACCOUNTS.slice();
+  ddIdx=0;
+  if(!ddList.length){dd.style.display="none";return}
+  const r=inp.getBoundingClientRect();
+  dd.style.left=r.left+scrollX+"px";dd.style.top=r.bottom+scrollY+2+"px";dd.style.display="block";
+  dd.innerHTML=ddList.map((a,i)=>`<div data-i="${i}" class="${i?"":"sel"}">${a.c} ${a.n}</div>`).join("");
+}
+function ddMove(d){
+  ddIdx=(ddIdx+d+ddList.length)%ddList.length;
+  [...dd.children].forEach((e,i)=>e.classList.toggle("sel",i===ddIdx));
+  dd.children[ddIdx].scrollIntoView({block:"nearest"});
+}
+const ddHide=()=>{dd.style.display="none";ddIn=null};
+dd.addEventListener("mousedown",e=>{
+  const i=e.target.dataset.i;if(i==null)return;e.preventDefault();
+  ddIn.value=ddList[i].c+" "+ddList[i].n;const x=ddIn;ddHide();next(x,1);
+});
+
+// ---- 欄の移動 ----
+function fields(){return [...document.querySelectorAll("#pS:not([hidden]) [data-f],#pC:not([hidden]) [data-f],#pC:not([hidden]) #c_memo")]
+  .filter(e=>e.offsetParent)}
+function next(el,d){const f=fields(),i=f.indexOf(el)+d;if(f[i]){f[i].focus();f[i].select&&f[i].select()}return f[i]}
+
+document.addEventListener("input",e=>{if(e.target.classList.contains("ac"))ddShow(e.target);if(mode==="C")updBal()});
+document.addEventListener("focusin",e=>{
+  const t=e.target;
+  if(t.classList.contains("ac"))ddShow(t);else ddHide();
+  if(t.dataset.amt!==undefined&&!t.value){const d=diff(t.dataset.amt);if(d>0)t.value=d;}
+  t.select&&t.select();
+});
+
+function resolveAcc(inp){
+  if(ddIn===inp&&ddList.length&&dd.style.display==="block"){const a=ddList[ddIdx];inp.value=a.c+" "+a.n;return a}
+  return byInput(inp.value.split(" ")[0])||byInput(inp.value);
+}
+
+document.addEventListener("keydown",e=>{
+  const t=e.target;
+  if(e.key==="F2"){e.preventDefault();setMode("S");return}
+  if(e.key==="F3"){e.preventDefault();setMode("C");return}
+  if(!t.matches("input"))return;
+  if(t.classList.contains("ac")&&dd.style.display==="block"){
+    if(e.key==="ArrowDown"){e.preventDefault();return ddMove(1)}
+    if(e.key==="ArrowUp"){e.preventDefault();return ddMove(-1)}
+    if(e.key==="Escape"){ddHide();return}
+  }
+  if(e.key==="Enter"&&e.ctrlKey&&mode==="C"){e.preventDefault();return regC()}
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  if(e.shiftKey)return next(t,-1);
+  // 科目欄
+  if(t.classList.contains("ac")){
+    if(mode==="C"&&!t.value.trim())return endSide(t);
+    const a=resolveAcc(t);
+    if(!a){t.style.outline="2px solid var(--ng)";setTimeout(()=>t.style.outline="",600);return}
+    ddHide();
+    return next(t,1);
+  }
+  if(t.id==="s_date"||t.id==="c_date"){if(!parseDate(t.value))return flash(t);return next(t,1)}
+  if(t.id==="s_memo")return regS();
+  if(mode==="S"&&t.id==="s_amt"){if(!parseAmt(t.value))return flash(t);t.value=parseAmt(t.value);return next(t,1)}
+  if(t.dataset.amt!==undefined){ // 振替の金額欄
+    const v=parseAmt(t.value);if(!v)return flash(t);t.value=v;updBal();
+    const side=t.dataset.amt,box=$("#"+side),last=box.lastElementChild;
+    if(t.closest(".line")===last){const l=addLine(side);l.querySelector("input").focus()}
+    else next(t,1);
+    return;
+  }
+  if(t.id==="c_memo")return regC();
+});
+const flash=t=>{t.style.outline="2px solid var(--ng)";setTimeout(()=>t.style.outline="",600)};
+
+// ---- ① 簡単入力 ----
+function regS(){
+  const date=parseDate($("#s_date").value),dr=resolveAcc2($("#s_dr")),cr=resolveAcc2($("#s_cr")),amt=parseAmt($("#s_amt").value);
+  if(!date)return flash($("#s_date"));if(!dr)return flash($("#s_dr"));if(!cr)return flash($("#s_cr"));if(!amt)return flash($("#s_amt"));
+  data.push({id:Date.now(),date,memo:$("#s_memo").value,dr:[{a:dr.c,v:amt}],cr:[{a:cr.c,v:amt}]});
+  save();render();
+  ["s_dr","s_cr","s_amt","s_memo"].forEach(i=>$("#"+i).value="");
+  $("#s_dr").focus();
+}
+const resolveAcc2=i=>byInput(i.value.split(" ")[0])||byInput(i.value);
+
+// ---- ② 振替入力 ----
+function addLine(side){
+  const d=document.createElement("div");d.className="line";
+  d.innerHTML=`<input data-f class="ac" autocomplete="off" placeholder="科目"><input data-f data-amt="${side}" inputmode="numeric" style="text-align:right" placeholder="金額">`;
+  $("#"+side).appendChild(d);return d;
+}
+function sum(side){return [...$("#"+side).querySelectorAll("[data-amt]")].reduce((s,i)=>s+parseAmt(i.value),0)}
+function diff(side){const o=side==="dr"?"cr":"dr";return Math.max(0,sum(o)-sum(side))}
+function updBal(){
+  const d=sum("dr"),c=sum("cr");
+  $("#drT").textContent="合計 "+fmt(d);$("#crT").textContent="合計 "+fmt(c);
+  const b=$("#bal");
+  if(!d&&!c)b.textContent="";
+  else if(d===c){b.textContent="✔ 貸借一致";b.className="status ok"}
+  else{b.textContent=`✖ 貸借不一致(差額 ${fmt(Math.abs(d-c))})`;b.className="status ng"}
+}
+function endSide(t){
+  const inDr=!!t.closest("#dr");
+  if(inDr){const c=$("#cr").querySelector("input");c.focus();return}
+  $("#c_memo").focus();
+}
+function readSide(side){
+  const out=[];
+  for(const l of $("#"+side).children){
+    const [a,v]=l.querySelectorAll("input");
+    if(!a.value.trim()&&!v.value.trim())continue;
+    const acc=resolveAcc2(a),amt=parseAmt(v.value);
+    if(!acc||!amt){flash(!acc?a:v);return null}
+    out.push({a:acc.c,v:amt});
+  }
+  return out;
+}
+function regC(){
+  const date=parseDate($("#c_date").value);if(!date)return flash($("#c_date"));
+  const dr=readSide("dr"),cr=readSide("cr");if(!dr||!cr)return;
+  if(!dr.length||!cr.length||sum("dr")!==sum("cr"))return flash($("#bal"));
+  data.push({id:Date.now(),date,memo:$("#c_memo").value,dr,cr});save();render();resetC();
+}
+function resetC(){
+  $("#dr").innerHTML="";$("#cr").innerHTML="";addLine("dr");addLine("cr");$("#c_memo").value="";updBal();
+  $("#dr").querySelector("input").focus();
+}
+
+// ---- 一覧 ----
+function render(){
+  const rows=[...data].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  $("#empty").style.display=rows.length?"none":"block";
+  $("#list").innerHTML=rows.map(j=>{
+    const n=Math.max(j.dr.length,j.cr.length);let h="";
+    for(let i=0;i<n;i++){
+      const d=j.dr[i],c=j.cr[i];
+      h+=`<tr class="${i?"":"first"}"><td>${i?"":j.date.slice(5).replace("-","/")}</td>
+      <td>${d?accName(d.a):""}</td><td class="n">${d?fmt(d.v):""}</td>
+      <td>${c?accName(c.a):""}</td><td class="n">${c?fmt(c.v):""}</td>
+      <td>${i?"":esc(j.memo)}</td><td>${i?"":`<button class="sm" data-del="${j.id}">削除</button>`}</td></tr>`;
+    }
+    return h;
+  }).join("");
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("#list").addEventListener("click",e=>{
+  const id=e.target.dataset.del;if(!id||!confirm("この仕訳を削除しますか?"))return;
+  data=data.filter(j=>String(j.id)!==id);save();render();
+});
+$("#csv").onclick=()=>{
+  const L=["日付,借方科目,借方金額,貸方科目,貸方金額,摘要"];
+  [...data].sort((a,b)=>a.date.localeCompare(b.date)).forEach(j=>{
+    const n=Math.max(j.dr.length,j.cr.length);
+    for(let i=0;i<n;i++){const d=j.dr[i],c=j.cr[i];
+      L.push([j.date,d?accName(d.a):"",d?d.v:"",c?accName(c.a):"",c?c.v:"",i?"":`"${j.memo.replace(/"/g,'""')}"`].join(","))}
+  });
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+L.join("\r\n")],{type:"text/csv"}));
+  a.download="journal.csv";a.click();
+};
+
+// ---- モード切替 ----
+let mode="S";
+function setMode(m){
+  mode=m;ddHide();
+  $("#pS").hidden=m!=="S";$("#pC").hidden=m!=="C";
+  $("#tS").classList.toggle("on",m==="S");$("#tC").classList.toggle("on",m==="C");
+  if(m==="C"&&!$("#dr").children.length){addLine("dr");addLine("cr");updBal()}
+  const dflt=$(m==="S"?"#s_date":"#c_date");
+  const other=$(m==="S"?"#c_date":"#s_date");
+  if(!dflt.value&&other.value)dflt.value=other.value;
+  dflt.focus();
+}
+$("#tS").onclick=()=>setMode("S");$("#tC").onclick=()=>setMode("C");
+$("#s_date").value=String(new Date().getMonth()+1).padStart(2,"0")+String(new Date().getDate()).padStart(2,"0");
+render();$("#s_dr").focus();
+</script>
+</body>
+</html>
