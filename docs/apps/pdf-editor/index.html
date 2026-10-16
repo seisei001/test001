@@ -39,7 +39,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .thumb .no{font-size:.75rem;color:var(--muted);margin-top:4px;}
 .thumb input{position:absolute;top:6px;left:6px;width:22px;height:22px;}
 .stage{overflow:auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;}
-.stage canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:crosshair;touch-action:manipulation;}
+
 .hint{color:var(--muted);font-size:.8rem;margin:6px 0 0;}
 .seg{display:flex;gap:0;}
 .seg button{border-radius:0;background:transparent;color:var(--accent);border:1px solid var(--accent);}
@@ -47,6 +47,21 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button.on{background:var(--accent);color:#fff;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
 .hidden{display:none!important;}
+#pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
+#pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
+#ov{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;}
+#ov.draw{cursor:crosshair;touch-action:none;}
+.rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
+.run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
+.cover{position:absolute;pointer-events:none;}
+.ibox{position:absolute;border:1px dashed rgba(37,99,235,.7);line-height:1.3;color:#000;}
+.ibox.on{border:2px solid #2563eb;z-index:5;}
+.ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:break-all;outline:none;cursor:text;}
+.ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
+.ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
+.hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
+.hdl.mv{left:-13px;top:-13px;}.hdl.rs{right:-13px;bottom:-13px;cursor:nwse-resize;}
+
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .part .seg button{min-height:36px;padding:4px 10px;font-size:.8rem;}
@@ -91,34 +106,37 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </section>
 
 <section class="panel" id="editPanel" style="display:none">
-<h2>③ 文字・画像の追加 <span class="sub" id="curNo"></span></h2>
-<div class="row" style="margin-bottom:10px">
-<div class="seg"><button id="mText" class="on">文字</button><button id="mImg">画像</button></div>
-</div>
-<div id="textOpts">
-<p class="hint" style="margin:0 0 8px">置いた文字・画像は「部品」として下の一覧に入ります。部品ごとに「文字として / 画像として」を切り替えられます。</p>
-<textarea id="tIn" placeholder="追加する文字(日本語OK・改行可)"></textarea>
-<div class="row" style="margin-top:8px">
-<label>サイズ <input type="number" id="tSize" value="18" min="4" max="200"></label>
-<label>色 <input type="color" id="tColor" value="#000000"></label>
+<h2>③ 文字・画像の追加と訂正 <span class="sub" id="curNo"></span></h2>
+<div class="row" style="margin-bottom:8px">
+<div class="seg" id="modeSeg">
+<button data-m="sel">✋ 選択</button><button data-m="text" class="on">＋文字</button><button data-m="img">＋画像</button><button data-m="fix">✏ PDFの文字を直す</button>
 </div>
 </div>
-<div id="imgOpts" class="hidden">
-<div class="row">
+<p class="hint" id="modeHint" style="margin:0 0 8px"></p>
+<div class="row" id="optText" style="margin-bottom:8px">
+<label>サイズ <input type="number" id="nSize" value="18" min="4" max="200"></label>
+<label>色 <input type="color" id="nColor" value="#000000"></label>
+</div>
+<div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
 <input id="fImg" type="file" accept="image/png,image/jpeg" class="hidden">
-<label>幅(pt) <input type="number" id="iW" value="150" min="10" max="2000"></label>
 <span id="imgName" class="sub"></span>
 </div>
+<div class="stage"><div id="pagewrap"><canvas id="stage"></canvas><div id="ov"></div></div></div>
+<div id="selPanel" class="panel hidden" style="margin-top:10px">
+<h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
+<div id="selTextBox">
+<textarea id="sTxt" placeholder="文字を入力(日本語OK・改行可)"></textarea>
+<div class="row" style="margin-top:8px">
+<label>サイズ <input type="number" id="sSize" min="4" max="200"></label>
+<label>色 <input type="color" id="sColor"></label>
+<div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
 </div>
-<p class="hint">下のページ上をタップすると、その位置に追加されます(左上が基準)。間違えたら「元に戻す」。</p>
-<div class="stage" style="margin-top:8px"><canvas id="stage"></canvas></div>
-<div id="partsBox" class="hidden" style="margin-top:10px">
-<h2 style="margin:0 0 8px">置いた部品 <span class="sub" id="partsCount"></span></h2>
-<div id="parts" style="display:flex;flex-direction:column;gap:8px"></div>
-<div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub">ページ操作・ダウンロード時も自動で反映されます</span></div>
+</div>
+<div class="row" style="margin-top:8px"><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo">ページ操作・ダウンロード時も自動で反映されます</span></div>
 <p class="hint"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
-</div>
 </section>
 </main>
 
@@ -133,7 +151,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@
 const $=id=>document.getElementById(id);
 
 const FONT_URL="https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf";
-let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), mode="text", imgData=null, fileName="edited.pdf";
+let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), fileName="edited.pdf";
 
 function status(m){$("status").textContent=m;}
 function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+"(暗号化PDFなどは非対応の場合があります)");}};}
@@ -166,7 +184,7 @@ async function renderGrid(){
     const c=document.createElement("canvas");
     const no=document.createElement("div");no.className="no";no.textContent=i+1;
     d.append(cb,c,no);
-    d.onclick=()=>{cur=i;[...g.children].forEach((x,j)=>x.classList.toggle("cur",j===i));renderStage();};
+    d.onclick=()=>{cur=i;if(typeof select==="function")select(null);[...g.children].forEach((x,j)=>x.classList.toggle("cur",j===i));renderStage();};
     g.appendChild(d);
     const p=await pdfView.getPage(i+1);
     const v0=p.getViewport({scale:1});const s=100/Math.max(v0.width,v0.height)*1.5;
@@ -179,11 +197,14 @@ async function renderStage(){
   if(!pdfView)return;
   $("curNo").textContent=`(${cur+1}ページ目)`;
   const p=await pdfView.getPage(cur+1);
+  const v1=p.getViewport({scale:1});VW=v1.width;VH=v1.height;
   stageScale=Math.min(2,Math.max(1,(window.devicePixelRatio||1)))*1.3;
   const v=p.getViewport({scale:stageScale});
   const c=$("stage");c.width=v.width;c.height=v.height;
   await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
-  drawItems(c.getContext("2d"));
+  runsFor=-1;
+  if(mode==="fix")await loadRuns();
+  renderOverlay();
 }
 const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(new Uint8Array(x.result));x.onerror=j;x.readAsArrayBuffer(f);});
 
@@ -191,7 +212,7 @@ $("fOpen").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   const b=await readFile(f);await PDFDocument.load(b); // 検証
   fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";
-  hist=[];bytes=null;cur=0;sel=new Set();items=[];renderParts();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
+  hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
 });
 $("fMerge").onchange=busy(async e=>{
   const files=[...e.target.files];if(!files.length)return;
@@ -206,10 +227,10 @@ $("fMerge").onchange=busy(async e=>{
 });
 $("bNew").onclick=busy(async()=>{
   const doc=await PDFDocument.create();doc.addPage([595.28,841.89]);
-  fileName="new.pdf";hist=[];bytes=null;cur=0;sel=new Set();items=[];renderParts();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
+  fileName="new.pdf";hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
 });
 $("bUndo").onclick=busy(async()=>{
-  if(items.length){items.pop();renderParts();await renderStage();return;}
+  if(items.length){items.pop();cs=null;syncPanel();await renderStage();return;}
   if(!hist.length)return;bytes=hist.pop();await refresh(true);});
 $("bSave").onclick=busy(async()=>{await commit();download(bytes,fileName);});
 function download(b,name){
@@ -262,118 +283,264 @@ $("bExtract").onclick=busy(async()=>{
   status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
 });
 
-// 文字・画像
-function syncUndo(){}
-$("mText").onclick=()=>setMode("text");$("mImg").onclick=()=>setMode("img");
-function setMode(m){mode=m;$("mText").classList.toggle("on",m==="text");$("mImg").classList.toggle("on",m==="img");
-  $("textOpts").classList.toggle("hidden",m!=="text");$("imgOpts").classList.toggle("hidden",m!=="img");}
-$("fImg").onchange=busy(async e=>{
-  const f=e.target.files[0];if(!f)return;
-  imgData={bytes:await readFile(f),png:f.type==="image/png"};imgData.bmp=await createImageBitmap(f);$("imgName").textContent=f.name;e.target.value="";
-});
-// 表示座標 -> PDF内部座標(ページ回転を考慮)
+// ====== 文字・画像・既存文字の訂正 ======
+let mode="text",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
+const ov=$("ov");
+const itemEls=new Map();
+const hex2rgb=h=>rgb(parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255);
 function toUser(vx,vy,W,H,r){
   switch(r){case 90:return[vy,vx];case 180:return[W-vx,vy];case 270:return[W-vy,H-vx];default:return[vx,H-vy];}
 }
-$("stage").addEventListener("click",busy(async e=>{
-  if(!bytes)return;
-  const c=$("stage"),rc=c.getBoundingClientRect();
-  const vx=(e.clientX-rc.left)*(c.width/rc.width)/stageScale;
-  const vy=(e.clientY-rc.top)*(c.height/rc.height)/stageScale;
-  if(mode==="text"){
-    const txt=$("tIn").value;if(!txt.trim()){status("追加する文字を入力してください。");return;}
-    items.push({id:nextId++,type:"text",fmt:"text",page:cur,vx,vy,txt,size:+$("tSize").value||18,color:$("tColor").value});
-  }else{
-    if(!imgData){status("画像を選んでください。");return;}
-    const w=+$("iW").value||150;
-    items.push({id:nextId++,type:"img",fmt:"pic",page:cur,vx,vy,w,data:imgData,bmp:imgData.bmp});
-  }
-  renderParts();await renderStage();
-}));
+const K=()=>ov.getBoundingClientRect().width/VW||1;
+const HINTS={
+  sel:"部品をタップして選択します。選択すると文字の訂正・移動・サイズ変更・削除ができます(スクロールもできます)。",
+  text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください。",
+  img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。",
+  fix:"PDFの中の文字をタップ(1か所)かドラッグ(範囲内を一括)で選び、書き換えます。元の文字は背景色で隠し、新しい文字を重ねます。"
+};
+function setMode(m){
+  mode=m;
+  [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
+  $("modeHint").textContent=HINTS[m];
+  $("optText").classList.toggle("hidden",m!=="text");
+  $("optImg").classList.toggle("hidden",m!=="img");
+  ov.classList.toggle("draw",m!=="sel");
+  renderOverlay();
+  if(m==="fix"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
+}
+[...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$("fImg").onchange=busy(async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(imgData)URL.revokeObjectURL(imgData.url);
+  imgData={bytes:await readFile(f),png:f.type==="image/png",url:URL.createObjectURL(f)};
+  const im=new Image();im.src=imgData.url;await im.decode();imgData.ratio=im.naturalHeight/im.naturalWidth;
+  $("imgName").textContent=f.name;e.target.value="";
+});
 
-// ---- 部品(未確定の文字・画像) ----
-function textCanvas(it,K){
-  const lines=it.txt.split("\n"),cv=document.createElement("canvas"),cx=cv.getContext("2d");
-  const font=`${it.size*K}px "Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif`;
-  cx.font=font;
-  const w=Math.ceil(Math.max(...lines.map(l=>cx.measureText(l).width)))+4,lh=Math.ceil(it.size*K*1.3);
-  cv.width=w;cv.height=lh*lines.length;
-  cx.font=font;cx.fillStyle=it.color;cx.textBaseline="top";
-  lines.forEach((l,i)=>cx.fillText(l,2,i*lh+it.size*K*0.1));
-  return cv;
+// --- 既存テキストの位置情報 ---
+async function loadRuns(){
+  if(runsFor===cur&&curBase===bytes)return;
+  runs=[];runsFor=cur;curBase=bytes;
+  const p=await pdfView.getPage(cur+1);const vp=p.getViewport({scale:1});
+  const tc=await p.getTextContent();
+  for(const it of tc.items){
+    if(!it.str||!it.str.trim())continue;
+    const tx=pdfjsLib.Util.transform(vp.transform,it.transform);
+    const size=Math.hypot(tx[2],tx[3]);
+    if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
+    runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
+  }
 }
-function drawItems(cx){
+const runBox=r=>({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
+// ページ画像から文字色・背景色を推定
+function sampleColors(box){
+  const c=$("stage"),cx=c.getContext("2d",{willReadFrequently:true}),ss=stageScale;
+  const px=(x,y)=>{const d=cx.getImageData(Math.max(0,Math.min(c.width-1,Math.round(x*ss))),Math.max(0,Math.min(c.height-1,Math.round(y*ss))),1,1).data;return d;};
+  const bgp=px(box.x-2,box.y-2);const lum=d=>d[0]*.3+d[1]*.59+d[2]*.11;
+  const x0=Math.max(0,Math.round(box.x*ss)),y0=Math.max(0,Math.round(box.y*ss));
+  const w=Math.max(1,Math.min(c.width-x0,Math.round(box.w*ss))),h=Math.max(1,Math.min(c.height-y0,Math.round(box.h*ss)));
+  const dat=cx.getImageData(x0,y0,w,h).data;let best=null,bl=999;
+  for(let i=0;i<dat.length;i+=4){const l=dat[i]*.3+dat[i+1]*.59+dat[i+2]*.11;if(l<bl){bl=l;best=[dat[i],dat[i+1],dat[i+2]];}}
+  const h2=a=>"#"+[a[0],a[1],a[2]].map(v=>v.toString(16).padStart(2,"0")).join("");
+  return{bg:h2(bgp),fg:best&&bl<lum(bgp)-40?h2(best):"#000000"};
+}
+
+// --- 部品 ---
+function newText(x,y,w,h){
+  const size=+$("nSize").value||18;
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",size,color:$("nColor").value,lh:1.3};
+}
+function newFix(list){
+  const boxes=list.map(runBox);
+  const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
+  const x1=Math.max(...boxes.map(b=>b.x+b.w)),y1=Math.max(...boxes.map(b=>b.y+b.h));
+  const sorted=[...list].sort((a,b)=>(Math.abs(a.base-b.base)<a.size*0.5?a.x-b.x:a.base-b.base));
+  const lines=[];sorted.forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(l.base-r.base)<r.size*0.5){l.s+=(r.x-(l.x+l.w)>r.size*0.3?" ":"")+r.str;l.w=r.x+r.w-l.x;}else lines.push({s:r.str,base:r.base,x:r.x,w:r.w});});
+  const size=[...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)];
+  const lh=lines.length>1?Math.min(2.5,Math.max(1,(lines[1].base-lines[0].base)/size)):1.3;
+  const col=sampleColors({x:x0,y:y0,w:x1-x0,h:y1-y0});
+  const top=lines[0].base-size*0.85;
+  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*0.8,vh:Math.max(size*lh*lines.length,size*1.3),txt:lines.map(l=>l.s).join("\n"),size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+}
+function select(it,focus){
+  cs=it;renderOverlay();syncPanel();
+  if(it&&focus){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
+}
+function boxStyle(it,el){
+  const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
+  const t=el.querySelector(".t");
+  if(t){t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;}
+  el.style.background=it.type==="fix"?it.bg:"transparent";
+}
+function renderOverlay(){
+  if(!pdfView)return;
+  const k=K();ov.innerHTML="";itemEls.clear();
+  if(mode==="fix"&&runsFor===cur){
+    runs.forEach(r=>{const b=runBox(r),d=document.createElement("div");d.className="run";
+      d.style.cssText=`left:${b.x*k}px;top:${b.y*k}px;width:${b.w*k}px;height:${b.h*k}px`;ov.appendChild(d);});
+  }
   items.filter(it=>it.page===cur).forEach(it=>{
-    if(it.type==="text"){
-      const cv=textCanvas(it,stageScale);cx.drawImage(cv,it.vx*stageScale,it.vy*stageScale);
-    }else if(it.bmp){
-      const w=it.w*stageScale,h=w*it.bmp.height/it.bmp.width;cx.drawImage(it.bmp,it.vx*stageScale,it.vy*stageScale,w,h);
+    if(it.type==="fix"){const c=document.createElement("div");c.className="cover";
+      c.style.cssText=`left:${it.cover.x*k}px;top:${it.cover.y*k}px;width:${it.cover.w*k}px;height:${it.cover.h*k}px;background:${it.bg}`;ov.appendChild(c);}
+  });
+  items.filter(it=>it.page===cur).forEach(it=>{
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"");
+    if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
+    else{
+      const t=document.createElement("div");t.className="t";t.textContent=it.txt;
+      if(it===cs){t.contentEditable="plaintext-only";if(t.contentEditable!=="plaintext-only")t.contentEditable="true";}
+      t.addEventListener("input",()=>{it.txt=t.innerText.replace(/\n$/,"");$("sTxt").value=it.txt;});
+      el.appendChild(t);
     }
+    const tag=document.createElement("span");tag.className="tag";
+    tag.textContent=it.type==="img"?"画像":(it.type==="fix"?"訂正":"文字")+(it.fmt==="pic"?"(画像)":"");
+    el.appendChild(tag);
+    el.addEventListener("pointerdown",e=>{e.stopPropagation();if(cs!==it){e.preventDefault();select(it,false);}});
+    if(it===cs){
+      const mv=document.createElement("div");mv.className="hdl mv";mv.textContent="✥";
+      const rs=document.createElement("div");rs.className="hdl rs";rs.textContent="⇲";
+      dragHandle(mv,it,el,false);dragHandle(rs,it,el,true);el.append(mv,rs);
+    }
+    ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);
   });
 }
-function renderParts(){
-  if($("bUndo"))$("bUndo").disabled=!items.length&&!hist.length;
-  $("partsBox").classList.toggle("hidden",!items.length);
-  $("partsCount").textContent=`(${items.length}件)`;
-  const box=$("parts");box.innerHTML="";
-  items.forEach(it=>{
-    const d=document.createElement("div");d.className="part";
-    const l=document.createElement("span");l.className="lbl";
-    l.textContent=`${it.page+1}ページ ・ `+(it.type==="text"?"「"+it.txt.replace(/\n/g," ")+"」":"画像");
-    const seg=document.createElement("div");seg.className="seg";
-    const bt=document.createElement("button"),bp=document.createElement("button");
-    bt.textContent="文字として";bp.textContent="画像として";
-    const upd=()=>{bt.classList.toggle("on",it.fmt==="text");bp.classList.toggle("on",it.fmt==="pic");};
-    if(it.type==="text"){bt.onclick=()=>{it.fmt="text";upd();};bp.onclick=()=>{it.fmt="pic";upd();};upd();seg.append(bt,bp);}
-    else{const f=document.createElement("span");f.className="sub";f.textContent="画像のまま";seg.append(f);}
-    const del=document.createElement("button");del.className="danger";del.textContent="削除";
-    del.onclick=()=>{items=items.filter(x=>x!==it);renderParts();renderStage();};
-    d.append(l,seg,del);box.appendChild(d);
+function dragHandle(h,it,el,resize){
+  h.addEventListener("pointerdown",e=>{
+    e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
+    const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
+    const mvf=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
+      if(resize){it.vw=Math.max(10,ow+dx);it.vh=Math.max(8,oh+dy);}else{it.vx=ox+dx;it.vy=oy+dy;}
+      boxStyle(it,el);};
+    const up=()=>{h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
+    h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
   });
 }
-// 部品をPDFへまとめて書き込む(フォントは1回だけ埋め込む)
+function syncPanel(){
+  const it=cs;
+  $("selPanel").classList.toggle("hidden",!it);
+  $("bUndo").disabled=!items.length&&!hist.length;
+  $("partsInfo").textContent=items.length?`未確定の部品: ${items.length}件(ページ操作・ダウンロード時にも自動で反映されます)`:"ページ操作・ダウンロード時も自動で反映されます";
+  if(!it)return;
+  $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
+  $("selTextBox").classList.toggle("hidden",it.type==="img");
+  $("sTxt").value=it.txt||"";$("sSize").value=Math.round(it.size*10)/10;$("sColor").value=it.color||"#000000";
+  $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
+}
+function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);const t=el.querySelector(".t");if(t&&t.textContent!==cs.txt)t.textContent=cs.txt;
+  const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
+$("sTxt").oninput=()=>{if(cs){cs.txt=$("sTxt").value;refreshSel();}};
+$("sSize").oninput=()=>{if(cs){cs.size=Math.max(4,+$("sSize").value||cs.size);refreshSel();}};
+$("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
+$("sFmtT").onclick=()=>{if(cs){cs.fmt="text";syncPanel();refreshSel();}};
+$("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
+$("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
+$("sClose").onclick=()=>select(null);
+
+// --- ドラッグで範囲指定 ---
+let rub=null;
+ov.addEventListener("pointerdown",e=>{
+  if(e.target!==ov)return;
+  if(mode==="sel"){select(null);return;}
+  if(!bytes)return;
+  if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
+  if(cs){cs=null;renderOverlay();syncPanel();}
+  e.preventDefault();ov.setPointerCapture(e.pointerId);
+  const rc=ov.getBoundingClientRect(),k=K();
+  const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
+  const d=document.createElement("div");d.className="rub";ov.appendChild(d);
+  rub={sx,sy,x:sx,y:sy,d,id:e.pointerId};
+  const fin=busy(async ev=>{
+    ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
+    const r=rub;rub=null;if(!r)return;r.d.remove();
+    if(mode==="fix")await loadRuns();
+    const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
+    const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
+    const tap=w<6&&h<6;let it=null;
+    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    else if(mode==="img"){
+      const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
+      it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};
+      // 縦横比に合わせた大きさ
+      let iw=bw,ih=bw*imgData.ratio;if(ih>bh){ih=bh;iw=bh/imgData.ratio;}it.vw=iw;it.vh=ih;items.push(it);
+    }else{
+      let hit;
+      if(tap)hit=runs.filter(q=>{const b=runBox(q);return r.sx>=b.x&&r.sx<=b.x+b.w&&r.sy>=b.y&&r.sy<=b.y+b.h;}).slice(0,1);
+      else hit=runs.filter(q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+      if(!hit.length){status("そこにPDFの文字が見つかりません(画像として入っているPDFの文字は直せません)。");renderOverlay();return;}
+      it=newFix(hit);items.push(it);
+    }
+    select(it,true);
+  });
+  const mv=ev=>{if(!rub)return;const rc2=ov.getBoundingClientRect(),k2=K();
+    rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
+    const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
+    rub.d.style.cssText=`left:${x*k2}px;top:${y*k2}px;width:${w*k2}px;height:${h*k2}px`;};
+  ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
+});
+window.addEventListener("resize",()=>renderOverlay());
+
+// ====== PDFへの反映(フォントは1回だけ埋め込む) ======
+function wrapLines(txt,maxW,m){
+  const out=[];
+  for(const para of txt.split("\n")){let line="";
+    for(const ch of para){const t=line+ch;if(line&&m(t)>maxW){out.push(line);line=ch;}else line=t;}
+    out.push(line);}
+  return out;
+}
+function fontRuns(str,jp,lat){const rs=[];for(const ch of str){const f=ch.codePointAt(0)<0x80?lat:jp;const l=rs[rs.length-1];if(l&&l.f===f)l.t+=ch;else rs.push({f,t:ch});}return rs;}
 async function commit(){
-  if(!items.length||!bytes)return;
+  const todo=items.filter(it=>it.type==="img"||it.txt.trim()||it.type==="fix");
+  items=[];cs=null;
+  if(!todo.length||!bytes){renderOverlay();syncPanel();return;}
   status("PDFに反映中…");
   const doc=await PDFDocument.load(bytes);
   let jp=null,lat=null;
-  for(const it of items){
+  for(const it of todo){
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
-    if(it.type==="text"&&it.fmt==="text"){
+    const rect=(x,y,w,h)=>{const [a1,b1]=toUser(x,y,W,H,r),[a2,b2]=toUser(x+w,y+h,W,H,r);return{x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1)};};
+    if(it.type==="img"){
+      const img=it.data.png?await doc.embedPng(it.data.bytes):await doc.embedJpg(it.data.bytes);
+      const [ax,ay]=toUser(it.vx,it.vy+it.vh,W,H,r);
+      page.drawImage(img,{x:ax,y:ay,width:it.vw,height:it.vh,rotate:degrees(r)});continue;
+    }
+    if(it.type==="fix"){const c=it.cover;page.drawRectangle({...rect(c.x,c.y,c.w,c.h),color:hex2rgb(it.bg),borderWidth:0});}
+    if(!it.txt.trim())continue;
+    const lhp=it.size*it.lh;
+    if(it.fmt==="text"){
       if(!jp){
         doc.registerFontkit(fontkit);
         status("日本語フォントを読み込み中…(初回のみ・約2MB)");
         if(!fontBytes){const res=await fetch(FONT_URL);if(!res.ok)throw new Error("日本語フォントを取得できませんでした");fontBytes=await res.arrayBuffer();}
         jp=await doc.embedFont(fontBytes,{subset:false});lat=await doc.embedFont(StandardFonts.Helvetica);
       }
-      const hex=it.color;const col=rgb(parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255);
-      const lines=it.txt.split("\n");
-      for(let li=0;li<lines.length;li++){
-        let off=0;const baseV=it.vy+it.size*0.85+li*it.size*1.3;const runs=[];
-        for(const ch of lines[li]){const f=ch.codePointAt(0)<0x80?lat:jp;const l=runs[runs.length-1];
-          if(l&&l.f===f)l.t+=ch;else runs.push({f,t:ch});}
-        for(const run of runs){
+      const m=s=>{let w=0;for(const ch of s)w+=(ch.codePointAt(0)<0x80?lat:jp).widthOfTextAtSize(ch,it.size);return w;};
+      const lines=wrapLines(it.txt,it.vw,m);
+      lines.forEach((ln,li)=>{
+        const baseV=it.vy+it.size*0.85+li*lhp;let off=0;
+        for(const run of fontRuns(ln,jp,lat)){
           const [ax,ay]=toUser(it.vx+off,baseV,W,H,r);
-          page.drawText(run.t,{x:ax,y:ay,size:it.size,font:run.f,color:col,rotate:degrees(r)});
+          page.drawText(run.t,{x:ax,y:ay,size:it.size,font:run.f,color:hex2rgb(it.color),rotate:degrees(r)});
           off+=run.f.widthOfTextAtSize(run.t,it.size);
         }
-      }
-    }else if(it.type==="text"){
-      const K=4,cv=textCanvas(it,K);
+      });
+    }else{
+      const KK=4,cv=document.createElement("canvas"),cx=cv.getContext("2d");
+      const font=`${it.size*KK}px "Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif`;
+      cx.font=font;
+      const lines=wrapLines(it.txt,it.vw,s=>cx.measureText(s).width/KK);
+      cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(lines.length*lhp*KK)+4;
+      cx.font=font;cx.fillStyle=it.color;cx.textBaseline="alphabetic";
+      lines.forEach((ln,li)=>cx.fillText(ln,0,(it.size*0.85+li*lhp)*KK));
       const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
       const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
-      const iw=cv.width/K,ih=cv.height/K;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
+      const iw=cv.width/KK,ih=cv.height/KK;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
       page.drawImage(img,{x:ax,y:ay,width:iw,height:ih,rotate:degrees(r)});
-    }else{
-      const img=it.data.png?await doc.embedPng(it.data.bytes):await doc.embedJpg(it.data.bytes);
-      const w=it.w,h=w*img.height/img.width;const [ax,ay]=toUser(it.vx,it.vy+h,W,H,r);
-      page.drawImage(img,{x:ax,y:ay,width:w,height:h,rotate:degrees(r)});
     }
   }
-  items=[];renderParts();
   await setBytes(await doc.save(),true);
 }
 $("bCommit").onclick=busy(commit);
+setMode("text");
 })();
 </script>
 </body>
