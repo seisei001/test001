@@ -1102,7 +1102,7 @@ async function renderRegion(x,y,w,h,scale){
 }
 const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
-function flattenForOcr(cv){
+function flattenForOcr(cv,br){
   const cx=cv.getContext("2d",{willReadFrequently:true}),w=cv.width,h=cv.height;
   const im=cx.getImageData(0,0,w,h),d=im.data,n=w*h,g=new Float32Array(n);
   for(let i=0;i<n;i++)g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
@@ -1113,12 +1113,17 @@ function flattenForOcr(cv){
   const sd=cnt?Math.sqrt(Math.max(0,sq/cnt-(sum/cnt)**2)):0;
   if(sd<10)return false;
   const W1=w+1,I=new Float64Array(W1*(h+1)); // 積分画像
+  // 先に少しぼかして、網点・縞(モアレ)・画素のざらつきを均す(写真・画面の撮影でできる細かい模様を、文字と間違えない)
+  const r0=br==null?Math.max(1,Math.round(Math.min(w,h)/600)):br;
+  {const t=new Float32Array(n);
+   for(let y=0;y<h;y++){let a=0,c=0;const row=y*w;for(let x=0;x<w+r0;x++){if(x<w){a+=g[row+x];c++;}if(x-r0-1>=0){a-=g[row+x-r0-1];c--;}if(x-r0>=0)t[row+x-r0]=a/c;}}
+   for(let x=0;x<w;x++){let a=0,c=0;for(let y=0;y<h+r0;y++){if(y<h){a+=t[y*w+x];c++;}if(y-r0-1>=0){a-=t[(y-r0-1)*w+x];c--;}if(y-r0>=0)g[(y-r0)*w+x]=a/c;}}}
   for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=g[y*w+x];I[(y+1)*W1+x+1]=I[y*W1+x+1]+row;}}
   const R=Math.max(12,Math.min(60,Math.round(Math.min(w,h)/10)));
   for(let y=0;y<h;y++){const y0=Math.max(0,y-R),y1=Math.min(h,y+R+1);
     for(let x=0;x<w;x++){const x0=Math.max(0,x-R),x1=Math.min(w,x+R+1);
       const m=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((x1-x0)*(y1-y0));
-      const v=g[y*w+x]<m*0.86?0:255;const k=(y*w+x)*4;d[k]=d[k+1]=d[k+2]=v;}}
+      const v=Math.round(255*Math.max(0,Math.min(1,(g[y*w+x]/Math.max(1,m)-0.6)/0.3)));const k=(y*w+x)*4;d[k]=d[k+1]=d[k+2]=v;}}
   cx.putImageData(im,0,0);return true;
 }
 // ---- 画像の解析: 文字の断片 → 行 → 塊(段落・セル)。罫線は消して、塊の区切りに使う ----
@@ -1191,45 +1196,65 @@ function charUnits(str){let u=0;for(const ch of Array.from(str)){const c=ch.code
 const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\x7E]$/.test(t)&&/^[\x21-\x7E]/.test(s))t+=" ";t+=s;});return t;};
 const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
 // 1つの塊を、ちょうどよい倍率で描き直して認識する
-async function ocrChunk(worker,ch,x,y,S,flat){
+async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(S,40/Math.max(4,ghPt)));
   const pad=Math.max(1.5,ghPt*0.35);
   const bx0=Math.max(0,x+ch.x0/S-pad),by0=Math.max(0,y+ch.y0/S-pad),bx1=Math.min(VW,x+ch.x1/S+pad),by1=Math.min(VH,y+ch.y1/S+pad);
-  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
-  if(flat)flattenForOcr(cv);
+  const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
   const single=ch.lines.length===1&&(ch.x1-ch.x0)<1.8*ch.gh;          // 1文字だけの塊
   const first=single?"10":ch.lines.length>1?"6":"7";
   const modes=[first,...["7","8","13","6"].filter(m=>m!==first)];
-  const out=[];
-  for(const mode of modes){                                           // 読めなければ、別の読み方で再試行
-    await worker.setParameters({tessedit_pageseg_mode:mode});
-    const {data}=await worker.recognize(cv,{},{blocks:true});
-    let ls=data.lines||[];
-    if(!ls.length&&data.blocks)data.blocks.forEach(b=>(b.paragraphs||[]).forEach(pg=>ls.push(...(pg.lines||[]))));
-    out.length=0;collectLines(ls);
-    // 確かさ(信頼度の平均)。最初の読み方は緩め、再試行の結果は高いときだけ採用(罫線の切れ端などから、意味のない文字を作らない)
-    const cf=out.flatMap(l=>l.words.map(w=>w.conf==null?100:w.conf)),avg=cf.length?cf.reduce((a,b)=>a+b,0)/cf.length:0,nch=out.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0);
-    if(out.length&&avg>=(mode===first?30:60)&&!(nch<=2&&avg<60))break;
-    out.length=0;
+  let out=[],best=null;
+  // 背景処理した画像で読み、確かさが低ければ、元の画像でも読んで、良い方を採う
+  const srcs=[];
+  if(flat){const f=document.createElement("canvas");f.width=raw.width;f.height=raw.height;f.getContext("2d").drawImage(raw,0,0);flattenForOcr(f,2);srcs.push(f);srcs.push(raw);}else srcs.push(raw);
+  for(const cv of srcs){
+    let cur=null;
+    for(const mode of modes){                                           // 読めなければ、別の読み方で再試行
+      await worker.setParameters({tessedit_pageseg_mode:mode});
+      const {data}=await worker.recognize(cv,{},{blocks:true});
+      let ls=data.lines||[];
+      if(!ls.length&&data.blocks)data.blocks.forEach(b=>(b.paragraphs||[]).forEach(pg=>ls.push(...(pg.lines||[]))));
+      out=[];collectLines(ls);
+      // 確かさ(信頼度の平均)。最初の読み方は緩め、再試行の結果は高いときだけ採用(罫線の切れ端などから、意味のない文字を作らない)
+      const cf=out.flatMap(l=>l.words.map(w=>w.conf==null?100:w.conf)),avg=cf.length?cf.reduce((a,b)=>a+b,0)/cf.length:0,nch=out.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0);
+      if(out.length&&(!cur||avg>cur.avg))cur={out,avg};
+      if(out.length&&avg>=(mode===first?30:60)&&!(nch<=2&&avg<60))break;
+    }
+    if(cur&&(!best||cur.avg>best.avg+10))best=cur;
+    if(best&&best.avg>=70)break;
   }
+  out=best?best.out:[];
   function collectLines(ls){
   ls.forEach(ln=>{
     if(ln.confidence!=null&&ln.confidence<25)return;
     const ws=(ln.words&&ln.words.length?ln.words:[{text:ln.text,bbox:ln.bbox,confidence:ln.confidence}])
       .map(w=>({str:cleanOcr(w.text||""),conf:w.confidence,x0:bx0+w.bbox.x0/Sb,x1:bx0+w.bbox.x1/Sb,y0:by0+w.bbox.y0/Sb,y1:by0+w.bbox.y1/Sb}))
-      .filter(w=>w.str&&!(w.conf!=null&&w.conf<8)&&!/^[_|¦｜\\/\-—―~.,'"`´:;]+$/.test(w.str));
+      .filter(w=>w.str&&!(w.conf!=null&&w.conf<8)&&!/^[_|¦｜\\/\-—―~.,'"`´:;*＊・•°]+$/.test(w.str));
     if(!ws.length)return;
-    out.push({words:ws,x0:Math.min(...ws.map(w=>w.x0)),x1:Math.max(...ws.map(w=>w.x1)),y0:Math.min(...ws.map(w=>w.y0)),y1:Math.max(...ws.map(w=>w.y1))});
+    out.push({words:ws,conf:ws.reduce((a,w)=>a+(w.conf==null?100:w.conf),0)/ws.length,x0:Math.min(...ws.map(w=>w.x0)),x1:Math.max(...ws.map(w=>w.x1)),y0:Math.min(...ws.map(w=>w.y0)),y1:Math.max(...ws.map(w=>w.y1))});
   });
   }
+  out.sort((a,b)=>a.y0-b.y0);return out;
+}
+async function ocrChunk(worker,ch,x,y,S,flat){
+  const ghPt=ch.gh/S;let out=[];
+  if(ch.lines.length<=1)out=await ocrLines(worker,ch,x,y,S,flat);
+  else{const hm=[...ch.lines].map(l=>l.h).sort((a,b)=>a-b)[ch.lines.length>>1];
+   for(const l of ch.lines){if(l.n<=1&&l.h<0.6*hm)continue;  // 複数行の塊は、1行ずつ読む(読めなかった行があっても、他の行の位置・大きさがずれない)
+    out.push(...await ocrLines(worker,{x0:l.x0,y0:l.y0,x1:l.x1,y1:l.y1,lines:[l],gh:l.h},x,y,S,flat));}}
   out.sort((a,b)=>a.y0-b.y0);
   // 文字サイズ: 各行の「幅÷文字数の目安」の、文字数で重みをつけた中央値(行ごとにバラつかない)
-  const sizes=out.map(l=>{const u=charUnits(joinWords(l.words));return{v:(l.x1-l.x0)/u,w:u};}).filter(e=>e.w>=3);
+  const sizes=out.map(l=>{const u=charUnits(joinWords(l.words)),cf=l.conf==null?1:Math.max(0.05,l.conf/100);return{v:(l.x1-l.x0)/u,w:u*cf*cf,u};}).filter(e=>e.u>=3);
   let size=sizes.length?wmedian(sizes):ghPt*0.95;
+  // 幅からの推定が、行の高さ(図形としての大きさ)から見て大きくずれるときは、高さの方を信じる
+  if(out.length&&ch.lines.length){const geo=out.map(l=>{const cy=(l.y0+l.y1)/2;let b=null,bd=1e9;ch.lines.forEach(sl=>{const d=Math.abs(y+(sl.y0+sl.y1)/2/S-cy);if(d<bd){bd=d;b=sl;}});
+      const cjk=/[\u3040-\u30ff\u3400-\u9fff]/.test(joinWords(l.words));return b.h/S/(cjk?0.92:0.8);}).sort((a,b)=>a-b),g=geo[geo.length>>1];
+    if(!sizes.length)size=g/1.3;else if(g>1.8*size)size=g/1.3;else if(size>1.5*g)size=g*1.15;}
   const wt=sizes.reduce((a,b)=>a+b.w,0)||1;
   // 行間: 行の中心の間隔の中央値 ÷ 文字サイズ
   let lh=1.3;
-  if(out.length>=2){const ds=[];for(let i=1;i<out.length;i++)ds.push(((out[i].y0+out[i].y1)/2)-((out[i-1].y0+out[i-1].y1)/2));ds.sort((a,b)=>a-b);lh=Math.max(1,Math.min(2.5,ds[ds.length>>1]/size));}
+  if(ch.lines.length>=2){const ds=[];for(let i=1;i<ch.lines.length;i++)ds.push(((ch.lines[i].y0+ch.lines[i].y1)-(ch.lines[i-1].y0+ch.lines[i-1].y1))/2/S);ds.sort((a,b)=>a-b);lh=Math.max(1,Math.min(2.5,ds[ds.length>>1]/size));}
   // 文字揃い: 左端・中心・右端のうち、そろっているもの
   let align="left";
   if(out.length>=2){const sp=a=>Math.max(...a)-Math.min(...a),thr=0.6*size;
@@ -1251,12 +1276,18 @@ async function doOcr(x,y,w,h){
   const seg=ocrSegment(cv,S);
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){status("文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。");return;}
+  // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
+  const gha=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),ghMed=gha[gha.length>>1]||0;
+  seg.chunks=seg.chunks.filter(c=>!(c.lines.length===1&&c.lines[0].n<=2&&c.gh<0.7*ghMed&&(c.x1-c.x0)<2.2*ghMed));
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
     status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);
     const r=await ocrChunk(worker,seg.chunks[i],x,y,S,flat);
     if(r.lines.length)res.push(r);
   }
+  // 極端に小さい1〜2文字だけの結果(ごみ)は捨てる
+  {const nch=c=>c.lines.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0),md=wmedian(res.map(c=>({v:c.size,w:nch(c)})));
+   for(let i=res.length-1;i>=0;i--){if(nch(res[i])<=3&&res[i].size<0.7*md)res.splice(i,1);}}
   if(!res.length){status("文字を認識できませんでした(画質を確認するか、範囲を変えてみてください)。");return;}
   // ページ全体で、近い大きさの塊は同じ大きさにそろえる(10%以内を1グループ)。最後に0.5pt刻み
   const sorted=[...res].sort((a,b)=>a.size-b.size),groups=[];
@@ -1377,7 +1408,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-window.pdfEditorDebug={items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
