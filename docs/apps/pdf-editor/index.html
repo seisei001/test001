@@ -60,7 +60,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .cover{position:absolute;pointer-events:none;}
 .ibox{position:absolute;outline:1px dashed rgba(37,99,235,.8);line-height:1.3;color:#000;}
 .ibox.on{outline:2px solid #2563eb;z-index:5;}
-.ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:break-all;outline:none;cursor:text;}
+.ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 .ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
 .hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
@@ -399,6 +399,25 @@ function select(it,focus){
 }
 // ---- 範囲ごとにサイズを持つ文字の編集 ----
 let lastSel=null;
+// 折り返してよい位置(単語の区切り)。日本語は Intl.Segmenter で単語に分け、句読点・閉じ括弧は前の語に付ける
+const SEG=(typeof Intl!=="undefined"&&Intl.Segmenter)?new Intl.Segmenter("ja",{granularity:"word"}):null;
+const NOHEAD=/^[\s、。，．,.!?！？)）」』】〕］｝〉》”’:;：；…・ゝゞ々ー]+$/,NOTAIL=/[(（「『【〔［｛〈《“‘]$/;
+function breakSet(txt){
+  const set=new Set(),chars=Array.from(txt);
+  if(SEG){
+    let idx=0,prev="";
+    for(const sg of SEG.segment(txt)){
+      const str=sg.segment;
+      if(idx>0&&str!=="\n"&&prev!=="\n"&&!NOHEAD.test(str)&&!NOTAIL.test(prev))set.add(idx);
+      idx+=Array.from(str).length;prev=str;
+    }
+  }else{
+    const cjk=c=>c&&c.codePointAt(0)>0x2E80;
+    for(let i=1;i<chars.length;i++){const c=chars[i],pc=chars[i-1];
+      if(c!=="\n"&&pc!=="\n"&&(cjk(c)||cjk(pc))&&!NOHEAD.test(c)&&!NOTAIL.test(pc))set.add(i);}
+  }
+  return set;
+}
 function buildText(it,t,k){
   t.textContent="";
   let buf="",bs=null;
@@ -406,14 +425,31 @@ function buildText(it,t,k){
     if(bs==null)t.appendChild(document.createTextNode(buf));
     else{const sp=document.createElement("span");sp.dataset.s=bs;sp.style.fontSize=bs*k+"px";sp.textContent=buf;t.appendChild(sp);}
     buf="";};
+  const brk=breakSet(it.txt);
   Array.from(it.txt).forEach((c,i)=>{
     if(c==="\n"){flush();t.appendChild(document.createElement("br"));return;}
+    if(brk.has(i)){flush();t.appendChild(document.createElement("wbr"));}
     const sv=(it.sz&&it.sz[i])||null;
     if(sv!==bs){flush();bs=sv;}
     buf+=c;
   });
   flush();
   if(it.txt.endsWith("\n"))t.appendChild(document.createElement("br")); // 末尾の改行の表示用
+}
+// ---- 実際の表示と同じ折り返しで測る(非表示のDOMで計測) ----
+function measureHost(it,g){
+  const d=document.createElement("div");
+  d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
+  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt);d.style.fontSize=it.size*g+"px";
+  buildText(it,d,g);document.body.appendChild(d);return d;
+}
+// 枠が足りなければ広げる(単語が枠より長い→幅、行数が多い→高さ)
+function growToFit(it){
+  if(it.type==="img"||!it.txt)return false;
+  let ch=false,d=measureHost(it,1);
+  if(d.scrollWidth>it.vw+0.5){it.vw=Math.max(it.vw,Math.min(Math.ceil(d.scrollWidth)+1,Math.max(VW-it.vx,it.vw)));ch=true;d.remove();d=measureHost(it,1);}
+  if(d.scrollHeight>it.vh+0.5){it.vh=Math.ceil(d.scrollHeight);ch=true;}
+  d.remove();return ch;
 }
 function serialize(root,isEditor){
   const chars=[],sz=[];
@@ -431,6 +467,10 @@ function serialize(root,isEditor){
   walk(root,null);
   if(isEditor&&root.lastChild&&root.lastChild.nodeName==="BR"&&chars[chars.length-1]==="\n"){chars.pop();sz.pop();}
   return{chars,sz};
+}
+function softRebuild(it,t){ // 入力で増えた文字にも折り返し位置を入れ直す(カーソル位置は維持)
+  if(document.activeElement!==t||!t.isConnected)return;
+  const r=getSelRange(t);buildText(it,t,K());if(r)setSelRange(t,r.start,r.end);
 }
 function readEditor(it,t){const r=serialize(t,true);it.txt=r.chars.join("");it.sz=r.sz;}
 function lenTo(t,node,off){const r=document.createRange();r.setStart(t,0);r.setEnd(node,off);return serialize(r.cloneContents(),false).chars.length;}
@@ -462,7 +502,7 @@ function applySize(it,size,range){
     for(let i=range.start;i<range.end&&i<n;i++){if(chars[i]==="\n")continue;it.sz[i]=size===it.size?null:size;}
   }else{it.size=size;it.sz=new Array(n).fill(null);}
   const el=itemEls.get(it.id);if(!el)return;
-  boxStyle(it,el);const t=el.querySelector(".t");buildText(it,t,K());
+  growToFit(it);boxStyle(it,el);const t=el.querySelector(".t");buildText(it,t,K());
   if(it===cs){t.focus();if(range){setSelRange(t,range.start,range.end);lastSel={id:it.id,start:range.start,end:range.end};}else lastSel=null;}
   syncPanel();
 }
@@ -522,7 +562,12 @@ function renderOverlay(){
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
       buildText(it,t,k);
       if(it===cs)t.contentEditable="true";
-      t.addEventListener("input",()=>{readEditor(it,t);});
+      t.addEventListener("input",e=>{
+        readEditor(it,t);
+        if(growToFit(it))boxStyle(it,el);
+        clearTimeout(it._rb);if(!e.isComposing)it._rb=setTimeout(()=>softRebuild(it,t),450);
+      });
+      t.addEventListener("compositionend",()=>{clearTimeout(it._rb);it._rb=setTimeout(()=>softRebuild(it,t),450);});
       t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};});
       t.addEventListener("beforeinput",e=>{
         if(e.inputType==="insertParagraph"){e.preventDefault();document.execCommand("insertLineBreak");}
@@ -553,17 +598,23 @@ function renderOverlay(){
   });
 }
 // 枠の大きさに合わせて文字サイズを決める(枠に収まる最大サイズ。複数行・サイズ混在は相対比を保つ)
-const _mctx=document.createElement("canvas").getContext("2d");
+const fitsAt=(it,g)=>{const d=measureHost(it,g);const ok=d.scrollHeight<=it.vh+0.5&&d.scrollWidth<=it.vw+0.5;d.remove();return ok;};
 function fitSize(it,o){
   if(!it.txt||!it.txt.trim())return false;
   it.size=o.size;it.sz=o.sz?o.sz.slice():[];
-  const fam=famOf(it.fmt);
-  const wfn=(c,sv)=>{_mctx.font=`${sv*20}px ${fam}`;return _mctx.measureText(c).width/20;};
-  const hAt=f=>layoutText(it,wfn,f).height;
   let lo=4/o.size,hi=400/o.size,f=lo;
-  if(hAt(lo)<=it.vh){for(let i=0;i<28;i++){const mid=(lo+hi)/2;if(hAt(mid)<=it.vh)lo=mid;else hi=mid;}f=lo;}
-  const nb=Math.max(4,Math.min(400,Math.floor(o.size*f*2)/2)),g=nb/o.size; // 0.5pt刻み(切り捨てで枠に収める)
-  it.size=nb;it.sz=(o.sz||[]).map(v=>v?Math.max(4,Math.round(v*g*10)/10):null);
+  if(fitsAt(it,lo)){for(let i=0;i<22;i++){const mid=(lo+hi)/2;if(fitsAt(it,mid))lo=mid;else hi=mid;}f=lo;}
+  let nb=Math.max(4,Math.min(400,Math.floor(o.size*f*2)/2));
+  const apply=b=>{const g=b/o.size;it.size=b;it.sz=(o.sz||[]).map(v=>v?Math.max(4,Math.round(v*g*10)/10):null);};
+  apply(nb);
+  // 実際の表示と最終確認(端数で枠からはみ出す場合は0.5ptずつ下げる)
+  const base={size:o.size,sz:o.sz};
+  for(let i=0;i<12&&nb>4;i++){
+    it.size=base.size;it.sz=base.sz?base.sz.slice():[];
+    if(fitsAt(it,nb/o.size))break;nb=Math.max(4,nb-0.5);
+  }
+  apply(nb);
+  if(growToFit(it)){}
   return true;
 }
 function dragHandle(h,it,el,resize){
@@ -646,18 +697,31 @@ ov.addEventListener("pointerdown",e=>{
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
-// 文字ごとのサイズを考慮して行に分ける(入力中の枠と同じ規則: 1文字ずつ折り返し)
-function layoutText(it,wfn,f=1){
-  const chars=Array.from(it.txt),lines=[];let cur={ch:[],w:0};
-  chars.forEach((c,i)=>{
-    if(c==="\n"){lines.push(cur);cur={ch:[],w:0};return;}
-    const sv=((it.sz&&it.sz[i])||it.size)*f,w=wfn(c,sv);
-    if(cur.ch.length&&cur.w+w>it.vw*1.01+0.5){lines.push(cur);cur={ch:[],w:0};}
+// 入力中の枠と同じ折り返しで行に分ける(DOMで各文字の位置を測り、x座標が戻った所を行頭とする)
+function layoutText(it,wfn){
+  const d=measureHost(it,1);
+  const lefts=[];
+  const walker=document.createTreeWalker(d,NodeFilter.SHOW_TEXT);let n;
+  while(n=walker.nextNode()){
+    let u=0;const rg=document.createRange();
+    for(const ch of Array.from(n.nodeValue)){
+      rg.setStart(n,u);rg.setEnd(n,u+ch.length);
+      const rc=rg.getClientRects()[0];lefts.push(rc?rc.left:(lefts.length?lefts[lefts.length-1]:0));u+=ch.length;
+    }
+  }
+  d.remove();
+  const lines=[];let cur={ch:[],w:0},ci=0,prev=-1e9;
+  Array.from(it.txt).forEach((c,i)=>{
+    if(c==="\n"){lines.push(cur);cur={ch:[],w:0};prev=-1e9;return;}
+    const lf=lefts[ci++];
+    if(cur.ch.length&&lf<prev-0.5){lines.push(cur);cur={ch:[],w:0};}
+    prev=lf;
+    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv);
     cur.ch.push({c,s:sv,w});cur.w+=w;
   });
   lines.push(cur);
   let y=0;
-  lines.forEach(ln=>{ln.size=Math.max(it.size*f,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;});
+  lines.forEach(ln=>{ln.size=Math.max(it.size,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;});
   return{lines,height:y};
 }
 function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
@@ -679,6 +743,7 @@ async function commit(){
     }
     if(it.type==="fix"){const c=it.cover;page.drawRectangle({...rect(c.x,c.y,c.w,c.h),color:hex2rgb(it.bg),borderWidth:0});}
     if(!it.txt.trim())continue;
+    growToFit(it);
     if(it.fmt==="text"){
       if(!jp){
         doc.registerFontkit(fontkit);
