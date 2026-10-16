@@ -122,7 +122,8 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
 <div class="row hidden" id="optFix" style="margin-bottom:8px">
-<label><input type="checkbox" id="fxJoin"> 範囲内の文字を1つの枠にまとめる(通常は、表のセルなど横に離れた文字を、位置を保ったままセルごとの枠に分けます)</label>
+<label><input type="checkbox" id="fxJoin"> 範囲内の文字を、行も含めて全部1つの枠にまとめる</label>
+<label>空白がこの倍数以上なら分ける <input type="number" id="fxGap" value="10" min="1" max="40" step="0.5" style="width:80px"> ×文字サイズ</label>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
@@ -321,7 +322,7 @@ const HINTS={
   sel:"部品をタップして選択します。選択すると文字の訂正・移動・サイズ変更・削除ができます(スクロールもできます)。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください。",
   img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。",
-  fix:"PDFの中の文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)で選び、書き換えます。表のように横に並んだ文字は、セルごとの枠になって位置が保たれます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
+  fix:"PDFの中の文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)で選び、書き換えます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
 };
 function setMode(m){
   mode=m;
@@ -344,6 +345,60 @@ $("fImg").onchange=busy(async e=>{
 });
 
 // --- 既存テキストの位置情報 ---
+let seps={v:[],h:[]};
+// PDFの描画命令から、区切りになる線(罫線・点線・細い四角)を集める
+async function loadSeps(p,vp){
+  const out={v:[],h:[]};
+  try{
+    const ol=await p.getOperatorList(),O=pdfjsLib.OPS;
+    const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];
+    const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+    let ctm=vp.transform.slice();const stack=[];
+    let segs=[],rects=[],cur=null,start=null;
+    const addLine=(p0,p1)=>{
+      const dx=Math.abs(p1[0]-p0[0]),dy=Math.abs(p1[1]-p0[1]);
+      if(dy<1.2&&dx>8)out.h.push({y:(p0[1]+p1[1])/2,x0:Math.min(p0[0],p1[0]),x1:Math.max(p0[0],p1[0])});
+      else if(dx<1.2&&dy>8)out.v.push({x:(p0[0]+p1[0])/2,y0:Math.min(p0[1],p1[1]),y1:Math.max(p0[1],p1[1])});
+    };
+    const STROKE=new Set([O.stroke,O.closeStroke,O.fillStroke,O.eoFillStroke,O.closeFillStroke,O.closeEOFillStroke]);
+    const FILL=new Set([O.fill,O.eoFill]);
+    for(let i=0;i<ol.fnArray.length;i++){
+      const fn=ol.fnArray[i],a=ol.argsArray[i];
+      if(fn===O.save)stack.push(ctm.slice());
+      else if(fn===O.restore){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.transform)ctm=mul(ctm,a);
+      else if(fn===O.paintFormXObjectBegin){stack.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0]);}
+      else if(fn===O.paintFormXObjectEnd){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.constructPath){
+        const ops=a[0],co=a[1];let ci=0;
+        for(const op of ops){
+          if(op===O.moveTo){cur=[co[ci],co[ci+1]];start=cur;ci+=2;}
+          else if(op===O.lineTo){const n=[co[ci],co[ci+1]];if(cur)segs.push([cur,n]);cur=n;ci+=2;}
+          else if(op===O.curveTo){cur=[co[ci+4],co[ci+5]];ci+=6;}
+          else if(op===O.curveTo2||op===O.curveTo3){cur=[co[ci+2],co[ci+3]];ci+=4;}
+          else if(op===O.closePath){if(cur&&start)segs.push([cur,start]);cur=start;}
+          else if(op===O.rectangle){rects.push([co[ci],co[ci+1],co[ci+2],co[ci+3]]);cur=[co[ci],co[ci+1]];start=cur;ci+=4;}
+        }
+      }else if(STROKE.has(fn)||FILL.has(fn)||fn===O.endPath){
+        if(fn!==O.endPath){
+          const stroke=STROKE.has(fn);
+          segs.forEach(sg=>addLine(ap(ctm,...sg[0]),ap(ctm,...sg[1])));
+          rects.forEach(([x,y,w,h])=>{
+            const c=[ap(ctm,x,y),ap(ctm,x+w,y),ap(ctm,x+w,y+h),ap(ctm,x,y+h)];
+            const bw=Math.abs(c[1][0]-c[0][0])+Math.abs(c[1][1]-c[0][1]),bh=Math.abs(c[3][0]-c[0][0])+Math.abs(c[3][1]-c[0][1]);
+            if(stroke){for(let k=0;k<4;k++)addLine(c[k],c[(k+1)%4]);}
+            else if(bh<2.5&&bw>8)addLine(c[0],c[1]);
+            else if(bw<2.5&&bh>8)addLine(c[0],c[3]);
+          });
+        }
+        segs=[];rects=[];cur=null;start=null;
+      }
+    }
+  }catch(e){console.warn("区切り線の検出に失敗",e);}
+  return out;
+}
+const isLeader=r=>/^[\s.．・…‥_＿─━—―\-－~〜]{3,}$/.test(r.str)&&r.str.replace(/\s/g,"").length>=3; // 点線・罫線の代わりの文字
+function recomputeBlocks(){blockOf=new Map();buildBlocks(runs).forEach(g=>g.forEach(r=>blockOf.set(r,g)));}
 async function loadRuns(){
   if(runsFor===cur&&curBase===bytes)return;
   runs=[];runsFor=cur;curBase=bytes;
@@ -356,18 +411,29 @@ async function loadRuns(){
     if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
     runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
   }
-  blockOf=new Map();buildBlocks(runs).forEach(g=>g.forEach(r=>blockOf.set(r,g)));
+  seps=await loadSeps(p,vp);
+  recomputeBlocks();
 }
-// 横に近い文字列は同じセル、縦に続く(左揃い・重なり)文字列は同じ段落として1つのまとまりにする
+// まとまりの判定:
+//  横: 文字サイズが同じ(±15%)で横に並んでいれば1つ。ただし「明らかに大きな空白」か「間に線・点線がある」ところで分ける
+//  縦: 行間が詰まっていて(1.7倍以内)左揃い/重なりがあり、文字サイズが近ければ同じ段落。間に横線があれば分ける
+const similar=(a,b,t=0.15)=>Math.abs(a-b)<=Math.max(a,b)*t;
 function buildBlocks(list){
+  const gapMul=Math.max(1,+$("fxGap").value||10);
+  const vSepBetween=(xa,xb,base,size)=>seps.v.some(v=>v.x>xa-0.5&&v.x<xb+0.5&&v.y0<=base+size*0.3&&v.y1>=base-size*0.8);
+  const hSepBetween=(a,b)=>seps.h.some(h=>h.y>a.base+a.size*0.25&&h.y<b.base-b.size*0.8&&h.x1>Math.max(a.x,b.x)&&h.x0<Math.min(a.x+a.w,b.x+b.w));
   const lines=[];
-  [...list].sort((a,b)=>a.base-b.base).forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(r.base-l.base)<Math.max(r.size,l.size)*0.4)l.rs.push(r);else lines.push({base:r.base,rs:[r]});});
+  [...list].sort((a,b)=>a.base-b.base).forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(r.base-l.base)<Math.max(r.size,l.size)*0.4)l.rs.push(r);else lines.push({base:r.base,size:r.size,rs:[r]});});
   const segs=[];
   lines.forEach(l=>{
-    l.rs.sort((a,b)=>a.x-b.x);let cur=null;
+    l.rs.sort((a,b)=>a.x-b.x);let cur=null,last=null;
     l.rs.forEach(r=>{
-      if(cur&&r.x-(cur.x+cur.w)<Math.max(cur.size,r.size)*0.6){cur.runs.push(r);cur.w=r.x+r.w-cur.x;cur.size=Math.max(cur.size,r.size);}
+      const gap=cur?r.x-(cur.x+cur.w):0;
+      const join=cur&&last&&similar(last.size,r.size)&&!isLeader(last)&&!isLeader(r)
+        &&gap<Math.max(last.size,r.size)*gapMul&&!vSepBetween(cur.x+cur.w,r.x,l.base,Math.max(cur.size,r.size));
+      if(join){cur.runs.push(r);cur.w=Math.max(cur.w,r.x+r.w-cur.x);cur.size=Math.max(cur.size,r.size);}
       else{cur={runs:[r],x:r.x,w:r.w,base:l.base,size:r.size};segs.push(cur);}
+      last=r;
     });
   });
   const par=segs.map((_,i)=>i);const find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;};
@@ -376,7 +442,8 @@ function buildBlocks(list){
     for(let j=i+1;j<segs.length;j++){
       const b=segs[j],dy=b.base-a.base;
       if(dy>Math.max(a.size,b.size)*1.7)break;
-      if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(別のセル)
+      if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
+      if(!similar(a.size,b.size,0.25)||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
       const ov=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
       if(ov>Math.min(a.w,b.w)*0.5||Math.abs(a.x-b.x)<Math.max(a.size,b.size)*1.0)par[find(j)]=find(i);
     }
@@ -409,9 +476,10 @@ function newFix(list){
   const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
   const x1=Math.max(...boxes.map(b=>b.x+b.w)),y1=Math.max(...boxes.map(b=>b.y+b.h));
   const sorted=[...list].sort((a,b)=>(Math.abs(a.base-b.base)<a.size*0.5?a.x-b.x:a.base-b.base));
+  const sp100=(()=>{const cx=document.createElement("canvas").getContext("2d");cx.font="100px "+famOf("text");return cx.measureText(" ").width/100||0.3;})();
   const lines=[];
   sorted.forEach(r=>{const l=lines[lines.length-1];
-    if(l&&Math.abs(l.base-r.base)<r.size*0.5){if(r.x-(l.x+l.w)>r.size*0.3)l.parts.push({s:" ",size:null});l.parts.push({s:r.str,size:r.size});l.w=r.x+r.w-l.x;}
+    if(l&&Math.abs(l.base-r.base)<r.size*0.5){{const gp=r.x-(l.x+l.w),spw=sp100*r.size;if(gp>spw*0.5)l.parts.push({s:" ".repeat(Math.min(300,Math.max(1,Math.round(gp/spw)))),size:null});}l.parts.push({s:r.str,size:r.size});l.w=r.x+r.w-l.x;}
     else lines.push({parts:[{s:r.str,size:r.size}],base:r.base,x:r.x,w:r.w});});
   const size=Math.round([...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)]*10)/10;
   const lh=lines.length>1?Math.min(2.5,Math.max(1,(lines[1].base-lines[0].base)/size)):1.3;
@@ -831,6 +899,7 @@ async function commit(){
   await setBytes(await doc.save(),true);
 }
 $("bCommit").onclick=busy(commit);
+$("fxGap").onchange=()=>{if(runsFor===cur)recomputeBlocks();};
 setMode("text");
 })();
 </script>
