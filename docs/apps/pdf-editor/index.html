@@ -648,8 +648,12 @@ function renderOverlay(){
   if(!pdfView)return;
   const k=K();ov.innerHTML="";itemEls.clear();
   if(mode==="fix"&&runsFor===cur){
-    runs.forEach(r=>{const b=runBox(r),d=document.createElement("div");d.className="run";
-      d.style.cssText=`left:${b.x*k}px;top:${b.y*k}px;width:${b.w*k}px;height:${b.h*k}px`;ov.appendChild(d);});
+    const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
+    blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);
+      const bs=g.map(runBox),x0=Math.min(...bs.map(b=>b.x)),y0=Math.min(...bs.map(b=>b.y));
+      const x1=Math.max(...bs.map(b=>b.x+b.w)),y1=Math.max(...bs.map(b=>b.y+b.h));
+      const d=document.createElement("div");d.className="run";
+      d.style.cssText=`left:${x0*k}px;top:${y0*k}px;width:${(x1-x0)*k}px;height:${(y1-y0)*k}px`;ov.appendChild(d);});
   }
   items.filter(it=>it.page===cur).forEach(it=>{
     if(it.type==="fix"){const c=document.createElement("div");c.className="cover";
@@ -899,7 +903,7 @@ async function commit(){
   await setBytes(await doc.save(),true);
 }
 $("bCommit").onclick=busy(commit);
-$("fxGap").onchange=()=>{if(runsFor===cur)recomputeBlocks();};
+$("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("text");
 })();
 </script>
