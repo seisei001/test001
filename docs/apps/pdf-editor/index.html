@@ -113,7 +113,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <h2>③ 文字・画像の追加と訂正 <span class="sub" id="curNo"></span></h2>
 <div class="row" style="margin-bottom:8px">
 <div class="seg" id="modeSeg">
-<button data-m="sel">✋ 選択</button><button data-m="text" class="on">＋文字</button><button data-m="img">＋画像</button><button data-m="fix">✏ PDFの文字を直す</button>
+<button data-m="sel" class="on">✋ 選択・訂正</button><button data-m="text">＋文字</button><button data-m="img">＋画像</button>
 </div>
 </div>
 <p class="hint" id="modeHint" style="margin:0 0 8px"></p>
@@ -212,7 +212,7 @@ async function renderStage(){
   const c=$("stage");c.width=v.width;c.height=v.height;
   await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
   runsFor=-1;
-  if(mode==="fix")await loadRuns();
+  if(mode==="sel")await loadRuns();
   renderOverlay();
 }
 const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(new Uint8Array(x.result));x.onerror=j;x.readAsArrayBuffer(f);});
@@ -293,7 +293,7 @@ $("bExtract").onclick=busy(async()=>{
 });
 
 // ====== 文字・画像・既存文字の訂正 ======
-let blockOf=new Map(),mode="text",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
+let blockOf=new Map(),mode="sel",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
 const ov=$("ov");
 const itemEls=new Map();
 const FAMILY_PIC='"Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif';
@@ -319,10 +319,9 @@ function toUser(vx,vy,W,H,r){
 }
 const K=()=>ov.getBoundingClientRect().width/VW||1;
 const HINTS={
-  sel:"部品をタップして選択します。選択すると文字の訂正・移動・サイズ変更・削除ができます(スクロールもできます)。",
-  text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください。",
-  img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。",
-  fix:"PDFの中の文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)で選び、書き換えます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
+  sel:"PDFの文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)すると、その文字が編集できる部品になります。書き換え(訂正)・打ち足し(加筆)・全部消す(削除)ができます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。文字のない所をドラッグすると、新しい文字の枠になります。部品はタップで選択し、移動・サイズ変更・削除ができます。",
+  text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください(PDFの文字の上でも、新しい枠を作ります)。",
+  img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。"
 };
 function setMode(m){
   mode=m;
@@ -330,10 +329,10 @@ function setMode(m){
   $("modeHint").textContent=HINTS[m];
   $("optText").classList.toggle("hidden",m!=="text");
   $("optImg").classList.toggle("hidden",m!=="img");
-  $("optFix").classList.toggle("hidden",m!=="fix");
-  ov.classList.toggle("draw",m!=="sel");
+  $("optFix").classList.toggle("hidden",m!=="sel");
+  ov.classList.add("draw");
   renderOverlay();
-  if(m==="fix"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
+  if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
 [...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 $("fImg").onchange=busy(async e=>{
@@ -647,7 +646,7 @@ function boxStyle(it,el){
 function renderOverlay(){
   if(!pdfView)return;
   const k=K();ov.innerHTML="";itemEls.clear();
-  if(mode==="fix"&&runsFor===cur){
+  if(mode==="sel"&&runsFor===cur){
     const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
     blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);
       const bs=g.map(runBox),x0=Math.min(...bs.map(b=>b.x)),y0=Math.min(...bs.map(b=>b.y));
@@ -767,7 +766,6 @@ $("sClose").onclick=()=>select(null);
 let rub=null;
 ov.addEventListener("pointerdown",e=>{
   if(e.target!==ov)return;
-  if(mode==="sel"){select(null);return;}
   if(!bytes)return;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
   if(cs){cs=null;renderOverlay();syncPanel();}
@@ -779,7 +777,7 @@ ov.addEventListener("pointerdown",e=>{
   const fin=busy(async ev=>{
     ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
     const r=rub;rub=null;if(!r)return;r.d.remove();
-    if(mode==="fix")await loadRuns();
+    if(mode==="sel")await loadRuns();
     await ensureWebFont().catch(()=>{});
     const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
     const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
@@ -799,11 +797,17 @@ ov.addEventListener("pointerdown",e=>{
         const inside=runs.filter(q=>{const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
         if(inside.length)groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
       }
-      if(!groups.length){status("そこにPDFの文字が見つかりません(画像として入っているPDFの文字は直せません)。");renderOverlay();return;}
-      const made=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
-      made.forEach(m=>items.push(m));
-      it=made[0];
-      if(made.length>1)status(`${made.length}個のまとまり(表のセルなど)を選びました。枠をタップして1つずつ書き換えられます。`);
+      if(!groups.length){
+        if(tap){renderOverlay();return;} // 文字のない所のタップは、選択の解除だけ
+        // 文字のない所をドラッグ→新しい文字の枠
+        it=newText(x,y,w,h);items.push(it);
+        if(!runs.length)status("このページにはPDFの文字データがありません(スキャン画像など)。新しい文字の枠を作りました。");
+      }else{
+        const made=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+        made.forEach(m=>items.push(m));
+        it=made[0];
+        if(made.length>1)status(`${made.length}個のまとまり(表のセルなど)を選びました。枠をタップして1つずつ書き換えられます。`);
+      }
     }
     select(it,true);
   });
@@ -904,7 +908,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
-setMode("text");
+setMode("sel");
 })();
 </script>
 </body>
