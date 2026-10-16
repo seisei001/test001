@@ -121,6 +121,9 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label>サイズ(pt) <input type="number" id="nSize" value="10.5" min="4" max="400" step="0.5"></label>
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
+<div class="row hidden" id="optFix" style="margin-bottom:8px">
+<label><input type="checkbox" id="fxJoin"> 範囲内の文字を1つの枠にまとめる(通常は、表のセルなど横に離れた文字を、位置を保ったままセルごとの枠に分けます)</label>
+</div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
 <input id="fImg" type="file" accept="image/png,image/jpeg" class="hidden">
@@ -289,7 +292,7 @@ $("bExtract").onclick=busy(async()=>{
 });
 
 // ====== 文字・画像・既存文字の訂正 ======
-let mode="text",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
+let blockOf=new Map(),mode="text",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
 const ov=$("ov");
 const itemEls=new Map();
 const FAMILY_PIC='"Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif';
@@ -318,7 +321,7 @@ const HINTS={
   sel:"部品をタップして選択します。選択すると文字の訂正・移動・サイズ変更・削除ができます(スクロールもできます)。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください。",
   img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。",
-  fix:"PDFの中の文字をタップ(1か所)かドラッグ(範囲内を一括)で選び、書き換えます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
+  fix:"PDFの中の文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)で選び、書き換えます。表のように横に並んだ文字は、セルごとの枠になって位置が保たれます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
 };
 function setMode(m){
   mode=m;
@@ -326,6 +329,7 @@ function setMode(m){
   $("modeHint").textContent=HINTS[m];
   $("optText").classList.toggle("hidden",m!=="text");
   $("optImg").classList.toggle("hidden",m!=="img");
+  $("optFix").classList.toggle("hidden",m!=="fix");
   ov.classList.toggle("draw",m!=="sel");
   renderOverlay();
   if(m==="fix"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
@@ -352,6 +356,34 @@ async function loadRuns(){
     if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
     runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
   }
+  blockOf=new Map();buildBlocks(runs).forEach(g=>g.forEach(r=>blockOf.set(r,g)));
+}
+// 横に近い文字列は同じセル、縦に続く(左揃い・重なり)文字列は同じ段落として1つのまとまりにする
+function buildBlocks(list){
+  const lines=[];
+  [...list].sort((a,b)=>a.base-b.base).forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(r.base-l.base)<Math.max(r.size,l.size)*0.4)l.rs.push(r);else lines.push({base:r.base,rs:[r]});});
+  const segs=[];
+  lines.forEach(l=>{
+    l.rs.sort((a,b)=>a.x-b.x);let cur=null;
+    l.rs.forEach(r=>{
+      if(cur&&r.x-(cur.x+cur.w)<Math.max(cur.size,r.size)*0.6){cur.runs.push(r);cur.w=r.x+r.w-cur.x;cur.size=Math.max(cur.size,r.size);}
+      else{cur={runs:[r],x:r.x,w:r.w,base:l.base,size:r.size};segs.push(cur);}
+    });
+  });
+  const par=segs.map((_,i)=>i);const find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;};
+  for(let i=0;i<segs.length;i++){
+    const a=segs[i];
+    for(let j=i+1;j<segs.length;j++){
+      const b=segs[j],dy=b.base-a.base;
+      if(dy>Math.max(a.size,b.size)*1.7)break;
+      if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(別のセル)
+      const ov=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
+      if(ov>Math.min(a.w,b.w)*0.5||Math.abs(a.x-b.x)<Math.max(a.size,b.size)*1.0)par[find(j)]=find(i);
+    }
+  }
+  const groups=new Map();
+  segs.forEach((sg,i)=>{const r=find(i);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(...sg.runs);});
+  return [...groups.values()];
 }
 const runBox=r=>({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
 // ページ画像から文字色・背景色を推定
@@ -687,11 +719,19 @@ ov.addEventListener("pointerdown",e=>{
       // 縦横比に合わせた大きさ
       let iw=bw,ih=bw*imgData.ratio;if(ih>bh){ih=bh;iw=bh/imgData.ratio;}it.vw=iw;it.vh=ih;items.push(it);
     }else{
-      let hit;
-      if(tap)hit=runs.filter(q=>{const b=runBox(q);return r.sx>=b.x&&r.sx<=b.x+b.w&&r.sy>=b.y&&r.sy<=b.y+b.h;}).slice(0,1);
-      else hit=runs.filter(q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
-      if(!hit.length){status("そこにPDFの文字が見つかりません(画像として入っているPDFの文字は直せません)。");renderOverlay();return;}
-      it=newFix(hit);items.push(it);
+      let groups=[];
+      if(tap){
+        const r0=runs.find(q=>{const bx=runBox(q);return r.sx>=bx.x&&r.sx<=bx.x+bx.w&&r.sy>=bx.y&&r.sy<=bx.y+bx.h;});
+        if(r0)groups=[blockOf.get(r0)||[r0]];
+      }else{
+        const inside=runs.filter(q=>{const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+        if(inside.length)groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
+      }
+      if(!groups.length){status("そこにPDFの文字が見つかりません(画像として入っているPDFの文字は直せません)。");renderOverlay();return;}
+      const made=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+      made.forEach(m=>items.push(m));
+      it=made[0];
+      if(made.length>1)status(`${made.length}個のまとまり(表のセルなど)を選びました。枠をタップして1つずつ書き換えられます。`);
     }
     select(it,true);
   });
@@ -740,6 +780,13 @@ async function commit(){
   if(todo.some(it=>it.fmt==="text"&&it.type!=="img"))await ensureWebFont().catch(()=>{});
   const doc=await PDFDocument.load(bytes);
   let jp=null;
+  // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
+  for(const it of todo){
+    if(it.type!=="fix")continue;
+    const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
+    const c=it.cover,[a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
+    page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:hex2rgb(it.bg),borderWidth:0});
+  }
   for(const it of todo){
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
     const rect=(x,y,w,h)=>{const [a1,b1]=toUser(x,y,W,H,r),[a2,b2]=toUser(x+w,y+h,W,H,r);return{x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1)};};
@@ -748,7 +795,6 @@ async function commit(){
       const [ax,ay]=toUser(it.vx,it.vy+it.vh,W,H,r);
       page.drawImage(img,{x:ax,y:ay,width:it.vw,height:it.vh,rotate:degrees(r)});continue;
     }
-    if(it.type==="fix"){const c=it.cover;page.drawRectangle({...rect(c.x,c.y,c.w,c.h),color:hex2rgb(it.bg),borderWidth:0});}
     if(!it.txt.trim())continue;
     growToFit(it);
     if(it.fmt==="text"){
