@@ -47,6 +47,10 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button.on{background:var(--accent);color:#fff;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
 .hidden{display:none!important;}
+#ctx{position:fixed;z-index:1000;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:4px;display:flex;flex-direction:column;max-height:70vh;overflow:auto;min-width:150px;}
+#ctx .h{font-size:.75rem;color:var(--muted);padding:4px 8px;}
+#ctx button{background:transparent;color:var(--text);border:none;border-radius:6px;min-height:32px;padding:4px 10px;justify-content:flex-start;font-size:.85rem;}
+#ctx button:hover{background:var(--accent);color:#fff;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;}
@@ -114,7 +118,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </div>
 <p class="hint" id="modeHint" style="margin:0 0 8px"></p>
 <div class="row" id="optText" style="margin-bottom:8px">
-<label>サイズ <input type="number" id="nSize" value="18" min="4" max="200"></label>
+<label>サイズ(pt) <input type="number" id="nSize" value="10.5" min="4" max="400" step="0.5"></label>
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
@@ -126,12 +130,12 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <div id="selPanel" class="panel hidden" style="margin-top:10px">
 <h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
 <div id="selTextBox">
-<textarea id="sTxt" placeholder="文字を入力(日本語OK・改行可)"></textarea>
-<div class="row" style="margin-top:8px">
-<label>サイズ <input type="number" id="sSize" min="4" max="200"></label>
+<div class="row">
+<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5"></label>
 <label>色 <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
 </div>
+<p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
 </div>
 <div class="row" style="margin-top:8px"><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
@@ -364,29 +368,139 @@ function sampleColors(box){
 
 // --- 部品 ---
 function newText(x,y,w,h){
-  const size=+$("nSize").value||18;
-  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",size,color:$("nColor").value,lh:1.3};
+  const size=+$("nSize").value||10.5;
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3};
 }
 function newFix(list){
   const boxes=list.map(runBox);
   const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
   const x1=Math.max(...boxes.map(b=>b.x+b.w)),y1=Math.max(...boxes.map(b=>b.y+b.h));
   const sorted=[...list].sort((a,b)=>(Math.abs(a.base-b.base)<a.size*0.5?a.x-b.x:a.base-b.base));
-  const lines=[];sorted.forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(l.base-r.base)<r.size*0.5){l.s+=(r.x-(l.x+l.w)>r.size*0.3?" ":"")+r.str;l.w=r.x+r.w-l.x;}else lines.push({s:r.str,base:r.base,x:r.x,w:r.w});});
-  const size=[...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)];
+  const lines=[];
+  sorted.forEach(r=>{const l=lines[lines.length-1];
+    if(l&&Math.abs(l.base-r.base)<r.size*0.5){if(r.x-(l.x+l.w)>r.size*0.3)l.parts.push({s:" ",size:null});l.parts.push({s:r.str,size:r.size});l.w=r.x+r.w-l.x;}
+    else lines.push({parts:[{s:r.str,size:r.size}],base:r.base,x:r.x,w:r.w});});
+  const size=Math.round([...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)]*10)/10;
   const lh=lines.length>1?Math.min(2.5,Math.max(1,(lines[1].base-lines[0].base)/size)):1.3;
   const col=sampleColors({x:x0,y:y0,w:x1-x0,h:y1-y0});
   const top=lines[0].base-baseOff("text",size,lh);
-  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt:lines.map(l=>l.s).join("\n"),size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  let txt="";const sz=[];
+  lines.forEach((l,li)=>{
+    if(li){txt+="\n";sz.push(null);}
+    l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
+  });
+  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
 }
 function select(it,focus){
+  if(it!==cs)lastSel=null;
   cs=it;renderOverlay();syncPanel();
-  if(it&&focus){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
+  if(it&&focus&&it.type!=="img"){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
 }
+// ---- 範囲ごとにサイズを持つ文字の編集 ----
+let lastSel=null;
+function buildText(it,t,k){
+  t.textContent="";
+  let buf="",bs=null;
+  const flush=()=>{if(!buf)return;
+    if(bs==null)t.appendChild(document.createTextNode(buf));
+    else{const sp=document.createElement("span");sp.dataset.s=bs;sp.style.fontSize=bs*k+"px";sp.textContent=buf;t.appendChild(sp);}
+    buf="";};
+  Array.from(it.txt).forEach((c,i)=>{
+    if(c==="\n"){flush();t.appendChild(document.createElement("br"));return;}
+    const sv=(it.sz&&it.sz[i])||null;
+    if(sv!==bs){flush();bs=sv;}
+    buf+=c;
+  });
+  flush();
+  if(it.txt.endsWith("\n"))t.appendChild(document.createElement("br")); // 末尾の改行の表示用
+}
+function serialize(root,isEditor){
+  const chars=[],sz=[];
+  const walk=(n,size)=>{
+    for(const c of n.childNodes){
+      if(c.nodeType===3){for(const ch of Array.from(c.nodeValue)){chars.push(ch);sz.push(size);}}
+      else if(c.nodeName==="BR"){chars.push("\n");sz.push(null);}
+      else if(c.nodeType===1){
+        const sv=c.dataset&&c.dataset.s?+c.dataset.s:size;
+        if((c.nodeName==="DIV"||c.nodeName==="P")&&chars.length&&chars[chars.length-1]!=="\n"){chars.push("\n");sz.push(null);}
+        walk(c,sv);
+      }
+    }
+  };
+  walk(root,null);
+  if(isEditor&&root.lastChild&&root.lastChild.nodeName==="BR"&&chars[chars.length-1]==="\n"){chars.pop();sz.pop();}
+  return{chars,sz};
+}
+function readEditor(it,t){const r=serialize(t,true);it.txt=r.chars.join("");it.sz=r.sz;}
+function lenTo(t,node,off){const r=document.createRange();r.setStart(t,0);r.setEnd(node,off);return serialize(r.cloneContents(),false).chars.length;}
+function getSelRange(t){
+  const g=getSelection();if(!g.rangeCount)return null;const r=g.getRangeAt(0);
+  if(!t.contains(r.startContainer)||!t.contains(r.endContainer))return null;
+  const a=lenTo(t,r.startContainer,r.startOffset),b=lenTo(t,r.endContainer,r.endOffset);
+  return{start:Math.min(a,b),end:Math.max(a,b)};
+}
+function domPos(t,idx){
+  let cum=0,res=null;
+  const walk=n=>{for(const c of n.childNodes){if(res)return;
+    if(c.nodeType===3){const arr=Array.from(c.nodeValue);if(idx<=cum+arr.length){res=[c,arr.slice(0,idx-cum).join("").length];return;}cum+=arr.length;}
+    else if(c.nodeName==="BR"){if(idx<=cum){res=[c.parentNode,Array.prototype.indexOf.call(c.parentNode.childNodes,c)];return;}cum+=1;}
+    else walk(c);}};
+  walk(t);return res||[t,t.childNodes.length];
+}
+function setSelRange(t,start,end){
+  const g=getSelection(),r=document.createRange();
+  const [n1,o1]=domPos(t,start),[n2,o2]=domPos(t,end);
+  r.setStart(n1,o1);r.setEnd(n2,o2);g.removeAllRanges();g.addRange(r);
+}
+const activeRange=it=>(lastSel&&lastSel.id===it.id&&lastSel.end>lastSel.start)?{start:lastSel.start,end:lastSel.end}:null;
+function applySize(it,size,range){
+  size=Math.max(4,Math.min(400,Math.round(size*10)/10));
+  const chars=Array.from(it.txt),n=chars.length;
+  if(range&&range.end>range.start){
+    if(!it.sz)it.sz=[];while(it.sz.length<n)it.sz.push(null);
+    for(let i=range.start;i<range.end&&i<n;i++){if(chars[i]==="\n")continue;it.sz[i]=size===it.size?null:size;}
+  }else{it.size=size;it.sz=new Array(n).fill(null);}
+  const el=itemEls.get(it.id);if(!el)return;
+  boxStyle(it,el);const t=el.querySelector(".t");buildText(it,t,K());
+  if(it===cs){t.focus();if(range){setSelRange(t,range.start,range.end);lastSel={id:it.id,start:range.start,end:range.end};}else lastSel=null;}
+  syncPanel();
+}
+document.addEventListener("selectionchange",()=>{
+  if(!cs||cs.type==="img")return;
+  const t=itemEls.get(cs.id)?.querySelector(".t");if(!t)return;
+  const r=getSelRange(t);if(!r)return;
+  lastSel={id:cs.id,start:r.start,end:r.end};
+  if(document.activeElement!==$("sSize"))showSize();
+});
+function showSize(){
+  if(!cs||cs.type==="img")return;
+  const r=activeRange(cs);const v=r?((cs.sz&&cs.sz[r.start])||cs.size):cs.size;
+  $("sSize").value=Math.round(v*10)/10;
+  $("sSizeLbl").textContent=r?"選択した文字のサイズ(pt)":"枠全体のサイズ(pt)";
+}
+// ---- 右クリックでサイズ変更 ----
+const ctx=document.createElement("div");ctx.id="ctx";ctx.classList.add("hidden");document.body.appendChild(ctx);
+const SIZES=[7,8,9,10,10.5,11,12,14,16,18,20,24,28,36,48,72];
+function hideCtx(){ctx.classList.add("hidden");}
+function showCtx(e,it,range){
+  ctx.innerHTML="";
+  const h=document.createElement("div");h.className="h";
+  h.textContent=range?`選択した${range.end-range.start}文字のサイズ`:"この枠全体のサイズ";ctx.appendChild(h);
+  const base=range?((it.sz&&it.sz[range.start])||it.size):it.size;
+  SIZES.forEach(sv=>{const b=document.createElement("button");b.textContent=sv+" pt"+(sv===base?"  ✓":"");
+    b.onmousedown=ev=>ev.preventDefault();b.onclick=()=>{applySize(it,sv,range);hideCtx();};ctx.appendChild(b);});
+  ctx.classList.remove("hidden");
+  const w=ctx.offsetWidth,hh=ctx.offsetHeight;
+  ctx.style.left=Math.max(4,Math.min(e.clientX,innerWidth-w-4))+"px";
+  ctx.style.top=Math.max(4,Math.min(e.clientY,innerHeight-hh-4))+"px";
+}
+document.addEventListener("pointerdown",e=>{if(!ctx.contains(e.target))hideCtx();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideCtx();});
+window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
-  if(t){t.style.fontFamily=famOf(it.fmt);t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;}
+  if(t){t.style.fontFamily=famOf(it.fmt);t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
 function renderOverlay(){
@@ -404,15 +518,31 @@ function renderOverlay(){
     const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
-      const t=document.createElement("div");t.className="t";t.textContent=it.txt;
-      if(it===cs){t.contentEditable="plaintext-only";if(t.contentEditable!=="plaintext-only")t.contentEditable="true";}
-      t.addEventListener("input",()=>{it.txt=t.innerText.replace(/\n$/,"");$("sTxt").value=it.txt;});
+      const t=document.createElement("div");t.className="t";t.spellcheck=false;
+      buildText(it,t,k);
+      if(it===cs)t.contentEditable="true";
+      t.addEventListener("input",()=>{readEditor(it,t);});
+      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};});
+      t.addEventListener("beforeinput",e=>{
+        if(e.inputType==="insertParagraph"){e.preventDefault();document.execCommand("insertLineBreak");}
+        else if(e.inputType==="insertFromPaste"||e.inputType==="insertFromDrop"){
+          e.preventDefault();const tx=((e.dataTransfer&&e.dataTransfer.getData("text/plain"))||"").replace(/\r/g,"");
+          tx.split("\n").forEach((ln,i)=>{if(i)document.execCommand("insertLineBreak");if(ln)document.execCommand("insertText",false,ln);});
+        }else if(e.inputType.startsWith("format"))e.preventDefault();
+      });
       el.appendChild(t);
     }
     const tag=document.createElement("span");tag.className="tag";
     tag.textContent=it.type==="img"?"画像":(it.type==="fix"?"訂正":"文字")+(it.fmt==="pic"?"(画像)":"");
     el.appendChild(tag);
-    el.addEventListener("pointerdown",e=>{e.stopPropagation();if(cs!==it){e.preventDefault();select(it,false);}});
+    el.addEventListener("pointerdown",e=>{e.stopPropagation();if(cs!==it){e.preventDefault();select(it,true);}});
+    el.addEventListener("contextmenu",e=>{
+      if(it.type==="img")return;e.preventDefault();e.stopPropagation();
+      let range=null;
+      if(cs!==it)select(it,false);
+      else{const t=itemEls.get(it.id)?.querySelector(".t");const r=t&&getSelRange(t);if(r&&r.end>r.start)range=r;}
+      showCtx(e,it,range);
+    });
     if(it===cs){
       const mv=document.createElement("div");mv.className="hdl mv";mv.textContent="✥";
       const rs=document.createElement("div");rs.className="hdl rs";rs.textContent="⇲";
@@ -440,13 +570,13 @@ function syncPanel(){
   if(!it)return;
   $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
   $("selTextBox").classList.toggle("hidden",it.type==="img");
-  $("sTxt").value=it.txt||"";$("sSize").value=Math.round(it.size*10)/10;$("sColor").value=it.color||"#000000";
+  $("sColor").value=it.color||"#000000";showSize();
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
 }
-function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);const t=el.querySelector(".t");if(t&&t.textContent!==cs.txt)t.textContent=cs.txt;
+function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);
   const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
-$("sTxt").oninput=()=>{if(cs){cs.txt=$("sTxt").value;refreshSel();}};
-$("sSize").oninput=()=>{if(cs){cs.size=Math.max(4,+$("sSize").value||cs.size);refreshSel();}};
+$("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>0)applySize(cs,v,activeRange(cs));}};
+$("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
 $("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
 $("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
@@ -498,13 +628,21 @@ ov.addEventListener("pointerdown",e=>{
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
-function wrapLines(txt,maxW,m){
-  const out=[];
-  for(const para of txt.split("\n")){let line="";
-    for(const ch of para){const t=line+ch;if(line&&m(t)>maxW*1.01+0.5){out.push(line);line=ch;}else line=t;}
-    out.push(line);}
-  return out;
+// 文字ごとのサイズを考慮して行に分ける(入力中の枠と同じ規則: 1文字ずつ折り返し)
+function layoutText(it,wfn){
+  const chars=Array.from(it.txt),lines=[];let cur={ch:[],w:0};
+  chars.forEach((c,i)=>{
+    if(c==="\n"){lines.push(cur);cur={ch:[],w:0};return;}
+    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv);
+    if(cur.ch.length&&cur.w+w>it.vw*1.01+0.5){lines.push(cur);cur={ch:[],w:0};}
+    cur.ch.push({c,s:sv,w});cur.w+=w;
+  });
+  lines.push(cur);
+  let y=0;
+  lines.forEach(ln=>{ln.size=Math.max(it.size,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;});
+  return{lines,height:y};
 }
+function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
 async function commit(){
   const todo=items.filter(it=>it.type==="img"||it.txt.trim()||it.type==="fix");
   items=[];cs=null;
@@ -523,8 +661,6 @@ async function commit(){
     }
     if(it.type==="fix"){const c=it.cover;page.drawRectangle({...rect(c.x,c.y,c.w,c.h),color:hex2rgb(it.bg),borderWidth:0});}
     if(!it.txt.trim())continue;
-    const lhp=it.size*it.lh;
-    const bo=baseOff(it.fmt,it.size,it.lh);
     if(it.fmt==="text"){
       if(!jp){
         doc.registerFontkit(fontkit);
@@ -532,19 +668,24 @@ async function commit(){
         await loadFontBytes();
         jp=await doc.embedFont(fontBytes,{subset:false});
       }
-      const lines=wrapLines(it.txt,it.vw,t=>jp.widthOfTextAtSize(t,it.size));
-      lines.forEach((ln,li)=>{
-        const [ax,ay]=toUser(it.vx,it.vy+bo+li*lhp,W,H,r);
-        page.drawText(ln,{x:ax,y:ay,size:it.size,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});
+      const L=layoutText(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
+      L.lines.forEach(ln=>{
+        let off=0;
+        runsOf(ln).forEach(rn=>{
+          const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);
+          page.drawText(rn.str,{x:ax,y:ay,size:rn.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});
+          off+=rn.w;
+        });
       });
     }else{
       const KK=4,cv=document.createElement("canvas"),cx=cv.getContext("2d");
-      const font=`${it.size*KK}px ${FAMILY_PIC}`;
-      cx.font=font;
-      const lines=wrapLines(it.txt,it.vw,s=>cx.measureText(s).width/KK);
-      cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(lines.length*lhp*KK)+4;
-      cx.font=font;cx.fillStyle=it.color;cx.textBaseline="alphabetic";
-      lines.forEach((ln,li)=>cx.fillText(ln,0,(bo+li*lhp)*KK));
+      const L=layoutText(it,(c,sv)=>{cx.font=`${sv*KK}px ${FAMILY_PIC}`;return cx.measureText(c).width/KK;});
+      cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(L.height*KK)+4;
+      cx.fillStyle=it.color;cx.textBaseline="alphabetic";
+      L.lines.forEach(ln=>{
+        let off=0;
+        runsOf(ln).forEach(rn=>{cx.font=`${rn.s*KK}px ${FAMILY_PIC}`;cx.fillText(rn.str,off*KK,ln.base*KK);off+=rn.w;});
+      });
       const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
       const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
       const iw=cv.width/KK,ih=cv.height/KK;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
