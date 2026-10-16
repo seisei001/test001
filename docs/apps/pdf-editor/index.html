@@ -135,7 +135,8 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label>色 <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
 </div>
-<p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
+<label style="margin-top:8px"><input type="checkbox" id="sAuto" checked> 枠の大きさを変えたら、文字サイズを自動で合わせる</label>
+<p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠の右下(⇲)をドラッグして大きさを変えると、枠に収まる最大の文字サイズに自動で合わせます(複数行や、サイズを混ぜた文字は相対比を保ちます)。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
 </div>
 <div class="row" style="margin-top:8px"><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
@@ -551,12 +552,29 @@ function renderOverlay(){
     ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);
   });
 }
+// 枠の大きさに合わせて文字サイズを決める(枠に収まる最大サイズ。複数行・サイズ混在は相対比を保つ)
+const _mctx=document.createElement("canvas").getContext("2d");
+function fitSize(it,o){
+  if(!it.txt||!it.txt.trim())return false;
+  it.size=o.size;it.sz=o.sz?o.sz.slice():[];
+  const fam=famOf(it.fmt);
+  const wfn=(c,sv)=>{_mctx.font=`${sv*20}px ${fam}`;return _mctx.measureText(c).width/20;};
+  const hAt=f=>layoutText(it,wfn,f).height;
+  let lo=4/o.size,hi=400/o.size,f=lo;
+  if(hAt(lo)<=it.vh){for(let i=0;i<28;i++){const mid=(lo+hi)/2;if(hAt(mid)<=it.vh)lo=mid;else hi=mid;}f=lo;}
+  const nb=Math.max(4,Math.min(400,Math.floor(o.size*f*2)/2)),g=nb/o.size; // 0.5pt刻み(切り捨てで枠に収める)
+  it.size=nb;it.sz=(o.sz||[]).map(v=>v?Math.max(4,Math.round(v*g*10)/10):null);
+  return true;
+}
 function dragHandle(h,it,el,resize){
   h.addEventListener("pointerdown",e=>{
     e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
     const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
+    const o={size:it.size,sz:it.sz?it.sz.slice():null};
     const mvf=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
-      if(resize){it.vw=Math.max(10,ow+dx);it.vh=Math.max(8,oh+dy);}else{it.vx=ox+dx;it.vy=oy+dy;}
+      if(resize){it.vw=Math.max(10,ow+dx);it.vh=Math.max(8,oh+dy);
+        if(it.type!=="img"&&$("sAuto").checked&&fitSize(it,o)){const t=el.querySelector(".t");if(t)buildText(it,t,k);showSize();}}
+      else{it.vx=ox+dx;it.vy=oy+dy;}
       boxStyle(it,el);};
     const up=()=>{h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
@@ -629,17 +647,17 @@ window.addEventListener("resize",()=>renderOverlay());
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
 // 文字ごとのサイズを考慮して行に分ける(入力中の枠と同じ規則: 1文字ずつ折り返し)
-function layoutText(it,wfn){
+function layoutText(it,wfn,f=1){
   const chars=Array.from(it.txt),lines=[];let cur={ch:[],w:0};
   chars.forEach((c,i)=>{
     if(c==="\n"){lines.push(cur);cur={ch:[],w:0};return;}
-    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv);
+    const sv=((it.sz&&it.sz[i])||it.size)*f,w=wfn(c,sv);
     if(cur.ch.length&&cur.w+w>it.vw*1.01+0.5){lines.push(cur);cur={ch:[],w:0};}
     cur.ch.push({c,s:sv,w});cur.w+=w;
   });
   lines.push(cur);
   let y=0;
-  lines.forEach(ln=>{ln.size=Math.max(it.size,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;});
+  lines.forEach(ln=>{ln.size=Math.max(it.size*f,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;});
   return{lines,height:y};
 }
 function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
