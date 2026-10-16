@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PDFエディタ">
+<title>PDFエディタ</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--danger:#dc2626;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+header{padding:16px;max-width:900px;margin:0 auto;}
+.back-link{display:inline-block;margin-bottom:8px;color:var(--muted);text-decoration:none;font-size:.85rem;}
+h1{margin:0 0 4px;font-size:1.3rem;}
+.sub{color:var(--muted);font-size:.85rem;margin:0;}
+main{max-width:900px;margin:0 auto;padding:0 16px 48px;display:flex;flex-direction:column;gap:14px;}
+.panel{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.panel h2{margin:0 0 10px;font-size:1rem;}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+button,.btn{border:none;border-radius:8px;padding:10px 14px;min-height:44px;font-size:.9rem;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;}
+button:hover,.btn:hover{background:var(--accent-hover);}
+button.sub-btn,.btn.sub-btn{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+button:disabled{opacity:.4;cursor:default;}
+input[type=text],input[type=number],textarea{font-size:16px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel-bg);color:var(--text);font-family:inherit;min-height:44px;}
+textarea{width:100%;min-height:70px;resize:vertical;}
+input[type=number]{width:90px;}
+input[type=color]{width:44px;height:44px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--panel-bg);}
+label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;}
+.thumb{border:2px solid var(--border);border-radius:8px;padding:6px;text-align:center;background:var(--bg);cursor:pointer;position:relative;}
+.thumb.cur{border-color:var(--accent);}
+.thumb canvas{max-width:100%;height:auto;background:#fff;display:block;margin:0 auto;}
+.thumb .no{font-size:.75rem;color:var(--muted);margin-top:4px;}
+.thumb input{position:absolute;top:6px;left:6px;width:22px;height:22px;}
+.stage{overflow:auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;}
+.stage canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:crosshair;touch-action:manipulation;}
+.hint{color:var(--muted);font-size:.8rem;margin:6px 0 0;}
+.seg{display:flex;gap:0;}
+.seg button{border-radius:0;background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.seg button:first-child{border-radius:8px 0 0 8px;}.seg button:last-child{border-radius:0 8px 8px 0;}
+.seg button.on{background:var(--accent);color:#fff;}
+#status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
+.hidden{display:none!important;}
+.part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
+.part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.part .seg button{min-height:36px;padding:4px 10px;font-size:.8rem;}
+.part .danger{min-height:36px;padding:4px 10px;font-size:.8rem;}
+@media (prefers-color-scheme: dark){:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;}}
+</style>
+</head>
+<body>
+<header>
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1>📄 PDFエディタ</h1>
+<p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
+</header>
+<main>
+<section class="panel">
+<h2>① ファイル</h2>
+<div class="row">
+<label class="btn" for="fOpen">PDFを開く</label>
+<input id="fOpen" type="file" accept="application/pdf" class="hidden">
+<label class="btn sub-btn" for="fMerge" id="mergeLbl">PDFを後ろに結合</label>
+<input id="fMerge" type="file" accept="application/pdf" multiple class="hidden">
+<button class="sub-btn" id="bNew">新規(空白A4)</button>
+<button id="bSave" disabled>💾 ダウンロード</button>
+<button class="sub-btn" id="bUndo" disabled>↩ 元に戻す</button>
+</div>
+<div id="status">PDFを開くか、新規作成してください。</div>
+</section>
+
+<section class="panel" id="pagesPanel" style="display:none">
+<h2>② ページ操作 <span class="sub" id="pageCount"></span></h2>
+<div class="row" style="margin-bottom:10px">
+<button class="sub-btn" id="bAll">全選択/解除</button>
+<button id="bRot">⟳ 回転</button>
+<button id="bUp">◀ 前へ</button>
+<button id="bDown">後ろへ ▶</button>
+<button id="bBlank">＋空白ページ</button>
+<button id="bExtract" class="sub-btn">選択を別PDFで保存(分割)</button>
+<button id="bDel" class="danger">選択を削除</button>
+</div>
+<div class="grid" id="grid"></div>
+<p class="hint">チェックを入れたページが操作対象です。サムネイルをタップするとそのページを下で編集できます。</p>
+</section>
+
+<section class="panel" id="editPanel" style="display:none">
+<h2>③ 文字・画像の追加 <span class="sub" id="curNo"></span></h2>
+<div class="row" style="margin-bottom:10px">
+<div class="seg"><button id="mText" class="on">文字</button><button id="mImg">画像</button></div>
+</div>
+<div id="textOpts">
+<p class="hint" style="margin:0 0 8px">置いた文字・画像は「部品」として下の一覧に入ります。部品ごとに「文字として / 画像として」を切り替えられます。</p>
+<textarea id="tIn" placeholder="追加する文字(日本語OK・改行可)"></textarea>
+<div class="row" style="margin-top:8px">
+<label>サイズ <input type="number" id="tSize" value="18" min="4" max="200"></label>
+<label>色 <input type="color" id="tColor" value="#000000"></label>
+</div>
+</div>
+<div id="imgOpts" class="hidden">
+<div class="row">
+<label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
+<input id="fImg" type="file" accept="image/png,image/jpeg" class="hidden">
+<label>幅(pt) <input type="number" id="iW" value="150" min="10" max="2000"></label>
+<span id="imgName" class="sub"></span>
+</div>
+</div>
+<p class="hint">下のページ上をタップすると、その位置に追加されます(左上が基準)。間違えたら「元に戻す」。</p>
+<div class="stage" style="margin-top:8px"><canvas id="stage"></canvas></div>
+<div id="partsBox" class="hidden" style="margin-top:10px">
+<h2 style="margin:0 0 8px">置いた部品 <span class="sub" id="partsCount"></span></h2>
+<div id="parts" style="display:flex;flex-direction:column;gap:8px"></div>
+<div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub">ページ操作・ダウンロード時も自動で反映されます</span></div>
+<p class="hint"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
+</div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+(function(){
+"use strict";
+const {PDFDocument,degrees,rgb,StandardFonts}=PDFLib;
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+const $=id=>document.getElementById(id);
+
+const FONT_URL="https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf";
+let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), mode="text", imgData=null, fileName="edited.pdf";
+
+function status(m){$("status").textContent=m;}
+function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+"(暗号化PDFなどは非対応の場合があります)");}};}
+
+async function setBytes(nb,keepCur){
+  if(bytes)hist.push(bytes);
+  if(hist.length>20)hist.shift();
+  bytes=nb;
+  await refresh(keepCur);
+}
+async function refresh(keepCur){
+  if(pdfView){try{pdfView.destroy();}catch{}}
+  pdfView=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+  const n=pdfView.numPages;
+  if(!keepCur||cur>=n)cur=Math.min(cur,n-1);
+  if(cur<0)cur=0;
+  sel=new Set([...sel].filter(i=>i<n));
+  $("pagesPanel").style.display=$("editPanel").style.display="";
+  $("bSave").disabled=false;$("bUndo").disabled=!hist.length;
+  $("pageCount").textContent=`(全${n}ページ)`;
+  status(`${n}ページ / ${(bytes.length/1024).toFixed(0)} KB`);
+  await renderGrid();await renderStage();
+}
+async function renderGrid(){
+  const g=$("grid");g.innerHTML="";
+  for(let i=0;i<pdfView.numPages;i++){
+    const d=document.createElement("div");d.className="thumb"+(i===cur?" cur":"");
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=sel.has(i);
+    cb.onclick=e=>{e.stopPropagation();cb.checked?sel.add(i):sel.delete(i);};
+    const c=document.createElement("canvas");
+    const no=document.createElement("div");no.className="no";no.textContent=i+1;
+    d.append(cb,c,no);
+    d.onclick=()=>{cur=i;[...g.children].forEach((x,j)=>x.classList.toggle("cur",j===i));renderStage();};
+    g.appendChild(d);
+    const p=await pdfView.getPage(i+1);
+    const v0=p.getViewport({scale:1});const s=100/Math.max(v0.width,v0.height)*1.5;
+    const v=p.getViewport({scale:s});c.width=v.width;c.height=v.height;
+    await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+  }
+}
+let stageScale=1;
+async function renderStage(){
+  if(!pdfView)return;
+  $("curNo").textContent=`(${cur+1}ページ目)`;
+  const p=await pdfView.getPage(cur+1);
+  stageScale=Math.min(2,Math.max(1,(window.devicePixelRatio||1)))*1.3;
+  const v=p.getViewport({scale:stageScale});
+  const c=$("stage");c.width=v.width;c.height=v.height;
+  await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+  drawItems(c.getContext("2d"));
+}
+const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(new Uint8Array(x.result));x.onerror=j;x.readAsArrayBuffer(f);});
+
+$("fOpen").onchange=busy(async e=>{
+  const f=e.target.files[0];if(!f)return;
+  const b=await readFile(f);await PDFDocument.load(b); // 検証
+  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";
+  hist=[];bytes=null;cur=0;sel=new Set();items=[];renderParts();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
+});
+$("fMerge").onchange=busy(async e=>{
+  const files=[...e.target.files];if(!files.length)return;
+  if(!bytes){status("先にPDFを開くか新規作成してください。");return;}
+  await commit();
+  const doc=await PDFDocument.load(bytes);
+  for(const f of files){
+    const o=await PDFDocument.load(await readFile(f));
+    const ps=await doc.copyPages(o,o.getPageIndices());ps.forEach(p=>doc.addPage(p));
+  }
+  e.target.value="";await setBytes(await doc.save(),true);
+});
+$("bNew").onclick=busy(async()=>{
+  const doc=await PDFDocument.create();doc.addPage([595.28,841.89]);
+  fileName="new.pdf";hist=[];bytes=null;cur=0;sel=new Set();items=[];renderParts();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
+});
+$("bUndo").onclick=busy(async()=>{
+  if(items.length){items.pop();renderParts();await renderStage();return;}
+  if(!hist.length)return;bytes=hist.pop();await refresh(true);});
+$("bSave").onclick=busy(async()=>{await commit();download(bytes,fileName);});
+function download(b,name){
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b],{type:"application/pdf"}));
+  a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+}
+const selList=()=>[...sel].sort((a,b)=>a-b);
+$("bAll").onclick=()=>{const n=pdfView.numPages;sel=sel.size===n?new Set():new Set([...Array(n).keys()]);renderGridChecks();};
+function renderGridChecks(){[...$("grid").children].forEach((d,i)=>d.querySelector("input").checked=sel.has(i));}
+function target(){return sel.size?selList():[cur];}
+$("bRot").onclick=busy(async()=>{
+  await commit();
+  const doc=await PDFDocument.load(bytes);
+  target().forEach(i=>{const p=doc.getPage(i);p.setRotation(degrees((p.getRotation().angle+90)%360));});
+  await setBytes(await doc.save(),true);
+});
+$("bDel").onclick=busy(async()=>{
+  await commit();
+  const t=target();const doc=await PDFDocument.load(bytes);
+  if(t.length>=doc.getPageCount()){status("全ページは削除できません。");return;}
+  if(!confirm(`${t.length}ページを削除しますか?(元に戻すで復元できます)`))return;
+  t.reverse().forEach(i=>doc.removePage(i));sel=new Set();cur=0;
+  await setBytes(await doc.save());
+});
+async function move(dir){
+  await commit();
+  const t=selList();if(!t.length){status("移動するページにチェックを入れてください。");return;}
+  const n=pdfView.numPages;const order=[...Array(n).keys()];
+  const set=new Set(t);
+  if(dir<0){for(let k=1;k<n;k++)if(set.has(order[k])&&!set.has(order[k-1]))[order[k-1],order[k]]=[order[k],order[k-1]];}
+  else{for(let k=n-2;k>=0;k--)if(set.has(order[k])&&!set.has(order[k+1]))[order[k+1],order[k]]=[order[k],order[k+1]];}
+  const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
+  const ps=await out.copyPages(src,order);ps.forEach(p=>out.addPage(p));
+  sel=new Set(order.map((o,k)=>set.has(o)?k:-1).filter(k=>k>=0));cur=order.indexOf(cur);
+  await setBytes(await out.save(),true);
+}
+$("bUp").onclick=busy(()=>move(-1));$("bDown").onclick=busy(()=>move(1));
+$("bBlank").onclick=busy(async()=>{
+  await commit();
+  const doc=await PDFDocument.load(bytes);const ref=doc.getPage(cur);
+  const {width,height}=ref.getSize();doc.insertPage(cur+1,[width,height]);
+  cur=cur+1;sel=new Set();await setBytes(await doc.save(),true);
+});
+$("bExtract").onclick=busy(async()=>{
+  await commit();
+  const t=selList();if(!t.length){status("分割するページにチェックを入れてください。");return;}
+  const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
+  (await out.copyPages(src,t)).forEach(p=>out.addPage(p));
+  download(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf");
+  status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
+});
+
+// 文字・画像
+function syncUndo(){}
+$("mText").onclick=()=>setMode("text");$("mImg").onclick=()=>setMode("img");
+function setMode(m){mode=m;$("mText").classList.toggle("on",m==="text");$("mImg").classList.toggle("on",m==="img");
+  $("textOpts").classList.toggle("hidden",m!=="text");$("imgOpts").classList.toggle("hidden",m!=="img");}
+$("fImg").onchange=busy(async e=>{
+  const f=e.target.files[0];if(!f)return;
+  imgData={bytes:await readFile(f),png:f.type==="image/png"};imgData.bmp=await createImageBitmap(f);$("imgName").textContent=f.name;e.target.value="";
+});
+// 表示座標 -> PDF内部座標(ページ回転を考慮)
+function toUser(vx,vy,W,H,r){
+  switch(r){case 90:return[vy,vx];case 180:return[W-vx,vy];case 270:return[W-vy,H-vx];default:return[vx,H-vy];}
+}
+$("stage").addEventListener("click",busy(async e=>{
+  if(!bytes)return;
+  const c=$("stage"),rc=c.getBoundingClientRect();
+  const vx=(e.clientX-rc.left)*(c.width/rc.width)/stageScale;
+  const vy=(e.clientY-rc.top)*(c.height/rc.height)/stageScale;
+  if(mode==="text"){
+    const txt=$("tIn").value;if(!txt.trim()){status("追加する文字を入力してください。");return;}
+    items.push({id:nextId++,type:"text",fmt:"text",page:cur,vx,vy,txt,size:+$("tSize").value||18,color:$("tColor").value});
+  }else{
+    if(!imgData){status("画像を選んでください。");return;}
+    const w=+$("iW").value||150;
+    items.push({id:nextId++,type:"img",fmt:"pic",page:cur,vx,vy,w,data:imgData,bmp:imgData.bmp});
+  }
+  renderParts();await renderStage();
+}));
+
+// ---- 部品(未確定の文字・画像) ----
+function textCanvas(it,K){
+  const lines=it.txt.split("\n"),cv=document.createElement("canvas"),cx=cv.getContext("2d");
+  const font=`${it.size*K}px "Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif`;
+  cx.font=font;
+  const w=Math.ceil(Math.max(...lines.map(l=>cx.measureText(l).width)))+4,lh=Math.ceil(it.size*K*1.3);
+  cv.width=w;cv.height=lh*lines.length;
+  cx.font=font;cx.fillStyle=it.color;cx.textBaseline="top";
+  lines.forEach((l,i)=>cx.fillText(l,2,i*lh+it.size*K*0.1));
+  return cv;
+}
+function drawItems(cx){
+  items.filter(it=>it.page===cur).forEach(it=>{
+    if(it.type==="text"){
+      const cv=textCanvas(it,stageScale);cx.drawImage(cv,it.vx*stageScale,it.vy*stageScale);
+    }else if(it.bmp){
+      const w=it.w*stageScale,h=w*it.bmp.height/it.bmp.width;cx.drawImage(it.bmp,it.vx*stageScale,it.vy*stageScale,w,h);
+    }
+  });
+}
+function renderParts(){
+  if($("bUndo"))$("bUndo").disabled=!items.length&&!hist.length;
+  $("partsBox").classList.toggle("hidden",!items.length);
+  $("partsCount").textContent=`(${items.length}件)`;
+  const box=$("parts");box.innerHTML="";
+  items.forEach(it=>{
+    const d=document.createElement("div");d.className="part";
+    const l=document.createElement("span");l.className="lbl";
+    l.textContent=`${it.page+1}ページ ・ `+(it.type==="text"?"「"+it.txt.replace(/\n/g," ")+"」":"画像");
+    const seg=document.createElement("div");seg.className="seg";
+    const bt=document.createElement("button"),bp=document.createElement("button");
+    bt.textContent="文字として";bp.textContent="画像として";
+    const upd=()=>{bt.classList.toggle("on",it.fmt==="text");bp.classList.toggle("on",it.fmt==="pic");};
+    if(it.type==="text"){bt.onclick=()=>{it.fmt="text";upd();};bp.onclick=()=>{it.fmt="pic";upd();};upd();seg.append(bt,bp);}
+    else{const f=document.createElement("span");f.className="sub";f.textContent="画像のまま";seg.append(f);}
+    const del=document.createElement("button");del.className="danger";del.textContent="削除";
+    del.onclick=()=>{items=items.filter(x=>x!==it);renderParts();renderStage();};
+    d.append(l,seg,del);box.appendChild(d);
+  });
+}
+// 部品をPDFへまとめて書き込む(フォントは1回だけ埋め込む)
+async function commit(){
+  if(!items.length||!bytes)return;
+  status("PDFに反映中…");
+  const doc=await PDFDocument.load(bytes);
+  let jp=null,lat=null;
+  for(const it of items){
+    const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
+    if(it.type==="text"&&it.fmt==="text"){
+      if(!jp){
+        doc.registerFontkit(fontkit);
+        status("日本語フォントを読み込み中…(初回のみ・約2MB)");
+        if(!fontBytes){const res=await fetch(FONT_URL);if(!res.ok)throw new Error("日本語フォントを取得できませんでした");fontBytes=await res.arrayBuffer();}
+        jp=await doc.embedFont(fontBytes,{subset:false});lat=await doc.embedFont(StandardFonts.Helvetica);
+      }
+      const hex=it.color;const col=rgb(parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255);
+      const lines=it.txt.split("\n");
+      for(let li=0;li<lines.length;li++){
+        let off=0;const baseV=it.vy+it.size*0.85+li*it.size*1.3;const runs=[];
+        for(const ch of lines[li]){const f=ch.codePointAt(0)<0x80?lat:jp;const l=runs[runs.length-1];
+          if(l&&l.f===f)l.t+=ch;else runs.push({f,t:ch});}
+        for(const run of runs){
+          const [ax,ay]=toUser(it.vx+off,baseV,W,H,r);
+          page.drawText(run.t,{x:ax,y:ay,size:it.size,font:run.f,color:col,rotate:degrees(r)});
+          off+=run.f.widthOfTextAtSize(run.t,it.size);
+        }
+      }
+    }else if(it.type==="text"){
+      const K=4,cv=textCanvas(it,K);
+      const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
+      const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
+      const iw=cv.width/K,ih=cv.height/K;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
+      page.drawImage(img,{x:ax,y:ay,width:iw,height:ih,rotate:degrees(r)});
+    }else{
+      const img=it.data.png?await doc.embedPng(it.data.bytes):await doc.embedJpg(it.data.bytes);
+      const w=it.w,h=w*img.height/img.width;const [ax,ay]=toUser(it.vx,it.vy+h,W,H,r);
+      page.drawImage(img,{x:ax,y:ay,width:w,height:h,rotate:degrees(r)});
+    }
+  }
+  items=[];renderParts();
+  await setBytes(await doc.save(),true);
+}
+$("bCommit").onclick=busy(commit);
+})();
+</script>
+</body>
+</html>
