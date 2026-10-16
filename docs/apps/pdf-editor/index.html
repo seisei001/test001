@@ -49,13 +49,13 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .hidden{display:none!important;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
-#ov{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;}
+#ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:none;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
 .cover{position:absolute;pointer-events:none;}
-.ibox{position:absolute;border:1px dashed rgba(37,99,235,.7);line-height:1.3;color:#000;}
-.ibox.on{border:2px solid #2563eb;z-index:5;}
+.ibox{position:absolute;outline:1px dashed rgba(37,99,235,.8);line-height:1.3;color:#000;}
+.ibox.on{outline:2px solid #2563eb;z-index:5;}
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:break-all;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 .ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
@@ -287,6 +287,23 @@ $("bExtract").onclick=busy(async()=>{
 let mode="text",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
 const ov=$("ov");
 const itemEls=new Map();
+const FAMILY_PIC='"Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif';
+let webFontOK=false;
+async function loadFontBytes(){if(!fontBytes){const res=await fetch(FONT_URL);if(!res.ok)throw new Error("日本語フォントを取得できませんでした");fontBytes=await res.arrayBuffer();}}
+// 入力中の枠と確定後のPDFで同じフォントを使うため、画面側にも読み込む
+async function ensureWebFont(){
+  if(webFontOK)return;
+  await loadFontBytes();
+  const ff=new FontFace("PdfJP",fontBytes.slice(0));await ff.load();document.fonts.add(ff);webFontOK=true;
+}
+const famOf=fmt=>fmt==="pic"?FAMILY_PIC:'"PdfJP",sans-serif';
+const metCache={};
+function baseOff(fmt,size,lh){ // 枠の上端から1行目のベースラインまでの距離(CSSの行ボックスと同じ計算)
+  const key=fmt+(webFontOK?"1":"0");
+  if(!metCache[key]){const cx=document.createElement("canvas").getContext("2d");cx.font="100px "+famOf(fmt);
+    const m=cx.measureText("あ");metCache[key]={A:(m.fontBoundingBoxAscent||88)/100,D:(m.fontBoundingBoxDescent||12)/100};}
+  const {A,D}=metCache[key];return size*((lh-(A+D))/2+A);
+}
 const hex2rgb=h=>rgb(parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255);
 function toUser(vx,vy,W,H,r){
   switch(r){case 90:return[vy,vx];case 180:return[W-vx,vy];case 270:return[W-vy,H-vx];default:return[vx,H-vy];}
@@ -359,8 +376,8 @@ function newFix(list){
   const size=[...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)];
   const lh=lines.length>1?Math.min(2.5,Math.max(1,(lines[1].base-lines[0].base)/size)):1.3;
   const col=sampleColors({x:x0,y:y0,w:x1-x0,h:y1-y0});
-  const top=lines[0].base-size*0.85;
-  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*0.8,vh:Math.max(size*lh*lines.length,size*1.3),txt:lines.map(l=>l.s).join("\n"),size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  const top=lines[0].base-baseOff("text",size,lh);
+  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt:lines.map(l=>l.s).join("\n"),size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
 }
 function select(it,focus){
   cs=it;renderOverlay();syncPanel();
@@ -369,7 +386,7 @@ function select(it,focus){
 function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
-  if(t){t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;}
+  if(t){t.style.fontFamily=famOf(it.fmt);t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
 function renderOverlay(){
@@ -431,7 +448,7 @@ function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(
 $("sTxt").oninput=()=>{if(cs){cs.txt=$("sTxt").value;refreshSel();}};
 $("sSize").oninput=()=>{if(cs){cs.size=Math.max(4,+$("sSize").value||cs.size);refreshSel();}};
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
-$("sFmtT").onclick=()=>{if(cs){cs.fmt="text";syncPanel();refreshSel();}};
+$("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
 $("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
 $("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
 $("sClose").onclick=()=>select(null);
@@ -453,6 +470,7 @@ ov.addEventListener("pointerdown",e=>{
     ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
     const r=rub;rub=null;if(!r)return;r.d.remove();
     if(mode==="fix")await loadRuns();
+    await ensureWebFont().catch(()=>{});
     const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
     const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
     const tap=w<6&&h<6;let it=null;
@@ -483,18 +501,18 @@ window.addEventListener("resize",()=>renderOverlay());
 function wrapLines(txt,maxW,m){
   const out=[];
   for(const para of txt.split("\n")){let line="";
-    for(const ch of para){const t=line+ch;if(line&&m(t)>maxW){out.push(line);line=ch;}else line=t;}
+    for(const ch of para){const t=line+ch;if(line&&m(t)>maxW*1.01+0.5){out.push(line);line=ch;}else line=t;}
     out.push(line);}
   return out;
 }
-function fontRuns(str,jp,lat){const rs=[];for(const ch of str){const f=ch.codePointAt(0)<0x80?lat:jp;const l=rs[rs.length-1];if(l&&l.f===f)l.t+=ch;else rs.push({f,t:ch});}return rs;}
 async function commit(){
   const todo=items.filter(it=>it.type==="img"||it.txt.trim()||it.type==="fix");
   items=[];cs=null;
   if(!todo.length||!bytes){renderOverlay();syncPanel();return;}
   status("PDFに反映中…");
+  if(todo.some(it=>it.fmt==="text"&&it.type!=="img"))await ensureWebFont().catch(()=>{});
   const doc=await PDFDocument.load(bytes);
-  let jp=null,lat=null;
+  let jp=null;
   for(const it of todo){
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
     const rect=(x,y,w,h)=>{const [a1,b1]=toUser(x,y,W,H,r),[a2,b2]=toUser(x+w,y+h,W,H,r);return{x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1)};};
@@ -506,31 +524,27 @@ async function commit(){
     if(it.type==="fix"){const c=it.cover;page.drawRectangle({...rect(c.x,c.y,c.w,c.h),color:hex2rgb(it.bg),borderWidth:0});}
     if(!it.txt.trim())continue;
     const lhp=it.size*it.lh;
+    const bo=baseOff(it.fmt,it.size,it.lh);
     if(it.fmt==="text"){
       if(!jp){
         doc.registerFontkit(fontkit);
         status("日本語フォントを読み込み中…(初回のみ・約2MB)");
-        if(!fontBytes){const res=await fetch(FONT_URL);if(!res.ok)throw new Error("日本語フォントを取得できませんでした");fontBytes=await res.arrayBuffer();}
-        jp=await doc.embedFont(fontBytes,{subset:false});lat=await doc.embedFont(StandardFonts.Helvetica);
+        await loadFontBytes();
+        jp=await doc.embedFont(fontBytes,{subset:false});
       }
-      const m=s=>{let w=0;for(const ch of s)w+=(ch.codePointAt(0)<0x80?lat:jp).widthOfTextAtSize(ch,it.size);return w;};
-      const lines=wrapLines(it.txt,it.vw,m);
+      const lines=wrapLines(it.txt,it.vw,t=>jp.widthOfTextAtSize(t,it.size));
       lines.forEach((ln,li)=>{
-        const baseV=it.vy+it.size*0.85+li*lhp;let off=0;
-        for(const run of fontRuns(ln,jp,lat)){
-          const [ax,ay]=toUser(it.vx+off,baseV,W,H,r);
-          page.drawText(run.t,{x:ax,y:ay,size:it.size,font:run.f,color:hex2rgb(it.color),rotate:degrees(r)});
-          off+=run.f.widthOfTextAtSize(run.t,it.size);
-        }
+        const [ax,ay]=toUser(it.vx,it.vy+bo+li*lhp,W,H,r);
+        page.drawText(ln,{x:ax,y:ay,size:it.size,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});
       });
     }else{
       const KK=4,cv=document.createElement("canvas"),cx=cv.getContext("2d");
-      const font=`${it.size*KK}px "Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif`;
+      const font=`${it.size*KK}px ${FAMILY_PIC}`;
       cx.font=font;
       const lines=wrapLines(it.txt,it.vw,s=>cx.measureText(s).width/KK);
       cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(lines.length*lhp*KK)+4;
       cx.font=font;cx.fillStyle=it.color;cx.textBaseline="alphabetic";
-      lines.forEach((ln,li)=>cx.fillText(ln,0,(it.size*0.85+li*lhp)*KK));
+      lines.forEach((ln,li)=>cx.fillText(ln,0,(bo+li*lhp)*KK));
       const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
       const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
       const iw=cv.width/KK,ih=cv.height/KK;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
