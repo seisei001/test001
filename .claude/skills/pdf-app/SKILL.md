@@ -27,6 +27,9 @@ description: WEBアプリハブの「📄 PDFエディタ」(docs/apps/pdf-edito
 sh .claude/skills/pdf-app/scripts/setup.sh                 # 部品を用意(最初の1回)
 node .claude/skills/pdf-app/scripts/make-sample-pdfs.js    # 試験用PDF: table / grid(罫線) / form / scan(画像だけ)
 node .claude/skills/pdf-app/scripts/example-test.js        # 例: scan.pdf をOCR→書き換え→確定→画像化
+node .claude/skills/pdf-app/scripts/make-pattern-scan.js   # 模様入り・太い罫線つきのスキャン(scan_pattern.pdf)を作る
+node .claude/skills/pdf-app/scripts/test-ocr-pattern.js    # 模様入りスキャンのOCR: 部品がページ内か/隠す色が暗くないか(OCR_CLEAN=0 で背景処理なしと比較)
+node .claude/skills/pdf-app/scripts/test-bottom.js         # ページ下端で長い文字を入力しても、枠がページ内に収まるか
 ```
 - `scripts/harness.js` の `launch()` / `drag()` / `save()` を使って、新しい確認シナリオを書く(`example-test.js` を手本に)。
 - 目で見る: 入力中=`page.locator('#pagewrap').screenshot(...)`、確定後=`save()` → `pdftoppm -png -scale-to 546 out.pdf shot`(**`-scale-to` を使う。`-scale-to-x` だけだと縦横比が崩れる**)。
@@ -87,7 +90,11 @@ node .claude/skills/pdf-app/scripts/example-test.js        # 例: scan.pdf をOC
 - tesseract.js 5.1.1 + `@tesseract.js-data/{jpn,eng}@1.0.0/4.0.0_best_int`(日本語約2MB、高精度の量子化版。標準版は16MBなので使わない)。ライブラリは使うときだけ `<script>` を動的に追加。
 - 日本語は語の間・字の間に余計な空白を出す → `cleanOcr` で非ASCII同士の間の空白を除く。**語単位**で扱い、行の文字サイズは「語の幅÷文字数」の中央値。信頼度の低い語は捨てすぎない(`マコト`が信頼度18で落ちた)が、記号だけのノイズは捨てる。
 - 隠す範囲は、認識結果の実bbox(推定の範囲だと元の画像の文字の上端が残る)。画像内の縦線は画素で検出して `seps.v` に足す。
-- 限界: 背景が写真・模様だと隠した四角が目立つ。精度は画質次第。
+- **背景に模様があるスキャン(実例: 免許証のような花模様の紙)**: 認識前に背景を消す(`flattenForOcr`: 周囲の平均より十分暗い画素だけを黒にする)。ただし**きれいな書類では細い文字を傷めて精度が落ちる**ので、背景のばらつき(明るい側の標準偏差)が小さいときは処理しない(`sd<10`)。チェックボックスで切り替え可。
+- **隠す色(`sampleColors`)は「枠の外側の一周の中央値」**。以前は枠の左上の外の1画素だったので、表の罫線に当たると**真っ黒な四角**になった(実例の不具合)。罫線や隣の文字が混ざる前提で、必ず中央値などの頑健な方法にする。
+- 限界: 背景が写真・模様だと、隠した四角が平らな色なので目立つ。精度は画質次第(誤認識は枠の中で直す前提)。
+
+**部品をページ内に収める(`clampToPage`)** — 実例の不具合: OCRの誤認識などで文字が大きく推定され、枠がページの外に出て**選べず扱えなくなった**。→ 作成時・文字入力・サイズ変更・ドラッグ(移動/リサイズ)のすべてで、枠をページ内に収める(位置をずらし、それでも収まらなければ文字を小さくする)。`#ov` は `overflow:visible`(つまみがページの端でも押せる)。OCRの文字サイズは上限60pt。
 
 **UI/操作の学び**
 - ユーザーはPC(Windows系)で使う。ドラッグで範囲指定、右クリックでメニュー。スマホのスクロールとドラッグ選択は競合する(`touch-action:none`)ので、スマホは未検証。
@@ -108,7 +115,7 @@ node .claude/skills/pdf-app/scripts/example-test.js        # 例: scan.pdf をOC
 **未確認・既知の制限**: Mac・スマホ・Firefox/Safari、実際のWord/Excel由来PDFや実際のスキャン書類での精度、縦書き、回転したテキスト、暗号化PDF、罫線が画像のPDFの区切り検出、背景が模様の場合の隠し方、OCR認識データの実ネットワークでの取得。
 
 ## 8. 次の改善アイデア(優先度は目安)
-1. 実PDFでの検証と調整(まとまり判定の既定値、OCRの精度、文字サイズの推定)。ユーザーからの実例を最優先にする。
+1. 実PDFでの検証と調整(まとまり判定の既定値、OCRの精度、文字サイズの推定)。ユーザーからの実例を最優先にする。(最近の実例: 花模様のスキャン書類→黒い枠・はみ出しを修正済み。残り: 平らな色の四角が模様の上で目立つ→周囲の模様を複製して埋める、OCRで落ちる行の再試行、傾きの補正)
 2. 太字・斜体・フォント選択、文字揃え(左/中央/右)、行間の調整。
 3. 部品の複数選択(Shift+クリック、まとめて移動・削除・サイズ変更)、コピー&貼り付け、Undo/Redoの細分化(いまは確定単位)。
 4. 本当の墨消し(元の文字データを消す)—ページを画像化して描き直す方式のオプション。注意書き必須。

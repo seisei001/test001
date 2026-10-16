@@ -53,7 +53,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 #ctx button:hover{background:var(--accent);color:#fff;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
-#ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none;}
+#ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:none;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
@@ -128,6 +128,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
 <button class="sub-btn" id="bOcrPage">このページ全体を認識</button>
+<label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label>
 <span class="sub">初回だけ、認識データ(日本語で約2MB)と認識エンジンをダウンロードします</span>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
@@ -462,13 +463,23 @@ const runBox=r=>r.box||({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
 // ページ画像から文字色・背景色を推定
 function sampleColors(box){
   const c=$("stage"),cx=c.getContext("2d",{willReadFrequently:true}),ss=stageScale;
-  const px=(x,y)=>{const d=cx.getImageData(Math.max(0,Math.min(c.width-1,Math.round(x*ss))),Math.max(0,Math.min(c.height-1,Math.round(y*ss))),1,1).data;return d;};
-  const bgp=px(box.x-2,box.y-2);const lum=d=>d[0]*.3+d[1]*.59+d[2]*.11;
+  const lum=d=>d[0]*.3+d[1]*.59+d[2]*.11;
   const x0=Math.max(0,Math.round(box.x*ss)),y0=Math.max(0,Math.round(box.y*ss));
   const w=Math.max(1,Math.min(c.width-x0,Math.round(box.w*ss))),h=Math.max(1,Math.min(c.height-y0,Math.round(box.h*ss)));
+  // 背景色: 枠のすぐ外側(幅 pad 画素)の一周の、各色の中央値。罫線・隣の文字が少し混ざっても影響されにくい
+  const pad=Math.max(3,Math.round(3*ss));
+  const ox0=Math.max(0,x0-pad),oy0=Math.max(0,y0-pad),ox1=Math.min(c.width,x0+w+pad),oy1=Math.min(c.height,y0+h+pad);
+  const od=cx.getImageData(ox0,oy0,ox1-ox0,oy1-oy0).data,ow=ox1-ox0;
+  const R=[],G=[],B=[];
+  for(let yy=oy0;yy<oy1;yy++)for(let xx=ox0;xx<ox1;xx++){
+    if(xx>=x0&&xx<x0+w&&yy>=y0&&yy<y0+h)continue;
+    const k=((yy-oy0)*ow+(xx-ox0))*4;R.push(od[k]);G.push(od[k+1]);B.push(od[k+2]);
+  }
+  const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
+  const bgp=R.length>=8?[med(R),med(G),med(B)]:[255,255,255];
   const dat=cx.getImageData(x0,y0,w,h).data;let best=null,bl=999;
   for(let i=0;i<dat.length;i+=4){const l=dat[i]*.3+dat[i+1]*.59+dat[i+2]*.11;if(l<bl){bl=l;best=[dat[i],dat[i+1],dat[i+2]];}}
-  const h2=a=>"#"+[a[0],a[1],a[2]].map(v=>v.toString(16).padStart(2,"0")).join("");
+  const h2=a=>"#"+[a[0],a[1],a[2]].map(v=>Math.round(v).toString(16).padStart(2,"0")).join("");
   return{bg:h2(bgp),fg:best&&bl<lum(bgp)-40?h2(best):"#000000"};
 }
 
@@ -496,7 +507,8 @@ function newFix(list){
     if(li){txt+="\n";sz.push(null);}
     l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
   });
-  return{id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  growToFit(fx);clampToPage(fx);return fx;
 }
 function select(it,focus){
   if(it!==cs)lastSel=null;
@@ -550,12 +562,28 @@ function measureHost(it,g){
   buildText(it,d,g);document.body.appendChild(d);return d;
 }
 // 枠が足りなければ広げる(単語が枠より長い→幅、行数が多い→高さ)
+// 部品をページ内に収める。大きすぎる/はみ出す場合は、位置をずらし、それでも収まらなければ文字を小さくする
+function clampToPage(it){
+  if(it.type==="img"){it.vw=Math.min(it.vw,VW);it.vh=Math.min(it.vh,VH);}
+  else{
+    it.vw=Math.min(it.vw,VW);it.vh=Math.min(it.vh,VH);
+    if(it.txt&&!fitsAt(it,1)){
+      let lo=4/it.size,hi=1,g=lo;
+      if(fitsAt(it,lo)){for(let i=0;i<20;i++){const mid=(lo+hi)/2;if(fitsAt(it,mid))lo=mid;else hi=mid;}g=lo;}
+      const nb=Math.max(4,Math.floor(it.size*g*2)/2),k=nb/it.size;
+      it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*k*10)/10):null);it.size=nb;
+    }
+  }
+  it.vx=Math.max(0,Math.min(it.vx,VW-it.vw));it.vy=Math.max(0,Math.min(it.vy,VH-it.vh));
+}
 function growToFit(it){
   if(it.type==="img"||!it.txt)return false;
   let ch=false,d=measureHost(it,1);
   if(d.scrollWidth>it.vw+0.5){it.vw=Math.max(it.vw,Math.min(Math.ceil(d.scrollWidth)+1,Math.max(VW-it.vx,it.vw)));ch=true;d.remove();d=measureHost(it,1);}
   if(d.scrollHeight>it.vh+0.5){it.vh=Math.ceil(d.scrollHeight);ch=true;}
-  d.remove();return ch;
+  d.remove();
+  if(ch)clampToPage(it);
+  return ch;
 }
 function serialize(root,isEditor){
   const chars=[],sz=[];
@@ -733,9 +761,9 @@ function dragHandle(h,it,el,resize){
     const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
     const mvf=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
-      if(resize){it.vw=Math.max(10,ow+dx);it.vh=Math.max(8,oh+dy);
+      if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));
         if(it.type!=="img"&&$("sAuto").checked&&fitSize(it,o)){const t=el.querySelector(".t");if(t)buildText(it,t,k);showSize();}}
-      else{it.vx=ox+dx;it.vy=oy+dy;}
+      else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
     const up=()=>{h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
@@ -849,12 +877,33 @@ async function renderRegion(x,y,w,h,scale){
   return cv;
 }
 const cleanOcr=t=>t.replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
+// 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
+function flattenForOcr(cv){
+  const cx=cv.getContext("2d",{willReadFrequently:true}),w=cv.width,h=cv.height;
+  const im=cx.getImageData(0,0,w,h),d=im.data,n=w*h,g=new Float32Array(n);
+  for(let i=0;i<n;i++)g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
+  // 背景に模様・ムラがあるときだけ処理する(きれいな書類に使うと、細い文字を傷める)
+  const hist=new Uint32Array(256);for(let i=0;i<n;i++)hist[Math.min(255,g[i]|0)]++;
+  let acc=0,p90=255;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>n*0.1){p90=v;break;}} // 明るい側の上位10%の境
+  let sum=0,sq=0,cnt=0;for(let i=0;i<n;i++)if(g[i]>=p90*0.8){sum+=g[i];sq+=g[i]*g[i];cnt++;}
+  const sd=cnt?Math.sqrt(Math.max(0,sq/cnt-(sum/cnt)**2)):0;
+  if(sd<10)return false;
+  const W1=w+1,I=new Float64Array(W1*(h+1)); // 積分画像
+  for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=g[y*w+x];I[(y+1)*W1+x+1]=I[y*W1+x+1]+row;}}
+  const R=Math.max(12,Math.min(60,Math.round(Math.min(w,h)/10)));
+  for(let y=0;y<h;y++){const y0=Math.max(0,y-R),y1=Math.min(h,y+R+1);
+    for(let x=0;x<w;x++){const x0=Math.max(0,x-R),x1=Math.min(w,x+R+1);
+      const m=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((x1-x0)*(y1-y0));
+      const v=g[y*w+x]<m*0.86?0:255;const k=(y*w+x)*4;d[k]=d[k+1]=d[k+2]=v;}}
+  cx.putImageData(im,0,0);return true;
+}
 async function doOcr(x,y,w,h){
   if(w<6||h<6){status("文字にしたい範囲をドラッグしてください。");return;}
   const lang=$("ocrLang").value,worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");
   const cv=await renderRegion(x,y,w,h,S);
+  if($("ocrClean").checked)flattenForOcr(cv);
   status("文字認識中…");
   const {data}=await worker.recognize(cv,{},{blocks:true});
   let lines=data.lines||[];
@@ -868,7 +917,7 @@ async function doOcr(x,y,w,h){
     if(!ws.length)return;
     // 行の文字サイズ: 各語の「幅÷文字数」の中央値(語の間の空白に左右されない)
     const sizes=ws.map(w=>{const n=Array.from(w.str).reduce((a,ch)=>a+(ch.codePointAt(0)>0x2E80?1:0.55),0);return n>=2?((w.b.x1-w.b.x0)/S)/n:0;}).filter(v=>v>0).sort((a,b)=>a-b);
-    let size=sizes.length?sizes[Math.floor(sizes.length/2)]:lh*0.9;size=Math.max(4,Math.min(size,lh*1.25));
+    let size=sizes.length?sizes[Math.floor(sizes.length/2)]:lh*0.9;size=Math.max(4,Math.min(size,lh*1.25,60));
     ws.forEach(w=>rs.push({str:w.str,x:x+w.b.x0/S,base:y+lb.y1/S-size*0.15,w:(w.b.x1-w.b.x0)/S,size,ocr:true,box:{x:x+w.b.x0/S-1,y:y+Math.min(w.b.y0,lb.y0)/S-1.5,w:(w.b.x1-w.b.x0)/S+2,h:(Math.max(w.b.y1,lb.y1)-Math.min(w.b.y0,lb.y0))/S+3}}));
     // 語と語の間に縦線(表の罫線)があれば、区切りとして登録する
     for(let i=0;i<ws.length-1;i++){
