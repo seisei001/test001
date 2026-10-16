@@ -30,6 +30,8 @@ node .claude/skills/pdf-app/scripts/example-test.js        # 例: scan.pdf をOC
 node .claude/skills/pdf-app/scripts/make-pattern-scan.js   # 模様入り・太い罫線つきのスキャン(scan_pattern.pdf)を作る
 node .claude/skills/pdf-app/scripts/test-ocr-pattern.js    # 模様入りスキャンのOCR: 部品がページ内か/隠す色が暗くないか(OCR_CLEAN=0 で背景処理なしと比較)
 node .claude/skills/pdf-app/scripts/test-bottom.js         # ページ下端で長い文字を入力しても、枠がページ内に収まるか
+node .claude/skills/pdf-app/scripts/make-scan-layout.js    # 文字サイズ・配置を変えた「正解つき」のスキャン(layout_scan.pdf / layout_truth.json)
+node .claude/skills/pdf-app/scripts/test-ocr-layout.js     # OCRの精度を正解と比べて表にする(文字サイズ誤差・行間・揃い・本文の一致率・部品数)。**OCRを触ったら必ず実行**
 node .claude/skills/pdf-app/scripts/make-warp-photo.js     # 歪んだ写真のPDF: photo_persp(斜めから撮った紙)/ photo_curve(曲がった紙)
 node .claude/skills/pdf-app/scripts/test-warp.js           # 歪み補正: 補正の前後で「OCRで読めた行数」を比べる(一括・部分の両方)。画像は $PDFAPP_WORK/shot_warp_*.png
 ```
@@ -61,7 +63,7 @@ node .claude/skills/pdf-app/scripts/test-warp.js           # 歪み補正: 補�
 | `loadRuns` / `loadSeps` | PDF内の文字の断片(`getTextContent`)と、区切り線(`getOperatorList`の罫線・点線・細い四角)を集める |
 | `buildBlocks` | 「まとまり」の判定(§5) |
 | `newFix` | まとまり → 編集できる部品(文字色・背景色を画面から推定、離れた文字の間は元の間隔に近い数の空白で再現) |
-| `doOcr` | 範囲を高解像度で描画 → Tesseract → 語単位の run → `buildBlocks` → `newFix` |
+| `ocrSegment` / `ocrChunk` / `doOcr` | **OCR v2(塊ごと)**: 範囲を描画 → 画像解析で「文字の塊」に分ける(罫線を消す→連結成分→行→段落/セル)→ **塊ごとに**ちょうどよい倍率(文字の高さ約40px)で描き直して認識(複数行=PSM6、1行=7、1文字=10、読めなければ再試行)→ 塊ごとに文字サイズ・行間・文字揃いを推定 → ページ全体で近い大きさをそろえて0.5pt刻み → `buildBlocks` で横につなぎ直して `newFix` |
 | `makeUnitMap` / `makePixMap` / `warpImage` | 歪み補正。一括=`squareToQuad`(射影変換=台形補正)、部分=4辺のベジェ曲線(`arcTable`で長さ等分)をつなぐクーンズ曲面。出力画素ごとに元画像を双一次補間で引く |
 | `findPaperQuad` | 紙の四隅の自動検出(大津の二値化→最大の連結領域→四隅の端点)。**提案だけ**で、確定は手動 |
 | `renderWarp` / `dragWarpHandle` | 補正の編集UI(SVGの点と曲線、格子の補助線)。角を動かすと、つながる曲線の点も一緒に動く |
@@ -92,7 +94,14 @@ node .claude/skills/pdf-app/scripts/test-warp.js           # 歪み補正: 補�
 - **過去の不具合**: 行にまとめる配列に `size` を入れ忘れ、`Math.max(r.size,l.size)` が NaN になり、**全部の文字が別々の行扱い**だった。→ 「全然まとまらない」と言われたらまず疑う。
 - 点線の枠(ガイド)は**実際に選ばれる単位**で描く(断片単位で描くと、まとまっていても分かれて見える)。
 
-**OCR**
+**OCR(v2: 塊ごと。ユーザーの指摘が出発点)** — 「読み取りで破綻する最大の原因は、全体を一度に認識して文字サイズを一律にしてしまうこと。ページを文字の塊から見て、ポ数と配置を考えるべき」。
+- **旧(v1)の欠陥**: ページ全体を1回で認識 → 行ごとに文字サイズを推定 → 行ごとにバラバラ、中央・右揃いが失われ、ごみの行が大量に出た(正解7部品に対して16、本文の一致率83%、サイズ誤差の中央値16%)。
+- **新(v2)の流れ**: ①`ocrSegment`で塊に分ける(Otsuの二値化→30pt以上の長い線は罫線として消して区切りに→連結成分→「横に近く縦に重なる」で行→「行間が詰まって左揃い/重なり、大きさが近い」で塊。**細い横線(ニの棒・長音符ー)は縦位置の近さでつなぐ**) ②`ocrChunk`で塊ごとに最適倍率で認識 ③文字サイズ=各行の「幅÷文字数の目安(`charUnits`:全角=1、英大文字.66、数字.55、英小文字.5、空白.3)」の文字数重み付き中央値 ④行間=行の中心の間隔÷サイズ ⑤揃い=左端/中心/右端のうち、そろっているもの(1行だけなら、ページの中央・右寄りで判定) ⑥ページ全体で10%以内のサイズを1グループにして0.5pt刻み ⑦語を `buildBlocks` でつなぎ直す(同じ塊の文字は縦にも必ず同じまとまり=`ch`)。
+- **精度(`test-ocr-layout.js`, 正解つきの7ブロック)**: 文字サイズ誤差 中央値0%/最大6%、行間の誤差0%、揃い 7/7、本文の一致率100%、部品数7(正解7)、約8秒。歪み補正後のOCR(`test-warp.js`)も、一括0→5/7、部分5→7/7に改善。
+- **ハマりどころ**: 認識結果の単語の間に入れた空白を文字数に数えると、サイズが10〜20%小さく出る(幅は正確。`joinWords`で日本語どうしの間には空白を入れない)。**1文字だけの塊はPSM 10**でないと読めない。再試行の結果は**信頼度60以上のときだけ**採用しないと、罫線の切れ端から意味のない文字ができる。完了メッセージは「個のまとまり」を含める(テストの待ち条件)。
+- **文字揃い(`it.align`)** はアプリ全体の機能(パネルの「左揃え/中央/右揃え」、`.t`のtext-align、確定時は `layoutText` の `ln.off` で行ごとにずらす。行末の空白は幅に数えない)。
+- 試験用に `window.pdfEditorDebug.items()` を公開している(テストが部品の中身を読む)。
+- 以前の注意:
 - tesseract.js 5.1.1 + `@tesseract.js-data/{jpn,eng}@1.0.0/4.0.0_best_int`(日本語約2MB、高精度の量子化版。標準版は16MBなので使わない)。ライブラリは使うときだけ `<script>` を動的に追加。
 - 日本語は語の間・字の間に余計な空白を出す → `cleanOcr` で非ASCII同士の間の空白を除く。**語単位**で扱い、行の文字サイズは「語の幅÷文字数」の中央値。信頼度の低い語は捨てすぎない(`マコト`が信頼度18で落ちた)が、記号だけのノイズは捨てる。
 - 隠す範囲は、認識結果の実bbox(推定の範囲だと元の画像の文字の上端が残る)。画像内の縦線は画素で検出して `seps.v` に足す。
