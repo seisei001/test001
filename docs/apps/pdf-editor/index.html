@@ -138,7 +138,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label style="margin-top:8px"><input type="checkbox" id="sAuto" checked> 枠の大きさを変えたら、文字サイズを自動で合わせる</label>
 <p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠の右下(⇲)をドラッグして大きさを変えると、枠に収まる最大の文字サイズに自動で合わせます(複数行や、サイズを混ぜた文字は相対比を保ちます)。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
 </div>
-<div class="row" style="margin-top:8px"><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
+<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
 <div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo">ページ操作・ダウンロード時も自動で反映されます</span></div>
 <p class="hint"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
@@ -318,7 +318,7 @@ const HINTS={
   sel:"部品をタップして選択します。選択すると文字の訂正・移動・サイズ変更・削除ができます(スクロールもできます)。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください。",
   img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。",
-  fix:"PDFの中の文字をタップ(1か所)かドラッグ(範囲内を一括)で選び、書き換えます。元の文字は背景色で隠し、新しい文字を重ねます。"
+  fix:"PDFの中の文字をタップ(1か所)かドラッグ(範囲内を一括)で選び、書き換えます。元の文字は背景色で隠し、新しい文字を重ねます。枠の中で文字を書き換え(訂正)、途中に打ち足し(加筆)、全部消す(削除)ができます。"
 };
 function setMode(m){
   mode=m;
@@ -639,6 +639,7 @@ function syncPanel(){
   if(!it)return;
   $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
   $("selTextBox").classList.toggle("hidden",it.type==="img");
+  $("sErase").classList.toggle("hidden",it.type!=="fix");
   $("sColor").value=it.color||"#000000";showSize();
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
 }
@@ -649,6 +650,12 @@ $("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").oncha
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
 $("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
 $("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
+$("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文字は置かない)
+  if(!cs||cs.type!=="fix")return;
+  cs.txt="";cs.sz=[];const el=itemEls.get(cs.id),t=el&&el.querySelector(".t");
+  if(t){buildText(cs,t,K());t.focus();}
+  status("元の文字を消す設定にしました(確定するとPDFに反映されます)。");
+};
 $("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
 $("sClose").onclick=()=>select(null);
 
