@@ -46,6 +46,16 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button:first-child{border-radius:8px 0 0 8px;}.seg button:last-child{border-radius:0 8px 8px 0;}
 .seg button.on{background:var(--accent);color:#fff;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
+#job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(560px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.9rem;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
+#job.done{border-color:#16a34a;border-width:2px;}
+#job.fail{border-color:#dc2626;border-width:2px;}
+#job .spin{width:20px;height:20px;border:3px solid rgba(37,99,235,.3);border-top-color:#2563eb;border-radius:50%;animation:sp .8s linear infinite;flex:none;}
+#job.done .spin,#job.fail .spin{display:none;}
+#job progress{width:100%;height:10px;display:block;margin-top:4px;}
+#job.done progress,#job.fail progress{display:none;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.ocrrng{position:absolute;border:2px solid #2563eb;background:rgba(37,99,235,.10);pointer-events:none;}
+.ocrrng.done{border-color:#16a34a;background:rgba(22,163,74,.10);}
 .hidden{display:none!important;}
 #ctx{position:fixed;z-index:1000;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:4px;display:flex;flex-direction:column;max-height:70vh;overflow:auto;min-width:150px;}
 #ctx .h{font-size:.75rem;color:var(--muted);padding:4px 8px;}
@@ -55,6 +65,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:none;}
+#ov.noitems .ibox,#ov.noitems .ibox *,#ov.noitems .run{pointer-events:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
 .cover{position:absolute;pointer-events:none;}
@@ -92,6 +103,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <button class="sub-btn" id="bUndo" disabled>↩ 元に戻す</button>
 </div>
 <div id="status">PDFを開くか、新規作成してください。</div>
+<div id="job" class="hidden" role="status" aria-live="polite"><div class="spin"></div><div style="flex:1"><b id="jobT"></b><progress id="jobP" max="100" value="0"></progress></div></div>
 </section>
 
 <section class="panel" id="pagesPanel" style="display:none">
@@ -177,6 +189,15 @@ const FONT_URL="https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-1p@0.4.2/
 let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), fileName="edited.pdf";
 
 function status(m){$("status").textContent=m;}
+// 時間のかかる作業の表示(動いている印+進み具合+終わったらはっきり「完了」)
+let jobTimer=null;
+const job={
+  start(t){clearTimeout(jobTimer);const j=$("job");j.className="";$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
+  step(t,pct){$("jobT").textContent=t;if(pct!=null)$("jobP").value=pct;},
+  done(t){const j=$("job");j.className="done";$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),15000);},
+  fail(t){const j=$("job");j.className="fail";$("jobT").textContent="⚠ "+t;}
+};
+let ocrRunning=false;
 function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+"(暗号化PDFなどは非対応の場合があります)");}};}
 
 async function setBytes(nb,keepCur){
@@ -336,7 +357,7 @@ const K=()=>ov.getBoundingClientRect().width/VW||1;
 const HINTS={
   sel:"PDFの文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)すると、その文字が編集できる部品になります。書き換え(訂正)・打ち足し(加筆)・全部消す(削除)ができます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。文字のない所をドラッグすると、新しい文字の枠になります。部品はタップで選択し、移動・サイズ変更・削除ができます。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください(PDFの文字の上でも、新しい枠を作ります)。",
-  warp:"写真で歪んだページを直します。確定(補正する)するまで、ページは変わりません。補正したページは画像になります(文字データはなくなります。元に戻すで戻せます)。補正後に「🔍 画像の文字を認識」で文字にできます。",
+  warp:"写真で歪んだページを直します。四隅の青い点でページの形を合わせ、白い点(格子点)を動かすと、その点を通る曲線で、中ほどだけの歪みも直せます。確定(補正する)するまで、ページは変わりません。補正したページは画像になります(文字データはなくなります。元に戻すで戻せます)。補正後に「🔍 画像の文字を認識」で文字にできます。",
   ocr:"画像として入っている文字(スキャンなど)を、範囲をドラッグして文字にします。認識した文字は、元の文字を背景色で隠して、編集できる部品になります。誤認識は枠の中で直してください。ページ全体は右のボタンで認識できます。",
   img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。"
 };
@@ -351,7 +372,7 @@ function setMode(m){
   $("optWarp").classList.toggle("hidden",m!=="warp");
   if(m!=="warp"){warp=null;$("wPrevBox").classList.add("hidden");}
   else{updateWarpUi();if(warpKind==="page"&&pdfView&&!warp)initWarpPage();}
-  ov.classList.add("draw");
+  ov.classList.add("draw");ov.classList.toggle("noitems",m==="ocr"||m==="warp");   // 範囲指定のときは、部品の上からでもドラッグできる
   renderOverlay();
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
@@ -898,26 +919,31 @@ function squareToQuad(p0,p1,p2,p3){
     g=(sx*dy2-dx2*sy)/det;h=(dx1*sy-sx*dy1)/det;a=x1-x0+g*x1;b=x3-x0+h*x3;c=x0;d=y1-y0+g*y1;e=y3-y0+h*y3;f=y0;}
   return(u,v)=>{const w=g*u+h*v+1;return[(a*u+b*v+c)/w,(d*u+e*v+f)/w];};
 }
-function curveSet(wp){const P=wp.P,C=wp.C;return{top:arcTable(P.tl,C.top[0],C.top[1],P.tr),bot:arcTable(P.bl,C.bot[0],C.bot[1],P.br),left:arcTable(P.tl,C.left[0],C.left[1],P.bl),right:arcTable(P.tr,C.right[0],C.right[1],P.br)};}
-// (s,t) → 元の写真の位置。part は4本の曲線の内側を滑らかにつなぐ(クーンズ曲面)
+// 格子点(5×5)を通る滑らかな曲線(ベジェ曲線に直せる Catmull-Rom 曲線)。点を動かすと、その点を通ったまま、まわりがなめらかに曲がる
+const GN=5;
+function crSpline(p,s){
+  const n=p.length-1,f=Math.max(0,Math.min(1,s))*n,k=Math.min(n-1,Math.floor(f)),t=f-k,t2=t*t,t3=t2*t;
+  const g=i=>i<0?[2*p[0][0]-p[1][0],2*p[0][1]-p[1][1]]:i>n?[2*p[n][0]-p[n-1][0],2*p[n][1]-p[n-1][1]]:p[i];
+  const a=g(k-1),b=g(k),c=g(k+1),d=g(k+2),q=j=>0.5*(2*b[j]+(-a[j]+c[j])*t+(2*a[j]-5*b[j]+4*c[j]-d[j])*t2+(-a[j]+3*b[j]-3*c[j]+d[j])*t3);
+  return[q(0),q(1)];
+}
+const warpP=wp=>({tl:wp.G[0][0],tr:wp.G[0][GN-1],br:wp.G[GN-1][GN-1],bl:wp.G[GN-1][0]});
+function gridFromQuad(wp){ // 四隅から(射影変換で)格子点を作る
+  const P=warpP(wp),H=squareToQuad(P.tl,P.tr,P.br,P.bl),G=[];
+  for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push(H(c/(GN-1),r/(GN-1)));}
+  wp.G=G;
+}
+// (s,t) → 元の写真の位置。曲げていない一括は射影変換、曲げたもの・部分は格子点の曲線
 function makeUnitMap(wp){
-  const P=wp.P;
-  if(wp.kind==="page")return squareToQuad(P.tl,P.tr,P.br,P.bl);
-  const cs=curveSet(wp);
-  return(s,t)=>coons(P,cs.top.at(s),cs.bot.at(s),cs.left.at(t),cs.right.at(t),s,t);
+  if(!wp.curved){const P=warpP(wp);return squareToQuad(P.tl,P.tr,P.br,P.bl);}
+  return(s,t)=>crSpline(wp.G.map(row=>crSpline(row,s)),t);
 }
-function coons(P,a,b,l,r,s,t){
-  return[(1-t)*a[0]+t*b[0]+(1-s)*l[0]+s*r[0]-((1-s)*(1-t)*P.tl[0]+s*(1-t)*P.tr[0]+(1-s)*t*P.bl[0]+s*t*P.br[0]),
-         (1-t)*a[1]+t*b[1]+(1-s)*l[1]+s*r[1]-((1-s)*(1-t)*P.tl[1]+s*(1-t)*P.tr[1]+(1-s)*t*P.bl[1]+s*t*P.br[1])];
-}
-// 画素ごとの対応(部分は、列・行ごとの曲線上の点を先に計算して速くする)
+// 画素ごとの対応(列ごとの格子上の点を先に計算して速くする)
 function makePixMap(wp,outW,outH){
-  const P=wp.P;
-  if(wp.kind==="page"){const H=squareToQuad(P.tl,P.tr,P.br,P.bl);return(x,y)=>H((x+0.5)/outW,(y+0.5)/outH);}
-  const cs=curveSet(wp),TS=new Array(outW),BS=new Array(outW),LT=new Array(outH),RT=new Array(outH);
-  for(let x=0;x<outW;x++){TS[x]=cs.top.at((x+0.5)/outW);BS[x]=cs.bot.at((x+0.5)/outW);}
-  for(let y=0;y<outH;y++){LT[y]=cs.left.at((y+0.5)/outH);RT[y]=cs.right.at((y+0.5)/outH);}
-  return(x,y)=>coons(P,TS[x],BS[x],LT[y],RT[y],(x+0.5)/outW,(y+0.5)/outH);
+  if(!wp.curved){const P=warpP(wp),H=squareToQuad(P.tl,P.tr,P.br,P.bl);return(x,y)=>H((x+0.5)/outW,(y+0.5)/outH);}
+  const RP=new Array(outW);
+  for(let x=0;x<outW;x++){const u=(x+0.5)/outW;RP[x]=wp.G.map(row=>crSpline(row,u));}
+  return(x,y)=>crSpline(RP[x],(y+0.5)/outH);
 }
 // 元画像から、対応表に沿って出力画像を作る(双一次補間。範囲外は白)
 function warpImage(srcCv,pix,outW,outH,srcScale){
@@ -962,22 +988,23 @@ function findPaperQuad(cv){
   return result;
 }
 const dist2=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
-function warpRatio(wp){const P=wp.P;return((dist2(P.tl,P.bl)+dist2(P.tr,P.br))/2)/(((dist2(P.tl,P.tr)+dist2(P.bl,P.br))/2)||1);}
+function warpRatio(wp){const P=warpP(wp);return((dist2(P.tl,P.bl)+dist2(P.tr,P.br))/2)/(((dist2(P.tl,P.tr)+dist2(P.bl,P.br))/2)||1);}
 function updateWarpUi(){
   $("wkPage").classList.toggle("on",warpKind==="page");$("wkPart").classList.toggle("on",warpKind==="part");
   $("wAuto").classList.toggle("hidden",warpKind!=="page");
 }
 function initWarpPage(){
   const m=0.04;
-  warp={kind:"page",rect:{x:0,y:0,w:VW,h:VH},P:{tl:[VW*m,VH*m],tr:[VW*(1-m),VH*m],br:[VW*(1-m),VH*(1-m)],bl:[VW*m,VH*(1-m)]},C:null};
+  warp={kind:"page",rect:{x:0,y:0,w:VW,h:VH},curved:false,G:null};
+  warp.G=[[[VW*m,VH*m],null,null,null,[VW*(1-m),VH*m]],[],[],[],[[VW*m,VH*(1-m)],null,null,null,[VW*(1-m),VH*(1-m)]]];
+  gridFromQuad(warp);
   renderWarp();warpPreviewSoon();
-  status("紙の四隅の点を、写真の紙の角に合わせてください(「紙の四隅を自動で探す」で、位置の提案ができます)。");
+  status("紙の四隅の青い点を、写真の紙の角に合わせてください(「紙の四隅を自動で探す」で提案できます)。紙が曲がっていれば、白い点を動かすと、そこを通る曲線で曲げられます。");
 }
 function createPartWarp(x,y,w,h){
-  const P={tl:[x,y],tr:[x+w,y],br:[x+w,y+h],bl:[x,y+h]};
-  const C={top:[lerp2(P.tl,P.tr,1/3),lerp2(P.tl,P.tr,2/3)],bot:[lerp2(P.bl,P.br,1/3),lerp2(P.bl,P.br,2/3)],left:[lerp2(P.tl,P.bl,1/3),lerp2(P.tl,P.bl,2/3)],right:[lerp2(P.tr,P.br,1/3),lerp2(P.tr,P.br,2/3)]};
-  warp={kind:"part",rect:{x,y,w,h},P,C};renderWarp();warpPreviewSoon();
-  status("青い角の点と、白い曲線の点を動かして、枠の4辺を、歪んだ文字の行・列に沿わせてください。枠の中が、元の範囲の四角にまっすぐ伸びます。");
+  const G=[];for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push([x+w*c/(GN-1),y+h*r/(GN-1)]);}
+  warp={kind:"part",rect:{x,y,w,h},curved:true,G};renderWarp();warpPreviewSoon();
+  status("青い角と白い点(格子点)を、歪んだ文字の行・列に合わせて動かしてください。動かした点を通る曲線で、まわり(中ほどだけの歪みも)なめらかに直ります。枠の中が、元の範囲の四角にまっすぐ伸びます。");
 }
 const SVGNS="http://www.w3.org/2000/svg";
 function renderWarp(){
@@ -992,34 +1019,29 @@ function renderWarp(){
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"h",f:i/4});
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"v",f:i/4});
   }
-  const ids=["tl","tr","br","bl"].concat(warp.kind==="part"?["top0","top1","bot0","bot1","left0","left1","right0","right1"]:[]);
-  ids.forEach(id=>{
-    const corner=id.length===2;
-    const c=mk("circle",{r:px(corner?9:7),fill:corner?"#2563eb":"#fff",stroke:"#2563eb","stroke-width":px(2.5),"data-h":id});
-    c.style.cssText="pointer-events:all;cursor:move;touch-action:none";
-    warpHandles.push({el:c,id});dragWarpHandle(c,id);
-  });
+  for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
+    const id=r+"_"+c,corner=(r===0||r===GN-1)&&(c===0||c===GN-1),inner=r>0&&r<GN-1&&c>0&&c<GN-1;
+    const e=mk("circle",{r:px(corner?9:inner?6:7),fill:corner?"#2563eb":"#fff",stroke:"#2563eb","stroke-width":px(2.5),"data-h":id});
+    e.style.cssText="pointer-events:all;cursor:move;touch-action:none";
+    warpHandles.push({el:e,id,r,c});dragWarpHandle(e,r,c);
+  }
   ov.appendChild(svg);warpSvg=svg;updateWarpSvg();
 }
-const hPos=id=>{const m=id.match(/^(top|bot|left|right)(\d)$/);return m?warp.C[m[1]][+m[2]]:warp.P[id];};
 function updateWarpSvg(){
   if(!warp||!warpSvg)return;
   const f=makeUnitMap(warp),N=28;
   warpLines.forEach(l=>{const pts=[];for(let i=0;i<=N;i++){const u=i/N,[x,y]=l.dir==="h"?f(u,l.f):f(l.f,u);pts.push(x.toFixed(2)+","+y.toFixed(2));}l.el.setAttribute("points",pts.join(" "));});
-  warpHandles.forEach(h=>{const p=hPos(h.id);h.el.setAttribute("cx",p[0]);h.el.setAttribute("cy",p[1]);});
+  warpHandles.forEach(h=>{const p=warp.G[h.r][h.c];h.el.setAttribute("cx",p[0]);h.el.setAttribute("cy",p[1]);});
 }
-// 角を動かしたら、その角につながる曲線の点も一緒に動かす
-const ATTACH={tl:[["top",0],["left",0]],tr:[["top",1],["right",0]],bl:[["bot",0],["left",1]],br:[["bot",1],["right",1]]};
-function dragWarpHandle(el,id){
+function dragWarpHandle(el,r,c){
   el.addEventListener("pointerdown",e=>{
     e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
     const rc=ov.getBoundingClientRect(),k=K();
     const mv=ev=>{
       const nx=Math.max(0,Math.min(VW,(ev.clientX-rc.left)/k)),ny=Math.max(0,Math.min(VH,(ev.clientY-rc.top)/k));
-      const m=id.match(/^(top|bot|left|right)(\d)$/);
-      if(m)warp.C[m[1]][+m[2]]=[nx,ny];
-      else{const old=warp.P[id],dx=nx-old[0],dy=ny-old[1];warp.P[id]=[nx,ny];
-        if(warp.C)ATTACH[id].forEach(([e2,i])=>{const q=warp.C[e2][i];warp.C[e2][i]=[q[0]+dx,q[1]+dy];});}
+      const corner=(r===0||r===GN-1)&&(c===0||c===GN-1);
+      warp.G[r][c]=[nx,ny];
+      if(!warp.curved){if(corner)gridFromQuad(warp);else warp.curved=true;}  // 一括: 角だけなら四角形のまま、中の点を動かしたら曲線に
       updateWarpSvg();
     };
     const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
@@ -1072,7 +1094,7 @@ $("wAuto").onclick=busy(async()=>{
   const Sd=500/Math.max(VW,VH),cv=await renderRegion(0,0,VW,VH,Sd),q=findPaperQuad(cv);
   if(!q){status("紙の四隅を見つけられませんでした。手で四隅の点を合わせてください。");return;}
   const sc=a=>[a[0]/Sd,a[1]/Sd];
-  warp.P={tl:sc(q.tl),tr:sc(q.tr),br:sc(q.br),bl:sc(q.bl)};
+  warp.curved=false;warp.G[0][0]=sc(q.tl);warp.G[0][GN-1]=sc(q.tr);warp.G[GN-1][GN-1]=sc(q.br);warp.G[GN-1][0]=sc(q.bl);gridFromQuad(warp);
   updateWarpSvg();warpPreviewSoon();
   status("四隅の位置を提案しました。ずれていれば、点をドラッグして合わせてから「補正する」を押してください。");
 });
@@ -1090,7 +1112,7 @@ async function getOcr(lang){
   if(ocrWorker){try{await ocrWorker.terminate();}catch{}ocrWorker=null;}
   status("文字認識の準備中…(初回のみ、認識データをダウンロードします)");
   const LBL={"loading tesseract core":"認識エンジンを読み込み中","initializing tesseract":"初期化中","loading language traineddata":"認識データを読み込み中","initializing api":"初期化中","recognizing text":"認識中"};
-  ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status)status(`文字認識: ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`);}});
+  ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status){const t=`認識エンジンの準備中(初回のみ): ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`;status(t);job.step(t);}}});
   ocrLang=lang;return ocrWorker;
 }
 async function renderRegion(x,y,w,h,scale){
@@ -1152,7 +1174,7 @@ function ocrSegment(cv,S){
       if(y>0&&mask[q-w]&&!lab[q-w]){lab[q-w]=nid;stack[sp++]=q-w;}
       if(y<h-1&&mask[q+w]&&!lab[q+w]){lab[q+w]=nid;stack[sp++]=q+w;}}
     const cw=x1-x0+1,ch=y1-y0+1;
-    if(area<minArea||(ch<3&&!(cw>=6&&ch>=2))||cw>w*0.6||ch>h*0.3)continue;
+    if(area<minArea||(ch<3&&!(cw>=6&&ch>=2))||(cw>w*0.6&&cw>200*S)||(ch>h*0.3&&ch>80*S))continue;   // 紙の縁・写真の枠のような巨大なもの(小さな範囲では、文字そのものを捨てない)
     comps.push({x0,y0,x1:x1+1,y1:y1+1,h:ch,w:cw});
   }
   if(!comps.length)return{chunks:[],hrules,vrules};
@@ -1197,7 +1219,7 @@ const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\
 const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
 // 1つの塊を、ちょうどよい倍率で描き直して認識する
 async function ocrLines(worker,ch,x,y,S,flat){
-  const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(S,40/Math.max(4,ghPt)));
+  const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
   const bx0=Math.max(0,x+ch.x0/S-pad),by0=Math.max(0,y+ch.y0/S-pad),bx1=Math.min(VW,x+ch.x1/S+pad),by1=Math.min(VH,y+ch.y1/S+pad);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
@@ -1265,30 +1287,46 @@ async function ocrChunk(worker,ch,x,y,S,flat){
   return{lines:out,size,wt,lh,align,ghPt};
 }
 async function doOcr(x,y,w,h){
+  if(ocrRunning){status("いま変換中です。終わるまでお待ちください。");return;}
   if(w<6||h<6){status("文字にしたい範囲をドラッグしてください。");return;}
-  const lang=$("ocrLang").value,worker=await getOcr(lang);
+  ocrRunning=true;$("bOcrPage").disabled=true;
+  const k=K(),rng=document.createElement("div");rng.className="ocrrng";   // 変換する範囲を枠で示す(終わると緑に)
+  rng.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;ov.appendChild(rng);
+  const whole=w>=VW-1&&h>=VH-1;
+  job.start(whole?"ページ全体を文字に変換しています…":"指定した範囲を文字に変換しています…");
+  try{
+    const n=await doOcrBody(x,y,w,h);
+    rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
+    if(n.ok)job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。誤認識は、枠をタップして直してください。`);
+    else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
+  }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
+  finally{ocrRunning=false;$("bOcrPage").disabled=false;}
+}
+async function doOcrBody(x,y,w,h){
+  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");const worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
-  status("画像を準備中…");
+  status("画像を準備中…");job.step("画像を準備しています…",3);
   const cv=await renderRegion(x,y,w,h,S);
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
-  status("文字の塊を探しています…");
+  status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
   const seg=ocrSegment(cv,S);
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
-  if(!seg.chunks.length){status("文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。");return;}
+  if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
   const gha=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),ghMed=gha[gha.length>>1]||0;
   seg.chunks=seg.chunks.filter(c=>!(c.lines.length===1&&c.lines[0].n<=2&&c.gh<0.7*ghMed&&(c.x1-c.x0)<2.2*ghMed));
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
-    status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);
+    status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
     const r=await ocrChunk(worker,seg.chunks[i],x,y,S,flat);
     if(r.lines.length)res.push(r);
   }
   // 極端に小さい1〜2文字だけの結果(ごみ)は捨てる
   {const nch=c=>c.lines.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0),md=wmedian(res.map(c=>({v:c.size,w:nch(c)})));
    for(let i=res.length-1;i>=0;i--){if(nch(res[i])<=3&&res[i].size<0.7*md)res.splice(i,1);}}
-  if(!res.length){status("文字を認識できませんでした(画質を確認するか、範囲を変えてみてください)。");return;}
+  if(!res.length){const msg="文字を認識できませんでした(画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
+  job.step("配置・大きさを整えています…",96);
   // ページ全体で、近い大きさの塊は同じ大きさにそろえる(10%以内を1グループ)。最後に0.5pt刻み
   const sorted=[...res].sort((a,b)=>a.size-b.size),groups=[];
   sorted.forEach(c=>{const g=groups[groups.length-1];if(g&&c.size<=g.center*1.12){g.items.push(c);g.center=wmedian(g.items.map(e=>({v:e.size,w:e.wt})));}else groups.push({items:[c],center:c.size});});
@@ -1305,11 +1343,14 @@ async function doOcr(x,y,w,h){
       if(c.align==="center"){it.vw=(ux1-ux0)+slack;it.vx=(ux0+ux1)/2-it.vw/2;}
       else if(c.align==="right"){it.vw=(ux1-ux0)+slack;it.vx=ux1-it.vw+fs*0.2;}
     }
-    growToFit(it);clampToPage(it);made.push(it);
+    it.ocrMade=true;growToFit(it);clampToPage(it);made.push(it);
   });
+  // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
+  items=items.filter(o=>!(o.ocrMade&&o.page===cur&&o.vx+o.vw/2>=x&&o.vx+o.vw/2<=x+w&&o.vy+o.vh/2>=y&&o.vy+o.vh/2<=y+h));
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
+  return{ok:true,lines:nl,parts:made.length};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);});
 
@@ -1408,7 +1449,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
