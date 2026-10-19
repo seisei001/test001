@@ -99,7 +99,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label class="btn sub-btn" for="fMerge" id="mergeLbl">PDFを後ろに結合</label>
 <input id="fMerge" type="file" accept="application/pdf" multiple class="hidden">
 <button class="sub-btn" id="bNew">新規(空白A4)</button>
-<button id="bSave" disabled>💾 ダウンロード</button>
+<button id="bSave" disabled>💾 名前を付けて保存</button><button class="sub-btn hidden" id="bOverwrite" disabled>上書き保存</button>
 <button class="sub-btn" id="bUndo" disabled>↩ 元に戻す</button>
 </div>
 <div id="status">PDFを開くか、新規作成してください。</div>
@@ -139,9 +139,10 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </div>
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
+<label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label>
 <button class="sub-btn" id="bOcrPage">このページ全体を認識</button>
 <label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label>
-<span class="sub">初回だけ、認識データ(日本語で約2MB)と認識エンジンをダウンロードします</span>
+<span class="sub">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
 </div>
 <div class="row hidden" id="optWarp" style="margin-bottom:8px">
 <div class="seg"><button id="wkPage" class="on">一括(ページ全体)</button><button id="wkPart">部分(範囲を指定)</button></div>
@@ -256,7 +257,7 @@ const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(ne
 $("fOpen").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   const b=await readFile(f);await PDFDocument.load(b); // 検証
-  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";
+  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");
   hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
 });
 $("fMerge").onchange=busy(async e=>{
@@ -272,12 +273,28 @@ $("fMerge").onchange=busy(async e=>{
 });
 $("bNew").onclick=busy(async()=>{
   const doc=await PDFDocument.create();doc.addPage([595.28,841.89]);
-  fileName="new.pdf";hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
+  fileName="new.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
 });
 $("bUndo").onclick=busy(async()=>{
   if(items.length){items.pop();cs=null;syncPanel();await renderStage();return;}
   if(!hist.length)return;bytes=hist.pop();await refresh(true);});
-$("bSave").onclick=busy(async()=>{await commit();download(bytes,fileName);});
+// 「名前を付けて保存」: 普通のソフトのように、保存先とファイル名を選んで保存する(File System Access API。Chrome/Edgeなど)。使えないブラウザでは、従来のダウンロードにする
+let saveHandle=null;
+async function saveAs(b,name,keep){
+  if(!window.showSaveFilePicker){download(b,name);status("このブラウザは保存先を選べないので、ダウンロードしました(Chrome・Edgeでは保存先とファイル名を選べます)。");return false;}
+  let h;
+  try{h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});}
+  catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}throw e;}
+  const w=await h.createWritable();await w.write(new Blob([b],{type:"application/pdf"}));await w.close();
+  if(keep){saveHandle=h;fileName=h.name;$("bOverwrite").classList.remove("hidden");$("bOverwrite").disabled=false;}
+  status(`「${h.name}」として保存しました。`);return true;
+}
+$("bSave").onclick=busy(async()=>{await commit();await saveAs(bytes,fileName,true);});
+$("bOverwrite").onclick=busy(async()=>{   // 保存したファイルに、そのまま上書き
+  if(!saveHandle)return;await commit();
+  const w=await saveHandle.createWritable();await w.write(new Blob([bytes],{type:"application/pdf"}));await w.close();
+  status(`「${saveHandle.name}」に上書き保存しました。`);
+});
 function download(b,name){
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b],{type:"application/pdf"}));
   a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
@@ -324,8 +341,8 @@ $("bExtract").onclick=busy(async()=>{
   const t=selList();if(!t.length){status("分割するページにチェックを入れてください。");return;}
   const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
   (await out.copyPages(src,t)).forEach(p=>out.addPage(p));
-  download(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf");
-  status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
+  const ok=await saveAs(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf",false);
+  if(ok)status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
 });
 
 // ====== 文字・画像・既存文字の訂正 ======
@@ -861,7 +878,14 @@ ov.addEventListener("pointerdown",e=>{
       if(warpKind==="part"){if(!tap&&w>20&&h>20)createPartWarp(x,y,w,h);else status("歪んでいる部分を、範囲でドラッグしてください。");}
       return;
     }
-    if(mode==="ocr"){if(tap){status("文字にしたい範囲をドラッグしてください(ページ全体はボタンで)。");renderOverlay();return;}await doOcr(x,y,w,h);return;}
+    if(mode==="ocr"){
+      if(tap){ // 文字にした部品をタップしたら、選択・訂正に切り替えてその部品を選ぶ
+        const hit=[...items].reverse().find(o=>o.page===cur&&r.sx>=o.vx&&r.sx<=o.vx+o.vw&&r.sy>=o.vy&&r.sy<=o.vy+o.vh);
+        if(hit){setMode("sel");await loadRuns().catch(()=>{});select(hit,true);return;}   // 選択モードの再描画が終わってから選ぶ(先に選ぶと、再描画で入力位置が消える)
+        status("文字にしたい範囲をドラッグしてください(ページ全体はボタンで)。変換した文字を直すときは、その文字をタップしてください。");renderOverlay();return;}
+      await doOcr(x,y,w,h);
+      if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
+      return;}
     if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
@@ -1105,6 +1129,52 @@ $("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMod
 const TESS_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
 const LANG_PATH={jpn:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int",eng:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int"};
 let ocrWorker=null,ocrLang="";
+// ---- 高精度の認識エンジン: PaddleOCR(PP-OCRv5)の「文字認識」モデルを、ブラウザ内(ONNX Runtime Web)で動かす。行の切り出しは、上の画像解析を使う ----
+const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",PP_BASE="https://cdn.jsdelivr.net/npm/pdfmarkdown-ppocrv5-models@1.0.0/";
+let ppSess=null,ppDict=null,ppLoading=null;
+const loadScriptUrl=(src,test)=>new Promise((res,rej)=>{if(test())return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("読み込めませんでした: "+src));document.head.appendChild(sc);});
+async function fetchBuf(url,label){
+  const r=await fetch(url);if(!r.ok)throw new Error(label+"を取得できませんでした("+r.status+")");
+  const tot=+r.headers.get("content-length")||0,rd=r.body&&r.body.getReader();
+  if(!rd)return new Uint8Array(await r.arrayBuffer());
+  const parts=[];let got=0;
+  for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;
+    if(tot){const t=`高精度エンジンの準備中(初回のみ): ${label} ${Math.round(got/tot*100)}%`;status(t);job.step(t,Math.round(got/tot*100));}}
+  const out=new Uint8Array(got);let o=0;parts.forEach(a=>{out.set(a,o);o+=a.length;});return out;
+}
+async function loadOrt(){
+  await loadScriptUrl(ORT_BASE+"ort.wasm.min.js",()=>window.ort);
+  ort.env.wasm.wasmPaths=ORT_BASE;ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
+}
+function getPaddle(){
+  if(ppSess)return Promise.resolve(ppSess);
+  if(ppLoading)return ppLoading;
+  ppLoading=(async()=>{
+    await loadOrt();
+    const [model,dict]=await Promise.all([fetchBuf(PP_BASE+"recognition/PP-OCRv5_mobile_rec_infer.onnx","認識モデル"),fetchBuf(PP_BASE+"recognition/ppocrv5_dict.txt","文字辞書")]);
+    ppDict=new TextDecoder().decode(dict).replace(/\r/g,"").split("\n");if(ppDict[ppDict.length-1]==="")ppDict.pop();
+    ppSess=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return ppSess;
+  })().catch(e=>{ppLoading=null;throw e;});
+  return ppLoading;
+}
+// 1行の画像 → 文字と、各文字の位置(0〜1)・確かさ。高さ48pxにそろえて読み、CTCで文字列にする
+async function paddleRec(cv){
+  const H=48,W=Math.max(16,Math.min(3200,Math.round(cv.width*H/cv.height)));
+  const c2=document.createElement("canvas");c2.width=W;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
+  cx.fillStyle="#fff";cx.fillRect(0,0,W,H);cx.imageSmoothingQuality="high";cx.drawImage(cv,0,0,W,H);
+  const d=cx.getImageData(0,0,W,H).data,f=new Float32Array(3*H*W),HW=H*W;
+  for(let i=0;i<HW;i++){f[i]=(d[i*4+2]/255-0.5)/0.5;f[HW+i]=(d[i*4+1]/255-0.5)/0.5;f[2*HW+i]=(d[i*4]/255-0.5)/0.5;}   // PaddleOCRはBGR順
+  const sess=await getPaddle(),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,W])});
+  const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
+  // 辞書の長さと出力の種類数から、「何番が空白(CTCのblank)か」をそろえる(辞書の先頭がblankの代わりの行のとき・末尾に空白を足すとき)
+  const chars=ppDict.length===C?["",...ppDict.slice(1)]:ppDict.length+1===C?["",...ppDict]:["",...ppDict," "];
+  const seq=[];let prev=0;
+  for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
+    if(bi!==0&&bi!==prev&&chars[bi]!==undefined){let p=bv;if(p>1||p<0){let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);p=1/sum;}seq.push({ch:chars[bi],p,pos:(t+0.5)/T});}
+    prev=bi;}
+  return seq;
+}
 const loadScript=src=>new Promise((res,rej)=>{if(window.Tesseract)return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("文字認識のライブラリを読み込めませんでした(ネットワークを確認してください)"));document.head.appendChild(sc);});
 async function getOcr(lang){
   await loadScript(TESS_URL);
@@ -1122,6 +1192,9 @@ async function renderRegion(x,y,w,h,scale){
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
   return cv;
 }
+// 高精度エンジン(中国語と共通のモデル)が出しがちな、中国語の字形・小数点の誤りを直す(お金の「1,800」が「1.800」になる等)
+const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"買","单":"単","发":"発","级":"級","类":"類","门":"門","问":"問","间":"間","时":"時","线":"線","设":"設","计":"計","认":"認","识":"識","读":"読","写":"写","仅":"僅","东":"東","车":"車","长":"長","马":"馬","鸟":"鳥","关":"関","开":"開","应":"応","业":"業","务":"務","报":"報","处":"処","预":"預","钱":"銭","银":"銀","税":"税","总":"総","点":"点","机":"機","电":"電","话":"話","号":"号","区":"区","页":"頁","图":"図","圆":"円","额":"額","费":"費","货":"貨","纸":"紙","印":"印","销":"販"};
+const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
 const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
 function flattenForOcr(cv,br){
@@ -1149,7 +1222,7 @@ function flattenForOcr(cv,br){
   cx.putImageData(im,0,0);return true;
 }
 // ---- 画像の解析: 文字の断片 → 行 → 塊(段落・セル)。罫線は消して、塊の区切りに使う ----
-function ocrSegment(cv,S){
+function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ高さに並ぶ断片は、離れていても1行にする(行の途中で2つに分けない)
   const w=cv.width,h=cv.height,id=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h;
   const g=new Uint8Array(n),hist=new Uint32Array(256);
   for(let i=0;i<n;i++){const v=(id[i*4]*.3+id[i*4+1]*.59+id[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
@@ -1186,8 +1259,8 @@ function ocrSegment(cv,S){
   // (1) 行: 横に近く、縦に重なる断片をつなぐ
   const U=uf(comps.length);
   for(let i=0;i<comps.length;i++){const a=comps[i];
-    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(gap>1.3*Hmax)break;
-      if(gap>1.2*Math.max(a.h,b.h,0.8*Hmed))continue;
+    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.3*Hmax)break;
+      if(!rowMode&&gap>1.2*Math.max(a.h,b.h,0.8*Hmed))continue;
       const ov=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0),mn=Math.min(a.h,b.h);
       let near=ov>=0.45*mn;
       if(!near&&mn<0.35*Hmed){const dy=Math.abs((a.y0+a.y1)/2-(b.y0+b.y1)/2);near=dy<=0.6*Math.max(a.h,b.h)+0.5*Hmed;} // 細い横線(ニの棒・ー)は、縦位置が近ければ同じ行
@@ -1218,10 +1291,90 @@ function charUnits(str){let u=0;for(const ch of Array.from(str)){const c=ch.code
 const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\x7E]$/.test(t)&&/^[\x21-\x7E]/.test(s))t+=" ";t+=s;});return t;};
 const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
 // 1つの塊を、ちょうどよい倍率で描き直して認識する
+// ---- 最高精度の認識エンジン: 国立国会図書館 NDLOCR-Lite(CC BY 4.0)の文字認識モデル(PARSeq)。行の切り出しは自前の画像解析。
+//   モデルは文字数別の3種(30字・50字・100字まで)。短い行は一番小さい約36MBだけで済み、長い行のときだけ追加で読み込む ----
+const NDL_BASE="https://raw.githubusercontent.com/ndl-lab/ndlocr-lite/d001dad2013ceabb5736ff8d637474e443eb73c2/src/model/";
+const NDL_FILES={256:"parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx",384:"parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx",768:"parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx"};
+const NDL_CHARS=" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρςστυφχψωϑϕϖϱϵ‐‑‒–—―‘’“”‥…※⁃⁻₋←↑→↓⇩−①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭■□▲△▽◆○●★☆♥♪❶❷❸❹❺❻❼❽❾、。〃々〆〇〈〉《》「」『』【】〔〕〝〟〳〴〵〻ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんゔ゛゜ゝゞゟァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ・ーヽヾヿㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ㈱㈲㈴㈾㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㊞㸃一丁七万丈三上下不与丐丑且丕世丗丘丙丞両並个中丱串丶丸丹主丼丿乂乃久之乍乎乏乕乖乗乘乙九乞也乢乱乳乾亀亂亅了予争亊事二于云互五井亘亙些亜亞亟亠亡亢交亥亦亨享京亭亮亰亳亶亷人什仁仂仄仆仇今介仍从仏仔仕他仗付仙仝仞仟代令以仭仮仰仲件价任企伉伊伍伎伏伐休会伜伝伯估伴伶伸伹伺似伽佃但佇位低住佐佑体何佗余佚佛作佝佞佩佯佰佳併佶佻佼使侃來侈例侍侏侑侖侘供依侠価侫侭侮侯侵侶便係促俄俊俎俐俑俔俗俘俚俛保俟俠信俣俤俥修俯俱俳俵俶俸俺俾倅倆倉個倍倏們倒倔倖候倚借倡倣値倥倦倨倩倪倫倬倭倶倹偁偃假偈偉偏偐偕偖做停健偬偲側偵偶偸偽傀傅傍傑傘備傚催傭傲傳傴債傷傾僂僅僉僊働像僑僕僖僚僞僣僥僧僭僮僵價僻儀儁儂億儉儒儔儕儖儘儚償儡優儲儷儺儻儼儿兀允元兄充兆兇先光克兌免兎児兒兔党兜兢入內全兩兪八公六兮共兵其具典兼冀冂内円冉冊册再冏冐冑冒冓冕冖冗写冠冢冤冥冦冨冩冪冫冬冰冱冲决冴况冶冷冽凄凅准凉凋凌凍减凖凛凜凝凞几凡処凧凩凪凭凰凱凵凶凸凹出函凾刀刃刄分切刈刊刋刎刑刔列初判別刧利刪刮到刳制刷券刹刺刻剃剄則削剋剌前剏剔剖剛剝剞剣剤剥剩剪副剰剱割剳剴創剽剿劃劄劇劈劉劍劑劒劔力功加劣助努劫劬劭励労劵効劼劾勁勃勅勇勉勍勒動勗勘務勝勞募勠勢勣勤勦勧勲勳勵勸勹勺勾勿匁匂包匆匈匍匏匐匕化北匙匚匝匠匡匣匪匯匱匳匸匹区医匿區十千卅卆升午卉半卍卑卒卓協南単博卜卞占卦卩卮卯印危即却卵卷卸卻卽卿厂厄厖厘厚原厠厥厦厨厩厭厮厰厲厳厶去参參又叉及友双反収叔取受叙叛叟叡叢口古句叨叩只叫召叭叮可台叱史右叶号司叺吁吃各合吉吊吋同名后吏吐向君吝吟吠否吩含听吭吮吳吴吶吸吹吻吼吽吾吿呀呂呆呈呉告呎呑呟周呪呰呱味呵呶呷呻呼命咀咄咆咋和咎咏咐咒咜咢咤咥咨咩咫咬咯咲咳咸咼咽咾哀品哂哄哇哈哉哘員哢哥哦哨哩哭哮哲哺哽唄唆唇唏唐唔唖售唯唱唳唸唹唾啀啄啅商啌問啓啖啗啜啝啣啻啼啾喀喃善喇喉喊喋喘喙喚喜喝喞喟喧喨喩喪喫喬單喰営嗄嗅嗇嗔嗚嗜嗟嗣嗤嗷嗹嗽嗾嘆嘈嘉嘔嘖嘗嘘嘛嘩嘯嘱嘲嘴嘶嘸噂噌噎噐噛噤器噪噫噬噴噸噺嚀嚆嚇嚊嚏嚔嚙嚠嚢嚥嚩嚮嚴嚶嚼囀囁囂囃囈囉囊囎囑囓囗囘囚四回因団囮困囲図囹固国囿圀圃圄圈圉國圍圏園圓圖團圜土圦圧在圭地圷圸圻址坂均坊坎坏坐坑坡坤坦坩坪坿垂垈垉型垓垠垢垣垤垪垰垳垽埀埃埆埋城埒埓埔埖埜域埠埣埴埵執培基埼堀堂堅堆堊堋堕堙堝堡堤堪堯堰報場堵堺堽塀塁塊塋塑塒塔塗塘塙塚塞塡塢塩填塰塲塵塹塾境墅墓増墜增墟墨墫墮墳墸墹墺墻墾壁壅壇壊壌壑壓壔壕壗壘壙壜壞壟壤壥士壬壮壯声壱売壷壹壺壻壼壽夂変夊夏夐夕外夘夙多夛夜夢夥大天太夫夬夭央失夲夷夸夾奄奇奈奉奎奏奐契奔奕套奘奚奠奢奥奧奨奩奪奬奮女奴奸好妁如妃妄妊妍妓妖妙妛妝妣妥妨妬妲妹妻妾姆姉姊始姐姑姓委姙姚姜姥姦姨姪姫姬姶姻姿威娃娉娑娘娚娛娜娟娠娥娩娯娵娶娼婀婁婆婉婚婢婦婪婬婿媒媚媛媼媽媾嫁嫂嫉嫋嫌嫐嫖嫗嫡嫣嫦嫩嫺嫻嬉嬋嬌嬖嬢嬪嬬嬰嬲嬶嬾孀孃孅子孑孔孕字存孚孛孜孝孟季孤孥学孩孫孰孱孳孵學孺宀它宅宇守安宋完宍宏宕宗官宙定宛宜宝実客宣室宥宦宮宰害宴宵家宸容宿寂寃寄寅密寇寉富寐寒寓寔寛寝寞察寡寢寤寥實寧寨審寫寬寮寰寳寵寶寸寺対寿封専射尅将將專尉尊尋對導小少尓尖尙尚尠尢尤尨尭就尸尹尺尻尼尽尾尿局屁居屆屈届屋屍屎屏屐屑屓展屛属屠屡屢層履屬屮屯山屶屹岌岐岑岔岡岨岩岫岬岱岳岶岷岸岻岼岾峅峇峙峠峡峨峩峪峭峯峰島峺峻峽崇崋崎崑崔崕崖崗崘崙崚崛崟崢崩嵋嵌嵎嵐嵒嵜嵩嵬嵯嵳嵶嶂嶄嶇嶋嶌嶐嶝嶢嶬嶮嶷嶺嶼嶽巉巌巍巒巓巖巛川州巡巢巣工左巧巨巫差己已巳巴巵巷巻巽巾市布帆帋希帑帖帙帚帛帝帥師席帯帰帳帶帷常帽幀幃幄幅幇幌幎幔幕幗幟幡幢幣幤干平年幵并幷幸幹幺幻幼幽幾广庁広庄庇床序底庖店庚府庠度座庫庭庵庶康庸廁廂廃廈廉廊廏廐廓廖廚廛廝廟廠廡廢廣廨廩廬廰廱廳廴延廷廸建廻廼廾廿弁弃弄弉弊弋弌弍式弐弑弓弔引弖弗弘弛弟弥弦弧弩弭弯弱張強弸强弼弾彁彈彊彌彎彑当彖彗彙彜彝彡形彥彦彩彪彫彬彭彰影彳彷役彼彿往征徂徃径待徇很徊律後徐徑徒従得徘徙從徠御徨復循徭微徳徴徵德徹徼徽心必忌忍忖志忘忙応忝忠忤快忰忱念忸忻忽忿怎怏怐怒怕怖怙怛怜思怠怡急怦性怨怩怪怫怯怱怺恁恂恃恆恊恋恍恐恒恕恙恚恟恠恢恣恤恥恨恩恪恫恬恭息恰恵恷悁悃悄悅悉悋悌悍悒悔悖悗悚悛悟悠患悦悧悩悪悲悳悴悵悶悸悼悽情惆惇惑惓惘惚惜惟惠惡惣惧惨惰惱想惴惶惷惹惺惻愀愁愃愆愈愉愍愎意愕愚愛感愡愧愨愬愴愼愽愾愿慂慄慇慈慊態慌慍慎慓慕慘慙慚慝慟慢慣慥慧慨慫慮慯慰慱慳慴慵慶慷慾憂憇憊憎憐憑憔憖憙憚憤憧憩憫憬憮憲憶憺憾懃懆懇懈應懊懋懌懍懐懣懦懲懴懶懷懸懺懼懽懾懿戀戈戉戊戌戍戎成我戒戔或戚戛戝戞戟戡戦截戮戯戰戱戲戳戴戶戸戻戾房所扁扇扈扉手才扎打払托扛扞扠扣扨扮扱扶批扼找承技抂抃抄抉把抑抒抓抔投抖抗折抛抜択抦披抬抱抵抹抻押抽拂担拆拇拈拉拊拌拍拏拐拑拒拓拔拗拘拙招拜拝拠拡括拭拮拯拱拳拵拶拷拾拿持挂指挈按挌挑挙挟挧挨挫振挹挺挽挾挿捉捌捍捏捐捕捗捜捧捨捩捫据捲捶捷捺捻掀掃授掉掌掎掏排掖掘掛掟掠採探掣接控推掩措掫掬掲掴掵掻掾揀揃揄揆揉描提插揖揚換握揣揩揭揮援揶揷揺搆損搏搓搔搖搗搜搦搨搬搭搴搶携搾摂摎摑摘摧摩摯摶摸摺撃撈撒撓撕撚撞撤撥撩撫播撮撰撲撹撻撼擁擂擅擇擊操擒擔擘據擠擡擢擣擦擧擬擯擱擲擴擶擺擽擾攀攅攘攜攝攣攤攪攫攬支攴攵收攷攸改攺攻放政故效敍敎敏救敕敖敗敘教敝敞敢散敦敬数敲整敵敷數斂斃文斈斉斌斎斐斑斗料斛斜斟斡斤斥斧斫斬断斯新斷方於施旁旃旄旅旆旋旌族旒旗旙旛无旡既旣日旦旧旨早旬旭旱旺旻昂昃昆昇昊昌明昏易昔昜星映春昧昨昭是昴昵昶昻昼昿晁時晃晄晉晋晏晒晚晝晞晟晢晤晦晧晨晩普景晰晴晶智暁暃暄暇暈暉暎暑暖暗暘暝暢暦暫暮暴暸暹暼暾曁曄曆曇曉曖曙曚曜曝曠曦曩曰曲曳更曵曷書曹曼曽曾替最會月有朋服朏朔朕朖朗望朝朞期朦朧木未末本札朮朱朴朶朷朸机朽朿杁杆杉李杏材村杓杖杙杜杞束杠条杢杣杤来杪杭杯杰東杲杳杵杷杼松板枅枇枉枋枌析枕林枚果枝枠枡枢枦枩枯枳枴架枷枸枹柁柄柆柊柎柏某柑染柔柘柚柝柞柢柤查柧柩柬柮柯柱柳柴柵査柾柿栂栃栄栅栓栖栗栞校栢栩株栫栲栴核根格栽桀桁桂桃框案桍桎桐桑桓桔桙桜桝桟档桧桴桶桷桾桿梁梃梅梍梏梓梔梗梛條梟梠梢梦梧梨梭梯械梱梳梵梶梹梺梼棄棆棉棊棋棍棒棔棕棗棘棚棟棠棡棣棧森棯棲棹棺椀椁椄椅椈椋椌植椎椏椒椙椚椛検椡椢椣椥椦椨椪椰椴椶椹椽椿楊楓楔楕楙楚楜楝楞楠楡楢楪楫業楮楯楳楴極楷楸楹楼楽楾榁概榊榎榑榔榕榛榜榠榧榮榱榲榴榻榾榿槁槃槇槊構槌槍槎槐槓様槙槝槞槧槨槪槫槭槲槹槻槽槿樂樅樊樋樌樒樓樔樗標樛樞樟模樢樣権横樫樮樵樶樸樹樺樽橄橇橈橋橘橙機橡橢橦橫橲橸橿檀檄檍檎檐檗檜檠檢檣檪檬檮檳檸檻櫁櫂櫃櫑櫓櫚櫛櫞櫟櫨櫪櫺櫻欄欅權欒欖欝欟欠次欣欧欲欷欸欹欺欽款歃歇歉歌歎歐歓歔歙歛歟歡止正此步武歩歪歯歲歳歴歷歸歹死歿殀殃殄殆殉殊残殍殕殖殘殞殤殪殫殯殱殲殳殴段殷殺殻殼殿毀毅毆毋母毎每毒毓比毗毘毛毟毫毬毯毳氈氏民氓气気氛氣氤水氷永氾汀汁求汎汐汕汗汚汝汞江池汢汨汪汰汲汳決汽汾沁沂沃沈沌沍沐沒沓沖沙沚沛没沢沫沮沱河沸油沺治沼沽沾沿況泄泅泉泊泌泓法泗泙泛泝泡波泣泥注泪泯泰泱泳洇洋洌洒洗洙洛洞洟津洩洪洫洲洳洵洶洸活洽派流浄浅浙浚浜浣浤浦浩浪浬浮浴海浸浹涅消涉涌涎涓涕涙涛涜涯液涵涸涼淀淅淆淇淋淌淑淒淕淘淙淚淞淡淤淦淨淪淫淬淮深淳淵混淸淹淺添淼清渇済渉渊渋渓渕渙渚減渝渟渠渡渣渤渥渦温渫測渭渮港游渺渾湃湊湍湎湖湘湛湟湧湫湮湯湲湶湾湿満溂溌溏源準溘溜溝溟溢溥溪溫溯溲溶溷溺溽滂滄滅滉滊滋滌滑滓滔滕滝滞滬滯滲滴滷滸滾滿漁漂漆漉漏漑漓演漕漠漢漣漫漬漱漲漸漾漿潁潅潑潔潘潛潜潟潤潦潭潮潯潰潴潸潺潼澀澁澂澄澆澎澑澗澡澣澤澥澪澱澳澹激濁濂濃濆濔濕濘濛濟濠濡濤濫濬濮濯濱濳濶濺濾瀁瀉瀋瀏瀑瀕瀘瀚瀛瀝瀞瀟瀦瀧瀨瀬瀰瀲瀾灌灑灘灣火灯灰灸灼災炉炊炎炒炙炬炭炮炯炳炸点為烈烋烏烙烝烟烱烹烽焉焔焙焚焜無焦然焼煉煌煎煑煕煖煙煢煤煥煦照煩煬煮煽熄熈熊熏熔熕熙熟熨熬熱熹熾燃燈燉燎燐燒燔燕燗營燠燥燦燧燬燭燮燵燹燻燼燿爆爍爐爛爨爪爬爭爰爲爵父爺爻爼爽爾爿牀牆片版牋牌牒牘牙牛牝牟牡牢牧物牲牴特牽牾犀犁犂犇犒犖犠犢犧犬犯犲状犹狀狂狃狄狆狎狐狒狗狙狛狠狡狢狩独狭狷狸狹狼狽猊猖猗猛猜猝猟猥猩猪猫献猯猴猶猷猽猾猿獄獅獎獏獗獣獨獪獰獲獵獸獺獻玄玆率玉王玖玩玲玳玻珀珂珈珊珍珎珞珠珥珪班珮珱珸現球琅理琉琢琥琲琳琴琵琶琺琿瑁瑕瑙瑚瑛瑜瑞瑟瑠瑣瑤瑩瑪瑯瑰瑳瑶瑾璃璋璞璢璧環璽瓊瓏瓔瓜瓠瓢瓣瓦瓧瓩瓮瓰瓱瓲瓶瓷瓸甃甄甅甌甍甎甑甓甕甘甚甜甞生產産甥甦用甫甬田由甲申男甸町画甼畄畆畉畊畋界畍畏畑畔留畚畛畜畝畠畢畤略畦畧畩番畫畭異畳畴畵當畷畸畿疂疆疇疉疊疋疎疏疑疔疚疝疣疥疫疱疲疳疵疸疹疼疽疾痂痃病症痊痍痒痔痕痘痙痛痞痢痣痩痰痲痳痴痹痺痼痾痿瘁瘉瘋瘍瘟瘠瘡瘢瘤瘧瘰瘴瘻療癆癇癈癌癒癖癘癜癡癢癧癨癩癪癬癰癲癶癸発登發白百皀皃的皆皇皈皋皎皐皓皖皙皚皮皰皴皷皸皹皺皿盂盃盆盈益盍盒盖盗盛盜盞盟盡監盤盥盧盪目盲直相盻盾省眄眇眈眉看県眛眞真眠眤眥眦眩眷眸眺眼着睇睚睛睡督睥睦睨睪睫睹睾睿瞋瞎瞑瞞瞠瞥瞬瞭瞰瞳瞶瞹瞻瞼瞽瞿矇矍矗矚矛矜矢矣知矧矩短矮矯石矼砂砌砒研砕砠砥砦砧砲破砺砿硅硏硝硫硬硯硲硴硼碁碆碇碌碍碎碑碓碕碗碚碣碧碩碪碯碵確碼碾磁磅磆磊磋磐磑磔磚磧磨磬磯磴磽礁礇礎礑礒礙礦礪礫礬示礼社祀祁祇祈祉祐祓祕祖祗祚祝神祟祠祢祥票祭祷祺祿禀禁禄禅禊禍禎福禝禦禧禪禮禰禱禳禹禺禽禾禿秀私秉秋科秒秕秘租秡秣秤秦秧秩秬称移稀稅稈程稍税稔稗稘稙稚稜稟稠種稱稲稷稻稼稽稾稿穀穂穃穆穉積穎穏穐穗穡穢穣穩穫穰穴究穹空穽穿突窃窄窈窒窓窕窖窗窘窟窩窪窮窯窰窶窺窿竃竄竅竇竈竊立竍竏竒竓竕站竚竜竝竟章竡竢竣童竦竪竭端竰競竸竹竺竿笂笄笆笈笊笋笏笑笘笙笛笞笠笥符笨第笳笵笶笹筅筆筈等筋筌筍筏筐筑筒答策筝筥筧筬筮筰筱筴筵筺箆箇箋箍箏箒箔箕算箘箙箚箜箝箟管箪箭箱箴箸節篁範篆篇築篋篌篏篝篠篤篥篦篩篭篳篶篷簀簇簍簑簒簓簔簗簞簟簡簣簧簪簫簷簸簽簾簿籀籃籌籍籏籐籔籖籘籟籠籤籥籬米籵籾粁粂粃粉粋粍粐粒粕粗粘粛粟粡粢粤粥粧粨粫粭粮粱粲粳粹粽精糀糂糅糊糎糒糓糖糘糜糞糟糠糢糧糯糲糴糶糸糺系糾紀紂約紅紆紊紋納紐純紕紗紘紙級紛紜素紡索紫紬紮累細紲紳紵紹紺紿終絃組絅絆絋経絎絏結絕絖絛絞絡絢絣給絨絮統絲絳絵絶絹絽綁綉綏經継続綛綜綟綠綢綣綫綬維綮綯綰綱網綴綵綸綺綻綽綾綿緃緇緊緋総緑緒緕緖緘線緜緝緞締緡緣緤編緩緬緯緲練緻縁縄縅縉縊縋縒縛縞縟縡縢縣縦縫縮縱縲縵縷縹縺縻總績繁繃繆繊繋繍織繕繖繙繚繝繞繡繦繧繩繪繫繭繰繹繻繼繽繿纂纃纈纉續纎纏纐纒纓纔纖纛纜缶缸缺缼罅罌罍罎罐网罔罕罘罟罠罧罨罩罪罫置罰署罵罷罸罹羂羃羅羆羇羈羊羌美羔羚羝羞羣群羨義羮羯羲羶羸羹羽翁翅翆翊翌習翔翕翠翡翦翩翫翰翳翹翻翼耀老考耄者耆耋而耐耒耕耗耘耙耜耡耨耳耶耻耽耿聆聊聒聖聘聚聞聟聡聢聨聯聰聲聳聴聶職聹聽聾聿肄肅肆肇肉肋肌肓肖肘肚肛肝股肢肥肩肪肬肭肯肱育肴肺胃胄胆背胎胖胙胚胛胝胞胡胤胥胯胱胴胸胼能脂脅脆脇脈脉脊脚脛脣脩脫脯脱脳脹脾腆腋腎腐腑腓腔腕腟腥腦腫腮腰腱腴腸腹腺腿膀膂膃膈膊膏膓膕膚膜膝膠膣膤膨膩膰膳膵膸膺膽膾膿臀臂臆臈臉臍臑臓臘臙臚臟臠臣臥臧臨自臭至致臺臻臼臾舁舂舅與興舉舊舌舍舎舐舒舖舗舘舛舜舞舟舩航舫般舮舳舵舶舷舸船艀艇艘艙艚艝艟艢艤艦艨艪艫艮良艱色艶艷艸艾芋芍芒芙芝芟芥芦芫芬芭芯花芳芸芹芻芽苅苑苒苓苔苗苙苛苜苞苟苡苣若苦苧苫英苳苴苹苺苻茂范茄茅茆茉茎茖茗茘茜茣茨茫茯茱茲茴茵茶茸茹荀荅草荊荏荐荒荘荳荵荷荻荼莅莇莉莊莎莓莖莚莞莟莠莢莨莪莫莱莵莽菁菅菊菌菎菓菖菘菜菟菠菩菪菫華菰菱菲菴菷菻菽萃萄萇萊萋萌萍萎萓萠萢萩萪萬萱萵萸萼落葆葉葎著葛葡葢董葦葩葫葬葭葮葯葱葵葷葹葺蒂蒄蒋蒐蒔蒙蒜蒟蒡蒭蒲蒸蒹蒻蒼蒿蓁蓄蓆蓉蓊蓋蓍蓐蓑蓖蓙蓚蓬蓮蓴蓼蓿蔀蔆蔑蔓蔔蔕蔗蔘蔚蔟蔡蔣蔦蔬蔭蔵蔽蕀蕁蕃蕈蕉蕊蕋蕎蕕蕗蕘蕚蕣蕨蕩蕪蕭蕷蕾薀薄薇薈薊薐薑薔薗薙薛薜薤薦薨薩薪薫薬薮薯薰薹薺藁藉藍藏藐藕藜藝藤藥藩藪藷藹藺藻藾蘂蘆蘇蘊蘋蘓蘖蘗蘚蘢蘭蘯蘰蘿虍虎虐虔處虚虛虜虞號虧虫虱虹虻蚊蚋蚌蚓蚕蚣蚤蚩蚪蚫蚯蚰蚶蛄蛆蛇蛉蛋蛍蛎蛔蛙蛛蛞蛟蛤蛩蛬蛭蛮蛯蛸蛹蛻蛾蜀蜂蜃蜆蜈蜉蜊蜍蜑蜒蜘蜚蜜蜥蜩蜴蜷蜻蜿蝉蝋蝌蝎蝓蝕蝗蝙蝟蝠蝣蝦蝨蝪蝮蝴蝶蝸蝿螂融螟螢螩螫螯螳螺螻螽蟀蟄蟆蟇蟋蟐蟒蟠蟬蟯蟲蟶蟷蟹蟻蟾蠅蠍蠎蠏蠑蠕蠖蠟蠡蠢蠣蠧蠱蠶蠹蠻血衂衄衆行衍衒術街衙衛衝衞衡衢衣表衫衰衲衵衷衽衾衿袁袂袈袋袍袒袖袗袙袞袢袤袪被袮袰袱袴袵袷袿裁裂裃裄装裏裔裕裘裙補裝裟裡裨裲裳裴裸裹裼製裾褂褄複褊褌褐褒褓褝褞褥褪褫褶褸褻襁襃襄襌襍襖襞襟襠襤襦襪襭襯襲襴襷襾西要覃覆覇覈覊見規覓視覗覘覚覡覦覧覩親覬覯覲観覺覽覿觀角觚觜觝解触觧觴觸言訂訃計訊訌討訐訓訖託記訛訝訟訣訥訪設許訳訴訶診註証詁詆詈詐詑詒詔評詛詞詠詢詣試詩詫詬詭詮詰話該詳詼誂誄誅誇誉誌認誑誓誕誘誚語誠誡誣誤誥誦誨說説読誰課誹誼調諂諄談請諌諍諏諒論諚諛諜諞諠諡諢諤諦諧諫諭諮諱諳諷諸諺諾謀謁謂謄謇謌謎謐謔謖謗謙謚講謝謠謡謦謨謫謬謳謹謾譁譃證譌譎譏譖識譚譛譜譟警譫譬譯議譱譲譴護譽讀讃變讌讎讐讒讓讖讙讚谷谺谿豁豆豈豊豌豎豐豕豚象豢豪豫豬豸豹豺豼貂貅貉貊貌貍貎貔貘貝貞負財貢貧貨販貪貫責貭貮貯貰貲貳貴貶買貸費貼貽貿賀賁賂賃賄資賈賊賍賎賑賓賚賛賜賞賠賢賣賤賦質賭賴賺賻購賽贄贅贇贈贊贋贍贏贐贓贔贖赤赦赧赫赭走赱赳赴起趁超越趙趣趨足趺趾跂跋跌跏跖跚跛距跟跡跣跨跪跫路跳践跼跿踈踉踊踏踐踝踞踟踪踰踴踵蹂蹄蹇蹈蹉蹊蹌蹐蹕蹙蹟蹠蹣蹤蹲蹴蹶蹼躁躄躅躇躊躋躍躑躓躔躙躡躪身躬躯躰躱躾軅軆軈車軋軌軍軒軛軟転軣軫軸軻軼軽軾較輅載輊輌輒輓輔輕輙輛輜輝輟輦輩輪輯輳輸輹輻輾輿轂轄轅轆轉轌轍轎轗轜轟轡轢轣轤辛辜辞辟辣辧辨辭辮辯辰辱農辷辺辻込辿迂迄迅迎近返迚迠迢迥迦迩迪迫迭迯述迴迷迸迹迺追退送逃逅逆逋逍逎透逐逑逓途逕逖逗這通逝逞速造逡逢連逧逮週進逵逶逸逹逼逾遁遂遅遇遉遊運遍過遏遐遑遒道達違遖遘遙遜遞遠遡遣遥遨適遭遮遯遲遵遶遷選遺遼遽避邀邁邂邃還邇邉邊邏邑那邦邨邪邯邱邵邸郁郊郎郛郞郡郢郤部郭郵郷都鄂鄒鄕鄙鄭鄰鄲酉酊酋酌配酎酒酔酖酘酢酣酥酩酪酬酲酳酵酷酸醂醇醉醋醍醐醒醗醜醢醤醪醫醬醯醴醵醸醺釀釁釆采釈釉釋里重野量釐金釖釘釛釜針釟釡釣釦釧釵釶釼釿鈍鈎鈑鈔鈕鈞鈩鈬鈴鈶鈷鈿鉄鉅鉈鉉鉋鉐鉗鉚鉛鉞鉢鉤鉦鉱鉾銀銃銅銈銑銓銕銖銘銚銛銜銭銳銷銹鋏鋒鋤鋩鋪鋭鋲鋳鋸鋺鋼錄錆錏錐錘錙錚錠錢錣錦錨錫錬錮錯録錵錺錻鍄鍊鍋鍍鍔鍖鍛鍜鍠鍬鍮鍵鍼鍾鎌鎔鎖鎗鎚鎧鎬鎭鎮鎰鎹鏃鏈鏐鏑鏖鏗鏘鏝鏡鏤鏥鏨鐃鐇鐐鐓鐔鐘鐙鐚鐡鐫鐵鐶鐸鐺鑁鑄鑑鑒鑓鑚鑛鑞鑠鑢鑪鑰鑵鑷鑼鑽鑾鑿钁長門閂閃閇閉閊開閏閑間閔閖閘閙閠関閣閤閥閧閨閭閱閲閹閻閼閾闃闇闊闌闍闔闕闖闘關闡闢闥阜阡阨阪阮阯防阻阿陀陂附陋陌降陏限陛陜陝陞陟院陣除陥陦陪陬陰陲陳陵陶陷陸険陽隅隆隈隊隋隍階随隔隕隗隘隙際障隠隣隧隨險隰隱隲隴隶隷隸隹隻隼雀雁雄雅集雇雉雋雌雍雎雑雕雖雙雛雜離難雨雪雫雰雲零雷雹電需霄霆震霈霊霍霎霏霑霓霖霙霜霞霤霧霪霰露霸霹霽霾靂靄靆靈靉靑青靖静靜非靠靡面靤靦靨革靫靭靱靴靹靺靼鞁鞄鞅鞆鞋鞍鞏鞐鞘鞜鞠鞣鞦鞨鞫鞭鞳鞴韃韆韈韋韓韜韭韮韲音韵韶韻響頁頂頃項順須頌頏預頑頒頓頗領頚頡頤頬頭頴頷頸頻頼頽顆顋題額顎顏顔顕願顚顛類顧顫顯顰顱顳顴風颪颯颱颶飃飄飆飛飜食飢飩飫飭飮飯飲飴飼飽飾餃餅餉養餌餐餒餓餔餘餝餞餠餡餤館餬餮餽餾饂饅饉饋饌饐饑饒饕饗首馗馘香馥馨馬馭馮馳馴馼駁駄駅駆駈駐駑駒駕駘駛駝駟駢駭駮駱駲駸駻駿騁騅騎騏騒験騙騨騫騰騷騾驀驂驃驅驍驒驕驗驚驛驟驢驤驥驩驪驫骨骭骰骸骼髀髄髏髑髓體高髞髟髢髣髦髪髫髭髮髯髱髴髷髻鬆鬘鬚鬟鬢鬣鬥鬧鬨鬩鬪鬮鬯鬱鬲鬻鬼魁魂魃魄魅魍魎魏魑魔魘魚魯魴鮃鮎鮑鮒鮓鮖鮗鮟鮠鮨鮪鮫鮭鮮鮴鮹鯀鯆鯉鯊鯏鯑鯒鯔鯖鯛鯡鯢鯣鯤鯨鯰鯱鯲鯵鰄鰆鰈鰉鰊鰌鰍鰐鰒鰓鰔鰕鰛鰡鰤鰥鰭鰮鰯鰰鰲鰹鰺鰻鰾鱆鱇鱈鱒鱗鱚鱠鱧鱶鱸鳥鳧鳩鳫鳬鳰鳳鳴鳶鴃鴆鴇鴈鴉鴎鴒鴕鴛鴟鴣鴦鴨鴪鴫鴬鴻鴾鴿鵁鵄鵆鵈鵐鵑鵙鵜鵝鵞鵠鵡鵤鵬鵯鵲鵺鶇鶉鶏鶚鶤鶩鶫鶯鶲鶴鶸鶺鶻鷁鷂鷄鷆鷏鷓鷙鷦鷭鷯鷲鷸鷹鷺鷽鸚鸛鸞鹵鹸鹹鹼鹽鹿麁麈麋麌麑麒麓麕麗麝麟麥麦麩麪麭麴麸麹麺麻麼麾麿黃黄黌黍黎黏黐黑黒黔默黙黛黜黝點黠黥黨黯黴黶黷黹黻黼黽鼇鼈鼎鼓鼕鼠鼡鼬鼻鼾齊齋齎齏齒齔齟齠齡齢齣齦齧齪齬齲齶齷龍龕龜龝龠蘭朗寧旅蓮連廉惡類隆糖塚晴凞猪益神祥福靖精羽諸都飯飼館鶴僧免勉勤卑嘆器塀墨層悔慨懲敏既梅海漢琢社祉祈祐祖祝禎穀突節練繁署者臭著褐視謁謹賓贈逸難響頻﹣！＃＄％＆（）＊＋，－．／：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［］＿ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～￥𢌞￣〽◯│‾•◇桅痧〱閩▢◦─㐧◑煠你蒅卄縀匾嗩瘀歒〖〗虬糕𤍽◎剉晡▼𦾔儋㢲珉撿瀹叚帕芎脘樝𠮷鯽‼㤙焻㙒︎芩＼焮刕刁䕶怔";   // NDLmoji.yaml の charset_train(出力番号 i は、文字 NDL_CHARS[i-1]。0は終わり)
+const ndlSess={},ndlLoading={};
+function getNdl(wd){
+  if(ndlSess[wd])return Promise.resolve(ndlSess[wd]);
+  if(ndlLoading[wd])return ndlLoading[wd];
+  ndlLoading[wd]=(async()=>{
+    await loadOrt();
+    const buf=await fetchBuf(NDL_BASE+NDL_FILES[wd],"認識モデル("+({256:"小",384:"中",768:"大"})[wd]+")");
+    ndlSess[wd]=await ort.InferenceSession.create(buf,{executionProviders:["wasm"]});
+    return ndlSess[wd];
+  })().catch(e=>{delete ndlLoading[wd];throw e;});
+  return ndlLoading[wd];
+}
+// 1行の画像 → 文字列と確かさ(0〜100)。縦長なら左に90度回す。高さ24px・幅は モデルごとの固定(256/384/768)に縮めて読む
+async function ndlRead(cv,wd){
+  let src=cv;
+  if(cv.height>cv.width*0.8){const r=document.createElement("canvas");r.width=cv.height;r.height=cv.width;const c=r.getContext("2d");c.translate(0,cv.width);c.rotate(-Math.PI/2);c.drawImage(cv,0,0);src=r;}
+  const H=24,c2=document.createElement("canvas");c2.width=wd;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
+  cx.fillStyle="#fff";cx.fillRect(0,0,wd,H);cx.imageSmoothingQuality="high";cx.drawImage(src,0,0,wd,H);
+  const d=cx.getImageData(0,0,wd,H).data,HW=H*wd,f=new Float32Array(3*HW);
+  for(let i=0;i<HW;i++){f[i]=d[i*4]/127.5-1;f[HW+i]=d[i*4+1]/127.5-1;f[2*HW+i]=d[i*4+2]/127.5-1;}
+  const sess=await getNdl(wd),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,wd])});
+  const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
+  let str="",ps=0,n=0;
+  for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
+    if(bi===0)break;
+    let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);ps+=1/sum;n++;
+    str+=NDL_CHARS[bi-1]||"";}
+  return{str,conf:n?ps/n*100:0};
+}
+// 1行をNDLOCR-Liteで読む。文字数の見当(幅÷高さ)で小さいモデルから始め、長ければ大きいモデルで読み直す
+async function ndlLine(ch,x,y,S,Sb){
+  const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12),R=ocrRange;
+  const bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);
+  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  const est=(l.x1-l.x0)/Math.max(1,l.h);
+  let wd=est<=26?256:est<=44?384:768,r=await ndlRead(cv,wd);
+  if(wd===256&&r.str.length>=25){wd=384;r=await ndlRead(cv,wd);}
+  if(wd===384&&r.str.length>=45){wd=768;r=await ndlRead(cv,wd);}
+  if(!r.str.trim()||r.conf<35)return null;
+  const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
+  const txt=cleanOcr(fixPaddle(r.str));
+  if(!txt)return null;
+  if(/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(txt))return[];
+  return[{words:[{str:txt,conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}],conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
+let lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+// 高精度エンジンで1行を読む(読めなければ null)
+async function paddleLine(ch,x,y,S,Sb,flat){
+  const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
+  const R=ocrRange,bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);   // 範囲の外の文字を読み込まない
+  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  let seq=await paddleRec(cv),conf=seq.length?seq.reduce((a,b)=>a+b.p,0)/seq.length*100:0;
+  if(flat&&conf<90){   // 背景に模様・ムラがある写真は、背景を消した画像でも読んで、確かさが高い方を採る
+    const f=document.createElement("canvas");f.width=cv.width;f.height=cv.height;f.getContext("2d").drawImage(cv,0,0);flattenForOcr(f,2);
+    const s2=await paddleRec(f),c2=s2.length?s2.reduce((a,b)=>a+b.p,0)/s2.length*100:0;
+    if(c2>conf){seq=s2;conf=c2;}
+  }
+  if(!seq.length)return null;
+  if(conf<45)return null;
+  const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S,wd=bx1-bx0;
+  const words=[];let cur=null;
+  seq.forEach(c=>{if(c.ch===" "){cur=null;return;}
+    const px=bx0+c.pos*wd;
+    if(!cur){cur={str:"",conf:0,n:0,a:px,b:px};words.push(cur);}
+    cur.str+=c.ch;cur.conf+=c.p*100;cur.n++;cur.b=px;});
+  words.forEach(w=>{w.conf/=w.n;});
+  const ws=words.map(w=>({str:cleanOcr(fixPaddle(w.str)),conf:w.conf,x0:Math.max(X0,w.a),x1:Math.min(X1,w.b),y0:Y0,y1:Y1})).filter(w=>w.str);
+  if(!ws.length)return null;
+  if(ws.every(w=>/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(w.str)))return[];   // 点線の区切りなど、記号だけの行は文字にしない
+  ws[0].x0=X0;ws[ws.length-1].x1=X1;    // 行の両端は、画像解析の位置(正確)
+  return[{words:ws,conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
 async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
-  const bx0=Math.max(0,x+ch.x0/S-pad),by0=Math.max(0,y+ch.y0/S-pad),bx1=Math.min(VW,x+ch.x1/S+pad),by1=Math.min(VH,y+ch.y1/S+pad);
+  const R=ocrRange,bx0=Math.max(R.x,x+ch.x0/S-pad),by0=Math.max(R.y,y+ch.y0/S-pad),bx1=Math.min(R.x+R.w,x+ch.x1/S+pad),by1=Math.min(R.y+R.h,y+ch.y1/S+pad);
+  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb);if(o)return o;}
+  else if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
+  if(!worker)worker=await getOcr($("ocrLang").value);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
   const single=ch.lines.length===1&&(ch.x1-ch.x0)<1.8*ch.gh;          // 1文字だけの塊
   const first=single?"10":ch.lines.length>1?"6":"7";
@@ -1289,7 +1442,7 @@ async function ocrChunk(worker,ch,x,y,S,flat){
 async function doOcr(x,y,w,h){
   if(ocrRunning){status("いま変換中です。終わるまでお待ちください。");return;}
   if(w<6||h<6){status("文字にしたい範囲をドラッグしてください。");return;}
-  ocrRunning=true;$("bOcrPage").disabled=true;
+  ocrRunning=true;$("bOcrPage").disabled=true;ocrRange={x,y,w,h,whole:w>=VW-1&&h>=VH-1};
   const k=K(),rng=document.createElement("div");rng.className="ocrrng";   // 変換する範囲を枠で示す(終わると緑に)
   rng.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;ov.appendChild(rng);
   const whole=w>=VW-1&&h>=VH-1;
@@ -1302,15 +1455,33 @@ async function doOcr(x,y,w,h){
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrRunning=false;$("bOcrPage").disabled=false;}
 }
+// 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
+function keepInRange(it,x,y,w,h){
+  const nl=Math.max(1,(it.txt||"").split("\n").length);
+  if(it.vx<x)it.vx=x;
+  if(it.vx+it.vw>x+w)it.vw=Math.max(8,x+w-it.vx);
+  if(it.vx+it.vw>x+w)it.vx=Math.max(x,x+w-it.vw);
+  for(let i=0;i<40&&it.size>4;i++){
+    const d=measureHost(it,1),hh=d.scrollHeight;d.remove();
+    if(hh<=nl*it.size*it.lh*1.3+1)break;    // 1行ごとに折り返さず収まっている
+    const k=(it.size-0.5)/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*k*10)/10):null);it.size=it.size-0.5;
+  }
+  const d=measureHost(it,1);if(d.scrollHeight>it.vh+0.5)it.vh=Math.ceil(d.scrollHeight);d.remove();
+  if(it.vy<y)it.vy=y;if(it.vy+it.vh>y+h)it.vy=Math.max(y,y+h-it.vh);
+}
 async function doOcrBody(x,y,w,h){
-  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");const worker=await getOcr(lang);
+  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
+  const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
+  if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
+  if(ppMode){try{await getPaddle();}catch(e){console.warn(e);ppMode=false;status("高精度エンジンを読み込めなかったので、標準エンジンで認識します("+(e.message||e)+")");job.step("標準エンジンで認識します…");}}
+  if(!ppMode&&!ndlMode)worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
   const cv=await renderRegion(x,y,w,h,S);
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
   status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
-  const seg=ocrSegment(cv,S);
+  const seg=ocrSegment(cv,S,!(w>=VW-1&&h>=VH-1));
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
@@ -1334,7 +1505,9 @@ async function doOcrBody(x,y,w,h){
   // 認識した語を、これまでと同じ「まとまりの規則」でつなぎ直す(同じ大きさで横に並ぶ=1つ、大きな空白・罫線で分ける)
   let nl=0;const made=[],runs=[];
   res.forEach((c,ci)=>c.lines.forEach(l=>{nl++;const base=l.y1-c.final*0.18;
-    l.words.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
+    // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
+    const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
+    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
   buildBlocks(runs).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
@@ -1343,16 +1516,19 @@ async function doOcrBody(x,y,w,h){
       if(c.align==="center"){it.vw=(ux1-ux0)+slack;it.vx=(ux0+ux1)/2-it.vw/2;}
       else if(c.align==="right"){it.vw=(ux1-ux0)+slack;it.vx=ux1-it.vw+fs*0.2;}
     }
-    it.ocrMade=true;growToFit(it);clampToPage(it);made.push(it);
+    it.ocrMade=true;growToFit(it);clampToPage(it);
+    if(!ocrRange.whole)keepInRange(it,x,y,w,h);
+    made.push(it);
   });
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
   items=items.filter(o=>!(o.ocrMade&&o.page===cur&&o.vx+o.vw/2>=x&&o.vx+o.vw/2<=x+w&&o.vy+o.vh/2>=y&&o.vy+o.vh/2<=y+h));
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
+  lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
   return{ok:true,lines:nl,parts:made.length};
 }
-$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);});
+$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
 // 入力中の枠と同じ折り返しで行に分ける(DOMで各文字の位置を測り、x座標が戻った所を行頭とする)
@@ -1449,7 +1625,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

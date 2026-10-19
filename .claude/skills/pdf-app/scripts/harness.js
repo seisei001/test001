@@ -21,6 +21,8 @@ function localPath(u){
   if((m=u.match(/^tesseract\.js@[^/]+\/dist\/(.+)$/)))return 'tesseract.js/dist/'+m[1];
   if((m=u.match(/^tesseract\.js-core@[^/]+\/(.+)$/)))return 'tesseract.js-core/'+m[1];
   if((m=u.match(/^@tesseract\.js-data\/(\w+)@[^/]+\/(.+)$/)))return '@tesseract.js-data/'+m[1]+'/'+m[2];
+  if((m=u.match(/^onnxruntime-web@[^/]+\/dist\/(.+)$/)))return 'onnxruntime-web/dist/'+m[1];
+  if((m=u.match(/^pdfmarkdown-ppocrv5-models@[^/]+\/(.+)$/)))return 'pdfmarkdown-ppocrv5-models/'+m[1];
   return null;
 }
 async function launch(opts={}){
@@ -28,13 +30,20 @@ async function launch(opts={}){
   const page=await browser.newPage({viewport:{width:900,height:1400},acceptDownloads:true});
   page.on('pageerror',e=>console.log('PAGEERR',e.message));
   if(opts.log)page.on('console',m=>{const t=m.text();if(!/^Canvas2D|Warning: Parameter/.test(t))console.log('LOG',t.slice(0,200));});
+  // NDLOCR-Lite のモデル(GitHub rawの実体)は、setup.sh で取得した $PDFAPP_WORK/ndl/ から返す
+  await page.route('https://raw.githubusercontent.com/ndl-lab/ndlocr-lite/**',r=>{
+    const f=path.join(WORK,'ndl/ndlocr-lite/src/model',r.request().url().split('/src/model/')[1]||'');
+    if(fs.existsSync(f))r.fulfill({body:fs.readFileSync(f),headers:{'access-control-allow-origin':'*'},contentType:'application/octet-stream'});
+    else{console.log('MISS(ndl)',f);r.abort();}
+  });
   await page.route('https://cdn.jsdelivr.net/npm/**',r=>{
     const u=r.request().url().split('/npm/')[1],f=localPath(u);
     if(f&&fs.existsSync(LIB+f)){
       r.fulfill({body:fs.readFileSync(LIB+f),headers:{'access-control-allow-origin':'*'},
-        contentType:u.endsWith('.js')?'application/javascript':u.endsWith('.wasm')?'application/wasm':'application/octet-stream'});
+        contentType:/\.(m?js)$/.test(u)?'application/javascript':u.endsWith('.wasm')?'application/wasm':'application/octet-stream'});
     }else{console.log('MISS(npmに無い)',u);r.abort();}
   });
+  if(process.env.OCR_ENGINE)await page.addInitScript(e=>document.addEventListener('DOMContentLoaded',()=>{const s=document.getElementById('ocrEngine');if(s)s.value=e;}),process.env.OCR_ENGINE);   // OCR_ENGINE=tess で標準(Tesseract)、paddle で高精度
   await page.goto(APP);await page.waitForTimeout(800);
   return {browser,page};
 }
@@ -45,6 +54,7 @@ async function drag(page,x0,y0,x1,y1){
   await page.mouse.move(o.x+o.width*x1,o.y+o.height*y1,{steps:6});await page.mouse.up();await page.waitForTimeout(800);
 }
 async function save(page,file){
+  await page.evaluate(()=>{window.showSaveFilePicker=undefined;});   // 保存ダイアログは自動化できないので、従来のダウンロードにする(名前を付けて保存は test-save.js で確認)
   const [d]=await Promise.all([page.waitForEvent('download'),page.click('#bSave')]);await d.saveAs(file);
 }
 module.exports={launch,drag,save,APP,WORK};
