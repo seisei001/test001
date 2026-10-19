@@ -16,7 +16,8 @@ const FORM=[
   {name:'l2',size:10.5,lh:1.3,align:'left',x:60,base:170,lines:['代理人名称:']},
   {name:'v2',size:10.5,lh:1.3,align:'left',x:190,base:170,lines:['公認会計士','税理士 坂口 誠']},
   {name:'l3',size:10.5,lh:1.3,align:'left',x:60,base:230,lines:['委任者名称:']},
-  {name:'v3',size:10.5,lh:1.3,align:'left',x:190,base:230,lines:['特定非営利活動法人福祉ネット寿','理事長']},
+  {name:'v3',size:10.5,lh:1.3,align:'left',x:190,base:230,lines:['特定非営利活動法人福祉ネット寿']},
+  {name:'v3b',size:10.5,lh:1.3,align:'left',x:300,base:243,lines:['理事長']},   // 上の行の下にたまたま収まっている、字下げされた別の行
   {name:'l4',size:10.5,lh:1.3,align:'left',x:60,base:290,lines:['委任期間:']},
   {name:'v4',size:10.5,lh:1.3,align:'left',x:190,base:290,lines:['令和8年10月20日から委任事項が終了するまで']},
   {name:'n1',size:10.5,lh:1.3,align:'left',x:300,base:340,lines:['令和']},

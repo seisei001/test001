@@ -399,7 +399,10 @@ function setMode(m){
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
 [...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-$("ovGhost").onchange=()=>ov.classList.toggle("ghost",$("ovGhost").checked);
+// 「元の画像と重ねて確認」は、既定でオン(赤く透かして元の画像と重ねる)。切り替えは覚えておく(ブラウザに保存)
+{let g="1";try{g=localStorage.getItem("pdfEditorGhost")||"1";}catch{}
+ $("ovGhost").checked=g==="1";ov.classList.toggle("ghost",$("ovGhost").checked);}
+$("ovGhost").onchange=()=>{ov.classList.toggle("ghost",$("ovGhost").checked);try{localStorage.setItem("pdfEditorGhost",$("ovGhost").checked?"1":"0");}catch{}};
 $("fImg").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   if(imgData)URL.revokeObjectURL(imgData.url);
@@ -510,8 +513,8 @@ function buildBlocks(list,gapOverride){
       if(dy>Math.max(a.size,b.size)*1.7)break;
       if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
       if(!similar(a.size,b.size,0.25)||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
-      const ov=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
-      if(ov>Math.min(a.w,b.w)*0.5||Math.abs(a.x-b.x)<Math.max(a.size,b.size)*1.0)par[find(j)]=find(i);
+      const tol=Math.max(a.size,b.size)*1.0;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけでは、つなげない)
+      if(Math.abs(a.x-b.x)<tol||Math.abs((a.x+a.w)-(b.x+b.w))<tol||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<tol)par[find(j)]=find(i);
     }
   }
   const groups=new Map();
@@ -1285,8 +1288,9 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
     for(let j=i+1;j<lines.length;j++){const b=lines[j],vg=b.y0-a.y1;if(vg>1.3*Math.max(a.h,b.h))break;
       const mh=Math.min(a.h,b.h);if(vg<-0.5*mh)continue;if(vg>0.9*mh)continue;
       if(Math.max(a.h,b.h)/mh>1.4)continue;
-      const ho=Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0);
-      if(!(ho>=0.25*Math.min(a.w,b.w)||Math.abs(a.x0-b.x0)<1.5*Math.max(a.h,b.h)))continue;
+      // 同じ塊にするのは、左端・右端・中心のどれかがそろっている行だけ(上の行の下にたまたま収まっているだけの短い行〈「理事長」など〉は別の塊)
+      const tol=1.5*Math.max(a.h,b.h);
+      if(!(Math.abs(a.x0-b.x0)<tol||Math.abs(a.x1-b.x1)<tol||Math.abs((a.x0+a.x1)/2-(b.x0+b.x1)/2)<tol))continue;
       if(hSep(a.y1,b.y0,Math.max(a.x0,b.x0),Math.min(a.x1,b.x1)))continue;
       V.u(i,j);}}
   const cm=new Map();lines.forEach((l,i)=>{const r=V.f(i);let c=cm.get(r);if(!c){c={x0:l.x0,y0:l.y0,x1:l.x1,y1:l.y1,lines:[]};cm.set(r,c);}c.x0=Math.min(c.x0,l.x0);c.y0=Math.min(c.y0,l.y0);c.x1=Math.max(c.x1,l.x1);c.y1=Math.max(c.y1,l.y1);c.lines.push(l);});
@@ -1343,14 +1347,26 @@ async function ndlLine(ch,x,y,S,Sb,flat){
   let wd=est<=26?256:est<=44?384:768,r=await ndlRead(cv,wd);
   if(wd===256&&r.str.length>=25){wd=384;r=await ndlRead(cv,wd);}
   if(wd===384&&r.str.length>=45){wd=768;r=await ndlRead(cv,wd);}
-  // 1〜2文字の短い行は、固定の幅に引き伸ばす方式(NDL)だと形が崩れて誤読する(「令和」→「和令」、「月」→「RJ」)ので、幅が可変のPaddleOCRで読み直す(初回だけ約17MB追加)
-  if(r.str.trim().length<=2&&est<3){try{const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}catch(e){console.warn("短い行をPaddleで読めませんでした",e);}}
+  // 1〜2文字の短い行は、固定の幅に引き伸ばす方式(NDL)だと形が崩れて誤読する(「令和」→「和令」、「月」→「RJ」「11」)。NDL・PaddleOCR・Tesseractの3つで読み、多数決(同じ結果が2つ以上ならそれ。全部違えば、確かさと文字の種類で選ぶ)
+  if(r.str.trim().length<=2&&est<3){
+    const cands=[{str:cleanOcr(fixPaddle(r.str)),conf:r.conf,src:"ndl"}];
+    try{const o=await paddleLine(ch,x,y,S,Sb,flat);if(o&&o[0])cands.push({str:o[0].words.map(w=>w.str).join(""),conf:o[0].conf,src:"paddle"});}catch(e){console.warn("短い行をPaddleで読めませんでした",e);}
+    try{const t=await tessShort(cv,est);if(t&&t.str)cands.push({...t,src:"tess"});}catch(e){console.warn("短い行をTesseractで読めませんでした",e);}
+    const g=new Map();cands.forEach(c=>{if(!c.str)return;const k=c.str.replace(/\s+/g,"");const e=g.get(k)||{k,n:0,conf:0,cjk:/[\u3040-\u30ff\u3400-\u9fff]/.test(k)};e.n++;e.conf=Math.max(e.conf,c.conf);g.set(k,e);});
+    const best=[...g.values()].sort((a,b)=>b.n-a.n||((b.cjk&&est<1.6&&b.k.length===1)-(a.cjk&&est<1.6&&a.k.length===1))||b.conf-a.conf)[0];
+    if(best){r={str:best.k,conf:Math.max(60,best.conf)};}
+  }
   if(!r.str.trim()||r.conf<35)return null;
   const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
   const txt=cleanOcr(fixPaddle(r.str));
   if(!txt)return null;
   if(/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(txt))return[];
   return[{words:[{str:txt,conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}],conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
+// 短い1行をTesseractで読む(1文字ならPSM10、それ以外は7)
+async function tessShort(cv,est){
+  const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
+  const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
 const OCR_SPLIT_GAP=2;
 let lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
