@@ -23,6 +23,10 @@ const truth=JSON.parse(fs.readFileSync(WORK+'/samples/layout_truth.json','utf8')
   console.log('部品:',items.map(i=>`${i.size}pt y${Math.round(i.vy)} ${i.txt.replace(/\n/g,'/').slice(0,24)}`));
   const out=items.filter(i=>i.vy+i.vh/2<y0||i.vy+i.vh/2>y1);
   console.log('範囲の外に作られた部品:',out.length,'(0が正解)');
+  // 枠が範囲の左右・上下をはみ出さないこと/行の途中に空白が入らないこと
+  const over=items.filter(i=>i.vx<x0-0.6||i.vx+i.vw>x1+0.6||i.vy<y0-0.6||i.vy+i.vh>y1+0.6);
+  console.log('範囲をはみ出した枠:',over.length,'(0が正解)',over.map(i=>[i.vx,i.vx+i.vw,i.vy,i.vy+i.vh].map(Math.round)));
+  console.log('文字の間の余計な空白:',items.filter(i=>/ {2,}|[^\x00-\x7F] | [^\x00-\x7F]/.test(i.txt)).length,'(0が正解)');
   // 全体を認識した後でも、部品の上から範囲をドラッグして、その範囲だけ変換できること(部品が邪魔をしない)
   await page.click('#bOcrPage');
   await page.waitForFunction(()=>/done|fail/.test(document.querySelector('#job').className)&&/個のまとまり/.test(document.querySelector('#status').textContent),null,{timeout:300000});

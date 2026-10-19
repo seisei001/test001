@@ -1196,7 +1196,7 @@ function flattenForOcr(cv,br){
   cx.putImageData(im,0,0);return true;
 }
 // ---- 画像の解析: 文字の断片 → 行 → 塊(段落・セル)。罫線は消して、塊の区切りに使う ----
-function ocrSegment(cv,S){
+function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ高さに並ぶ断片は、離れていても1行にする(行の途中で2つに分けない)
   const w=cv.width,h=cv.height,id=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h;
   const g=new Uint8Array(n),hist=new Uint32Array(256);
   for(let i=0;i<n;i++){const v=(id[i*4]*.3+id[i*4+1]*.59+id[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
@@ -1233,8 +1233,8 @@ function ocrSegment(cv,S){
   // (1) 行: 横に近く、縦に重なる断片をつなぐ
   const U=uf(comps.length);
   for(let i=0;i<comps.length;i++){const a=comps[i];
-    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(gap>1.3*Hmax)break;
-      if(gap>1.2*Math.max(a.h,b.h,0.8*Hmed))continue;
+    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.3*Hmax)break;
+      if(!rowMode&&gap>1.2*Math.max(a.h,b.h,0.8*Hmed))continue;
       const ov=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0),mn=Math.min(a.h,b.h);
       let near=ov>=0.45*mn;
       if(!near&&mn<0.35*Hmed){const dy=Math.abs((a.y0+a.y1)/2-(b.y0+b.y1)/2);near=dy<=0.6*Math.max(a.h,b.h)+0.5*Hmed;} // 細い横線(ニの棒・ー)は、縦位置が近ければ同じ行
@@ -1265,11 +1265,11 @@ function charUnits(str){let u=0;for(const ch of Array.from(str)){const c=ch.code
 const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\x7E]$/.test(t)&&/^[\x21-\x7E]/.test(s))t+=" ";t+=s;});return t;};
 const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
 // 1つの塊を、ちょうどよい倍率で描き直して認識する
-let ppMode=false;
+let ppMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
-  const bx0=Math.max(0,x+l.x0/S-pad),by0=Math.max(0,y+l.y0/S-pad),bx1=Math.min(VW,x+l.x1/S+pad),by1=Math.min(VH,y+l.y1/S+pad);
+  const R=ocrRange,bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);   // 範囲の外の文字を読み込まない
   const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
   let seq=await paddleRec(cv),conf=seq.length?seq.reduce((a,b)=>a+b.p,0)/seq.length*100:0;
   if(flat&&conf<90){   // 背景に模様・ムラがある写真は、背景を消した画像でも読んで、確かさが高い方を採る
@@ -1295,7 +1295,7 @@ async function paddleLine(ch,x,y,S,Sb,flat){
 async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
-  const bx0=Math.max(0,x+ch.x0/S-pad),by0=Math.max(0,y+ch.y0/S-pad),bx1=Math.min(VW,x+ch.x1/S+pad),by1=Math.min(VH,y+ch.y1/S+pad);
+  const R=ocrRange,bx0=Math.max(R.x,x+ch.x0/S-pad),by0=Math.max(R.y,y+ch.y0/S-pad),bx1=Math.min(R.x+R.w,x+ch.x1/S+pad),by1=Math.min(R.y+R.h,y+ch.y1/S+pad);
   if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
   if(!worker)worker=await getOcr($("ocrLang").value);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
@@ -1365,7 +1365,7 @@ async function ocrChunk(worker,ch,x,y,S,flat){
 async function doOcr(x,y,w,h){
   if(ocrRunning){status("いま変換中です。終わるまでお待ちください。");return;}
   if(w<6||h<6){status("文字にしたい範囲をドラッグしてください。");return;}
-  ocrRunning=true;$("bOcrPage").disabled=true;
+  ocrRunning=true;$("bOcrPage").disabled=true;ocrRange={x,y,w,h,whole:w>=VW-1&&h>=VH-1};
   const k=K(),rng=document.createElement("div");rng.className="ocrrng";   // 変換する範囲を枠で示す(終わると緑に)
   rng.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;ov.appendChild(rng);
   const whole=w>=VW-1&&h>=VH-1;
@@ -1378,6 +1378,20 @@ async function doOcr(x,y,w,h){
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrRunning=false;$("bOcrPage").disabled=false;}
 }
+// 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
+function keepInRange(it,x,y,w,h){
+  const nl=Math.max(1,(it.txt||"").split("\n").length);
+  if(it.vx<x)it.vx=x;
+  if(it.vx+it.vw>x+w)it.vw=Math.max(8,x+w-it.vx);
+  if(it.vx+it.vw>x+w)it.vx=Math.max(x,x+w-it.vw);
+  for(let i=0;i<40&&it.size>4;i++){
+    const d=measureHost(it,1),hh=d.scrollHeight;d.remove();
+    if(hh<=nl*it.size*it.lh*1.3+1)break;    // 1行ごとに折り返さず収まっている
+    const k=(it.size-0.5)/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*k*10)/10):null);it.size=it.size-0.5;
+  }
+  const d=measureHost(it,1);if(d.scrollHeight>it.vh+0.5)it.vh=Math.ceil(d.scrollHeight);d.remove();
+  if(it.vy<y)it.vy=y;if(it.vy+it.vh>y+h)it.vy=Math.max(y,y+h-it.vh);
+}
 async function doOcrBody(x,y,w,h){
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   ppMode=$("ocrEngine").value==="paddle";let worker=null;
@@ -1389,7 +1403,7 @@ async function doOcrBody(x,y,w,h){
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
   status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
-  const seg=ocrSegment(cv,S);
+  const seg=ocrSegment(cv,S,!(w>=VW-1&&h>=VH-1));
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
@@ -1413,7 +1427,9 @@ async function doOcrBody(x,y,w,h){
   // 認識した語を、これまでと同じ「まとまりの規則」でつなぎ直す(同じ大きさで横に並ぶ=1つ、大きな空白・罫線で分ける)
   let nl=0;const made=[],runs=[];
   res.forEach((c,ci)=>c.lines.forEach(l=>{nl++;const base=l.y1-c.final*0.18;
-    l.words.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
+    // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
+    const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
+    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
   buildBlocks(runs).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
@@ -1422,7 +1438,9 @@ async function doOcrBody(x,y,w,h){
       if(c.align==="center"){it.vw=(ux1-ux0)+slack;it.vx=(ux0+ux1)/2-it.vw/2;}
       else if(c.align==="right"){it.vw=(ux1-ux0)+slack;it.vx=ux1-it.vw+fs*0.2;}
     }
-    it.ocrMade=true;growToFit(it);clampToPage(it);made.push(it);
+    it.ocrMade=true;growToFit(it);clampToPage(it);
+    if(!ocrRange.whole)keepInRange(it,x,y,w,h);
+    made.push(it);
   });
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
   items=items.filter(o=>!(o.ocrMade&&o.page===cur&&o.vx+o.vw/2>=x&&o.vx+o.vw/2<=x+w&&o.vy+o.vh/2>=y&&o.vy+o.vh/2<=y+h));
