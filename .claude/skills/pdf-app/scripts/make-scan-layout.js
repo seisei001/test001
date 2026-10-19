@@ -8,7 +8,22 @@ const OUT=path.join(WORK,'samples'),TAG=process.env.LAYOUT_TAG||'layout',FONT=pr
 fs.mkdirSync(OUT,{recursive:true});
 const W=595,H=842;
 // 正解: name / 文字サイズ(pt) / 行間(倍) / 揃え / 1行目の基準線の上からの位置(pt) / 行
-const BLOCKS=[
+// LAYOUT_SET=form: 委任状のような「ラベル + 離れた値」が並ぶ見本(横に並んで見えて、実は別々の部品であるべきもの)
+const FORM=[
+  {name:'title',size:16,lh:1.3,align:'center',x:W/2,base:80,lines:['委任状']},
+  {name:'l1',size:10.5,lh:1.3,align:'left',x:60,base:140,lines:['代理人住所:']},
+  {name:'v1',size:10.5,lh:1.3,align:'left',x:190,base:140,lines:['兵庫県神戸市中央区小野柄通2-2-22']},
+  {name:'l2',size:10.5,lh:1.3,align:'left',x:60,base:170,lines:['代理人名称:']},
+  {name:'v2',size:10.5,lh:1.3,align:'left',x:190,base:170,lines:['公認会計士','税理士 坂口 誠']},
+  {name:'l3',size:10.5,lh:1.3,align:'left',x:60,base:230,lines:['委任者名称:']},
+  {name:'v3',size:10.5,lh:1.3,align:'left',x:190,base:230,lines:['特定非営利活動法人福祉ネット寿','理事長']},
+  {name:'l4',size:10.5,lh:1.3,align:'left',x:60,base:290,lines:['委任期間:']},
+  {name:'v4',size:10.5,lh:1.3,align:'left',x:190,base:290,lines:['令和8年10月20日から委任事項が終了するまで']},
+  {name:'n1',size:10.5,lh:1.3,align:'left',x:300,base:340,lines:['令和']},
+  {name:'n2',size:10.5,lh:1.3,align:'left',x:380,base:340,lines:['年']},
+  {name:'n3',size:10.5,lh:1.3,align:'left',x:440,base:340,lines:['月']},
+];
+const BLOCKS_BASE=[
   {name:'title',size:20,lh:1.3,align:'center',x:W/2,base:80,lines:['入力内容確認']},
   {name:'head',size:14,lh:1.3,align:'left',x:60,base:140,lines:['1. 利用者情報']},
   {name:'body',size:10.5,lh:1.5,align:'left',x:60,base:172,lines:['吾輩は猫である。名前はまだ無い。どこで生れたかとんと','見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー','泣いていた事だけは記憶している。']},
@@ -17,6 +32,7 @@ const BLOCKS=[
   {name:'date',size:11,lh:1.3,align:'right',x:535,base:440,lines:['2024年10月15日']},
   {name:'big',size:16,lh:1.3,align:'left',x:60,base:500,lines:['お支払い金額 ¥123,456']},
 ];
+const BLOCKS=process.env.LAYOUT_SET==='form'?FORM:BLOCKS_BASE;
 (async()=>{
   const d=await PDFDocument.create();d.registerFontkit(fontkit);
   const f=await d.embedFont(fs.readFileSync(FONT),{subset:false});
