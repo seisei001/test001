@@ -482,8 +482,8 @@ async function loadRuns(){
 //  横: 文字サイズが同じ(±15%)で横に並んでいれば1つ。ただし「明らかに大きな空白」か「間に線・点線がある」ところで分ける
 //  縦: 行間が詰まっていて(1.7倍以内)左揃い/重なりがあり、文字サイズが近ければ同じ段落。間に横線があれば分ける
 const similar=(a,b,t=0.15)=>Math.abs(a-b)<=Math.max(a,b)*t;
-function buildBlocks(list){
-  const gapMul=Math.max(1,+$("fxGap").value||10);
+function buildBlocks(list,gapOverride){
+  const gapMul=gapOverride||Math.max(1,+$("fxGap").value||10);
   const vSepBetween=(xa,xb,base,size)=>seps.v.some(v=>v.x>xa-0.5&&v.x<xb+0.5&&v.y0<=base+size*0.3&&v.y1>=base-size*0.8);
   const hSepBetween=(a,b)=>seps.h.some(h=>h.y>a.base+a.size*0.25&&h.y<b.base-b.size*0.8&&h.x1>Math.max(a.x,b.x)&&h.x0<Math.min(a.x+a.w,b.x+b.w));
   const lines=[];
@@ -1320,7 +1320,7 @@ function getNdl(wd){
 // 1行の画像 → 文字列と確かさ(0〜100)。縦長なら左に90度回す。高さ24px・幅は モデルごとの固定(256/384/768)に縮めて読む
 async function ndlRead(cv,wd){
   let src=cv;
-  if(cv.height>cv.width*0.8){const r=document.createElement("canvas");r.width=cv.height;r.height=cv.width;const c=r.getContext("2d");c.translate(0,cv.width);c.rotate(-Math.PI/2);c.drawImage(cv,0,0);src=r;}
+  if(cv.height>cv.width*1.5){const r=document.createElement("canvas");r.width=cv.height;r.height=cv.width;const c=r.getContext("2d");c.translate(0,cv.width);c.rotate(-Math.PI/2);c.drawImage(cv,0,0);src=r;}
   const H=24,c2=document.createElement("canvas");c2.width=wd;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
   cx.fillStyle="#fff";cx.fillRect(0,0,wd,H);cx.imageSmoothingQuality="high";cx.drawImage(src,0,0,wd,H);
   const d=cx.getImageData(0,0,wd,H).data,HW=H*wd,f=new Float32Array(3*HW);
@@ -1335,7 +1335,7 @@ async function ndlRead(cv,wd){
   return{str,conf:n?ps/n*100:0};
 }
 // 1行をNDLOCR-Liteで読む。文字数の見当(幅÷高さ)で小さいモデルから始め、長ければ大きいモデルで読み直す
-async function ndlLine(ch,x,y,S,Sb){
+async function ndlLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12),R=ocrRange;
   const bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);
   const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
@@ -1343,6 +1343,8 @@ async function ndlLine(ch,x,y,S,Sb){
   let wd=est<=26?256:est<=44?384:768,r=await ndlRead(cv,wd);
   if(wd===256&&r.str.length>=25){wd=384;r=await ndlRead(cv,wd);}
   if(wd===384&&r.str.length>=45){wd=768;r=await ndlRead(cv,wd);}
+  // 1〜2文字の短い行は、固定の幅に引き伸ばす方式(NDL)だと形が崩れて誤読する(「令和」→「和令」、「月」→「RJ」)ので、幅が可変のPaddleOCRで読み直す(初回だけ約17MB追加)
+  if(r.str.trim().length<=2&&est<3){try{const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}catch(e){console.warn("短い行をPaddleで読めませんでした",e);}}
   if(!r.str.trim()||r.conf<35)return null;
   const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
   const txt=cleanOcr(fixPaddle(r.str));
@@ -1350,6 +1352,7 @@ async function ndlLine(ch,x,y,S,Sb){
   if(/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(txt))return[];
   return[{words:[{str:txt,conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}],conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
 }
+const OCR_SPLIT_GAP=2;
 let lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
@@ -1381,7 +1384,7 @@ async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
   const R=ocrRange,bx0=Math.max(R.x,x+ch.x0/S-pad),by0=Math.max(R.y,y+ch.y0/S-pad),bx1=Math.min(R.x+R.w,x+ch.x1/S+pad),by1=Math.min(R.y+R.h,y+ch.y1/S+pad);
-  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb);if(o)return o;}
+  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb,flat);if(o)return o;}
   else if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
   if(!worker)worker=await getOcr($("ocrLang").value);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
@@ -1487,7 +1490,9 @@ function fitOcrWidth(it,g){
   g.forEach(r=>{if(!r.ocr||!(r.w>2)||!r.str)return;const m=fitCtx.measureText(r.str),w100=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;   // 画像から測った幅は「見えている文字の幅」なので、文字の送り幅ではなく、見えている幅で比べる
     if(w100>0)e.push({v:r.w/(w100/100),w:Array.from(r.str).length});});
   if(!e.length)return;
-  const ideal=wmedian(e),k0=ideal/it.size,k=Math.max(0.82,Math.min(1.2,k0));
+  // 行の中の空白(単語の間)が読み取りで落ちていると、その行だけ幅が大きく出て、大きすぎる値になる → 中央値より少し低い側(下から35%)を採る
+  const wq=(arr,q)=>{const t=[...arr].sort((a,b)=>a.v-b.v),tot=t.reduce((a,b)=>a+b.w,0);let acc=0;for(const z of t){acc+=z.w;if(acc>=tot*q)return z.v;}return t[t.length-1].v;};
+  const ideal=wq(e,0.35),k0=ideal/it.size,k=Math.max(0.82,Math.min(1.2,k0));
   const ns=Math.round(it.size*k*10)/10;if(ns===it.size)return;
   const kk=ns/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=ns;
 }
@@ -1503,7 +1508,7 @@ async function doOcrBody(x,y,w,h){
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
   status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
-  const seg=ocrSegment(cv,S,!(w>=VW-1&&h>=VH-1));
+  const seg=ocrSegment(cv,S);   // 範囲指定でも、大きな空白(ラベルと値のような離れた文字)は別の行に分ける
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
@@ -1515,6 +1520,9 @@ async function doOcrBody(x,y,w,h){
     const r=await ocrChunk(worker,seg.chunks[i],x,y,S,flat);
     if(r.lines.length)res.push(r);
   }
+  // 1行だけの塊は、同じ高さに別の塊が並んでいたら、中央・右揃えとは言えない(ラベルの右の値が、たまたまページ中央にあるだけ)→ 左揃え
+  res.forEach((c,i)=>{if(c.lines.length!==1||c.align==="left")return;const l=c.lines[0],cy=(l.y0+l.y1)/2;
+    if(res.some((o,j)=>j!==i&&o.lines.some(m=>Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(c.size,o.size))))c.align="left";});
   // 極端に小さい1〜2文字だけの結果(ごみ)は捨てる
   {const nch=c=>c.lines.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0),md=wmedian(res.map(c=>({v:c.size,w:nch(c)})));
    for(let i=res.length-1;i>=0;i--){if(nch(res[i])<=3&&res[i].size<0.7*md)res.splice(i,1);}}
@@ -1533,7 +1541,8 @@ async function doOcrBody(x,y,w,h){
     // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
     const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
     ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
-  buildBlocks(runs).forEach(g=>{
+  // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
+  buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     if(g.some(r=>r.ocr))fitOcrWidth(it,g);
     const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;

@@ -2,11 +2,11 @@
 //   node .claude/skills/pdf-app/scripts/test-ocr-layout.js        (先に make-scan-layout.js)
 const fs=require('fs');
 const {launch,WORK}=require('./harness');
-const truth=JSON.parse(fs.readFileSync(WORK+'/samples/layout_truth.json','utf8'));
+const truth=JSON.parse(fs.readFileSync(WORK+'/samples/'+(process.env.LAYOUT_TAG||'layout')+'_truth.json','utf8'));
 const lcs=(a,b)=>{const m=a.length,n=b.length,d=Array.from({length:m+1},()=>new Array(n+1).fill(0));for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);return d[m][n];};
 (async()=>{
   const {browser,page}=await launch();
-  await page.setInputFiles('#fOpen',WORK+'/samples/layout_scan.pdf');await page.waitForTimeout(2500);
+  await page.setInputFiles('#fOpen',WORK+'/samples/'+(process.env.LAYOUT_TAG||'layout')+'_scan.pdf');await page.waitForTimeout(2500);
   await page.click('[data-m=ocr]');await page.click('#bOcrPage');
   await page.waitForFunction(()=>/個のまとまり|認識できません|読み込めません/.test(document.querySelector('#status').textContent),null,{timeout:300000});
   console.log('状態:',await page.textContent('#status'));
