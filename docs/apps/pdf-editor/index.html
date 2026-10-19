@@ -399,7 +399,10 @@ function setMode(m){
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
 [...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-$("ovGhost").onchange=()=>ov.classList.toggle("ghost",$("ovGhost").checked);
+// 「元の画像と重ねて確認」は、既定でオン(赤く透かして元の画像と重ねる)。切り替えは覚えておく(ブラウザに保存)
+{let g="1";try{g=localStorage.getItem("pdfEditorGhost")||"1";}catch{}
+ $("ovGhost").checked=g==="1";ov.classList.toggle("ghost",$("ovGhost").checked);}
+$("ovGhost").onchange=()=>{ov.classList.toggle("ghost",$("ovGhost").checked);try{localStorage.setItem("pdfEditorGhost",$("ovGhost").checked?"1":"0");}catch{}};
 $("fImg").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   if(imgData)URL.revokeObjectURL(imgData.url);
