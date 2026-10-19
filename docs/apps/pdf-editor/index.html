@@ -65,6 +65,9 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:none;}
+#ov.ghost .cover{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
+#ov.ghost .ibox .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}
+#ov.ghost .ibox{background:transparent!important;}
 #ov.noitems .ibox,#ov.noitems .ibox *,#ov.noitems .run{pointer-events:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
@@ -134,6 +137,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
 <div class="row hidden" id="optFix" style="margin-bottom:8px">
+<label><input type="checkbox" id="ovGhost"> 元の画像と重ねて位置を確認する(変換した文字を赤、元の画像をそのまま表示)</label>
 <label><input type="checkbox" id="fxJoin"> 範囲内の文字を、行も含めて全部1つの枠にまとめる</label>
 <label>空白がこの倍数以上なら分ける <input type="number" id="fxGap" value="10" min="1" max="40" step="0.5" style="width:80px"> ×文字サイズ</label>
 </div>
@@ -169,6 +173,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label style="margin-top:8px"><input type="checkbox" id="sAuto" checked> 枠の大きさを変えたら、文字サイズを自動で合わせる</label>
 <p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠の右下(⇲)をドラッグして大きさを変えると、枠に収まる最大の文字サイズに自動で合わせます(複数行や、サイズを混ぜた文字は相対比を保ちます)。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
 </div>
+<div class="row" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
 <div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
 <div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo">ページ操作・ダウンロード時も自動で反映されます</span></div>
@@ -394,6 +399,7 @@ function setMode(m){
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
 [...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$("ovGhost").onchange=()=>ov.classList.toggle("ghost",$("ovGhost").checked);
 $("fImg").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   if(imgData)URL.revokeObjectURL(imgData.url);
@@ -851,6 +857,9 @@ $("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文�
   if(t){buildText(cs,t,K());t.focus();}
   status("元の文字を消す設定にしました(確定するとPDFに反映されます)。");
 };
+function nudge(dx,dy){if(!cs)return;cs.vx+=dx;cs.vy+=dy;clampToPage(cs);const el=itemEls.get(cs.id);if(el)boxStyle(cs,el);else renderOverlay();}   // 枠だけ動かす(入力中の文字の位置を消さない)
+[["nL",-1,0],["nR",1,0],["nU",0,-1],["nD",0,1]].forEach(([id,dx,dy])=>{$(id).onclick=()=>{nudge(dx*0.5,dy*0.5);};});
+document.addEventListener("keydown",e=>{if(!e.altKey||!cs||!/^Arrow/.test(e.key))return;e.preventDefault();const st=e.shiftKey?2:0.5;nudge(e.key==="ArrowLeft"?-st:e.key==="ArrowRight"?st:0,e.key==="ArrowUp"?-st:e.key==="ArrowDown"?st:0);});
 $("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
 $("sClose").onclick=()=>select(null);
 
@@ -1469,6 +1478,19 @@ function keepInRange(it,x,y,w,h){
   const d=measureHost(it,1);if(d.scrollHeight>it.vh+0.5)it.vh=Math.ceil(d.scrollHeight);d.remove();
   if(it.vy<y)it.vy=y;if(it.vy+it.vh>y+h)it.vy=Math.max(y,y+h-it.vh);
 }
+// 実際に使うフォントで文字を並べたときの幅が、元の画像の行の幅とぴったり合うように、文字サイズを微調整する(文字数の目安による推定を、実測で置き換える)。測るのは文字幅の計算だけなので、一瞬で終わる
+let fitCtx=null;
+function fitOcrWidth(it,g){
+  if(!fitCtx)fitCtx=document.createElement("canvas").getContext("2d");
+  fitCtx.font="100px "+famOf("text");
+  const e=[];
+  g.forEach(r=>{if(!r.ocr||!(r.w>2)||!r.str)return;const m=fitCtx.measureText(r.str),w100=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;   // 画像から測った幅は「見えている文字の幅」なので、文字の送り幅ではなく、見えている幅で比べる
+    if(w100>0)e.push({v:r.w/(w100/100),w:Array.from(r.str).length});});
+  if(!e.length)return;
+  const ideal=wmedian(e),k0=ideal/it.size,k=Math.max(0.82,Math.min(1.2,k0));
+  const ns=Math.round(it.size*k*10)/10;if(ns===it.size)return;
+  const kk=ns/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=ns;
+}
 async function doOcrBody(x,y,w,h){
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
@@ -1504,12 +1526,16 @@ async function doOcrBody(x,y,w,h){
   groups.forEach(g=>g.items.forEach(c=>{c.final=Math.max(4,Math.min(72,Math.round(g.center*2)/2));}));
   // 認識した語を、これまでと同じ「まとまりの規則」でつなぎ直す(同じ大きさで横に並ぶ=1つ、大きな空白・罫線で分ける)
   let nl=0;const made=[],runs=[];
-  res.forEach((c,ci)=>c.lines.forEach(l=>{nl++;const base=l.y1-c.final*0.18;
+  if(!fitCtx)fitCtx=document.createElement("canvas").getContext("2d");
+  res.forEach((c,ci)=>c.lines.forEach(l=>{nl++;
+    // 基準線: 画像の行の下端(見えている文字の下端)から、その文字列が基準線より下に出る量(実際のフォントで測る。句読点・g・yなどの下がり)を引く
+    fitCtx.font=c.final+"px "+famOf("text");const desc=fitCtx.measureText(joinWords(l.words)).actualBoundingBoxDescent||c.final*0.1,base=l.y1-desc+c.final*0.1;   // +0.1: 2種類のフォントの見本で、基準線が平均1.4pt(サイズの約0.1)上に出たのを補正(実測)
     // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
     const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
     ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
   buildBlocks(runs).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
+    if(g.some(r=>r.ocr))fitOcrWidth(it,g);
     const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
     if(chs.length===1){ // 1つの塊だけなら、その塊の行間・揃いを使う
       const c=res[chs[0]];it.lh=c.lh;it.align=c.align;
