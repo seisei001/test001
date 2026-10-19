@@ -30,6 +30,12 @@ async function launch(opts={}){
   const page=await browser.newPage({viewport:{width:900,height:1400},acceptDownloads:true});
   page.on('pageerror',e=>console.log('PAGEERR',e.message));
   if(opts.log)page.on('console',m=>{const t=m.text();if(!/^Canvas2D|Warning: Parameter/.test(t))console.log('LOG',t.slice(0,200));});
+  // NDLOCR-Lite のモデル(GitHub rawの実体)は、setup.sh で取得した $PDFAPP_WORK/ndl/ から返す
+  await page.route('https://raw.githubusercontent.com/ndl-lab/ndlocr-lite/**',r=>{
+    const f=path.join(WORK,'ndl/ndlocr-lite/src/model',r.request().url().split('/src/model/')[1]||'');
+    if(fs.existsSync(f))r.fulfill({body:fs.readFileSync(f),headers:{'access-control-allow-origin':'*'},contentType:'application/octet-stream'});
+    else{console.log('MISS(ndl)',f);r.abort();}
+  });
   await page.route('https://cdn.jsdelivr.net/npm/**',r=>{
     const u=r.request().url().split('/npm/')[1],f=localPath(u);
     if(f&&fs.existsSync(LIB+f)){
