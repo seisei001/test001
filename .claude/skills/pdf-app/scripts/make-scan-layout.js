@@ -1,10 +1,11 @@
 // 文字サイズ・配置を変えた「正解つき」のページを作る(OCRの文字サイズ/行間/文字揃いの精度を数字で測る用)。
-//   出力: $PDFAPP_WORK/samples/layout_scan.pdf(A4の画像だけのPDF)と layout_truth.json(正解)
+//   出力: $PDFAPP_WORK/samples/${TAG}_scan.pdf(A4の画像だけのPDF)と ${TAG}_truth.json(正解)
 //   pdf-lib で描いた本物のPDF → pdftoppm で画像化(150dpi) → 画像だけのPDFにする
 const fs=require('fs'),path=require('path'),{execSync}=require('child_process');
 const WORK=process.env.PDFAPP_WORK||'/tmp/pdfapp-work',LIB=path.join(WORK,'lib/node_modules')+'/';
 const {PDFDocument}=require(LIB+'pdf-lib'),fontkit=require(LIB+'@pdf-lib/fontkit');
-const OUT=path.join(WORK,'samples');fs.mkdirSync(OUT,{recursive:true});
+const OUT=path.join(WORK,'samples'),TAG=process.env.LAYOUT_TAG||'layout',FONT=process.env.LAYOUT_FONT||(LIB+'@expo-google-fonts/m-plus-1p/400Regular/MPLUS1p_400Regular.ttf');   // LAYOUT_FONT=別のフォント(.ttf) LAYOUT_TAG=layout2 で、別のフォントの見本も作れる(フォントが違うときの幅の合わせ込みを測る)
+fs.mkdirSync(OUT,{recursive:true});
 const W=595,H=842;
 // 正解: name / 文字サイズ(pt) / 行間(倍) / 揃え / 1行目の基準線の上からの位置(pt) / 行
 const BLOCKS=[
@@ -18,7 +19,7 @@ const BLOCKS=[
 ];
 (async()=>{
   const d=await PDFDocument.create();d.registerFontkit(fontkit);
-  const f=await d.embedFont(fs.readFileSync(LIB+'@expo-google-fonts/m-plus-1p/400Regular/MPLUS1p_400Regular.ttf'),{subset:false});
+  const f=await d.embedFont(fs.readFileSync(FONT),{subset:false});
   const p=d.addPage([W,H]);
   const truth=BLOCKS.map(b=>{
     const lw=b.lines.map(l=>f.widthOfTextAtSize(l,b.size));
@@ -26,12 +27,23 @@ const BLOCKS=[
     const x0=b.align==='left'?b.x:b.align==='center'?b.x-Math.max(...lw)/2:b.x-Math.max(...lw);
     return{...b,x0,x1:x0+Math.max(...lw),top:b.base-b.size*0.9,bottom:b.base+(b.lines.length-1)*b.size*b.lh+b.size*0.25};
   });
-  fs.writeFileSync(OUT+'/layout_src.pdf',await d.save());
-  execSync(`pdftoppm -png -r 150 ${OUT}/layout_src.pdf ${OUT}/layout_img`);
-  const img=fs.readdirSync(OUT).find(n=>/^layout_img-\d+\.png$/.test(n));
+  fs.writeFileSync(OUT+'/'+TAG+'_src.pdf',await d.save());
+  execSync(`pdftoppm -png -r 150 ${OUT}/${TAG}_src.pdf ${OUT}/${TAG}_img`);
+  const img=fs.readdirSync(OUT).find(n=>new RegExp('^'+TAG+'_img-\\d+\\.png$').test(n));
   const sd=await PDFDocument.create();const png=await sd.embedPng(fs.readFileSync(path.join(OUT,img)));
   sd.addPage([W,H]).drawImage(png,{x:0,y:0,width:W,height:H});
-  fs.writeFileSync(OUT+'/layout_scan.pdf',await sd.save());
-  fs.writeFileSync(OUT+'/layout_truth.json',JSON.stringify(truth));
-  console.log('OK: layout_scan.pdf / layout_truth.json →',OUT);
+  fs.writeFileSync(OUT+'/'+TAG+'_scan.pdf',await sd.save());
+  // 画像の中の実際の文字の黒い部分(インク)の左右の端を測る(文字の送り幅ではなく、見えている幅)
+  const ink=JSON.parse(execSync(`python3 -c "
+import json,sys
+from PIL import Image
+im=Image.open(sys.argv[1]).convert('L');s=150/72;t=json.loads(sys.argv[2]);out=[]
+for b in t:
+    x0=int((b['x0']-6)*s);x1=int((b['x1']+6)*s);y0=int(b['top']*s);y1=int(b['bottom']*s)
+    c=im.crop((max(0,x0),max(0,y0),min(im.width,x1),min(im.height,y1)));px=c.load();xs=[x for x in range(c.width) for y in range(c.height) if px[x,y]<140]
+    out.append([(max(0,x0)+min(xs))/s,(max(0,x0)+max(xs)+1)/s])
+print(json.dumps(out))" ${path.join(OUT,img)} '${JSON.stringify(truth)}'`).toString());
+  truth.forEach((b,i)=>{b.inkx0=ink[i][0];b.inkx1=ink[i][1];});
+  fs.writeFileSync(OUT+'/'+TAG+'_truth.json',JSON.stringify(truth));
+  console.log('OK: '+TAG+'_scan.pdf / '+TAG+'_truth.json →',OUT);
 })();
