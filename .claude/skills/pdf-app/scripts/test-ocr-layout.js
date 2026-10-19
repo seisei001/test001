@@ -16,7 +16,8 @@ const lcs=(a,b)=>{const m=a.length,n=b.length,d=Array.from({length:m+1},()=>new 
   truth.forEach(t=>{
     const cx=(t.x0+t.x1)/2,cy=(t.top+t.bottom)/2;
     const hit=items.filter(it=>cx>=it.vx-8&&cx<=it.vx+it.vw+8&&cy>=it.vy-8&&cy<=it.vy+it.vh+8);
-    const it=hit[0];
+    const ex0=t.lines.join('').replace(/\s+/g,'');
+    const it=[...hit].sort((p,q)=>lcs(q.txt.replace(/\s+/g,''),ex0)/Math.max(1,q.txt.replace(/\s+/g,'').length)-lcs(p.txt.replace(/\s+/g,''),ex0)/Math.max(1,p.txt.replace(/\s+/g,'').length))[0];   // 近くに複数の部品があるときは、正解の文字にいちばん近いもの
     if(!it){console.log(t.name.padEnd(12),'| 見つからない');return;}
     const err=(it.size-t.size)/t.size*100;sizeErr.push(Math.abs(err));
     const al=it.align||'left';if(al===t.align)alignOk++;
