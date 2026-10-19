@@ -28,9 +28,11 @@ const truth=JSON.parse(fs.readFileSync(WORK+'/samples/layout_truth.json','utf8')
   console.log('範囲をはみ出した枠:',over.length,'(0が正解)',over.map(i=>[i.vx,i.vx+i.vw,i.vy,i.vy+i.vh].map(Math.round)));
   console.log('文字の間の余計な空白:',items.filter(i=>/ {2,}|[^\x00-\x7F] | [^\x00-\x7F]/.test(i.txt)).length,'(0が正解)');
   // 全体を認識した後でも、部品の上から範囲をドラッグして、その範囲だけ変換できること(部品が邪魔をしない)
+  await page.click('[data-m=ocr]');await page.waitForTimeout(300);
   await page.click('#bOcrPage');
   await page.waitForFunction(()=>/done|fail/.test(document.querySelector('#job').className)&&/個のまとまり/.test(document.querySelector('#status').textContent),null,{timeout:300000});
   await page.waitForTimeout(500);
+  await page.click('[data-m=ocr]');await page.waitForTimeout(300);   // 変換後は選択モードになるので、もう一度OCRモードへ
   const n1=(await page.evaluate(()=>window.pdfEditorDebug.items())).length;
   await page.evaluate(()=>{document.querySelector('#job').className='hidden';document.querySelector('#status').textContent='準備';});   // 先に表示を整える(後から変えると、ページの位置が動く)
   await page.waitForTimeout(300);

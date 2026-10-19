@@ -862,7 +862,14 @@ ov.addEventListener("pointerdown",e=>{
       if(warpKind==="part"){if(!tap&&w>20&&h>20)createPartWarp(x,y,w,h);else status("歪んでいる部分を、範囲でドラッグしてください。");}
       return;
     }
-    if(mode==="ocr"){if(tap){status("文字にしたい範囲をドラッグしてください(ページ全体はボタンで)。");renderOverlay();return;}await doOcr(x,y,w,h);return;}
+    if(mode==="ocr"){
+      if(tap){ // 文字にした部品をタップしたら、選択・訂正に切り替えてその部品を選ぶ
+        const hit=[...items].reverse().find(o=>o.page===cur&&r.sx>=o.vx&&r.sx<=o.vx+o.vw&&r.sy>=o.vy&&r.sy<=o.vy+o.vh);
+        if(hit){setMode("sel");await loadRuns().catch(()=>{});select(hit,true);return;}   // 選択モードの再描画が終わってから選ぶ(先に選ぶと、再描画で入力位置が消える)
+        status("文字にしたい範囲をドラッグしてください(ページ全体はボタンで)。変換した文字を直すときは、その文字をタップしてください。");renderOverlay();return;}
+      await doOcr(x,y,w,h);
+      if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
+      return;}
     if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
@@ -1318,7 +1325,7 @@ async function ndlLine(ch,x,y,S,Sb){
   if(/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(txt))return[];
   return[{words:[{str:txt,conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}],conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
 }
-let ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+let lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
@@ -1500,11 +1507,12 @@ async function doOcrBody(x,y,w,h){
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
   items=items.filter(o=>!(o.ocrMade&&o.page===cur&&o.vx+o.vw/2>=x&&o.vx+o.vw/2<=x+w&&o.vy+o.vh/2>=y&&o.vy+o.vh/2<=y+h));
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
+  lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
   return{ok:true,lines:nl,parts:made.length};
 }
-$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);});
+$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
 // 入力中の枠と同じ折り返しで行に分ける(DOMで各文字の位置を測り、x座標が戻った所を行頭とする)
