@@ -54,6 +54,7 @@ async function drag(page,x0,y0,x1,y1){
   await page.mouse.move(o.x+o.width*x1,o.y+o.height*y1,{steps:6});await page.mouse.up();await page.waitForTimeout(800);
 }
 async function save(page,file){
+  await page.evaluate(()=>{window.showSaveFilePicker=undefined;});   // 保存ダイアログは自動化できないので、従来のダウンロードにする(名前を付けて保存は test-save.js で確認)
   const [d]=await Promise.all([page.waitForEvent('download'),page.click('#bSave')]);await d.saveAs(file);
 }
 module.exports={launch,drag,save,APP,WORK};

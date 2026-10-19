@@ -99,7 +99,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <label class="btn sub-btn" for="fMerge" id="mergeLbl">PDFを後ろに結合</label>
 <input id="fMerge" type="file" accept="application/pdf" multiple class="hidden">
 <button class="sub-btn" id="bNew">新規(空白A4)</button>
-<button id="bSave" disabled>💾 ダウンロード</button>
+<button id="bSave" disabled>💾 名前を付けて保存</button><button class="sub-btn hidden" id="bOverwrite" disabled>上書き保存</button>
 <button class="sub-btn" id="bUndo" disabled>↩ 元に戻す</button>
 </div>
 <div id="status">PDFを開くか、新規作成してください。</div>
@@ -257,7 +257,7 @@ const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(ne
 $("fOpen").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   const b=await readFile(f);await PDFDocument.load(b); // 検証
-  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";
+  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");
   hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
 });
 $("fMerge").onchange=busy(async e=>{
@@ -273,12 +273,28 @@ $("fMerge").onchange=busy(async e=>{
 });
 $("bNew").onclick=busy(async()=>{
   const doc=await PDFDocument.create();doc.addPage([595.28,841.89]);
-  fileName="new.pdf";hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
+  fileName="new.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
 });
 $("bUndo").onclick=busy(async()=>{
   if(items.length){items.pop();cs=null;syncPanel();await renderStage();return;}
   if(!hist.length)return;bytes=hist.pop();await refresh(true);});
-$("bSave").onclick=busy(async()=>{await commit();download(bytes,fileName);});
+// 「名前を付けて保存」: 普通のソフトのように、保存先とファイル名を選んで保存する(File System Access API。Chrome/Edgeなど)。使えないブラウザでは、従来のダウンロードにする
+let saveHandle=null;
+async function saveAs(b,name,keep){
+  if(!window.showSaveFilePicker){download(b,name);status("このブラウザは保存先を選べないので、ダウンロードしました(Chrome・Edgeでは保存先とファイル名を選べます)。");return false;}
+  let h;
+  try{h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});}
+  catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}throw e;}
+  const w=await h.createWritable();await w.write(new Blob([b],{type:"application/pdf"}));await w.close();
+  if(keep){saveHandle=h;fileName=h.name;$("bOverwrite").classList.remove("hidden");$("bOverwrite").disabled=false;}
+  status(`「${h.name}」として保存しました。`);return true;
+}
+$("bSave").onclick=busy(async()=>{await commit();await saveAs(bytes,fileName,true);});
+$("bOverwrite").onclick=busy(async()=>{   // 保存したファイルに、そのまま上書き
+  if(!saveHandle)return;await commit();
+  const w=await saveHandle.createWritable();await w.write(new Blob([bytes],{type:"application/pdf"}));await w.close();
+  status(`「${saveHandle.name}」に上書き保存しました。`);
+});
 function download(b,name){
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b],{type:"application/pdf"}));
   a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
@@ -325,8 +341,8 @@ $("bExtract").onclick=busy(async()=>{
   const t=selList();if(!t.length){status("分割するページにチェックを入れてください。");return;}
   const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
   (await out.copyPages(src,t)).forEach(p=>out.addPage(p));
-  download(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf");
-  status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
+  const ok=await saveAs(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf",false);
+  if(ok)status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
 });
 
 // ====== 文字・画像・既存文字の訂正 ======
