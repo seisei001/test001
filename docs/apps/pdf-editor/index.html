@@ -139,6 +139,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </div>
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
+<label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label>
 <button class="sub-btn" id="bOcrPage">このページ全体を認識</button>
 <label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label>
 <span class="sub">初回だけ、認識データ(日本語で約2MB)と認識エンジンをダウンロードします</span>
@@ -1105,6 +1106,49 @@ $("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMod
 const TESS_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
 const LANG_PATH={jpn:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int",eng:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int"};
 let ocrWorker=null,ocrLang="";
+// ---- 高精度の認識エンジン: PaddleOCR(PP-OCRv5)の「文字認識」モデルを、ブラウザ内(ONNX Runtime Web)で動かす。行の切り出しは、上の画像解析を使う ----
+const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",PP_BASE="https://cdn.jsdelivr.net/npm/pdfmarkdown-ppocrv5-models@1.0.0/";
+let ppSess=null,ppDict=null,ppLoading=null;
+const loadScriptUrl=(src,test)=>new Promise((res,rej)=>{if(test())return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("読み込めませんでした: "+src));document.head.appendChild(sc);});
+async function fetchBuf(url,label){
+  const r=await fetch(url);if(!r.ok)throw new Error(label+"を取得できませんでした("+r.status+")");
+  const tot=+r.headers.get("content-length")||0,rd=r.body&&r.body.getReader();
+  if(!rd)return new Uint8Array(await r.arrayBuffer());
+  const parts=[];let got=0;
+  for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;
+    if(tot){const t=`高精度エンジンの準備中(初回のみ): ${label} ${Math.round(got/tot*100)}%`;status(t);job.step(t,Math.round(got/tot*100));}}
+  const out=new Uint8Array(got);let o=0;parts.forEach(a=>{out.set(a,o);o+=a.length;});return out;
+}
+function getPaddle(){
+  if(ppSess)return Promise.resolve(ppSess);
+  if(ppLoading)return ppLoading;
+  ppLoading=(async()=>{
+    await loadScriptUrl(ORT_BASE+"ort.wasm.min.js",()=>window.ort);
+    ort.env.wasm.wasmPaths=ORT_BASE;ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
+    const [model,dict]=await Promise.all([fetchBuf(PP_BASE+"recognition/PP-OCRv5_mobile_rec_infer.onnx","認識モデル"),fetchBuf(PP_BASE+"recognition/ppocrv5_dict.txt","文字辞書")]);
+    ppDict=new TextDecoder().decode(dict).replace(/\r/g,"").split("\n");if(ppDict[ppDict.length-1]==="")ppDict.pop();
+    ppSess=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return ppSess;
+  })().catch(e=>{ppLoading=null;throw e;});
+  return ppLoading;
+}
+// 1行の画像 → 文字と、各文字の位置(0〜1)・確かさ。高さ48pxにそろえて読み、CTCで文字列にする
+async function paddleRec(cv){
+  const H=48,W=Math.max(16,Math.min(3200,Math.round(cv.width*H/cv.height)));
+  const c2=document.createElement("canvas");c2.width=W;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
+  cx.fillStyle="#fff";cx.fillRect(0,0,W,H);cx.imageSmoothingQuality="high";cx.drawImage(cv,0,0,W,H);
+  const d=cx.getImageData(0,0,W,H).data,f=new Float32Array(3*H*W),HW=H*W;
+  for(let i=0;i<HW;i++){f[i]=(d[i*4+2]/255-0.5)/0.5;f[HW+i]=(d[i*4+1]/255-0.5)/0.5;f[2*HW+i]=(d[i*4]/255-0.5)/0.5;}   // PaddleOCRはBGR順
+  const sess=await getPaddle(),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,W])});
+  const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
+  // 辞書の長さと出力の種類数から、「何番が空白(CTCのblank)か」をそろえる(辞書の先頭がblankの代わりの行のとき・末尾に空白を足すとき)
+  const chars=ppDict.length===C?["",...ppDict.slice(1)]:ppDict.length+1===C?["",...ppDict]:["",...ppDict," "];
+  const seq=[];let prev=0;
+  for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
+    if(bi!==0&&bi!==prev&&chars[bi]!==undefined){let p=bv;if(p>1||p<0){let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);p=1/sum;}seq.push({ch:chars[bi],p,pos:(t+0.5)/T});}
+    prev=bi;}
+  return seq;
+}
 const loadScript=src=>new Promise((res,rej)=>{if(window.Tesseract)return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("文字認識のライブラリを読み込めませんでした(ネットワークを確認してください)"));document.head.appendChild(sc);});
 async function getOcr(lang){
   await loadScript(TESS_URL);
@@ -1122,6 +1166,9 @@ async function renderRegion(x,y,w,h,scale){
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
   return cv;
 }
+// 高精度エンジン(中国語と共通のモデル)が出しがちな、中国語の字形・小数点の誤りを直す(お金の「1,800」が「1.800」になる等)
+const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"買","单":"単","发":"発","级":"級","类":"類","门":"門","问":"問","间":"間","时":"時","线":"線","设":"設","计":"計","认":"認","识":"識","读":"読","写":"写","仅":"僅","东":"東","车":"車","长":"長","马":"馬","鸟":"鳥","关":"関","开":"開","应":"応","业":"業","务":"務","报":"報","处":"処","预":"預","钱":"銭","银":"銀","税":"税","总":"総","点":"点","机":"機","电":"電","话":"話","号":"号","区":"区","页":"頁","图":"図","圆":"円","额":"額","费":"費","货":"貨","纸":"紙","印":"印","销":"販"};
+const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
 const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
 function flattenForOcr(cv,br){
@@ -1218,10 +1265,39 @@ function charUnits(str){let u=0;for(const ch of Array.from(str)){const c=ch.code
 const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\x7E]$/.test(t)&&/^[\x21-\x7E]/.test(s))t+=" ";t+=s;});return t;};
 const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
 // 1つの塊を、ちょうどよい倍率で描き直して認識する
+let ppMode=false;
+// 高精度エンジンで1行を読む(読めなければ null)
+async function paddleLine(ch,x,y,S,Sb,flat){
+  const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
+  const bx0=Math.max(0,x+l.x0/S-pad),by0=Math.max(0,y+l.y0/S-pad),bx1=Math.min(VW,x+l.x1/S+pad),by1=Math.min(VH,y+l.y1/S+pad);
+  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  let seq=await paddleRec(cv),conf=seq.length?seq.reduce((a,b)=>a+b.p,0)/seq.length*100:0;
+  if(flat&&conf<90){   // 背景に模様・ムラがある写真は、背景を消した画像でも読んで、確かさが高い方を採る
+    const f=document.createElement("canvas");f.width=cv.width;f.height=cv.height;f.getContext("2d").drawImage(cv,0,0);flattenForOcr(f,2);
+    const s2=await paddleRec(f),c2=s2.length?s2.reduce((a,b)=>a+b.p,0)/s2.length*100:0;
+    if(c2>conf){seq=s2;conf=c2;}
+  }
+  if(!seq.length)return null;
+  if(conf<45)return null;
+  const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S,wd=bx1-bx0;
+  const words=[];let cur=null;
+  seq.forEach(c=>{if(c.ch===" "){cur=null;return;}
+    const px=bx0+c.pos*wd;
+    if(!cur){cur={str:"",conf:0,n:0,a:px,b:px};words.push(cur);}
+    cur.str+=c.ch;cur.conf+=c.p*100;cur.n++;cur.b=px;});
+  words.forEach(w=>{w.conf/=w.n;});
+  const ws=words.map(w=>({str:cleanOcr(fixPaddle(w.str)),conf:w.conf,x0:Math.max(X0,w.a),x1:Math.min(X1,w.b),y0:Y0,y1:Y1})).filter(w=>w.str);
+  if(!ws.length)return null;
+  if(ws.every(w=>/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(w.str)))return[];   // 点線の区切りなど、記号だけの行は文字にしない
+  ws[0].x0=X0;ws[ws.length-1].x1=X1;    // 行の両端は、画像解析の位置(正確)
+  return[{words:ws,conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
 async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
   const bx0=Math.max(0,x+ch.x0/S-pad),by0=Math.max(0,y+ch.y0/S-pad),bx1=Math.min(VW,x+ch.x1/S+pad),by1=Math.min(VH,y+ch.y1/S+pad);
+  if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
+  if(!worker)worker=await getOcr($("ocrLang").value);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
   const single=ch.lines.length===1&&(ch.x1-ch.x0)<1.8*ch.gh;          // 1文字だけの塊
   const first=single?"10":ch.lines.length>1?"6":"7";
@@ -1303,7 +1379,10 @@ async function doOcr(x,y,w,h){
   finally{ocrRunning=false;$("bOcrPage").disabled=false;}
 }
 async function doOcrBody(x,y,w,h){
-  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");const worker=await getOcr(lang);
+  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
+  ppMode=$("ocrEngine").value==="paddle";let worker=null;
+  if(ppMode){try{await getPaddle();}catch(e){console.warn(e);ppMode=false;status("高精度エンジンを読み込めなかったので、標準エンジンで認識します("+(e.message||e)+")");job.step("標準エンジンで認識します…");}}
+  if(!ppMode)worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
   const cv=await renderRegion(x,y,w,h,S);
@@ -1449,7 +1528,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

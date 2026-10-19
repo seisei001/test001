@@ -21,6 +21,8 @@ function localPath(u){
   if((m=u.match(/^tesseract\.js@[^/]+\/dist\/(.+)$/)))return 'tesseract.js/dist/'+m[1];
   if((m=u.match(/^tesseract\.js-core@[^/]+\/(.+)$/)))return 'tesseract.js-core/'+m[1];
   if((m=u.match(/^@tesseract\.js-data\/(\w+)@[^/]+\/(.+)$/)))return '@tesseract.js-data/'+m[1]+'/'+m[2];
+  if((m=u.match(/^onnxruntime-web@[^/]+\/dist\/(.+)$/)))return 'onnxruntime-web/dist/'+m[1];
+  if((m=u.match(/^pdfmarkdown-ppocrv5-models@[^/]+\/(.+)$/)))return 'pdfmarkdown-ppocrv5-models/'+m[1];
   return null;
 }
 async function launch(opts={}){
@@ -32,9 +34,10 @@ async function launch(opts={}){
     const u=r.request().url().split('/npm/')[1],f=localPath(u);
     if(f&&fs.existsSync(LIB+f)){
       r.fulfill({body:fs.readFileSync(LIB+f),headers:{'access-control-allow-origin':'*'},
-        contentType:u.endsWith('.js')?'application/javascript':u.endsWith('.wasm')?'application/wasm':'application/octet-stream'});
+        contentType:/\.(m?js)$/.test(u)?'application/javascript':u.endsWith('.wasm')?'application/wasm':'application/octet-stream'});
     }else{console.log('MISS(npmに無い)',u);r.abort();}
   });
+  if(process.env.OCR_ENGINE)await page.addInitScript(e=>document.addEventListener('DOMContentLoaded',()=>{const s=document.getElementById('ocrEngine');if(s)s.value=e;}),process.env.OCR_ENGINE);   // OCR_ENGINE=tess で標準(Tesseract)、paddle で高精度
   await page.goto(APP);await page.waitForTimeout(800);
   return {browser,page};
 }
