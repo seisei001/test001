@@ -42,6 +42,15 @@ main{max-width:720px;margin:0 auto;padding:0 16px 40px;display:flex;flex-directi
 .row{display:flex;gap:8px}
 .row button{flex:1;min-height:44px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:.95rem}
 .row button.sub{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+#board2{display:none;flex-wrap:wrap;gap:10px;padding:10px;border:2px dashed var(--border);border-radius:10px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.c4{position:relative;width:96px;height:132px;border:2px solid var(--border);border-radius:8px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700}
+.c4.drag{opacity:.85;box-shadow:0 8px 20px rgba(0,0,0,.35);z-index:5;position:relative}
+.c4 .ck{position:absolute;left:-2px;top:-2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.c4 .ck input{width:24px;height:24px}
+.c4 .mn{position:absolute;right:-2px;top:-2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text);font-size:1.4rem;margin:0;padding:0;border-radius:8px}
+.c4 .hd{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.18);border-radius:0 0 6px 6px;font-size:1.3rem;touch-action:none;cursor:grab}
+.c4.sel{border-color:var(--sel)}
+.lp{box-shadow:0 0 0 4px rgba(37,99,235,.5)!important;transition:box-shadow .15s}
 h2{margin:0 0 6px;font-size:1rem}
 .sub{color:var(--muted);font-size:.8rem}
 </style>
@@ -49,7 +58,7 @@ h2{margin:0 0 6px;font-size:1rem}
 <body>
 <header>
 <a class="back-link" href="../../">← ハブに戻る</a>
-<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.02</span></h1>
+<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.03</span></h1>
 <div class="sub">指の動きをどう読み取れるかを調べる実験場です(端末内だけで動きます)</div>
 </header>
 <main>
@@ -58,6 +67,7 @@ h2{margin:0 0 6px;font-size:1rem}
 <button data-t="1" class="on">① 同じ場所を2回</button>
 <button data-t="2">② 選んでから2回</button>
 <button data-t="3">③ その他の案</button>
+<button data-t="4">④ 持ち手・⋮・チェック</button>
 </div>
 <div class="how" id="how"></div>
 </div>
@@ -68,6 +78,8 @@ h2{margin:0 0 6px;font-size:1rem}
 <div class="obj" style="left:226px;top:20px" data-id="C">C</div>
 <div id="rubber"></div>
 </div>
+
+<div id="board2" aria-label="実験④"></div>
 
 <div class="panel">
 <h2>判定(何回検出されたか)</h2>
@@ -104,10 +116,11 @@ const board=$("board"),rub=$("rubber"),logEl=$("log");
 const HOW={
 1:"<b>やること:</b> 背景(何もない所)と物(A・B・C)で、それぞれ <b>同じ場所を素早く2回タップ</b>。次に、1回目と2回目を少しずらしてタップ(どこまでずれると2回と判定されるか)。ゆっくり2回も試す(間隔の上限を超えるか)。",
 2:"<b>やること:</b> 物をタップして <b>選択(橙の枠)</b>。そのまま <b>同じ物をもう一度素早く2回タップ</b>(選択済みでのダブルタップ)。選択して少し待ってから2回、別の物を選んでから2回、も試す。選択の状態も一緒に記録されます。",
+4:"<b>やること:</b> カードの <b>☑(左上)</b> をタップして選ぶ、<b>⋮(右上)</b> をタップしてメニュー、<b>下の持ち手(⠿)</b> を指でつかんで横・縦に動かして並べ替え。持ち手以外の場所(カード本体)を指でなぞると、ページが普通にスクロールするかも確かめてください。指・マウス・ペンの種類もログに出ます。",
 3:"<b>案:</b> ⓐ長押し(0.5秒) ⓑ2本指で同時にタップ ⓒ1回タップ→すぐ押したままドラッグ(ダブルタップ+ドラッグ) ⓓ3回連続タップ ⓔ背景をドラッグして範囲選択(物が橙になる) ⓕ2本指でつまむ/動かす(画面側の拡大・移動と競合しないか、ログの scale/スクロールを見る)"
 };
 let tab=1;
-function setTab(t){tab=t;document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",+b.dataset.t===t));$("how").innerHTML=HOW[t];log("-- 実験 "+t+" に切替 --");}
+function setTab(t){tab=t;$("board").style.display=t===4?"none":"block";$("board2").style.display=t===4?"flex":"none";document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",+b.dataset.t===t));$("how").innerHTML=HOW[t];log("-- 実験 "+t+" に切替 --");}
 $("tabs").onclick=e=>{const b=e.target.closest("button");if(b)setTab(+b.dataset.t);};
 
 // ---- ログ ----
@@ -133,7 +146,7 @@ board.addEventListener("touchend",e=>{if(pdT&&e.cancelable)e.preventDefault();},
 ["gesturestart","gesturechange","gestureend"].forEach(n=>document.addEventListener(n,e=>{if(pdG)e.preventDefault();},{passive:false}));
 
 // ---- 判定の集計 ----
-const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ"};
+const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ",twoDbl:"2本指ダブルタップ",chk:"☑ チェック",menu:"⋮ メニュー",grab:"持ち手: つかんだ",reorder:"持ち手: 並べ替え完了",hcancel:"持ち手: 途中でキャンセルされた",body:"カード本体のタップ"};
 const cnt={};Object.keys(NAMES).forEach(k=>cnt[k]=0);
 function renderRes(){$("res").innerHTML=Object.keys(NAMES).map(k=>`<span>${NAMES[k]}</span><span class="n">${cnt[k]}</span>`).join("");}
 renderRes();
@@ -147,7 +160,7 @@ const objAt=t=>t&&t.closest&&t.closest(".obj");
 
 // ---- ポインタの追跡 ----
 const ptrs=new Map();           // 触れている指
-let lastTap=null,tapChain=0,twoInfo=null,pending=null;
+let lastTap=null,tapChain=0,twoInfo=null,pending=null,lastTwo=0,twoDone=0;
 const rel=e=>{const r=board.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
 const dot=(x,y)=>{const d=document.createElement("div");d.className="dot";d.style.left=x+"px";d.style.top=y+"px";board.appendChild(d);setTimeout(()=>d.remove(),800);};
 const nameOf=o=>o?o.dataset.id:"背景";
@@ -161,7 +174,7 @@ board.addEventListener("pointerdown",e=>{
   if(ptrs.size===2){twoInfo={t:now,moved:false};clearTimeout(me.lp);for(const q of ptrs.values())clearTimeout(q.lp);}
   else{
     // 長押し
-    me.lp=setTimeout(()=>{if(ptrs.has(e.pointerId)&&!me.moved&&ptrs.size===1){me.long=true;hit("long",`対象:${nameOf(o)} (${me.x|0},${me.y|0})`);}},500);
+    me.lp=setTimeout(()=>{if(ptrs.has(e.pointerId)&&!me.moved&&ptrs.size===1){me.long=true;(o||board).classList.add("lp");setTimeout(()=>(o||board).classList.remove("lp"),400);hit("long",`対象:${nameOf(o)} (${me.x|0},${me.y|0})`);}},500);
     // 1回目のタップのすぐ後に押したか(タップ→ドラッグ)
     if(lastTap&&now-lastTap.t<gap&&Math.hypot(p.x-lastTap.x,p.y-lastTap.y)<=dist)me.afterTap=true;
   }
@@ -188,9 +201,9 @@ function end(e,cancel){
   ptrs.delete(e.pointerId);
   if(rub.style.display==="block"&&ptrs.size===0){rub.style.display="none";hit("range",`選択:${[...sel].join(",")||"なし"}`);}
   if(cancel)return;
-  if(wasTwo&&!twoInfo.moved&&now-twoInfo.t<400){hit("two","2本指が同時に触れて離れた("+(now-twoInfo.t|0)+"ms)");twoInfo.done=true;return;}
+  if(wasTwo&&!twoInfo.moved&&now-twoInfo.t<400){hit("two","2本指が同時に触れて離れた("+(now-twoInfo.t|0)+"ms)");twoInfo.done=true;twoDone=now;if(lastTwo&&now-lastTwo<=gap){hit("twoDbl","間隔"+(now-lastTwo|0)+"ms");lastTwo=0;}else lastTwo=now;return;}
   if(ptrs.size===0)twoInfo=null;
-  if(q.moved||q.long||twoInfo||dur>350)return;
+  if(q.moved||q.long||twoInfo||dur>350||now-twoDone<300)return;   // 2本指タップの残りの指の離れは、単タップに数えない
   // ---- ここから「タップ」 ----
   const o=q.obj,id=o?o.dataset.id:null;
   // 選択(物をタップすると選択が切り替わる)
@@ -219,6 +232,38 @@ board.addEventListener("contextmenu",e=>e.preventDefault());
 // 画面側の動き(拡大・スクロール)を記録
 if(window.visualViewport){let ls=1;visualViewport.addEventListener("resize",()=>{const s=visualViewport.scale;if(Math.abs(s-ls)>.01){log(`⚠画面の拡大率が変わった ${ls.toFixed(2)}→${s.toFixed(2)}`);ls=s;}});}
 let scT=0,scN=0,scY0=0;window.addEventListener("scroll",()=>{if(!scN)scY0=scrollY;scN++;clearTimeout(scT);scT=setTimeout(()=>{log(`⚠ページがスクロールした y=${scY0|0}→${scrollY|0}(${scN}回分まとめ)`);scN=0;},250);},{passive:true});
+
+// ---- 実験④: ☑ チェック・⋮ メニュー・持ち手(⠿)で並べ替え ----
+const b2=$("board2");
+["1","2","3","4","5"].forEach(n=>{const c=document.createElement("div");c.className="c4";c.dataset.id=n;
+  c.innerHTML=`<label class="ck"><input type="checkbox" aria-label="選択"></label><button class="mn" aria-label="メニュー">⋮</button>${n}<div class="hd" title="つかんで動かす">⠿</div>`;b2.appendChild(c);});
+b2.addEventListener("change",e=>{if(e.target.matches(".ck input")){const c=e.target.closest(".c4");c.classList.toggle("sel",e.target.checked);hit("chk",`カード${c.dataset.id} ${e.target.checked?"選択":"解除"}`);}});
+b2.addEventListener("click",e=>{const m=e.target.closest(".mn");if(m){hit("menu",`カード${m.closest(".c4").dataset.id}`);return;}
+  if(e.target.closest(".ck,.hd"))return;const c=e.target.closest(".c4");if(c)hit("body",`カード${c.dataset.id}(何も起きない)`);});
+let gd=null;
+b2.addEventListener("pointerdown",e=>{const h=e.target.closest(".hd");if(!h)return;
+  const c=h.closest(".c4"),r=c.getBoundingClientRect();
+  gd={id:e.pointerId,c,sx:e.clientX,sy:e.clientY,from:[...b2.children].indexOf(c),moves:0,type:e.pointerType};
+  h.setPointerCapture(e.pointerId);c.classList.add("drag");hit("grab",`カード${c.dataset.id} ${e.pointerType}`);
+  log(`  持ち手 down ${e.pointerType} scale:${vs()}`);e.preventDefault();});
+b2.addEventListener("pointermove",e=>{if(!gd||e.pointerId!==gd.id)return;gd.moves++;
+  const c=gd.c;c.style.transform=`translate(${e.clientX-gd.sx}px,${e.clientY-gd.sy}px)`;
+  const kids=[...b2.children].filter(k=>k!==c);
+  const cr=c.getBoundingClientRect(),cx=cr.left+cr.width/2,cy=cr.top+cr.height/2;
+  let ref=null;for(const k of kids){const r=k.getBoundingClientRect();if(cy<r.bottom&&cx<r.left+r.width/2&&cy>r.top-10){ref=k;break;}if(cy<r.top){ref=k;break;}}
+  const before=[...b2.children].indexOf(c);
+  const oldRect=c.getBoundingClientRect();
+  if(ref!==c.nextElementSibling&&ref!==c){b2.insertBefore(c,ref);}
+  // DOM上の位置が変わった分、見た目がずれないよう開始点を補正
+  const nr=c.getBoundingClientRect();gd.sx+=nr.left-oldRect.left+0;gd.sy+=nr.top-oldRect.top+0;c.style.transform=`translate(${e.clientX-gd.sx}px,${e.clientY-gd.sy}px)`;
+});
+function endG(e,cancel){if(!gd||e.pointerId!==gd.id)return;const c=gd.c;c.classList.remove("drag");c.style.transform="";
+  const to=[...b2.children].indexOf(c);log(`  持ち手 ${cancel?"cancel":"up"} 動いた回数:${gd.moves} ${gd.type} scale:${vs()}`);
+  if(cancel)hit("hcancel",`カード${c.dataset.id} 動いた回数:${gd.moves}`);else if(gd.moves>1)hit("reorder",`カード${c.dataset.id} ${gd.from+1}番目→${to+1}番目 (${gd.moves}回動いた)`);
+  gd=null;}
+b2.addEventListener("pointerup",e=>endG(e,false));
+b2.addEventListener("pointercancel",e=>endG(e,true));
+
 setTab(1);
 window.touchLabDebug={cnt,sel:()=>[...sel]};
 })();
