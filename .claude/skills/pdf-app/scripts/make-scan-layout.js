@@ -20,6 +20,8 @@ const FORM=[
   {name:'v3b',size:10.5,lh:1.3,align:'left',x:300,base:243,lines:['理事長']},   // 上の行の下にたまたま収まっている、字下げされた別の行
   {name:'l4',size:10.5,lh:1.3,align:'left',x:60,base:290,lines:['委任期間:']},
   {name:'v4',size:10.5,lh:1.3,align:'left',x:190,base:290,lines:['令和8年10月20日から委任事項が終了するまで']},
+  {name:'i1',size:10.5,lh:1.3,align:'left',x:60,base:400,lines:['1行目は、ふつうの位置から始まります。']},
+  {name:'i2',size:10.5,lh:1.3,align:'left',x:75,base:414,lines:['2行目は、少し字下げされています。']},   // 行の始まりが違う行は、別の部品
   {name:'n1',size:10.5,lh:1.3,align:'left',x:300,base:340,lines:['令和']},
   {name:'n2',size:10.5,lh:1.3,align:'left',x:380,base:340,lines:['年']},
   {name:'n3',size:10.5,lh:1.3,align:'left',x:440,base:340,lines:['月']},
