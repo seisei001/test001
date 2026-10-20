@@ -90,7 +90,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </head>
 <body>
 <header>
-<div id="ver" title="バージョン">1.01</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
+<div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
 <h1>📄 PDFエディタ</h1>
 <p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
@@ -1284,8 +1284,22 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
       if(!near)continue;
       if(gap>0&&vSep(a.x1,b.x0,Math.max(a.y0,b.y0),Math.min(a.y1,b.y1)))continue;
       U.u(i,j);}}
-  const lm=new Map();comps.forEach((c,i)=>{const r=U.f(i);let l=lm.get(r);if(!l){l={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,n:0,hs:[],ar:0};lm.set(r,l);}l.hs.push(c.h);l.ar+=c.w*c.h;l.x0=Math.min(l.x0,c.x0);l.y0=Math.min(l.y0,c.y0);l.x1=Math.max(l.x1,c.x1);l.y1=Math.max(l.y1,c.y1);l.n++;});
-  const lines=[...lm.values()].filter(l=>l.y1-l.y0>=4).sort((a,b)=>a.y0-b.y0);
+  const lm=new Map();comps.forEach((c,i)=>{const r=U.f(i);let l=lm.get(r);if(!l){l={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,n:0,hs:[],ar:0,cs:[]};lm.set(r,l);}l.hs.push(c.h);l.ar+=c.w*c.h;l.cs.push(c);l.x0=Math.min(l.x0,c.x0);l.y0=Math.min(l.y0,c.y0);l.x1=Math.max(l.x1,c.x1);l.y1=Math.max(l.y1,c.y1);l.n++;});
+  // 行の中の「飛び抜けて広い隙間」で分ける(ラベルと値のように、字間より明らかに広い隙間。字間の広い書式でも、字間はそろっているので割れない)
+  const pieces=[];
+  for(const l of lm.values()){
+    const cs=[...l.cs].sort((a,b)=>a.x0-b.x0);if(cs.length<3){pieces.push(l);continue;}
+    const H=l.y1-l.y0,gaps=[],ex=c=>c.x1+((c.w<0.5*H&&c.h<0.5*H)?0.5*H:0);   // 「、」「。」などの小さい文字は、右側に半角ぶんの余白(その字の枠)があるので、隙間には数えない
+    let mx=ex(cs[0]);
+    for(let i=1;i<cs.length;i++){const g=cs[i].x0-mx;if(g>0)gaps.push(g);mx=Math.max(mx,ex(cs[i]));}
+    const med=gaps.length?[...gaps].sort((a,b)=>a-b)[gaps.length>>1]:0,T=Math.max(1.0*H,2.2*med);
+    let cur=[cs[0]];mx=ex(cs[0]);const groups=[];
+    for(let i=1;i<cs.length;i++){if(cs[i].x0-mx>T){groups.push(cur);cur=[];}cur.push(cs[i]);mx=Math.max(mx,ex(cs[i]));}
+    groups.push(cur);
+    if(groups.length===1){pieces.push(l);continue;}
+    groups.forEach(gp=>{const o={x0:1e9,y0:1e9,x1:0,y1:0,n:gp.length,hs:[],ar:0,cs:gp};gp.forEach(c=>{o.x0=Math.min(o.x0,c.x0);o.y0=Math.min(o.y0,c.y0);o.x1=Math.max(o.x1,c.x1);o.y1=Math.max(o.y1,c.y1);o.hs.push(c.h);o.ar+=c.w*c.h;});pieces.push(o);});
+  }
+  const lines=pieces.filter(l=>l.y1-l.y0>=4).sort((a,b)=>a.y0-b.y0);
   lines.forEach(l=>{l.h=l.y1-l.y0;l.w=l.x1-l.x0;});
   // (2) 塊: 行間が詰まっていて、左揃い/重なりがあり、大きさが近い行をつなぐ(間に横線があれば分ける)
   const V=uf(lines.length);
@@ -1558,6 +1572,7 @@ function refineRun(r,ink,ox,oy,fam){
     {const m0=measure(str,100);if(m0.w>0)sizes.push(Math.round(r.w/(m0.w/100)*10)/10);}   // 字間なしで、幅にちょうど合うサイズ
     for(let k=0;k<sizes.length;k++){
       const size=sizes[k];
+      if(sg&&(size>sg*1.35||size<sg*0.7))continue;   // 行の高さから見て明らかに大きすぎる・小さすぎるサイズは、候補にしない
       const m=measure(str,100);let ls=nn>1?(r.w-m.w/100*size)/(nn-1):0;
       if(ls<-0.15||ls>14)continue;   // 幅に収まらない大きさ(字間がマイナス)は候補にしない
       if(ls>0.15&&ls<1.5)continue;   // 1.5pt未満の字間は誤差とみなし、字間なし(幅にちょうど合うサイズ)の候補に任せる
