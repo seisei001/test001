@@ -45,6 +45,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button{border-radius:0;background:transparent;color:var(--accent);border:1px solid var(--accent);}
 .seg button:first-child{border-radius:8px 0 0 8px;}.seg button:last-child{border-radius:0 8px 8px 0;}
 .seg button.on{background:var(--accent);color:#fff;}
+#ver{position:fixed;top:6px;right:10px;z-index:1500;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel-bg,#fff);border:1px solid var(--border);border-radius:999px;padding:2px 10px;opacity:.9;pointer-events:none;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
 #job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(560px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.9rem;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
 #job.done{border-color:#16a34a;border-width:2px;}
@@ -89,8 +90,9 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </head>
 <body>
 <header>
+<div id="ver" title="バージョン">1.00</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
-<h1>📄 PDFエディタ <span class="sub" id="ver" style="font-weight:400;font-size:.7rem">v21</span></h1>
+<h1>📄 PDFエディタ</h1>
 <p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
 </header>
 <main>
