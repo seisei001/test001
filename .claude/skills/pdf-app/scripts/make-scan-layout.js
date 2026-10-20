@@ -39,6 +39,9 @@ const TRACK=[
   {name:'t2',size:12,ls:2.4,lh:1.3,align:'left',x:60,base:170,lines:['特定非営利活動法人福祉ネット寿']},
   {name:'t3',size:10.5,ls:0,lh:1.3,align:'left',x:60,base:220,lines:['この行は字間が普通で、位置と大きさだけを合わせます。']},
   {name:'t4',size:14,ls:4.5,lh:1.3,align:'left',x:60,base:270,lines:['委任状の写しを添付します']},
+  {name:'t5',size:10.5,ls:1.8,lh:1.3,align:'left',x:60,base:320,lines:['兵庫県神戸市中央区小野柄通３－２－２２']},   // 全角の数字・記号(OCRは半角で読みがち)
+  {name:'t6',size:10.5,ls:6,lh:1.3,align:'left',x:60,base:370,lines:['委任事項']},   // 字間の広いラベル
+  {name:'t7',size:10.5,ls:0,lh:1.3,align:'left',x:190,base:370,lines:['特定非営利活動法人福祉ネット寿に係る市に対する質疑']},
 ];
 const BLOCKS=process.env.LAYOUT_SET==='form'?FORM:process.env.LAYOUT_SET==='track'?TRACK:BLOCKS_BASE;
 (async()=>{
