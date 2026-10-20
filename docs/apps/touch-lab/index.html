@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="iPhone操作検証">
+<title>iPhone操作検証</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--ok:#16a34a;--sel:#f59e0b;}
+@media (prefers-color-scheme:dark){:root{--bg:#111114;--panel:#1c1c20;--border:#35353c;--text:#ececf0;--muted:#9a9aa5;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+header{padding:12px 16px 4px;max-width:720px;margin:0 auto;}
+.back-link{display:inline-block;margin-bottom:4px;color:var(--muted);text-decoration:none;font-size:.85rem;}
+h1{margin:0;font-size:1.25rem;display:flex;align-items:baseline;gap:8px;}
+.ver{font-size:.75rem;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:0 8px;font-weight:400;}
+main{max-width:720px;margin:0 auto;padding:0 16px 40px;display:flex;flex-direction:column;gap:12px;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:90px;min-height:44px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:8px;font-size:.9rem;}
+.tabs button.on{background:var(--accent);color:#fff;}
+.how{margin:8px 0 0;font-size:.88rem}
+.how b{color:var(--accent)}
+#board{position:relative;height:260px;border:2px dashed var(--border);border-radius:10px;background:repeating-linear-gradient(45deg,transparent 0 12px,rgba(128,128,128,.07) 12px 24px);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:hidden}
+.obj{position:absolute;width:84px;height:104px;border:2px solid var(--border);border-radius:8px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700}
+.obj.sel{border-color:var(--sel);box-shadow:0 0 0 3px rgba(245,158,11,.35)}
+#rubber{position:absolute;border:1px dashed var(--accent);background:rgba(37,99,235,.12);display:none}
+.dot{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(37,99,235,.5);pointer-events:none;animation:f .7s forwards}
+@keyframes f{to{opacity:0;transform:scale(2.2)}}
+.set{display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.set input[type=range]{width:100%;min-height:32px}
+.set select{font-size:16px;min-height:44px;width:100%}
+#res{display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:.9rem}
+#res .n{font-weight:700;font-variant-numeric:tabular-nums;color:var(--ok)}
+#last{margin-top:8px;padding:8px;border-radius:8px;background:rgba(22,163,74,.1);min-height:44px;font-size:.88rem;word-break:break-all}
+#log{height:220px;overflow:auto;font:12px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;background:rgba(128,128,128,.08);border-radius:8px;padding:8px}
+.row{display:flex;gap:8px}
+.row button{flex:1;min-height:44px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:.95rem}
+.row button.sub{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+h2{margin:0 0 6px;font-size:1rem}
+.sub{color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.01</span></h1>
+<div class="sub">指の動きをどう読み取れるかを調べる実験場です(端末内だけで動きます)</div>
+</header>
+<main>
+<div class="panel">
+<div class="tabs" id="tabs">
+<button data-t="1" class="on">① 同じ場所を2回</button>
+<button data-t="2">② 選んでから2回</button>
+<button data-t="3">③ その他の案</button>
+</div>
+<div class="how" id="how"></div>
+</div>
+
+<div id="board" aria-label="実験ボード">
+<div class="obj" style="left:14px;top:20px" data-id="A">A</div>
+<div class="obj" style="left:120px;top:60px" data-id="B">B</div>
+<div class="obj" style="left:226px;top:20px" data-id="C">C</div>
+<div id="rubber"></div>
+</div>
+
+<div class="panel">
+<h2>判定(何回検出されたか)</h2>
+<div id="res"></div>
+<div id="last">ボードをタッチしてください</div>
+</div>
+
+<div class="panel">
+<h2>しきい値の設定</h2>
+<div class="set">
+<label for="gap">2回の間隔の上限 <b id="gapv">350</b>ms</label>
+<input type="range" id="gap" min="150" max="800" step="10" value="350">
+<label for="dist" style="margin-top:8px">2回の位置のずれの上限 <b id="distv">24</b>px</label>
+<input type="range" id="dist" min="4" max="80" step="2" value="24">
+<label for="ta" style="margin-top:8px">ボードの touch-action(画面側の拡大・移動の邪魔をするか)</label>
+<select id="ta"><option value="manipulation">manipulation(ダブルタップ拡大なし・ピンチ/移動は有効)</option><option value="none">none(全部こちらで受ける)</option><option value="auto">auto(ブラウザ任せ)</option></select>
+</div>
+</div>
+
+<div class="panel">
+<h2>ログ</h2>
+<div id="log"></div>
+<div class="row" style="margin-top:8px"><button id="copy">ログをコピー</button><button class="sub" id="clr">消す</button></div>
+<div class="sub" style="margin-top:6px">結果をチャットに貼ってもらえると、そのまま分析できます</div>
+</div>
+</main>
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);
+const board=$("board"),rub=$("rubber"),logEl=$("log");
+const HOW={
+1:"<b>やること:</b> 背景(何もない所)と物(A・B・C)で、それぞれ <b>同じ場所を素早く2回タップ</b>。次に、1回目と2回目を少しずらしてタップ(どこまでずれると2回と判定されるか)。ゆっくり2回も試す(間隔の上限を超えるか)。",
+2:"<b>やること:</b> 物をタップして <b>選択(橙の枠)</b>。そのまま <b>同じ物をもう一度素早く2回タップ</b>(選択済みでのダブルタップ)。選択して少し待ってから2回、別の物を選んでから2回、も試す。選択の状態も一緒に記録されます。",
+3:"<b>案:</b> ⓐ長押し(0.5秒) ⓑ2本指で同時にタップ ⓒ1回タップ→すぐ押したままドラッグ(ダブルタップ+ドラッグ) ⓓ3回連続タップ ⓔ背景をドラッグして範囲選択(物が橙になる) ⓕ2本指でつまむ/動かす(画面側の拡大・移動と競合しないか、ログの scale/スクロールを見る)"
+};
+let tab=1;
+function setTab(t){tab=t;document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",+b.dataset.t===t));$("how").innerHTML=HOW[t];log("-- 実験 "+t+" に切替 --");}
+$("tabs").onclick=e=>{const b=e.target.closest("button");if(b)setTab(+b.dataset.t);};
+
+// ---- ログ ----
+const lines=[];const T0=performance.now();
+const vs=()=>window.visualViewport?window.visualViewport.scale.toFixed(2):"-";
+function log(s){const t=((performance.now()-T0)/1000).toFixed(3);const l=`${t} ${s}`;lines.push(l);if(lines.length>400)lines.shift();logEl.textContent=lines.slice(-80).join("\n");logEl.scrollTop=logEl.scrollHeight;}
+$("clr").onclick=()=>{lines.length=0;logEl.textContent="";Object.keys(cnt).forEach(k=>cnt[k]=0);renderRes();};
+$("copy").onclick=async()=>{const txt=`[iPhone操作検証 ${$("ver").textContent}] UA:${navigator.userAgent}\nしきい値: 間隔${gap}ms/距離${dist}px/touch-action:${board.style.touchAction}\n`+lines.join("\n");
+  try{await navigator.clipboard.writeText(txt);$("copy").textContent="コピーしました";}catch(e){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");$("copy").textContent="コピーしました";}catch(_){$("copy").textContent="コピー失敗(ログを長押しで選択)";}ta.remove();}
+  setTimeout(()=>$("copy").textContent="ログをコピー",1800);};
+
+// ---- 設定 ----
+let gap=350,dist=24;
+$("gap").oninput=e=>{gap=+e.target.value;$("gapv").textContent=gap;};
+$("dist").oninput=e=>{dist=+e.target.value;$("distv").textContent=dist;};
+$("ta").onchange=e=>{board.style.touchAction=e.target.value;log("touch-action → "+e.target.value);};
+board.style.touchAction="manipulation";
+
+// ---- 判定の集計 ----
+const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ"};
+const cnt={};Object.keys(NAMES).forEach(k=>cnt[k]=0);
+function renderRes(){$("res").innerHTML=Object.keys(NAMES).map(k=>`<span>${NAMES[k]}</span><span class="n">${cnt[k]}</span>`).join("");}
+renderRes();
+function hit(k,msg){cnt[k]++;renderRes();$("last").textContent=`${NAMES[k]}: ${msg}`;log(`★${NAMES[k]} ${msg}`);}
+
+// ---- 選択 ----
+const objs=[...board.querySelectorAll(".obj")];
+const sel=new Set();
+const paintSel=()=>objs.forEach(o=>o.classList.toggle("sel",sel.has(o.dataset.id)));
+const objAt=t=>t&&t.closest&&t.closest(".obj");
+
+// ---- ポインタの追跡 ----
+const ptrs=new Map();           // 触れている指
+let lastTap=null,tapChain=0,twoInfo=null,pending=null;
+const rel=e=>{const r=board.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+const dot=(x,y)=>{const d=document.createElement("div");d.className="dot";d.style.left=x+"px";d.style.top=y+"px";board.appendChild(d);setTimeout(()=>d.remove(),800);};
+const nameOf=o=>o?o.dataset.id:"背景";
+
+board.addEventListener("pointerdown",e=>{
+  const p=rel(e),now=performance.now(),o=objAt(e.target);
+  ptrs.set(e.pointerId,{x0:p.x,y0:p.y,x:p.x,y:p.y,t0:now,moved:false,obj:o,type:e.pointerType,selBefore:o?sel.has(o.dataset.id):false});
+  dot(p.x,p.y);
+  log(`down  #${e.pointerId} ${e.pointerType} (${p.x|0},${p.y|0}) 対象:${nameOf(o)} 指:${ptrs.size} scale:${vs()}`);
+  const me=ptrs.get(e.pointerId);
+  if(ptrs.size===2){twoInfo={t:now,moved:false};clearTimeout(me.lp);for(const q of ptrs.values())clearTimeout(q.lp);}
+  else{
+    // 長押し
+    me.lp=setTimeout(()=>{if(ptrs.has(e.pointerId)&&!me.moved&&ptrs.size===1){me.long=true;hit("long",`対象:${nameOf(o)} (${me.x|0},${me.y|0})`);}},500);
+    // 1回目のタップのすぐ後に押したか(タップ→ドラッグ)
+    if(lastTap&&now-lastTap.t<gap&&Math.hypot(p.x-lastTap.x,p.y-lastTap.y)<=dist)me.afterTap=true;
+  }
+  if(ptrs.size===1&&!o){me.range=true;}
+});
+board.addEventListener("pointermove",e=>{
+  const q=ptrs.get(e.pointerId);if(!q)return;const p=rel(e);q.x=p.x;q.y=p.y;
+  if(!q.moved&&Math.hypot(p.x-q.x0,p.y-q.y0)>8){q.moved=true;clearTimeout(q.lp);
+    if(twoInfo)twoInfo.moved=true;
+    log(`move開始 #${e.pointerId} ずれ${Math.hypot(p.x-q.x0,p.y-q.y0)|0}px`+(q.afterTap?" (直前のタップの直後に押した→ダブルタップ+ドラッグ)":""));
+    if(q.afterTap&&ptrs.size===1)hit("dtapDrag",`1回目から${(performance.now()-lastTap.t)|0}ms後に押してドラッグ`);
+  }
+  if(q.moved&&q.range&&ptrs.size===1&&!q.afterTap){
+    const x=Math.min(q.x0,p.x),y=Math.min(q.y0,p.y),w=Math.abs(p.x-q.x0),h=Math.abs(p.y-q.y0);
+    Object.assign(rub.style,{display:"block",left:x+"px",top:y+"px",width:w+"px",height:h+"px"});
+    sel.clear();objs.forEach(o=>{const l=o.offsetLeft,t=o.offsetTop;if(l<x+w&&l+o.offsetWidth>x&&t<y+h&&t+o.offsetHeight>y)sel.add(o.dataset.id);});paintSel();
+  }
+});
+function end(e,cancel){
+  const q=ptrs.get(e.pointerId);if(!q)return;clearTimeout(q.lp);
+  const now=performance.now(),dur=now-q.t0;
+  log(`${cancel?"cancel":"up   "} #${e.pointerId} 押していた${dur|0}ms 動き:${q.moved?"あり":"なし"} 指:${ptrs.size} scale:${vs()}`);
+  const wasTwo=twoInfo&&ptrs.size===2;
+  ptrs.delete(e.pointerId);
+  if(rub.style.display==="block"&&ptrs.size===0){rub.style.display="none";hit("range",`選択:${[...sel].join(",")||"なし"}`);}
+  if(cancel)return;
+  if(wasTwo&&!twoInfo.moved&&now-twoInfo.t<400){hit("two","2本指が同時に触れて離れた("+(now-twoInfo.t|0)+"ms)");twoInfo.done=true;return;}
+  if(ptrs.size===0)twoInfo=null;
+  if(q.moved||q.long||twoInfo||dur>350)return;
+  // ---- ここから「タップ」 ----
+  const o=q.obj,id=o?o.dataset.id:null;
+  // 選択(物をタップすると選択が切り替わる)
+  const selBefore=id?sel.has(id):false;
+  if(id){if(!selBefore){sel.clear();sel.add(id);}}else if(sel.size){sel.clear();}
+  paintSel();
+  const selAfter=id?sel.has(id):false;
+  hit("tap",`対象:${nameOf(o)} 選択 ${selBefore?"済":"前"}→${selAfter?"済":"なし"}`);
+  const prev=lastTap,d=prev?Math.hypot(q.x-prev.x,q.y-prev.y):0,iv=prev?now-prev.t:0;
+  if(prev&&iv<=gap&&d<=dist){
+    tapChain++;
+    const same=prev.id===id;
+    const info=`間隔${iv|0}ms ずれ${d|0}px 対象:${nameOf(o)}${same?"(同じ)":"(別: 前は"+(prev.id||"背景")+")"} 1回目の時点の選択:${prev.selAfter?"済":"なし"} 2回目の直前の選択:${selBefore?"済":"なし"}`;
+    if(tapChain===2){hit("dtap",info);if(id&&selBefore)hit("dtapSel",info);}
+    else if(tapChain===3){hit("triple",info);}
+    lastTap=tapChain>=3?null:{x:q.x,y:q.y,t:now,id,selAfter};if(!lastTap)tapChain=0;
+  }else{
+    if(prev)log(`  (前のタップとは別扱い: 間隔${iv|0}ms ${iv>gap?"→長すぎ":""} ずれ${d|0}px ${d>dist?"→離れすぎ":""})`);
+    tapChain=1;lastTap={x:q.x,y:q.y,t:now,id,selAfter};
+  }
+}
+board.addEventListener("pointerup",e=>end(e,false));
+board.addEventListener("pointercancel",e=>end(e,true));
+board.addEventListener("dblclick",e=>{hit("native",`対象:${nameOf(objAt(e.target))}`);});
+board.addEventListener("contextmenu",e=>e.preventDefault());
+// 画面側の動き(拡大・スクロール)を記録
+if(window.visualViewport){let ls=1;visualViewport.addEventListener("resize",()=>{const s=visualViewport.scale;if(Math.abs(s-ls)>.01){log(`⚠画面の拡大率が変わった ${ls.toFixed(2)}→${s.toFixed(2)}`);ls=s;}});}
+window.addEventListener("scroll",()=>log(`⚠ページがスクロールした y=${scrollY|0}`),{passive:true});
+setTab(1);
+window.touchLabDebug={cnt,sel:()=>[...sel]};
+})();
+</script>
+</body>
+</html>
