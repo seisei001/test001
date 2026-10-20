@@ -187,3 +187,10 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 機能を足した/不具合を直したら、§5(学び)・§7(できること)・§8(次の案)を更新する。
 - 動作確認の手順や部品の版を変えたら、`scripts/` と §2 を同時に直す。
 - 収録アプリの表(`webapp-hub` スキル)と `README.md` も更新する(`webapp-hub` の「アプリを追加・変更したら更新」の規約)。
+
+
+## 11. 別アプリ「PDFスタジオ」(docs/apps/pdf-studio/)
+- PDFエディタ(1.02)はそのまま残し、束デスク型の新アプリを別に作った。画面(フォーム)ごとに「名前+バージョン」を上に表示(index.html の `FORMS`)。全て2.0から。**変えた画面のバージョンだけ公開のたび0.01上げる**。
+- 画面: 起動画面(約1.5秒)/束デスク(束の一覧・めくり・チェック結合・分割・ばらす・ドラッグ並べ替え・元に戻す・IndexedDB保存)/機能メニュー(ダブルクリック)/ページ編集・歪み補正(`forms/editor.html?form=edit|warp&embed=1` をiframeで埋め込み。postMessage: ready→load→result/close。表示中の1ページだけ渡し、保存で束のそのページを差し替える)。
+- `forms/editor.html` はPDFエディタ本体のコピー+埋め込み用の追加。エディタ側を直したら両方に反映するか、どちらに入れるか決める。
+- 確認: `PDFAPP_TARGET=pdf-studio node scripts/test-studio.js`(デスク)と `test-studio-forms.js`(フォーム)。事前に make-studio-pdfs.js / make-warp-photo.js。未確認: 実機のタッチ長押しドラッグ・iPhone表示・巨大PDF。

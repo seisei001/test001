@@ -5,7 +5,7 @@ const {execSync}=require('child_process');
 const fs=require('fs'),path=require('path');
 const WORK=process.env.PDFAPP_WORK||'/tmp/pdfapp-work';
 const LIB=path.join(WORK,'lib/node_modules')+'/';
-const APP='file://'+path.resolve(__dirname,'../../../../docs/apps/pdf-editor/index.html');
+const APP='file://'+path.resolve(__dirname,'../../../../docs/apps/'+(process.env.PDFAPP_TARGET||'pdf-editor')+'/index.html');   // PDFAPP_TARGET=pdf-studio で、新しいアプリ(PDFスタジオ)を開く
 const playwright=require(path.join(execSync('npm root -g').toString().trim(),'playwright'));
 // アプリが指定している「パス」 → npmの実ファイルの場所
 const FIXED={
