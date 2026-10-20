@@ -20,6 +20,9 @@ const FORM=[
   {name:'v3b',size:10.5,lh:1.3,align:'left',x:300,base:243,lines:['理事長']},   // 上の行の下にたまたま収まっている、字下げされた別の行
   {name:'l4',size:10.5,lh:1.3,align:'left',x:60,base:290,lines:['委任期間:']},
   {name:'v4',size:10.5,lh:1.3,align:'left',x:190,base:290,lines:['令和8年10月20日から委任事項が終了するまで']},
+  {name:'g1',size:9,ls:3,lh:1.3,align:'left',x:60,base:440,lines:['委任事項:']},   // 字間の広いラベルと、すぐ右(約1文字の隙間)の値は、別の部品
+  {name:'g2',size:9,ls:0,lh:1.3,align:'left',x:131,base:440,lines:['特定非営利活動法人福祉ネット寿に係る市に対する質疑']},
+  {name:'g3',size:9,ls:0,lh:1.3,align:'left',x:131,base:453,lines:['応答に関する業務']},
   {name:'i1',size:10.5,lh:1.3,align:'left',x:60,base:400,lines:['1行目は、ふつうの位置から始まります。']},
   {name:'i2',size:10.5,lh:1.3,align:'left',x:75,base:414,lines:['2行目は、少し字下げされています。']},   // 行の始まりが違う行は、別の部品
   {name:'n1',size:10.5,lh:1.3,align:'left',x:300,base:340,lines:['令和']},
