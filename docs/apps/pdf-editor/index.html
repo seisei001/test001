@@ -166,6 +166,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 <div id="selTextBox">
 <div class="row">
 <label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5"></label>
+<label>字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label>色 <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
 <div class="seg"><button id="sAL">左揃え</button><button id="sAC">中央</button><button id="sAR">右揃え</button></div>
@@ -621,7 +622,7 @@ function buildText(it,t,k){
 function measureHost(it,g){
   const d=document.createElement("div");
   d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
-  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt);d.style.fontSize=it.size*g+"px";
+  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt);d.style.fontSize=it.size*g+"px";d.style.letterSpacing=(it.ls||0)*g+"px";
   buildText(it,d,g);document.body.appendChild(d);return d;
 }
 // 枠が足りなければ広げる(単語が枠より長い→幅、行数が多い→高さ)
@@ -709,6 +710,7 @@ document.addEventListener("selectionchange",()=>{
   const r=getSelRange(t);if(!r)return;
   lastSel={id:cs.id,start:r.start,end:r.end};
   if(document.activeElement!==$("sSize"))showSize();
+  if(document.activeElement!==$("sLs"))$("sLs").value=cs?Math.round((cs.ls||0)*10)/10:0;
 });
 function showSize(){
   if(!cs||cs.type==="img")return;
@@ -738,7 +740,7 @@ window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
-  if(t){t.style.fontFamily=famOf(it.fmt);t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
+  if(t){t.style.fontFamily=famOf(it.fmt);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
 function renderOverlay(){
@@ -849,6 +851,7 @@ function syncPanel(){
 function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);
   const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
 $("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>0)applySize(cs,v,activeRange(cs));}};
+$("sLs").onchange=()=>{if(cs&&cs.type!=="img"){cs.ls=Math.max(-2,Math.min(40,+$("sLs").value||0))||0;growToFit(cs);renderOverlay();syncPanel();}};   // 字間: 文字と文字の間の空き(元の書式が均等割付などのとき、変換で自動でも入る)
 $("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
 $("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
@@ -1271,8 +1274,8 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
   // (1) 行: 横に近く、縦に重なる断片をつなぐ
   const U=uf(comps.length);
   for(let i=0;i<comps.length;i++){const a=comps[i];
-    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.3*Hmax)break;
-      if(!rowMode&&gap>1.2*Math.max(a.h,b.h,0.8*Hmed))continue;
+    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.8*Hmax)break;   // 字間の広い書式(均等割付)や、「、」の後の空きで、行が割れないように
+      if(!rowMode&&gap>1.6*Math.max(a.h,b.h,0.8*Hmed))continue;
       const ov=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0),mn=Math.min(a.h,b.h);
       let near=ov>=0.45*mn;
       if(!near&&mn<0.35*Hmed){const dy=Math.abs((a.y0+a.y1)/2-(b.y0+b.y1)/2);near=dy<=0.6*Math.max(a.h,b.h)+0.5*Hmed;} // 細い横線(ニの棒・ー)は、縦位置が近ければ同じ行
@@ -1504,10 +1507,19 @@ function fitOcrWidth(it,g){
   fitCtx.font="100px "+famOf("text");
   const e=[];
   g.forEach(r=>{if(!r.ocr||!(r.w>2)||!r.str)return;const m=fitCtx.measureText(r.str),w100=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;   // 画像から測った幅は「見えている文字の幅」なので、文字の送り幅ではなく、見えている幅で比べる
-    if(w100>0)e.push({v:r.w/(w100/100),w:Array.from(r.str).length});});
+    if(w100>0){const n=Array.from(r.str).length;e.push({v:r.w/(w100/100),w:n,run:r,w100,n,cjk:/[\u3040-\u30ff\u3400-\u9fff]/.test(r.str)&&r.gh>0});}});
   if(!e.length)return;
-  // 行の中の空白(単語の間)が読み取りで落ちていると、その行だけ幅が大きく出て、大きすぎる値になる → 中央値より少し低い側(下から35%)を採る
   const wq=(arr,q)=>{const t=[...arr].sort((a,b)=>a.v-b.v),tot=t.reduce((a,b)=>a+b.w,0);let acc=0;for(const z of t){acc+=z.w;if(acc>=tot*q)return z.v;}return t[t.length-1].v;};
+  // 字間(字送り)の検出: 日本語の行は、文字の高さ(≒サイズ)がわかる。幅から求めたサイズが、高さから求めたサイズより1.1倍以上大きいなら、文字の間が空いている(均等割付・字間の広い書式)
+  const tr=e.filter(z=>z.cjk&&z.n>=4).map(z=>({...z,sg:z.run.gh/0.9})).filter(z=>z.v/z.sg>1.1&&z.v/z.sg<1.8);
+  const cj=e.filter(z=>z.cjk&&z.n>=4);
+  if(cj.length&&tr.length>=cj.length*0.6){
+    const size=Math.max(4,Math.round(wq(tr.map(z=>({v:z.sg,w:z.w})),0.5)*10)/10);
+    const ls=tr.map(z=>({v:(z.run.w-z.w100/100*size)/(z.n-1),w:z.w}));
+    const lsv=Math.round(wq(ls,0.5)*10)/10;
+    if(lsv>0.3){const kk=size/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=size;it.ls=lsv;return;}
+  }
+  // 行の中の空白(単語の間)が読み取りで落ちていると、その行だけ幅が大きく出て、大きすぎる値になる → 中央値より少し低い側(下から35%)を採る
   const ideal=wq(e,0.35),k0=ideal/it.size,k=Math.max(0.82,Math.min(1.2,k0));
   const ns=Math.round(it.size*k*10)/10;if(ns===it.size)return;
   const kk=ns/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=ns;
@@ -1556,7 +1568,7 @@ async function doOcrBody(x,y,w,h){
     fitCtx.font=c.final+"px "+famOf("text");const desc=fitCtx.measureText(joinWords(l.words)).actualBoundingBoxDescent||c.final*0.1,base=l.y1-desc+c.final*0.1;   // +0.1: 2種類のフォントの見本で、基準線が平均1.4pt(サイズの約0.1)上に出たのを補正(実測)
     // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
     const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
-    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
+    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,gh:l.y1-l.y0,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
   // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
@@ -1602,7 +1614,7 @@ function layoutText(it,wfn){
     // 行頭: 左へ戻った、または、直前の文字より下の行(中央・右揃いでは左へ戻らないことがある)
     if(cur.ch.length&&prev&&(ps.l<prev.l-0.5||ps.t>=prev.b-1)){lines.push(cur);cur={ch:[],w:0};}
     prev=ps;
-    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv);
+    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv)+(it.ls||0);   // 字間(letter-spacing)も、1文字の幅に含める
     cur.ch.push({c,s:sv,w});cur.w+=w;
   });
   lines.push(cur);
@@ -1651,6 +1663,9 @@ async function commit(){
       const L=layoutText(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
       L.lines.forEach(ln=>{
         let off=ln.off||0;
+        if(it.ls){   // 字間がある文字は、1文字ずつ置く(PDFの文字間隔を指定する命令を使わずに、位置で表す)
+          ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);page.drawText(chr.c,{x:ax,y:ay,size:chr.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});}off+=chr.w;});
+          return;}
         runsOf(ln).forEach(rn=>{
           const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);
           page.drawText(rn.str,{x:ax,y:ay,size:rn.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});
@@ -1676,7 +1691,7 @@ async function commit(){
 }
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

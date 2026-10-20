@@ -33,14 +33,21 @@ const BLOCKS_BASE=[
   {name:'date',size:11,lh:1.3,align:'right',x:535,base:440,lines:['2024年10月15日']},
   {name:'big',size:16,lh:1.3,align:'left',x:60,base:500,lines:['お支払い金額 ¥123,456']},
 ];
-const BLOCKS=process.env.LAYOUT_SET==='form'?FORM:BLOCKS_BASE;
+// LAYOUT_SET=track: 字間の広い(均等割付のような)行と、普通の行
+const TRACK=[
+  {name:'t1',size:10.5,ls:3.2,lh:1.3,align:'left',x:60,base:120,lines:['私は、上記のものを代理人と定め、下記の権限を委任します。']},
+  {name:'t2',size:12,ls:2.4,lh:1.3,align:'left',x:60,base:170,lines:['特定非営利活動法人福祉ネット寿']},
+  {name:'t3',size:10.5,ls:0,lh:1.3,align:'left',x:60,base:220,lines:['この行は字間が普通で、位置と大きさだけを合わせます。']},
+  {name:'t4',size:14,ls:4.5,lh:1.3,align:'left',x:60,base:270,lines:['委任状の写しを添付します']},
+];
+const BLOCKS=process.env.LAYOUT_SET==='form'?FORM:process.env.LAYOUT_SET==='track'?TRACK:BLOCKS_BASE;
 (async()=>{
   const d=await PDFDocument.create();d.registerFontkit(fontkit);
   const f=await d.embedFont(fs.readFileSync(FONT),{subset:false});
   const p=d.addPage([W,H]);
   const truth=BLOCKS.map(b=>{
-    const lw=b.lines.map(l=>f.widthOfTextAtSize(l,b.size));
-    b.lines.forEach((l,i)=>{const x=b.align==='left'?b.x:b.align==='center'?b.x-lw[i]/2:b.x-lw[i];p.drawText(l,{x,y:H-(b.base+i*b.size*b.lh),size:b.size,font:f});});
+    const lw=b.lines.map(l=>f.widthOfTextAtSize(l,b.size)+(b.ls||0)*(Array.from(l).length-1));
+    b.lines.forEach((l,i)=>{const x=b.align==='left'?b.x:b.align==='center'?b.x-lw[i]/2:b.x-lw[i];if(b.ls){let cx=x;for(const c of Array.from(l)){p.drawText(c,{x:cx,y:H-(b.base+i*b.size*b.lh),size:b.size,font:f});cx+=f.widthOfTextAtSize(c,b.size)+b.ls;}}else p.drawText(l,{x,y:H-(b.base+i*b.size*b.lh),size:b.size,font:f});});
     const x0=b.align==='left'?b.x:b.align==='center'?b.x-Math.max(...lw)/2:b.x-Math.max(...lw);
     return{...b,x0,x1:x0+Math.max(...lw),top:b.base-b.size*0.9,bottom:b.base+(b.lines.length-1)*b.size*b.lh+b.size*0.25};
   });
