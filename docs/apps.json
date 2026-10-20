@@ -110,5 +110,12 @@
     "description": "PDFの結合・分割・並べ替え・回転・削除。ドラッグで範囲を指定してその場で文字・画像を置き、選択して訂正・削除。PDF内の既存の文字の訂正にも対応(端末内で処理)",
     "path": "apps/pdf-editor/",
     "icon": "📄"
+  },
+  {
+    "id": "pdf-studio",
+    "name": "PDFスタジオ",
+    "description": "PDFを「束」として並べ、結合・分割・ばらす・ページ編集・歪み補正を機能ごとの画面で行うPDF編集ソフト",
+    "path": "apps/pdf-studio/",
+    "icon": "🗂️"
   }
 ]

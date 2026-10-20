@@ -1,0 +1,1833 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PDFスタジオ">
+<title>PDFスタジオ - ページ編集・歪み補正</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--danger:#dc2626;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+header{padding:16px;max-width:900px;margin:0 auto;}
+.back-link{display:inline-block;margin-bottom:8px;color:var(--muted);text-decoration:none;font-size:.85rem;}
+h1{margin:0 0 4px;font-size:1.3rem;}
+.sub{color:var(--muted);font-size:.85rem;margin:0;}
+main{max-width:900px;margin:0 auto;padding:0 16px 48px;display:flex;flex-direction:column;gap:14px;}
+.panel{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.panel h2{margin:0 0 10px;font-size:1rem;}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+button,.btn{border:none;border-radius:8px;padding:10px 14px;min-height:44px;font-size:.9rem;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;}
+button:hover,.btn:hover{background:var(--accent-hover);}
+button.sub-btn,.btn.sub-btn{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+button:disabled{opacity:.4;cursor:default;}
+input[type=text],input[type=number],textarea{font-size:16px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel-bg);color:var(--text);font-family:inherit;min-height:44px;}
+textarea{width:100%;min-height:70px;resize:vertical;}
+input[type=number]{width:90px;}
+input[type=color]{width:44px;height:44px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--panel-bg);}
+label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;}
+.thumb{border:2px solid var(--border);border-radius:8px;padding:6px;text-align:center;background:var(--bg);cursor:pointer;position:relative;}
+.thumb.cur{border-color:var(--accent);}
+.thumb canvas{max-width:100%;height:auto;background:#fff;display:block;margin:0 auto;}
+.thumb .no{font-size:.75rem;color:var(--muted);margin-top:4px;}
+.thumb input{position:absolute;top:6px;left:6px;width:22px;height:22px;}
+.stage{overflow:auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;}
+
+.hint{color:var(--muted);font-size:.8rem;margin:6px 0 0;}
+.seg{display:flex;gap:0;}
+.seg button{border-radius:0;background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.seg button:first-child{border-radius:8px 0 0 8px;}.seg button:last-child{border-radius:0 8px 8px 0;}
+.seg button.on{background:var(--accent);color:#fff;}
+#ver{position:fixed;top:6px;right:10px;z-index:1500;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel-bg,#fff);border:1px solid var(--border);border-radius:999px;padding:2px 10px;opacity:.9;pointer-events:none;}
+/* PDFスタジオの「ページ編集」「歪み補正」フォームとして動くとき(?embed=1&form=edit|warp): ファイルを開く・ページ操作は出さない */
+#embHead{display:none;gap:8px;align-items:center;padding:10px 16px;position:sticky;top:0;z-index:50;background:var(--panel-bg);border-bottom:1px solid var(--border);}
+body.embed #embHead{display:flex;}
+body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
+body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
+body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
+#status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
+#job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(560px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.9rem;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
+#job.done{border-color:#16a34a;border-width:2px;}
+#job.fail{border-color:#dc2626;border-width:2px;}
+#job .spin{width:20px;height:20px;border:3px solid rgba(37,99,235,.3);border-top-color:#2563eb;border-radius:50%;animation:sp .8s linear infinite;flex:none;}
+#job.done .spin,#job.fail .spin{display:none;}
+#job progress{width:100%;height:10px;display:block;margin-top:4px;}
+#job.done progress,#job.fail progress{display:none;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.ocrrng{position:absolute;border:2px solid #2563eb;background:rgba(37,99,235,.10);pointer-events:none;}
+.ocrrng.done{border-color:#16a34a;background:rgba(22,163,74,.10);}
+.hidden{display:none!important;}
+#ctx{position:fixed;z-index:1000;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:4px;display:flex;flex-direction:column;max-height:70vh;overflow:auto;min-width:150px;}
+#ctx .h{font-size:.75rem;color:var(--muted);padding:4px 8px;}
+#ctx button{background:transparent;color:var(--text);border:none;border-radius:6px;min-height:32px;padding:4px 10px;justify-content:flex-start;font-size:.85rem;}
+#ctx button:hover{background:var(--accent);color:#fff;}
+#pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
+#pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
+#ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
+#ov.draw{cursor:crosshair;touch-action:none;}
+#ov.ghost .cover{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
+#ov.ghost .ibox .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}
+#ov.ghost .ibox{background:transparent!important;}
+#ov.noitems .ibox,#ov.noitems .ibox *,#ov.noitems .run{pointer-events:none!important;}
+.rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
+.run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
+.cover{position:absolute;pointer-events:none;}
+.ibox{position:absolute;outline:1px dashed rgba(37,99,235,.8);line-height:1.3;color:#000;}
+.ibox.on{outline:2px solid #2563eb;z-index:5;}
+.ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;outline:none;cursor:text;}
+.ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
+.ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
+.hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
+.hdl.mv{left:-13px;top:-13px;}.hdl.rs{right:-13px;bottom:-13px;cursor:nwse-resize;}
+
+.part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
+.part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.part .seg button{min-height:36px;padding:4px 10px;font-size:.8rem;}
+.part .danger{min-height:36px;padding:4px 10px;font-size:.8rem;}
+@media (prefers-color-scheme: dark){:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;}}
+</style>
+</head>
+<body>
+<div id="embHead"><span class="sub" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span></div>
+<header>
+<div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
+<a class="back-link" href="../../">← ハブに戻る</a>
+<h1>📄 PDFエディタ</h1>
+<p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
+</header>
+<main>
+<section class="panel">
+<h2>① ファイル</h2>
+<div class="row">
+<label class="btn" for="fOpen">PDFを開く</label>
+<input id="fOpen" type="file" accept="application/pdf" class="hidden">
+<label class="btn sub-btn" for="fMerge" id="mergeLbl">PDFを後ろに結合</label>
+<input id="fMerge" type="file" accept="application/pdf" multiple class="hidden">
+<button class="sub-btn" id="bNew">新規(空白A4)</button>
+<button id="bSave" disabled>💾 名前を付けて保存</button><button class="sub-btn hidden" id="bOverwrite" disabled>上書き保存</button>
+<button class="sub-btn" id="bUndo" disabled>↩ 元に戻す</button>
+</div>
+<div id="status">PDFを開くか、新規作成してください。</div>
+<div id="job" class="hidden" role="status" aria-live="polite"><div class="spin"></div><div style="flex:1"><b id="jobT"></b><progress id="jobP" max="100" value="0"></progress></div></div>
+</section>
+
+<section class="panel" id="pagesPanel" style="display:none">
+<h2>② ページ操作 <span class="sub" id="pageCount"></span></h2>
+<div class="row" style="margin-bottom:10px">
+<button class="sub-btn" id="bAll">全選択/解除</button>
+<button id="bRot">⟳ 回転</button>
+<button id="bUp">◀ 前へ</button>
+<button id="bDown">後ろへ ▶</button>
+<button id="bBlank">＋空白ページ</button>
+<button id="bExtract" class="sub-btn">選択を別PDFで保存(分割)</button>
+<button id="bDel" class="danger">選択を削除</button>
+</div>
+<div class="grid" id="grid"></div>
+<p class="hint">チェックを入れたページが操作対象です。サムネイルをタップするとそのページを下で編集できます。</p>
+</section>
+
+<section class="panel" id="editPanel" style="display:none">
+<h2>③ 文字・画像の追加と訂正 <span class="sub" id="curNo"></span></h2>
+<div class="row" style="margin-bottom:8px">
+<div class="seg" id="modeSeg">
+<button data-m="sel" class="on">✋ 選択・訂正</button><button data-m="text">＋文字</button><button data-m="img">＋画像</button><button data-m="ocr">🔍 画像の文字を認識</button><button data-m="warp">📐 歪み補正</button>
+</div>
+</div>
+<p class="hint" id="modeHint" style="margin:0 0 8px"></p>
+<div class="row" id="optText" style="margin-bottom:8px">
+<label>サイズ(pt) <input type="number" id="nSize" value="10.5" min="4" max="400" step="0.5"></label>
+<label>色 <input type="color" id="nColor" value="#000000"></label>
+</div>
+<div class="row hidden" id="optFix" style="margin-bottom:8px">
+<label><input type="checkbox" id="ovGhost"> 元の画像と重ねて位置を確認する(変換した文字を赤、元の画像をそのまま表示)</label>
+<label><input type="checkbox" id="fxJoin"> 範囲内の文字を、行も含めて全部1つの枠にまとめる</label>
+<label>空白がこの倍数以上なら分ける <input type="number" id="fxGap" value="10" min="1" max="40" step="0.5" style="width:80px"> ×文字サイズ</label>
+</div>
+<div class="row hidden" id="optOcr" style="margin-bottom:8px">
+<label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
+<label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label>
+<button class="sub-btn" id="bOcrPage">このページ全体を認識</button>
+<label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label>
+<span class="sub">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
+</div>
+<div class="row hidden" id="optWarp" style="margin-bottom:8px">
+<div class="seg"><button id="wkPage" class="on">一括(ページ全体)</button><button id="wkPart">部分(範囲を指定)</button></div>
+<button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button>
+<button id="wApply">補正する</button>
+<button class="sub-btn" id="wCancel">やめる</button>
+</div>
+<div class="row hidden" id="optImg" style="margin-bottom:8px">
+<label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
+<input id="fImg" type="file" accept="image/png,image/jpeg" class="hidden">
+<span id="imgName" class="sub"></span>
+</div>
+<div class="stage"><div id="pagewrap"><canvas id="stage"></canvas><div id="ov"></div></div></div>
+<div id="wPrevBox" class="hidden" style="margin-top:10px"><div class="sub" style="margin-bottom:4px">補正後のイメージ(プレビュー。「補正する」で、実際のページに反映します)</div><canvas id="wPrev" style="max-width:100%;border:1px solid var(--border);background:#fff"></canvas></div>
+<div id="selPanel" class="panel hidden" style="margin-top:10px">
+<h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
+<div id="selTextBox">
+<div class="row">
+<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5"></label>
+<label>字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
+<label>色 <input type="color" id="sColor"></label>
+<div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
+<div class="seg"><button id="sAL">左揃え</button><button id="sAC">中央</button><button id="sAR">右揃え</button></div>
+</div>
+<label style="margin-top:8px"><input type="checkbox" id="sAuto" checked> 枠の大きさを変えたら、文字サイズを自動で合わせる</label>
+<p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠の右下(⇲)をドラッグして大きさを変えると、枠に収まる最大の文字サイズに自動で合わせます(複数行や、サイズを混ぜた文字は相対比を保ちます)。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
+</div>
+<div class="row" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
+<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo">ページ操作・ダウンロード時も自動で反映されます</span></div>
+<p class="hint"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+(function(){
+"use strict";
+const {PDFDocument,degrees,rgb,StandardFonts}=PDFLib;
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+const $=id=>document.getElementById(id);
+
+const FONT_URL="https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf";
+let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), fileName="edited.pdf";
+
+function status(m){$("status").textContent=m;}
+// 時間のかかる作業の表示(動いている印+進み具合+終わったらはっきり「完了」)
+let jobTimer=null;
+const job={
+  start(t){clearTimeout(jobTimer);const j=$("job");j.className="";$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
+  step(t,pct){$("jobT").textContent=t;if(pct!=null)$("jobP").value=pct;},
+  done(t){const j=$("job");j.className="done";$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),15000);},
+  fail(t){const j=$("job");j.className="fail";$("jobT").textContent="⚠ "+t;}
+};
+let ocrRunning=false;
+function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+"(暗号化PDFなどは非対応の場合があります)");}};}
+
+async function setBytes(nb,keepCur){
+  if(bytes)hist.push(bytes);
+  if(hist.length>20)hist.shift();
+  bytes=nb;
+  await refresh(keepCur);
+}
+async function refresh(keepCur){
+  warp=null;
+  if(pdfView){try{pdfView.destroy();}catch{}}
+  pdfView=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+  const n=pdfView.numPages;
+  if(!keepCur||cur>=n)cur=Math.min(cur,n-1);
+  if(cur<0)cur=0;
+  sel=new Set([...sel].filter(i=>i<n));
+  $("pagesPanel").style.display=$("editPanel").style.display="";
+  $("bSave").disabled=false;$("bUndo").disabled=!hist.length;
+  $("pageCount").textContent=`(全${n}ページ)`;
+  status(`${n}ページ / ${(bytes.length/1024).toFixed(0)} KB`);
+  await renderGrid();await renderStage();
+}
+async function renderGrid(){
+  const g=$("grid");g.innerHTML="";
+  for(let i=0;i<pdfView.numPages;i++){
+    const d=document.createElement("div");d.className="thumb"+(i===cur?" cur":"");
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=sel.has(i);
+    cb.onclick=e=>{e.stopPropagation();cb.checked?sel.add(i):sel.delete(i);};
+    const c=document.createElement("canvas");
+    const no=document.createElement("div");no.className="no";no.textContent=i+1;
+    d.append(cb,c,no);
+    d.onclick=()=>{cur=i;warp=null;if(typeof select==="function")select(null);[...g.children].forEach((x,j)=>x.classList.toggle("cur",j===i));renderStage();};
+    g.appendChild(d);
+    const p=await pdfView.getPage(i+1);
+    const v0=p.getViewport({scale:1});const s=100/Math.max(v0.width,v0.height)*1.5;
+    const v=p.getViewport({scale:s});c.width=v.width;c.height=v.height;
+    await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+  }
+}
+let stageScale=1;
+async function renderStage(){
+  if(!pdfView)return;
+  $("curNo").textContent=`(${cur+1}ページ目)`;
+  const p=await pdfView.getPage(cur+1);
+  const v1=p.getViewport({scale:1});VW=v1.width;VH=v1.height;
+  stageScale=Math.min(2,Math.max(1,(window.devicePixelRatio||1)))*1.3;
+  const v=p.getViewport({scale:stageScale});
+  const c=$("stage");c.width=v.width;c.height=v.height;
+  await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+  runsFor=-1;
+  if(mode==="sel")await loadRuns();
+  renderOverlay();
+}
+const readFile=f=>new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(new Uint8Array(x.result));x.onerror=j;x.readAsArrayBuffer(f);});
+
+$("fOpen").onchange=busy(async e=>{
+  const f=e.target.files[0];if(!f)return;
+  const b=await readFile(f);await PDFDocument.load(b); // 検証
+  fileName=f.name.replace(/\.pdf$/i,"")+"_edited.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");
+  hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;e.target.value="";
+});
+$("fMerge").onchange=busy(async e=>{
+  const files=[...e.target.files];if(!files.length)return;
+  if(!bytes){status("先にPDFを開くか新規作成してください。");return;}
+  await commit();
+  const doc=await PDFDocument.load(bytes);
+  for(const f of files){
+    const o=await PDFDocument.load(await readFile(f));
+    const ps=await doc.copyPages(o,o.getPageIndices());ps.forEach(p=>doc.addPage(p));
+  }
+  e.target.value="";await setBytes(await doc.save(),true);
+});
+$("bNew").onclick=busy(async()=>{
+  const doc=await PDFDocument.create();doc.addPage([595.28,841.89]);
+  fileName="new.pdf";saveHandle=null;$("bOverwrite").classList.add("hidden");hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(await doc.save());hist=[];$("bUndo").disabled=true;
+});
+$("bUndo").onclick=busy(async()=>{
+  if(items.length){items.pop();cs=null;syncPanel();await renderStage();return;}
+  if(!hist.length)return;bytes=hist.pop();await refresh(true);});
+// 「名前を付けて保存」: 普通のソフトのように、保存先とファイル名を選んで保存する(File System Access API。Chrome/Edgeなど)。使えないブラウザでは、従来のダウンロードにする
+let saveHandle=null;
+async function saveAs(b,name,keep){
+  if(!window.showSaveFilePicker){download(b,name);status("このブラウザは保存先を選べないので、ダウンロードしました(Chrome・Edgeでは保存先とファイル名を選べます)。");return false;}
+  let h;
+  try{h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});}
+  catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}throw e;}
+  const w=await h.createWritable();await w.write(new Blob([b],{type:"application/pdf"}));await w.close();
+  if(keep){saveHandle=h;fileName=h.name;$("bOverwrite").classList.remove("hidden");$("bOverwrite").disabled=false;}
+  status(`「${h.name}」として保存しました。`);return true;
+}
+$("bSave").onclick=busy(async()=>{await commit();await saveAs(bytes,fileName,true);});
+$("bOverwrite").onclick=busy(async()=>{   // 保存したファイルに、そのまま上書き
+  if(!saveHandle)return;await commit();
+  const w=await saveHandle.createWritable();await w.write(new Blob([bytes],{type:"application/pdf"}));await w.close();
+  status(`「${saveHandle.name}」に上書き保存しました。`);
+});
+function download(b,name){
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b],{type:"application/pdf"}));
+  a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+}
+const selList=()=>[...sel].sort((a,b)=>a-b);
+$("bAll").onclick=()=>{const n=pdfView.numPages;sel=sel.size===n?new Set():new Set([...Array(n).keys()]);renderGridChecks();};
+function renderGridChecks(){[...$("grid").children].forEach((d,i)=>d.querySelector("input").checked=sel.has(i));}
+function target(){return sel.size?selList():[cur];}
+$("bRot").onclick=busy(async()=>{
+  await commit();
+  const doc=await PDFDocument.load(bytes);
+  target().forEach(i=>{const p=doc.getPage(i);p.setRotation(degrees((p.getRotation().angle+90)%360));});
+  await setBytes(await doc.save(),true);
+});
+$("bDel").onclick=busy(async()=>{
+  await commit();
+  const t=target();const doc=await PDFDocument.load(bytes);
+  if(t.length>=doc.getPageCount()){status("全ページは削除できません。");return;}
+  if(!confirm(`${t.length}ページを削除しますか?(元に戻すで復元できます)`))return;
+  t.reverse().forEach(i=>doc.removePage(i));sel=new Set();cur=0;
+  await setBytes(await doc.save());
+});
+async function move(dir){
+  await commit();
+  const t=selList();if(!t.length){status("移動するページにチェックを入れてください。");return;}
+  const n=pdfView.numPages;const order=[...Array(n).keys()];
+  const set=new Set(t);
+  if(dir<0){for(let k=1;k<n;k++)if(set.has(order[k])&&!set.has(order[k-1]))[order[k-1],order[k]]=[order[k],order[k-1]];}
+  else{for(let k=n-2;k>=0;k--)if(set.has(order[k])&&!set.has(order[k+1]))[order[k+1],order[k]]=[order[k],order[k+1]];}
+  const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
+  const ps=await out.copyPages(src,order);ps.forEach(p=>out.addPage(p));
+  sel=new Set(order.map((o,k)=>set.has(o)?k:-1).filter(k=>k>=0));cur=order.indexOf(cur);
+  await setBytes(await out.save(),true);
+}
+$("bUp").onclick=busy(()=>move(-1));$("bDown").onclick=busy(()=>move(1));
+$("bBlank").onclick=busy(async()=>{
+  await commit();
+  const doc=await PDFDocument.load(bytes);const ref=doc.getPage(cur);
+  const {width,height}=ref.getSize();doc.insertPage(cur+1,[width,height]);
+  cur=cur+1;sel=new Set();await setBytes(await doc.save(),true);
+});
+$("bExtract").onclick=busy(async()=>{
+  await commit();
+  const t=selList();if(!t.length){status("分割するページにチェックを入れてください。");return;}
+  const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
+  (await out.copyPages(src,t)).forEach(p=>out.addPage(p));
+  const ok=await saveAs(await out.save(),fileName.replace(/_edited\.pdf$|\.pdf$/,"")+"_part.pdf",false);
+  if(ok)status(`${t.length}ページを別PDFとして保存しました(元のPDFは変わりません)。`);
+});
+
+// ====== 文字・画像・既存文字の訂正 ======
+let blockOf=new Map(),mode="sel",cs=null,VW=1,VH=1,runs=[],runsFor=-1,imgData=null,curBase=null;
+const ov=$("ov");
+const itemEls=new Map();
+const FAMILY_PIC='"Hiragino Sans","Yu Gothic","Noto Sans CJK JP","Noto Sans JP",sans-serif';
+let webFontOK=false;
+async function loadFontBytes(){if(!fontBytes){const res=await fetch(FONT_URL);if(!res.ok)throw new Error("日本語フォントを取得できませんでした");fontBytes=await res.arrayBuffer();}}
+// 入力中の枠と確定後のPDFで同じフォントを使うため、画面側にも読み込む
+async function ensureWebFont(){
+  if(webFontOK)return;
+  await loadFontBytes();
+  const ff=new FontFace("PdfJP",fontBytes.slice(0));await ff.load();document.fonts.add(ff);webFontOK=true;
+}
+const famOf=fmt=>fmt==="pic"?FAMILY_PIC:'"PdfJP",sans-serif';
+const metCache={};
+function baseOff(fmt,size,lh){ // 枠の上端から1行目のベースラインまでの距離(CSSの行ボックスと同じ計算)
+  const key=fmt+(webFontOK?"1":"0");
+  if(!metCache[key]){const cx=document.createElement("canvas").getContext("2d");cx.font="100px "+famOf(fmt);
+    const m=cx.measureText("あ");metCache[key]={A:(m.fontBoundingBoxAscent||88)/100,D:(m.fontBoundingBoxDescent||12)/100};}
+  const {A,D}=metCache[key];return size*((lh-(A+D))/2+A);
+}
+const hex2rgb=h=>rgb(parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255);
+function toUser(vx,vy,W,H,r){
+  switch(r){case 90:return[vy,vx];case 180:return[W-vx,vy];case 270:return[W-vy,H-vx];default:return[vx,H-vy];}
+}
+const K=()=>ov.getBoundingClientRect().width/VW||1;
+const HINTS={
+  sel:"PDFの文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)すると、その文字が編集できる部品になります。書き換え(訂正)・打ち足し(加筆)・全部消す(削除)ができます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。文字のない所をドラッグすると、新しい文字の枠になります。部品はタップで選択し、移動・サイズ変更・削除ができます。",
+  text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください(PDFの文字の上でも、新しい枠を作ります)。",
+  warp:"写真で歪んだページを直します。四隅の青い点でページの形を合わせ、白い点(格子点)を動かすと、その点を通る曲線で、中ほどだけの歪みも直せます。確定(補正する)するまで、ページは変わりません。補正したページは画像になります(文字データはなくなります。元に戻すで戻せます)。補正後に「🔍 画像の文字を認識」で文字にできます。",
+  ocr:"画像として入っている文字(スキャンなど)を、範囲をドラッグして文字にします。認識した文字は、元の文字を背景色で隠して、編集できる部品になります。誤認識は枠の中で直してください。ページ全体は右のボタンで認識できます。",
+  img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。"
+};
+function setMode(m){
+  mode=m;
+  [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
+  $("modeHint").textContent=HINTS[m];
+  $("optText").classList.toggle("hidden",m!=="text");
+  $("optImg").classList.toggle("hidden",m!=="img");
+  $("optFix").classList.toggle("hidden",m!=="sel"&&m!=="ocr");
+  $("optOcr").classList.toggle("hidden",m!=="ocr");
+  $("optWarp").classList.toggle("hidden",m!=="warp");
+  if(m!=="warp"){warp=null;$("wPrevBox").classList.add("hidden");}
+  else{updateWarpUi();if(warpKind==="page"&&pdfView&&!warp)initWarpPage();}
+  ov.classList.add("draw");ov.classList.toggle("noitems",m==="ocr"||m==="warp");   // 範囲指定のときは、部品の上からでもドラッグできる
+  renderOverlay();
+  if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
+}
+[...$("modeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+// 「元の画像と重ねて確認」は、既定でオン(赤く透かして元の画像と重ねる)。切り替えは覚えておく(ブラウザに保存)
+{let g="1";try{g=localStorage.getItem("pdfEditorGhost")||"1";}catch{}
+ $("ovGhost").checked=g==="1";ov.classList.toggle("ghost",$("ovGhost").checked);}
+$("ovGhost").onchange=()=>{ov.classList.toggle("ghost",$("ovGhost").checked);try{localStorage.setItem("pdfEditorGhost",$("ovGhost").checked?"1":"0");}catch{}};
+$("fImg").onchange=busy(async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(imgData)URL.revokeObjectURL(imgData.url);
+  imgData={bytes:await readFile(f),png:f.type==="image/png",url:URL.createObjectURL(f)};
+  const im=new Image();im.src=imgData.url;await im.decode();imgData.ratio=im.naturalHeight/im.naturalWidth;
+  $("imgName").textContent=f.name;e.target.value="";
+});
+
+// --- 既存テキストの位置情報 ---
+let seps={v:[],h:[]};
+// PDFの描画命令から、区切りになる線(罫線・点線・細い四角)を集める
+async function loadSeps(p,vp){
+  const out={v:[],h:[]};
+  try{
+    const ol=await p.getOperatorList(),O=pdfjsLib.OPS;
+    const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];
+    const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+    let ctm=vp.transform.slice();const stack=[];
+    let segs=[],rects=[],cur=null,start=null;
+    const addLine=(p0,p1)=>{
+      const dx=Math.abs(p1[0]-p0[0]),dy=Math.abs(p1[1]-p0[1]);
+      if(dy<1.2&&dx>8)out.h.push({y:(p0[1]+p1[1])/2,x0:Math.min(p0[0],p1[0]),x1:Math.max(p0[0],p1[0])});
+      else if(dx<1.2&&dy>8)out.v.push({x:(p0[0]+p1[0])/2,y0:Math.min(p0[1],p1[1]),y1:Math.max(p0[1],p1[1])});
+    };
+    const STROKE=new Set([O.stroke,O.closeStroke,O.fillStroke,O.eoFillStroke,O.closeFillStroke,O.closeEOFillStroke]);
+    const FILL=new Set([O.fill,O.eoFill]);
+    for(let i=0;i<ol.fnArray.length;i++){
+      const fn=ol.fnArray[i],a=ol.argsArray[i];
+      if(fn===O.save)stack.push(ctm.slice());
+      else if(fn===O.restore){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.transform)ctm=mul(ctm,a);
+      else if(fn===O.paintFormXObjectBegin){stack.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0]);}
+      else if(fn===O.paintFormXObjectEnd){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.constructPath){
+        const ops=a[0],co=a[1];let ci=0;
+        for(const op of ops){
+          if(op===O.moveTo){cur=[co[ci],co[ci+1]];start=cur;ci+=2;}
+          else if(op===O.lineTo){const n=[co[ci],co[ci+1]];if(cur)segs.push([cur,n]);cur=n;ci+=2;}
+          else if(op===O.curveTo){cur=[co[ci+4],co[ci+5]];ci+=6;}
+          else if(op===O.curveTo2||op===O.curveTo3){cur=[co[ci+2],co[ci+3]];ci+=4;}
+          else if(op===O.closePath){if(cur&&start)segs.push([cur,start]);cur=start;}
+          else if(op===O.rectangle){rects.push([co[ci],co[ci+1],co[ci+2],co[ci+3]]);cur=[co[ci],co[ci+1]];start=cur;ci+=4;}
+        }
+      }else if(STROKE.has(fn)||FILL.has(fn)||fn===O.endPath){
+        if(fn!==O.endPath){
+          const stroke=STROKE.has(fn);
+          segs.forEach(sg=>addLine(ap(ctm,...sg[0]),ap(ctm,...sg[1])));
+          rects.forEach(([x,y,w,h])=>{
+            const c=[ap(ctm,x,y),ap(ctm,x+w,y),ap(ctm,x+w,y+h),ap(ctm,x,y+h)];
+            const bw=Math.abs(c[1][0]-c[0][0])+Math.abs(c[1][1]-c[0][1]),bh=Math.abs(c[3][0]-c[0][0])+Math.abs(c[3][1]-c[0][1]);
+            if(stroke){for(let k=0;k<4;k++)addLine(c[k],c[(k+1)%4]);}
+            else if(bh<2.5&&bw>8)addLine(c[0],c[1]);
+            else if(bw<2.5&&bh>8)addLine(c[0],c[3]);
+          });
+        }
+        segs=[];rects=[];cur=null;start=null;
+      }
+    }
+  }catch(e){console.warn("区切り線の検出に失敗",e);}
+  return out;
+}
+const isLeader=r=>/^[\s.．・…‥_＿─━—―\-－~〜]{3,}$/.test(r.str)&&r.str.replace(/\s/g,"").length>=3; // 点線・罫線の代わりの文字
+function recomputeBlocks(){blockOf=new Map();buildBlocks(runs).forEach(g=>g.forEach(r=>blockOf.set(r,g)));}
+async function loadRuns(){
+  if(runsFor===cur&&curBase===bytes)return;
+  runs=[];runsFor=cur;curBase=bytes;
+  const p=await pdfView.getPage(cur+1);const vp=p.getViewport({scale:1});
+  const tc=await p.getTextContent();
+  for(const it of tc.items){
+    if(!it.str||!it.str.trim())continue;
+    const tx=pdfjsLib.Util.transform(vp.transform,it.transform);
+    const size=Math.hypot(tx[2],tx[3]);
+    if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
+    runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
+  }
+  seps=await loadSeps(p,vp);
+  recomputeBlocks();
+}
+// まとまりの判定:
+//  横: 文字サイズが同じ(±15%)で横に並んでいれば1つ。ただし「明らかに大きな空白」か「間に線・点線がある」ところで分ける
+//  縦: 行間が詰まっていて(1.7倍以内)左揃い/重なりがあり、文字サイズが近ければ同じ段落。間に横線があれば分ける
+const similar=(a,b,t=0.15)=>Math.abs(a-b)<=Math.max(a,b)*t;
+function buildBlocks(list,gapOverride){
+  const gapMul=gapOverride||Math.max(1,+$("fxGap").value||10);
+  const vSepBetween=(xa,xb,base,size)=>seps.v.some(v=>v.x>xa-0.5&&v.x<xb+0.5&&v.y0<=base+size*0.3&&v.y1>=base-size*0.8);
+  const hSepBetween=(a,b)=>seps.h.some(h=>h.y>a.base+a.size*0.25&&h.y<b.base-b.size*0.8&&h.x1>Math.max(a.x,b.x)&&h.x0<Math.min(a.x+a.w,b.x+b.w));
+  const lines=[];
+  [...list].sort((a,b)=>a.base-b.base).forEach(r=>{const l=lines[lines.length-1];if(l&&Math.abs(r.base-l.base)<Math.max(r.size,l.size)*0.4)l.rs.push(r);else lines.push({base:r.base,size:r.size,rs:[r]});});
+  const segs=[];
+  lines.forEach(l=>{
+    l.rs.sort((a,b)=>a.x-b.x);let cur=null,last=null;
+    l.rs.forEach(r=>{
+      const gap=cur?r.x-(cur.x+cur.w):0;
+      const join=cur&&last&&similar(last.size,r.size)&&Math.abs((last.ls||0)-(r.ls||0))<0.6&&!isLeader(last)&&!isLeader(r)
+        &&gap<Math.max(last.size,r.size)*gapMul&&!vSepBetween(cur.x+cur.w,r.x,l.base,Math.max(cur.size,r.size));
+      if(join){cur.runs.push(r);cur.w=Math.max(cur.w,r.x+r.w-cur.x);cur.size=Math.max(cur.size,r.size);}
+      else{cur={runs:[r],x:r.x,w:r.w,base:l.base,size:r.size};segs.push(cur);}
+      last=r;
+    });
+  });
+  const par=segs.map((_,i)=>i);const find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;};
+  // 画像の文字(OCR)は、同じ塊から来た文字を、縦にも必ず同じまとまりにする(行間の推定のゆれで段落が割れないように)
+  const byCh=new Map();segs.forEach((sg,i)=>sg.runs.forEach(r=>{if(r.ch!==undefined){if(byCh.has(r.ch))par[find(i)]=find(byCh.get(r.ch));else byCh.set(r.ch,i);}}));
+  for(let i=0;i<segs.length;i++){
+    const a=segs[i];
+    for(let j=i+1;j<segs.length;j++){
+      const b=segs[j],dy=b.base-a.base;
+      if(dy>Math.max(a.size,b.size)*1.7)break;
+      if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
+      if(!similar(a.size,b.size,0.25)||Math.abs((a.runs[0].ls||0)-(b.runs[0].ls||0))>0.6||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
+      const tol=Math.max(a.size,b.size)*0.7;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけ・字下げの違う行は、つなげない)
+      {const dl=Math.abs(a.x-b.x),sz=Math.max(a.size,b.size);if(dl<tol||Math.abs((a.x+a.w)-(b.x+b.w))<0.3*sz||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<0.3*sz)par[find(j)]=find(i);}
+    }
+  }
+  const groups=new Map();
+  segs.forEach((sg,i)=>{const r=find(i);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(...sg.runs);});
+  return [...groups.values()];
+}
+const runBox=r=>r.box||({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
+// ページ画像から文字色・背景色を推定
+function sampleColors(box){
+  const c=$("stage"),cx=c.getContext("2d",{willReadFrequently:true}),ss=stageScale;
+  const lum=d=>d[0]*.3+d[1]*.59+d[2]*.11;
+  const x0=Math.max(0,Math.round(box.x*ss)),y0=Math.max(0,Math.round(box.y*ss));
+  const w=Math.max(1,Math.min(c.width-x0,Math.round(box.w*ss))),h=Math.max(1,Math.min(c.height-y0,Math.round(box.h*ss)));
+  // 背景色: 枠のすぐ外側(幅 pad 画素)の一周の、各色の中央値。罫線・隣の文字が少し混ざっても影響されにくい
+  const pad=Math.max(3,Math.round(3*ss));
+  const ox0=Math.max(0,x0-pad),oy0=Math.max(0,y0-pad),ox1=Math.min(c.width,x0+w+pad),oy1=Math.min(c.height,y0+h+pad);
+  const od=cx.getImageData(ox0,oy0,ox1-ox0,oy1-oy0).data,ow=ox1-ox0;
+  const R=[],G=[],B=[];
+  for(let yy=oy0;yy<oy1;yy++)for(let xx=ox0;xx<ox1;xx++){
+    if(xx>=x0&&xx<x0+w&&yy>=y0&&yy<y0+h)continue;
+    const k=((yy-oy0)*ow+(xx-ox0))*4;R.push(od[k]);G.push(od[k+1]);B.push(od[k+2]);
+  }
+  const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
+  const bgp=R.length>=8?[med(R),med(G),med(B)]:[255,255,255];
+  const dat=cx.getImageData(x0,y0,w,h).data;let best=null,bl=999;
+  for(let i=0;i<dat.length;i+=4){const l=dat[i]*.3+dat[i+1]*.59+dat[i+2]*.11;if(l<bl){bl=l;best=[dat[i],dat[i+1],dat[i+2]];}}
+  const h2=a=>"#"+[a[0],a[1],a[2]].map(v=>Math.round(v).toString(16).padStart(2,"0")).join("");
+  return{bg:h2(bgp),fg:best&&bl<lum(bgp)-40?h2(best):"#000000"};
+}
+
+// --- 部品 ---
+function newText(x,y,w,h){
+  const size=+$("nSize").value||10.5;
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3};
+}
+function newFix(list){
+  const boxes=list.map(runBox);
+  const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
+  const x1=Math.max(...boxes.map(b=>b.x+b.w)),y1=Math.max(...boxes.map(b=>b.y+b.h));
+  const sorted=[...list].sort((a,b)=>(Math.abs(a.base-b.base)<a.size*0.5?a.x-b.x:a.base-b.base));
+  const sp100=(()=>{const cx=document.createElement("canvas").getContext("2d");cx.font="100px "+famOf("text");return cx.measureText(" ").width/100||0.3;})();
+  const lines=[];
+  sorted.forEach(r=>{const l=lines[lines.length-1];
+    if(l&&Math.abs(l.base-r.base)<r.size*0.5){{const gp=r.x-(l.x+l.w)-(r.ocr?0.25*r.size:0),spw=sp100*r.size;  // 画像の文字は、文字の枠の余白(左右)ぶんを引いて空白を数える
+        const asciiEnd=/[\x21-\x7E]$/.test(l.lastStr||""),asciiStart=/^[\x21-\x7E]/.test(r.str);const cjkJoin=r.ocr&&l.lastOcr&&gp<r.size*0.7&&!(asciiEnd&&asciiStart);if(gp>spw*0.5&&!cjkJoin)l.parts.push({s:" ".repeat(Math.min(300,Math.max(1,Math.round(gp/spw)))),size:null});}l.parts.push({s:r.str,size:r.size});l.w=r.x+r.w-l.x;l.lastStr=r.str;l.lastOcr=!!r.ocr;}
+    else lines.push({parts:[{s:r.str,size:r.size}],base:r.base,x:r.x,w:r.w,lastStr:r.str,lastOcr:!!r.ocr});});
+  const size=Math.round([...list].map(r=>r.size).sort((a,b)=>a-b)[Math.floor(list.length/2)]*10)/10;
+  const lh=lines.length>1?Math.min(2.5,Math.max(1,(lines[1].base-lines[0].base)/size)):1.3;
+  const col=sampleColors({x:x0,y:y0,w:x1-x0,h:y1-y0});
+  const top=lines[0].base-baseOff("text",size,lh);
+  let txt="";const sz=[];
+  lines.forEach((l,li)=>{
+    if(li){txt+="\n";sz.push(null);}
+    l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
+  });
+  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  growToFit(fx);clampToPage(fx);return fx;
+}
+function select(it,focus){
+  if(it!==cs)lastSel=null;
+  cs=it;renderOverlay();syncPanel();
+  if(it&&focus&&it.type!=="img"){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
+}
+// ---- 範囲ごとにサイズを持つ文字の編集 ----
+let lastSel=null;
+// 折り返してよい位置(単語の区切り)。日本語は Intl.Segmenter で単語に分け、句読点・閉じ括弧は前の語に付ける
+const SEG=(typeof Intl!=="undefined"&&Intl.Segmenter)?new Intl.Segmenter("ja",{granularity:"word"}):null;
+const NOHEAD=/^[\s、。，．,.!?！？)）」』】〕］｝〉》”’:;：；…・ゝゞ々ー]+$/,NOTAIL=/[(（「『【〔［｛〈《“‘]$/;
+function breakSet(txt){
+  const set=new Set(),chars=Array.from(txt);
+  if(SEG){
+    let idx=0,prev="";
+    for(const sg of SEG.segment(txt)){
+      const str=sg.segment;
+      if(idx>0&&str!=="\n"&&prev!=="\n"&&!NOHEAD.test(str)&&!NOTAIL.test(prev))set.add(idx);
+      idx+=Array.from(str).length;prev=str;
+    }
+  }else{
+    const cjk=c=>c&&c.codePointAt(0)>0x2E80;
+    for(let i=1;i<chars.length;i++){const c=chars[i],pc=chars[i-1];
+      if(c!=="\n"&&pc!=="\n"&&(cjk(c)||cjk(pc))&&!NOHEAD.test(c)&&!NOTAIL.test(pc))set.add(i);}
+  }
+  return set;
+}
+function buildText(it,t,k){
+  t.textContent="";
+  let buf="",bs=null;
+  const flush=()=>{if(!buf)return;
+    if(bs==null)t.appendChild(document.createTextNode(buf));
+    else{const sp=document.createElement("span");sp.dataset.s=bs;sp.style.fontSize=bs*k+"px";sp.textContent=buf;t.appendChild(sp);}
+    buf="";};
+  const brk=breakSet(it.txt);
+  Array.from(it.txt).forEach((c,i)=>{
+    if(c==="\n"){flush();t.appendChild(document.createElement("br"));return;}
+    if(brk.has(i)){flush();t.appendChild(document.createElement("wbr"));}
+    const sv=(it.sz&&it.sz[i])||null;
+    if(sv!==bs){flush();bs=sv;}
+    buf+=c;
+  });
+  flush();
+  if(it.txt.endsWith("\n"))t.appendChild(document.createElement("br")); // 末尾の改行の表示用
+}
+// ---- 実際の表示と同じ折り返しで測る(非表示のDOMで計測) ----
+function measureHost(it,g){
+  const d=document.createElement("div");
+  d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
+  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt);d.style.fontSize=it.size*g+"px";d.style.letterSpacing=(it.ls||0)*g+"px";
+  buildText(it,d,g);document.body.appendChild(d);return d;
+}
+// 枠が足りなければ広げる(単語が枠より長い→幅、行数が多い→高さ)
+// 部品をページ内に収める。大きすぎる/はみ出す場合は、位置をずらし、それでも収まらなければ文字を小さくする
+function clampToPage(it){
+  if(it.type==="img"){it.vw=Math.min(it.vw,VW);it.vh=Math.min(it.vh,VH);}
+  else{
+    it.vw=Math.min(it.vw,VW);it.vh=Math.min(it.vh,VH);
+    if(it.txt&&!fitsAt(it,1)){
+      let lo=4/it.size,hi=1,g=lo;
+      if(fitsAt(it,lo)){for(let i=0;i<20;i++){const mid=(lo+hi)/2;if(fitsAt(it,mid))lo=mid;else hi=mid;}g=lo;}
+      const nb=Math.max(4,Math.floor(it.size*g*2)/2),k=nb/it.size;
+      it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*k*10)/10):null);it.size=nb;
+    }
+  }
+  it.vx=Math.max(0,Math.min(it.vx,VW-it.vw));it.vy=Math.max(0,Math.min(it.vy,VH-it.vh));
+}
+function growToFit(it){
+  if(it.type==="img"||!it.txt)return false;
+  let ch=false,d=measureHost(it,1);
+  if(d.scrollWidth>it.vw+0.5){it.vw=Math.max(it.vw,Math.min(Math.ceil(d.scrollWidth)+1,Math.max(VW-it.vx,it.vw)));ch=true;d.remove();d=measureHost(it,1);}
+  if(d.scrollHeight>it.vh+0.5){it.vh=Math.ceil(d.scrollHeight);ch=true;}
+  d.remove();
+  if(ch)clampToPage(it);
+  return ch;
+}
+function serialize(root,isEditor){
+  const chars=[],sz=[];
+  const walk=(n,size)=>{
+    for(const c of n.childNodes){
+      if(c.nodeType===3){for(const ch of Array.from(c.nodeValue)){chars.push(ch);sz.push(size);}}
+      else if(c.nodeName==="BR"){chars.push("\n");sz.push(null);}
+      else if(c.nodeType===1){
+        const sv=c.dataset&&c.dataset.s?+c.dataset.s:size;
+        if((c.nodeName==="DIV"||c.nodeName==="P")&&chars.length&&chars[chars.length-1]!=="\n"){chars.push("\n");sz.push(null);}
+        walk(c,sv);
+      }
+    }
+  };
+  walk(root,null);
+  if(isEditor&&root.lastChild&&root.lastChild.nodeName==="BR"&&chars[chars.length-1]==="\n"){chars.pop();sz.pop();}
+  return{chars,sz};
+}
+function softRebuild(it,t){ // 入力で増えた文字にも折り返し位置を入れ直す(カーソル位置は維持)
+  if(document.activeElement!==t||!t.isConnected)return;
+  const r=getSelRange(t);buildText(it,t,K());if(r)setSelRange(t,r.start,r.end);
+}
+function readEditor(it,t){const r=serialize(t,true);it.txt=r.chars.join("");it.sz=r.sz;}
+function lenTo(t,node,off){const r=document.createRange();r.setStart(t,0);r.setEnd(node,off);return serialize(r.cloneContents(),false).chars.length;}
+function getSelRange(t){
+  const g=getSelection();if(!g.rangeCount)return null;const r=g.getRangeAt(0);
+  if(!t.contains(r.startContainer)||!t.contains(r.endContainer))return null;
+  const a=lenTo(t,r.startContainer,r.startOffset),b=lenTo(t,r.endContainer,r.endOffset);
+  return{start:Math.min(a,b),end:Math.max(a,b)};
+}
+function domPos(t,idx){
+  let cum=0,res=null;
+  const walk=n=>{for(const c of n.childNodes){if(res)return;
+    if(c.nodeType===3){const arr=Array.from(c.nodeValue);if(idx<=cum+arr.length){res=[c,arr.slice(0,idx-cum).join("").length];return;}cum+=arr.length;}
+    else if(c.nodeName==="BR"){if(idx<=cum){res=[c.parentNode,Array.prototype.indexOf.call(c.parentNode.childNodes,c)];return;}cum+=1;}
+    else walk(c);}};
+  walk(t);return res||[t,t.childNodes.length];
+}
+function setSelRange(t,start,end){
+  const g=getSelection(),r=document.createRange();
+  const [n1,o1]=domPos(t,start),[n2,o2]=domPos(t,end);
+  r.setStart(n1,o1);r.setEnd(n2,o2);g.removeAllRanges();g.addRange(r);
+}
+const activeRange=it=>(lastSel&&lastSel.id===it.id&&lastSel.end>lastSel.start)?{start:lastSel.start,end:lastSel.end}:null;
+function applySize(it,size,range){
+  size=Math.max(4,Math.min(400,Math.round(size*10)/10));
+  const chars=Array.from(it.txt),n=chars.length;
+  if(range&&range.end>range.start){
+    if(!it.sz)it.sz=[];while(it.sz.length<n)it.sz.push(null);
+    for(let i=range.start;i<range.end&&i<n;i++){if(chars[i]==="\n")continue;it.sz[i]=size===it.size?null:size;}
+  }else{it.size=size;it.sz=new Array(n).fill(null);}
+  const el=itemEls.get(it.id);if(!el)return;
+  growToFit(it);boxStyle(it,el);const t=el.querySelector(".t");buildText(it,t,K());
+  if(it===cs){t.focus();if(range){setSelRange(t,range.start,range.end);lastSel={id:it.id,start:range.start,end:range.end};}else lastSel=null;}
+  syncPanel();
+}
+document.addEventListener("selectionchange",()=>{
+  if(!cs||cs.type==="img")return;
+  const t=itemEls.get(cs.id)?.querySelector(".t");if(!t)return;
+  const r=getSelRange(t);if(!r)return;
+  lastSel={id:cs.id,start:r.start,end:r.end};
+  if(document.activeElement!==$("sSize"))showSize();
+  if(document.activeElement!==$("sLs"))$("sLs").value=cs?Math.round((cs.ls||0)*10)/10:0;
+});
+function showSize(){
+  if(!cs||cs.type==="img")return;
+  const r=activeRange(cs);const v=r?((cs.sz&&cs.sz[r.start])||cs.size):cs.size;
+  $("sSize").value=Math.round(v*10)/10;
+  $("sSizeLbl").textContent=r?"選択した文字のサイズ(pt)":"枠全体のサイズ(pt)";
+}
+// ---- 右クリックでサイズ変更 ----
+const ctx=document.createElement("div");ctx.id="ctx";ctx.classList.add("hidden");document.body.appendChild(ctx);
+const SIZES=[7,8,9,10,10.5,11,12,14,16,18,20,24,28,36,48,72];
+function hideCtx(){ctx.classList.add("hidden");}
+function showCtx(e,it,range){
+  ctx.innerHTML="";
+  const h=document.createElement("div");h.className="h";
+  h.textContent=range?`選択した${range.end-range.start}文字のサイズ`:"この枠全体のサイズ";ctx.appendChild(h);
+  const base=range?((it.sz&&it.sz[range.start])||it.size):it.size;
+  SIZES.forEach(sv=>{const b=document.createElement("button");b.textContent=sv+" pt"+(sv===base?"  ✓":"");
+    b.onmousedown=ev=>ev.preventDefault();b.onclick=()=>{applySize(it,sv,range);hideCtx();};ctx.appendChild(b);});
+  ctx.classList.remove("hidden");
+  const w=ctx.offsetWidth,hh=ctx.offsetHeight;
+  ctx.style.left=Math.max(4,Math.min(e.clientX,innerWidth-w-4))+"px";
+  ctx.style.top=Math.max(4,Math.min(e.clientY,innerHeight-hh-4))+"px";
+}
+document.addEventListener("pointerdown",e=>{if(!ctx.contains(e.target))hideCtx();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideCtx();});
+window.addEventListener("scroll",hideCtx,true);
+function boxStyle(it,el){
+  const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
+  const t=el.querySelector(".t");
+  if(t){t.style.fontFamily=famOf(it.fmt);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
+  el.style.background=it.type==="fix"?it.bg:"transparent";
+}
+function renderOverlay(){
+  if(!pdfView)return;
+  const k=K();ov.innerHTML="";itemEls.clear();
+  if(mode==="sel"&&runsFor===cur){
+    const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
+    blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);
+      const bs=g.map(runBox),x0=Math.min(...bs.map(b=>b.x)),y0=Math.min(...bs.map(b=>b.y));
+      const x1=Math.max(...bs.map(b=>b.x+b.w)),y1=Math.max(...bs.map(b=>b.y+b.h));
+      const d=document.createElement("div");d.className="run";
+      d.style.cssText=`left:${x0*k}px;top:${y0*k}px;width:${(x1-x0)*k}px;height:${(y1-y0)*k}px`;ov.appendChild(d);});
+  }
+  items.filter(it=>it.page===cur).forEach(it=>{
+    if(it.type==="fix"){const c=document.createElement("div");c.className="cover";
+      c.style.cssText=`left:${it.cover.x*k}px;top:${it.cover.y*k}px;width:${it.cover.w*k}px;height:${it.cover.h*k}px;background:${it.bg}`;ov.appendChild(c);}
+  });
+  items.filter(it=>it.page===cur).forEach(it=>{
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"");
+    if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
+    else{
+      const t=document.createElement("div");t.className="t";t.spellcheck=false;
+      buildText(it,t,k);
+      if(it===cs)t.contentEditable="true";
+      t.addEventListener("input",e=>{
+        readEditor(it,t);
+        if(growToFit(it))boxStyle(it,el);
+        clearTimeout(it._rb);if(!e.isComposing)it._rb=setTimeout(()=>softRebuild(it,t),450);
+      });
+      t.addEventListener("compositionend",()=>{clearTimeout(it._rb);it._rb=setTimeout(()=>softRebuild(it,t),450);});
+      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};});
+      t.addEventListener("beforeinput",e=>{
+        if(e.inputType==="insertParagraph"){e.preventDefault();document.execCommand("insertLineBreak");}
+        else if(e.inputType==="insertFromPaste"||e.inputType==="insertFromDrop"){
+          e.preventDefault();const tx=((e.dataTransfer&&e.dataTransfer.getData("text/plain"))||"").replace(/\r/g,"");
+          tx.split("\n").forEach((ln,i)=>{if(i)document.execCommand("insertLineBreak");if(ln)document.execCommand("insertText",false,ln);});
+        }else if(e.inputType.startsWith("format"))e.preventDefault();
+      });
+      el.appendChild(t);
+    }
+    const tag=document.createElement("span");tag.className="tag";
+    tag.textContent=it.type==="img"?"画像":(it.type==="fix"?"訂正":"文字")+(it.fmt==="pic"?"(画像)":"");
+    el.appendChild(tag);
+    el.addEventListener("pointerdown",e=>{e.stopPropagation();if(cs!==it){e.preventDefault();select(it,true);}});
+    el.addEventListener("contextmenu",e=>{
+      if(it.type==="img")return;e.preventDefault();e.stopPropagation();
+      let range=null;
+      if(cs!==it)select(it,false);
+      else{const t=itemEls.get(it.id)?.querySelector(".t");const r=t&&getSelRange(t);if(r&&r.end>r.start)range=r;}
+      showCtx(e,it,range);
+    });
+    if(it===cs){
+      const mv=document.createElement("div");mv.className="hdl mv";mv.textContent="✥";
+      const rs=document.createElement("div");rs.className="hdl rs";rs.textContent="⇲";
+      dragHandle(mv,it,el,false);dragHandle(rs,it,el,true);el.append(mv,rs);
+    }
+    ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);
+  });
+  if(mode==="warp"){if(!warp&&warpKind==="page")initWarpPage();else renderWarp();}
+}
+// 枠の大きさに合わせて文字サイズを決める(枠に収まる最大サイズ。複数行・サイズ混在は相対比を保つ)
+const fitsAt=(it,g)=>{const d=measureHost(it,g);const ok=d.scrollHeight<=it.vh+0.5&&d.scrollWidth<=it.vw+0.5;d.remove();return ok;};
+function fitSize(it,o){
+  if(!it.txt||!it.txt.trim())return false;
+  it.size=o.size;it.sz=o.sz?o.sz.slice():[];
+  let lo=4/o.size,hi=400/o.size,f=lo;
+  if(fitsAt(it,lo)){for(let i=0;i<22;i++){const mid=(lo+hi)/2;if(fitsAt(it,mid))lo=mid;else hi=mid;}f=lo;}
+  let nb=Math.max(4,Math.min(400,Math.floor(o.size*f*2)/2));
+  const apply=b=>{const g=b/o.size;it.size=b;it.sz=(o.sz||[]).map(v=>v?Math.max(4,Math.round(v*g*10)/10):null);};
+  apply(nb);
+  // 実際の表示と最終確認(端数で枠からはみ出す場合は0.5ptずつ下げる)
+  const base={size:o.size,sz:o.sz};
+  for(let i=0;i<12&&nb>4;i++){
+    it.size=base.size;it.sz=base.sz?base.sz.slice():[];
+    if(fitsAt(it,nb/o.size))break;nb=Math.max(4,nb-0.5);
+  }
+  apply(nb);
+  if(growToFit(it)){}
+  return true;
+}
+function dragHandle(h,it,el,resize){
+  h.addEventListener("pointerdown",e=>{
+    e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
+    const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
+    const o={size:it.size,sz:it.sz?it.sz.slice():null};
+    const mvf=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
+      if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));
+        if(it.type!=="img"&&$("sAuto").checked&&fitSize(it,o)){const t=el.querySelector(".t");if(t)buildText(it,t,k);showSize();}}
+      else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
+      boxStyle(it,el);};
+    const up=()=>{h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
+    h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
+  });
+}
+function syncPanel(){
+  const it=cs;
+  $("selPanel").classList.toggle("hidden",!it);
+  $("bUndo").disabled=!items.length&&!hist.length;
+  $("partsInfo").textContent=items.length?`未確定の部品: ${items.length}件(ページ操作・ダウンロード時にも自動で反映されます)`:"ページ操作・ダウンロード時も自動で反映されます";
+  if(!it)return;
+  $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
+  $("selTextBox").classList.toggle("hidden",it.type==="img");
+  $("sErase").classList.toggle("hidden",it.type!=="fix");
+  $("sColor").value=it.color||"#000000";showSize();
+  ["L","C","R"].forEach((k,i)=>$("sA"+k).classList.toggle("on",(it.align||"left")===["left","center","right"][i]));
+  $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
+}
+function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);
+  const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
+$("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>0)applySize(cs,v,activeRange(cs));}};
+$("sLs").onchange=()=>{if(cs&&cs.type!=="img"){cs.ls=Math.max(-2,Math.min(40,+$("sLs").value||0))||0;growToFit(cs);renderOverlay();syncPanel();}};   // 字間: 文字と文字の間の空き(元の書式が均等割付などのとき、変換で自動でも入る)
+$("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};
+$("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
+$("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
+["L","C","R"].forEach((k,i)=>{$("sA"+k).onclick=()=>{if(cs&&cs.type!=="img"){cs.align=["left","center","right"][i];syncPanel();refreshSel();}};});
+$("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
+$("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文字は置かない)
+  if(!cs||cs.type!=="fix")return;
+  cs.txt="";cs.sz=[];const el=itemEls.get(cs.id),t=el&&el.querySelector(".t");
+  if(t){buildText(cs,t,K());t.focus();}
+  status("元の文字を消す設定にしました(確定するとPDFに反映されます)。");
+};
+function nudge(dx,dy){if(!cs)return;cs.vx+=dx;cs.vy+=dy;clampToPage(cs);const el=itemEls.get(cs.id);if(el)boxStyle(cs,el);else renderOverlay();}   // 枠だけ動かす(入力中の文字の位置を消さない)
+[["nL",-1,0],["nR",1,0],["nU",0,-1],["nD",0,1]].forEach(([id,dx,dy])=>{$(id).onclick=()=>{nudge(dx*0.5,dy*0.5);};});
+document.addEventListener("keydown",e=>{if(!e.altKey||!cs||!/^Arrow/.test(e.key))return;e.preventDefault();const st=e.shiftKey?2:0.5;nudge(e.key==="ArrowLeft"?-st:e.key==="ArrowRight"?st:0,e.key==="ArrowUp"?-st:e.key==="ArrowDown"?st:0);});
+$("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
+$("sClose").onclick=()=>select(null);
+
+// --- ドラッグで範囲指定 ---
+let rub=null;
+ov.addEventListener("pointerdown",e=>{
+  if(e.target!==ov)return;
+  if(!bytes)return;
+  if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
+  if(cs){cs=null;renderOverlay();syncPanel();}
+  e.preventDefault();ov.setPointerCapture(e.pointerId);
+  const rc=ov.getBoundingClientRect(),k=K();
+  const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
+  const d=document.createElement("div");d.className="rub";ov.appendChild(d);
+  rub={sx,sy,x:sx,y:sy,d,id:e.pointerId};
+  const fin=busy(async ev=>{
+    ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
+    const r=rub;rub=null;if(!r)return;r.d.remove();
+    if(mode==="sel")await loadRuns();
+    await ensureWebFont().catch(()=>{});
+    const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
+    const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
+    const tap=w<6&&h<6;let it=null;
+    if(mode==="warp"){
+      if(warpKind==="part"){if(!tap&&w>20&&h>20)createPartWarp(x,y,w,h);else status("歪んでいる部分を、範囲でドラッグしてください。");}
+      return;
+    }
+    if(mode==="ocr"){
+      if(tap){ // 文字にした部品をタップしたら、選択・訂正に切り替えてその部品を選ぶ
+        const hit=[...items].reverse().find(o=>o.page===cur&&r.sx>=o.vx&&r.sx<=o.vx+o.vw&&r.sy>=o.vy&&r.sy<=o.vy+o.vh);
+        if(hit){setMode("sel");await loadRuns().catch(()=>{});select(hit,true);return;}   // 選択モードの再描画が終わってから選ぶ(先に選ぶと、再描画で入力位置が消える)
+        status("文字にしたい範囲をドラッグしてください(ページ全体はボタンで)。変換した文字を直すときは、その文字をタップしてください。");renderOverlay();return;}
+      await doOcr(x,y,w,h);
+      if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
+      return;}
+    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    else if(mode==="img"){
+      const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
+      it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};
+      // 縦横比に合わせた大きさ
+      let iw=bw,ih=bw*imgData.ratio;if(ih>bh){ih=bh;iw=bh/imgData.ratio;}it.vw=iw;it.vh=ih;items.push(it);
+    }else{
+      let groups=[];
+      if(tap){
+        const r0=runs.find(q=>{const bx=runBox(q);return r.sx>=bx.x&&r.sx<=bx.x+bx.w&&r.sy>=bx.y&&r.sy<=bx.y+bx.h;});
+        if(r0)groups=[blockOf.get(r0)||[r0]];
+      }else{
+        const inside=runs.filter(q=>{const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+        if(inside.length)groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
+      }
+      if(!groups.length){
+        if(tap){renderOverlay();return;} // 文字のない所のタップは、選択の解除だけ
+        // 文字のない所をドラッグ→新しい文字の枠
+        it=newText(x,y,w,h);items.push(it);
+        if(!runs.length)status("このページにはPDFの文字データがありません(スキャン画像など)。画像の文字は「🔍 画像の文字を認識」で文字にできます。今回は新しい文字の枠を作りました。");
+      }else{
+        const made=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+        made.forEach(m=>items.push(m));
+        it=made[0];
+        if(made.length>1)status(`${made.length}個のまとまり(表のセルなど)を選びました。枠をタップして1つずつ書き換えられます。`);
+      }
+    }
+    select(it,true);
+  });
+  const mv=ev=>{if(!rub)return;const rc2=ov.getBoundingClientRect(),k2=K();
+    rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
+    const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
+    rub.d.style.cssText=`left:${x*k2}px;top:${y*k2}px;width:${w*k2}px;height:${h*k2}px`;};
+  ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
+});
+window.addEventListener("resize",()=>renderOverlay());
+
+// ====== 歪み補正: 一括(台形補正) / 部分(上下左右のベジェ曲線で曲面を伸ばす) ======
+let warp=null,warpKind="page",warpSvg=null,warpHandles=[],warpLines=[],warpPrevTimer=null,warpPrevSrc=null;
+const lerp2=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+function bez(p0,c1,c2,p3,t){const u=1-t,a=u*u*u,b=3*u*u*t,c=3*u*t*t,d=t*t*t;return[a*p0[0]+b*c1[0]+c*c2[0]+d*p3[0],a*p0[1]+b*c1[1]+c*c2[1]+d*p3[1]];}
+// 曲線を「長さ」で等分に引けるようにする(文字の間隔が偏らないように)
+function arcTable(p0,c1,c2,p3){
+  const N=120,pts=[],cum=[0];
+  for(let i=0;i<=N;i++){pts.push(bez(p0,c1,c2,p3,i/N));if(i)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));}
+  const L=cum[N]||1;
+  return{len:L,at(f){const tg=Math.max(0,Math.min(1,f))*L;let lo=0,hi=N;while(hi-lo>1){const m=(lo+hi)>>1;if(cum[m]<=tg)lo=m;else hi=m;}const sg=cum[hi]-cum[lo]||1;return lerp2(pts[lo],pts[hi],(tg-cum[lo])/sg);}};
+}
+// 単位正方形 → 四角形(射影変換)。順序: 左上(0,0)・右上(1,0)・右下(1,1)・左下(0,1)
+function squareToQuad(p0,p1,p2,p3){
+  const [x0,y0]=p0,[x1,y1]=p1,[x2,y2]=p2,[x3,y3]=p3;
+  const sx=x0-x1+x2-x3,sy=y0-y1+y2-y3;let a,b,c,d,e,f,g=0,h=0;
+  if(Math.abs(sx)<1e-9&&Math.abs(sy)<1e-9){a=x1-x0;b=x2-x1;c=x0;d=y1-y0;e=y2-y1;f=y0;}
+  else{const dx1=x1-x2,dx2=x3-x2,dy1=y1-y2,dy2=y3-y2,det=dx1*dy2-dx2*dy1;
+    g=(sx*dy2-dx2*sy)/det;h=(dx1*sy-sx*dy1)/det;a=x1-x0+g*x1;b=x3-x0+h*x3;c=x0;d=y1-y0+g*y1;e=y3-y0+h*y3;f=y0;}
+  return(u,v)=>{const w=g*u+h*v+1;return[(a*u+b*v+c)/w,(d*u+e*v+f)/w];};
+}
+// 格子点(5×5)を通る滑らかな曲線(ベジェ曲線に直せる Catmull-Rom 曲線)。点を動かすと、その点を通ったまま、まわりがなめらかに曲がる
+const GN=5;
+function crSpline(p,s){
+  const n=p.length-1,f=Math.max(0,Math.min(1,s))*n,k=Math.min(n-1,Math.floor(f)),t=f-k,t2=t*t,t3=t2*t;
+  const g=i=>i<0?[2*p[0][0]-p[1][0],2*p[0][1]-p[1][1]]:i>n?[2*p[n][0]-p[n-1][0],2*p[n][1]-p[n-1][1]]:p[i];
+  const a=g(k-1),b=g(k),c=g(k+1),d=g(k+2),q=j=>0.5*(2*b[j]+(-a[j]+c[j])*t+(2*a[j]-5*b[j]+4*c[j]-d[j])*t2+(-a[j]+3*b[j]-3*c[j]+d[j])*t3);
+  return[q(0),q(1)];
+}
+const warpP=wp=>({tl:wp.G[0][0],tr:wp.G[0][GN-1],br:wp.G[GN-1][GN-1],bl:wp.G[GN-1][0]});
+function gridFromQuad(wp){ // 四隅から(射影変換で)格子点を作る
+  const P=warpP(wp),H=squareToQuad(P.tl,P.tr,P.br,P.bl),G=[];
+  for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push(H(c/(GN-1),r/(GN-1)));}
+  wp.G=G;
+}
+// (s,t) → 元の写真の位置。曲げていない一括は射影変換、曲げたもの・部分は格子点の曲線
+function makeUnitMap(wp){
+  if(!wp.curved){const P=warpP(wp);return squareToQuad(P.tl,P.tr,P.br,P.bl);}
+  return(s,t)=>crSpline(wp.G.map(row=>crSpline(row,s)),t);
+}
+// 画素ごとの対応(列ごとの格子上の点を先に計算して速くする)
+function makePixMap(wp,outW,outH){
+  if(!wp.curved){const P=warpP(wp),H=squareToQuad(P.tl,P.tr,P.br,P.bl);return(x,y)=>H((x+0.5)/outW,(y+0.5)/outH);}
+  const RP=new Array(outW);
+  for(let x=0;x<outW;x++){const u=(x+0.5)/outW;RP[x]=wp.G.map(row=>crSpline(row,u));}
+  return(x,y)=>crSpline(RP[x],(y+0.5)/outH);
+}
+// 元画像から、対応表に沿って出力画像を作る(双一次補間。範囲外は白)
+function warpImage(srcCv,pix,outW,outH,srcScale){
+  const sw=srcCv.width,sh=srcCv.height,sd=srcCv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,sw,sh).data;
+  const out=document.createElement("canvas");out.width=outW;out.height=outH;
+  const octx=out.getContext("2d"),od=octx.createImageData(outW,outH),o=od.data;
+  for(let y=0;y<outH;y++)for(let x=0;x<outW;x++){
+    const [px,py]=pix(x,y),X=px*srcScale-0.5,Y=py*srcScale-0.5,x0=Math.floor(X),y0=Math.floor(Y),k=(y*outW+x)*4;
+    if(x0<-1||y0<-1||x0>=sw||y0>=sh){o[k]=o[k+1]=o[k+2]=255;o[k+3]=255;continue;}
+    const fx=X-x0,fy=Y-y0,xa=Math.max(0,Math.min(sw-1,x0)),xb=Math.max(0,Math.min(sw-1,x0+1)),ya=Math.max(0,Math.min(sh-1,y0)),yb=Math.max(0,Math.min(sh-1,y0+1));
+    const i00=(ya*sw+xa)*4,i10=(ya*sw+xb)*4,i01=(yb*sw+xa)*4,i11=(yb*sw+xb)*4;
+    for(let c=0;c<3;c++)o[k+c]=sd[i00+c]*(1-fx)*(1-fy)+sd[i10+c]*fx*(1-fy)+sd[i01+c]*(1-fx)*fy+sd[i11+c]*fx*fy;
+    o[k+3]=255;
+  }
+  octx.putImageData(od,0,0);return out;
+}
+// 紙の四隅の自動検出(提案だけ。必ず手で確認・調整する): 紙と背景の明るさの差で紙の領域を取り、その四隅の端点を使う
+function findPaperQuad(cv){
+  const w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h,g=new Uint8Array(n);
+  const hist=new Uint32Array(256);for(let i=0;i<n;i++){const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
+  let sum=0;for(let v=0;v<256;v++)sum+=v*hist[v];
+  let wB=0,sB=0,best=0,thr=128;for(let v=0;v<256;v++){wB+=hist[v];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=v*hist[v];const mB=sB/wB,mF=(sum-sB)/wF,bt=wB*wF*(mB-mF)*(mB-mF);if(bt>best){best=bt;thr=v;}}
+  let result=null,bestScore=-1;
+  for(const bright of [true,false]){
+    const mask=new Uint8Array(n);for(let i=0;i<n;i++)mask[i]=(bright?g[i]>thr:g[i]<=thr)?1:0;
+    const lab=new Int32Array(n);let bestArea=0,bestId=0,id=0;const stack=new Int32Array(n);
+    for(let i=0;i<n;i++){if(!mask[i]||lab[i])continue;id++;let sp=0,area=0;stack[sp++]=i;lab[i]=id;
+      while(sp){const q=stack[--sp];area++;const x=q%w,y=(q/w)|0;
+        if(x>0&&mask[q-1]&&!lab[q-1]){lab[q-1]=id;stack[sp++]=q-1;}
+        if(x<w-1&&mask[q+1]&&!lab[q+1]){lab[q+1]=id;stack[sp++]=q+1;}
+        if(y>0&&mask[q-w]&&!lab[q-w]){lab[q-w]=id;stack[sp++]=q-w;}
+        if(y<h-1&&mask[q+w]&&!lab[q+w]){lab[q+w]=id;stack[sp++]=q+w;}}
+      if(area>bestArea){bestArea=area;bestId=id;}}
+    if(!bestArea||bestArea<n*0.15||bestArea>n*0.97)continue;
+    let tl=null,tr=null,br=null,bl=null,a1=1e9,a2=-1e9,b1=-1e9,b2=1e9;
+    for(let i=0;i<n;i++){if(lab[i]!==bestId)continue;const x=i%w,y=(i/w)|0,s1=x+y,s2=x-y;
+      if(s1<a1){a1=s1;tl=[x,y];}if(s1>a2){a2=s1;br=[x,y];}if(s2>b1){b1=s2;tr=[x,y];}if(s2<b2){b2=s2;bl=[x,y];}}
+    const quadArea=Math.abs((tl[0]*tr[1]-tr[0]*tl[1])+(tr[0]*br[1]-br[0]*tr[1])+(br[0]*bl[1]-bl[0]*br[1])+(bl[0]*tl[1]-tl[0]*bl[1]))/2;
+    const score=bestArea/Math.max(1,quadArea); // 四角に近いほど1に近い
+    if(score>bestScore&&score<=1.05){bestScore=score;result={tl,tr,br,bl};}
+  }
+  return result;
+}
+const dist2=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function warpRatio(wp){const P=warpP(wp);return((dist2(P.tl,P.bl)+dist2(P.tr,P.br))/2)/(((dist2(P.tl,P.tr)+dist2(P.bl,P.br))/2)||1);}
+function updateWarpUi(){
+  $("wkPage").classList.toggle("on",warpKind==="page");$("wkPart").classList.toggle("on",warpKind==="part");
+  $("wAuto").classList.toggle("hidden",warpKind!=="page");
+}
+function initWarpPage(){
+  const m=0.04;
+  warp={kind:"page",rect:{x:0,y:0,w:VW,h:VH},curved:false,G:null};
+  warp.G=[[[VW*m,VH*m],null,null,null,[VW*(1-m),VH*m]],[],[],[],[[VW*m,VH*(1-m)],null,null,null,[VW*(1-m),VH*(1-m)]]];
+  gridFromQuad(warp);
+  renderWarp();warpPreviewSoon();
+  status("紙の四隅の青い点を、写真の紙の角に合わせてください(「紙の四隅を自動で探す」で提案できます)。紙が曲がっていれば、白い点を動かすと、そこを通る曲線で曲げられます。");
+}
+function createPartWarp(x,y,w,h){
+  const G=[];for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push([x+w*c/(GN-1),y+h*r/(GN-1)]);}
+  warp={kind:"part",rect:{x,y,w,h},curved:true,G};renderWarp();warpPreviewSoon();
+  status("青い角と白い点(格子点)を、歪んだ文字の行・列に合わせて動かしてください。動かした点を通る曲線で、まわり(中ほどだけの歪みも)なめらかに直ります。枠の中が、元の範囲の四角にまっすぐ伸びます。");
+}
+const SVGNS="http://www.w3.org/2000/svg";
+function renderWarp(){
+  if(warpSvg){warpSvg.remove();warpSvg=null;}warpHandles=[];warpLines=[];
+  if(!warp||mode!=="warp")return;
+  const svg=document.createElementNS(SVGNS,"svg");svg.setAttribute("class","warp");svg.setAttribute("viewBox",`0 0 ${VW} ${VH}`);
+  svg.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:8";
+  const mk=(tag,attrs)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);svg.appendChild(e);return e;};
+  const k=K(),px=v=>v/k;
+  if(warp.kind==="part")mk("rect",{x:warp.rect.x,y:warp.rect.y,width:warp.rect.w,height:warp.rect.h,fill:"none",stroke:"#dc2626","stroke-width":px(1.5),"stroke-dasharray":`${px(6)} ${px(4)}`});
+  for(let i=0;i<=4;i++){
+    warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"h",f:i/4});
+    warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"v",f:i/4});
+  }
+  for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
+    const id=r+"_"+c,corner=(r===0||r===GN-1)&&(c===0||c===GN-1),inner=r>0&&r<GN-1&&c>0&&c<GN-1;
+    const e=mk("circle",{r:px(corner?9:inner?6:7),fill:corner?"#2563eb":"#fff",stroke:"#2563eb","stroke-width":px(2.5),"data-h":id});
+    e.style.cssText="pointer-events:all;cursor:move;touch-action:none";
+    warpHandles.push({el:e,id,r,c});dragWarpHandle(e,r,c);
+  }
+  ov.appendChild(svg);warpSvg=svg;updateWarpSvg();
+}
+function updateWarpSvg(){
+  if(!warp||!warpSvg)return;
+  const f=makeUnitMap(warp),N=28;
+  warpLines.forEach(l=>{const pts=[];for(let i=0;i<=N;i++){const u=i/N,[x,y]=l.dir==="h"?f(u,l.f):f(l.f,u);pts.push(x.toFixed(2)+","+y.toFixed(2));}l.el.setAttribute("points",pts.join(" "));});
+  warpHandles.forEach(h=>{const p=warp.G[h.r][h.c];h.el.setAttribute("cx",p[0]);h.el.setAttribute("cy",p[1]);});
+}
+function dragWarpHandle(el,r,c){
+  el.addEventListener("pointerdown",e=>{
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    const rc=ov.getBoundingClientRect(),k=K();
+    const mv=ev=>{
+      const nx=Math.max(0,Math.min(VW,(ev.clientX-rc.left)/k)),ny=Math.max(0,Math.min(VH,(ev.clientY-rc.top)/k));
+      const corner=(r===0||r===GN-1)&&(c===0||c===GN-1);
+      warp.G[r][c]=[nx,ny];
+      if(!warp.curved){if(corner)gridFromQuad(warp);else warp.curved=true;}  // 一括: 角だけなら四角形のまま、中の点を動かしたら曲線に
+      updateWarpSvg();
+    };
+    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
+    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+  });
+}
+function warpPreviewSoon(){clearTimeout(warpPrevTimer);warpPrevTimer=setTimeout(()=>renderWarpPreview().catch(e=>console.warn(e)),250);}
+async function renderWarpPreview(){
+  if(!warp)return;
+  const Sp=Math.min(2,900/Math.max(VW,VH));
+  if(!warpPrevSrc||warpPrevSrc.page!==cur||warpPrevSrc.bytes!==bytes)warpPrevSrc={page:cur,bytes,cv:await renderRegion(0,0,VW,VH,Sp)};
+  const wp=warp;if(!wp)return;
+  let outW,outH;
+  if(wp.kind==="page"){outW=Math.min(520,Math.round(VW*Sp));outH=Math.round(outW*warpRatio(wp));}
+  else{const sc=Math.min(520/wp.rect.w,Sp);outW=Math.max(8,Math.round(wp.rect.w*sc));outH=Math.max(8,Math.round(wp.rect.h*sc));}
+  const res=warpImage(warpPrevSrc.cv,makePixMap(wp,outW,outH),outW,outH,Sp);
+  const pc=$("wPrev");pc.width=res.width;pc.height=res.height;pc.getContext("2d").drawImage(res,0,0);
+  $("wPrevBox").classList.remove("hidden");
+}
+async function applyWarp(){
+  if(!warp||!bytes)return;
+  const wp=warp;await commit();   // 未確定の文字・画像は先にページへ書き込む(補正で一緒に整う)
+  status("歪みを補正中…");
+  const WS=Math.min(5,3000/Math.max(VW,VH));
+  const page=await renderRegion(0,0,VW,VH,WS);
+  let result,newW=VW,newH=VH;
+  if(wp.kind==="page"){
+    const ratio=warpRatio(wp),outW=Math.round(VW*WS),outH=Math.round(outW*ratio);
+    result=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);newH=VW*ratio;
+  }else{
+    const r=wp.rect,outW=Math.round(r.w*WS),outH=Math.round(r.h*WS);
+    const patch=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);
+    page.getContext("2d").drawImage(patch,Math.round(r.x*WS),Math.round(r.y*WS));result=page;
+  }
+  const blob=await new Promise(res=>result.toBlob(res,"image/jpeg",0.92));
+  const doc=await PDFDocument.load(bytes);
+  const img=await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+  const idx=cur;doc.removePage(idx);const np=doc.insertPage(idx,[newW,newH]);
+  np.drawImage(img,{x:0,y:0,width:newW,height:newH});
+  warp=null;$("wPrevBox").classList.add("hidden");
+  await setBytes(await doc.save(),true);
+  setMode("sel");
+  status("歪みを補正しました(このページは画像になりました)。続けて「🔍 画像の文字を認識」で文字にできます。元に戻すで戻せます。");
+}
+$("wkPage").onclick=()=>{warpKind="page";warp=null;updateWarpUi();$("wPrevBox").classList.add("hidden");if(pdfView)initWarpPage();};
+$("wkPart").onclick=()=>{warpKind="part";warp=null;updateWarpUi();renderWarp();$("wPrevBox").classList.add("hidden");status("歪んでいる部分を、ページ上で範囲をドラッグして指定してください。");};
+$("wAuto").onclick=busy(async()=>{
+  if(!pdfView||!warp||warp.kind!=="page")return;
+  status("紙の四隅を探しています…");
+  const Sd=500/Math.max(VW,VH),cv=await renderRegion(0,0,VW,VH,Sd),q=findPaperQuad(cv);
+  if(!q){status("紙の四隅を見つけられませんでした。手で四隅の点を合わせてください。");return;}
+  const sc=a=>[a[0]/Sd,a[1]/Sd];
+  warp.curved=false;warp.G[0][0]=sc(q.tl);warp.G[0][GN-1]=sc(q.tr);warp.G[GN-1][GN-1]=sc(q.br);warp.G[GN-1][0]=sc(q.bl);gridFromQuad(warp);
+  updateWarpSvg();warpPreviewSoon();
+  status("四隅の位置を提案しました。ずれていれば、点をドラッグして合わせてから「補正する」を押してください。");
+});
+$("wApply").onclick=busy(applyWarp);
+$("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMode("sel");};
+
+// ====== 文字認識(OCR): 画像の文字を、編集できる部品にする ======
+const TESS_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+const LANG_PATH={jpn:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int",eng:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int"};
+let ocrWorker=null,ocrLang="";
+// ---- 高精度の認識エンジン: PaddleOCR(PP-OCRv5)の「文字認識」モデルを、ブラウザ内(ONNX Runtime Web)で動かす。行の切り出しは、上の画像解析を使う ----
+const ORT_BASE="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",PP_BASE="https://cdn.jsdelivr.net/npm/pdfmarkdown-ppocrv5-models@1.0.0/";
+let ppSess=null,ppDict=null,ppLoading=null;
+const loadScriptUrl=(src,test)=>new Promise((res,rej)=>{if(test())return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("読み込めませんでした: "+src));document.head.appendChild(sc);});
+async function fetchBuf(url,label){
+  const r=await fetch(url);if(!r.ok)throw new Error(label+"を取得できませんでした("+r.status+")");
+  const tot=+r.headers.get("content-length")||0,rd=r.body&&r.body.getReader();
+  if(!rd)return new Uint8Array(await r.arrayBuffer());
+  const parts=[];let got=0;
+  for(;;){const {done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;
+    if(tot){const t=`高精度エンジンの準備中(初回のみ): ${label} ${Math.round(got/tot*100)}%`;status(t);job.step(t,Math.round(got/tot*100));}}
+  const out=new Uint8Array(got);let o=0;parts.forEach(a=>{out.set(a,o);o+=a.length;});return out;
+}
+async function loadOrt(){
+  await loadScriptUrl(ORT_BASE+"ort.wasm.min.js",()=>window.ort);
+  ort.env.wasm.wasmPaths=ORT_BASE;ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
+}
+function getPaddle(){
+  if(ppSess)return Promise.resolve(ppSess);
+  if(ppLoading)return ppLoading;
+  ppLoading=(async()=>{
+    await loadOrt();
+    const [model,dict]=await Promise.all([fetchBuf(PP_BASE+"recognition/PP-OCRv5_mobile_rec_infer.onnx","認識モデル"),fetchBuf(PP_BASE+"recognition/ppocrv5_dict.txt","文字辞書")]);
+    ppDict=new TextDecoder().decode(dict).replace(/\r/g,"").split("\n");if(ppDict[ppDict.length-1]==="")ppDict.pop();
+    ppSess=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return ppSess;
+  })().catch(e=>{ppLoading=null;throw e;});
+  return ppLoading;
+}
+// 1行の画像 → 文字と、各文字の位置(0〜1)・確かさ。高さ48pxにそろえて読み、CTCで文字列にする
+async function paddleRec(cv){
+  const H=48,W=Math.max(16,Math.min(3200,Math.round(cv.width*H/cv.height)));
+  const c2=document.createElement("canvas");c2.width=W;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
+  cx.fillStyle="#fff";cx.fillRect(0,0,W,H);cx.imageSmoothingQuality="high";cx.drawImage(cv,0,0,W,H);
+  const d=cx.getImageData(0,0,W,H).data,f=new Float32Array(3*H*W),HW=H*W;
+  for(let i=0;i<HW;i++){f[i]=(d[i*4+2]/255-0.5)/0.5;f[HW+i]=(d[i*4+1]/255-0.5)/0.5;f[2*HW+i]=(d[i*4]/255-0.5)/0.5;}   // PaddleOCRはBGR順
+  const sess=await getPaddle(),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,W])});
+  const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
+  // 辞書の長さと出力の種類数から、「何番が空白(CTCのblank)か」をそろえる(辞書の先頭がblankの代わりの行のとき・末尾に空白を足すとき)
+  const chars=ppDict.length===C?["",...ppDict.slice(1)]:ppDict.length+1===C?["",...ppDict]:["",...ppDict," "];
+  const seq=[];let prev=0;
+  for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
+    if(bi!==0&&bi!==prev&&chars[bi]!==undefined){let p=bv;if(p>1||p<0){let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);p=1/sum;}seq.push({ch:chars[bi],p,pos:(t+0.5)/T});}
+    prev=bi;}
+  return seq;
+}
+const loadScript=src=>new Promise((res,rej)=>{if(window.Tesseract)return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("文字認識のライブラリを読み込めませんでした(ネットワークを確認してください)"));document.head.appendChild(sc);});
+async function getOcr(lang){
+  await loadScript(TESS_URL);
+  if(ocrWorker&&ocrLang===lang)return ocrWorker;
+  if(ocrWorker){try{await ocrWorker.terminate();}catch{}ocrWorker=null;}
+  status("文字認識の準備中…(初回のみ、認識データをダウンロードします)");
+  const LBL={"loading tesseract core":"認識エンジンを読み込み中","initializing tesseract":"初期化中","loading language traineddata":"認識データを読み込み中","initializing api":"初期化中","recognizing text":"認識中"};
+  ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status){const t=`認識エンジンの準備中(初回のみ): ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`;status(t);job.step(t);}}});
+  ocrLang=lang;return ocrWorker;
+}
+async function renderRegion(x,y,w,h,scale){
+  const pg=await pdfView.getPage(cur+1),vp=pg.getViewport({scale});
+  const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));
+  const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+  await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
+  return cv;
+}
+// 高精度エンジン(中国語と共通のモデル)が出しがちな、中国語の字形・小数点の誤りを直す(お金の「1,800」が「1.800」になる等)
+const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"買","单":"単","发":"発","级":"級","类":"類","门":"門","问":"問","间":"間","时":"時","线":"線","设":"設","计":"計","认":"認","识":"識","读":"読","写":"写","仅":"僅","东":"東","车":"車","长":"長","马":"馬","鸟":"鳥","关":"関","开":"開","应":"応","业":"業","务":"務","报":"報","处":"処","预":"預","钱":"銭","银":"銀","税":"税","总":"総","点":"点","机":"機","电":"電","话":"話","号":"号","区":"区","页":"頁","图":"図","圆":"円","额":"額","费":"費","货":"貨","纸":"紙","印":"印","销":"販"};
+const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
+const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
+// 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
+function flattenForOcr(cv,br){
+  const cx=cv.getContext("2d",{willReadFrequently:true}),w=cv.width,h=cv.height;
+  const im=cx.getImageData(0,0,w,h),d=im.data,n=w*h,g=new Float32Array(n);
+  for(let i=0;i<n;i++)g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
+  // 背景に模様・ムラがあるときだけ処理する(きれいな書類に使うと、細い文字を傷める)
+  const hist=new Uint32Array(256);for(let i=0;i<n;i++)hist[Math.min(255,g[i]|0)]++;
+  let acc=0,p90=255;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>n*0.1){p90=v;break;}} // 明るい側の上位10%の境
+  let sum=0,sq=0,cnt=0;for(let i=0;i<n;i++)if(g[i]>=p90*0.8){sum+=g[i];sq+=g[i]*g[i];cnt++;}
+  const sd=cnt?Math.sqrt(Math.max(0,sq/cnt-(sum/cnt)**2)):0;
+  if(sd<10)return false;
+  const W1=w+1,I=new Float64Array(W1*(h+1)); // 積分画像
+  // 先に少しぼかして、網点・縞(モアレ)・画素のざらつきを均す(写真・画面の撮影でできる細かい模様を、文字と間違えない)
+  const r0=br==null?Math.max(1,Math.round(Math.min(w,h)/600)):br;
+  {const t=new Float32Array(n);
+   for(let y=0;y<h;y++){let a=0,c=0;const row=y*w;for(let x=0;x<w+r0;x++){if(x<w){a+=g[row+x];c++;}if(x-r0-1>=0){a-=g[row+x-r0-1];c--;}if(x-r0>=0)t[row+x-r0]=a/c;}}
+   for(let x=0;x<w;x++){let a=0,c=0;for(let y=0;y<h+r0;y++){if(y<h){a+=t[y*w+x];c++;}if(y-r0-1>=0){a-=t[(y-r0-1)*w+x];c--;}if(y-r0>=0)g[(y-r0)*w+x]=a/c;}}}
+  for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=g[y*w+x];I[(y+1)*W1+x+1]=I[y*W1+x+1]+row;}}
+  const R=Math.max(12,Math.min(60,Math.round(Math.min(w,h)/10)));
+  for(let y=0;y<h;y++){const y0=Math.max(0,y-R),y1=Math.min(h,y+R+1);
+    for(let x=0;x<w;x++){const x0=Math.max(0,x-R),x1=Math.min(w,x+R+1);
+      const m=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((x1-x0)*(y1-y0));
+      const v=Math.round(255*Math.max(0,Math.min(1,(g[y*w+x]/Math.max(1,m)-0.6)/0.3)));const k=(y*w+x)*4;d[k]=d[k+1]=d[k+2]=v;}}
+  cx.putImageData(im,0,0);return true;
+}
+// ---- 画像の解析: 文字の断片 → 行 → 塊(段落・セル)。罫線は消して、塊の区切りに使う ----
+function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ高さに並ぶ断片は、離れていても1行にする(行の途中で2つに分けない)
+  const w=cv.width,h=cv.height,id=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h;
+  const g=new Uint8Array(n),hist=new Uint32Array(256);
+  for(let i=0;i<n;i++){const v=(id[i*4]*.3+id[i*4+1]*.59+id[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
+  let sum=0;for(let v=0;v<256;v++)sum+=v*hist[v];
+  let wB=0,sB=0,best=0,thr=128;for(let v=0;v<256;v++){wB+=hist[v];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=v*hist[v];const mB=sB/wB,mF=(sum-sB)/wF,bt=wB*wF*(mB-mF)*(mB-mF);if(bt>best){best=bt;thr=v;}}
+  const mask=new Uint8Array(n);let dark=0;for(let i=0;i<n;i++){if(g[i]<=thr){mask[i]=1;dark++;}}
+  if(dark>n*0.5)for(let i=0;i<n;i++)mask[i]^=1;
+  // 罫線(長く続く黒い線)を見つけて消す
+  const Lmin=Math.round(30*S),hr=[],vr=[],erase=[];
+  for(let y=0;y<h;y++){let run=0;for(let x=0;x<=w;x++){const on=x<w&&mask[y*w+x];if(on)run++;else{if(run>=Lmin){hr.push({y,x0:x-run,x1:x});erase.push([y*w+x-run,y*w+x,1]);}run=0;}}}
+  for(let x=0;x<w;x++){let run=0;for(let y=0;y<=h;y++){const on=y<h&&mask[y*w+x];if(on)run++;else{if(run>=Lmin){vr.push({x,y0:y-run,y1:y});erase.push([(y-run)*w+x,y*w+x,w]);}run=0;}}}
+  erase.forEach(([a,b,st])=>{for(let k=a;k<b;k+=st)mask[k]=0;});
+  const merge=(arr,key,a0,a1)=>{arr.sort((p,q)=>p[key]-q[key]);const out=[];arr.forEach(r=>{const l=out[out.length-1];if(l&&Math.abs(r[key]-l[key])<=4&&r[a0]<l[a1]&&r[a1]>l[a0]){l[a0]=Math.min(l[a0],r[a0]);l[a1]=Math.max(l[a1],r[a1]);}else out.push({...r});});return out;};
+  const hrules=merge(hr,"y","x0","x1"),vrules=merge(vr,"x","y0","y1");
+  // 連結成分(文字の断片)
+  const lab=new Int32Array(n),stack=new Int32Array(n),comps=[],minArea=Math.max(3,0.12*S*S);let nid=0;
+  for(let i=0;i<n;i++){
+    if(!mask[i]||lab[i])continue;nid++;let sp=0,area=0,x0=w,x1=0,y0=h,y1=0;stack[sp++]=i;lab[i]=nid;
+    while(sp){const q=stack[--sp];area++;const x=q%w,y=(q/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      if(x>0&&mask[q-1]&&!lab[q-1]){lab[q-1]=nid;stack[sp++]=q-1;}
+      if(x<w-1&&mask[q+1]&&!lab[q+1]){lab[q+1]=nid;stack[sp++]=q+1;}
+      if(y>0&&mask[q-w]&&!lab[q-w]){lab[q-w]=nid;stack[sp++]=q-w;}
+      if(y<h-1&&mask[q+w]&&!lab[q+w]){lab[q+w]=nid;stack[sp++]=q+w;}}
+    const cw=x1-x0+1,ch=y1-y0+1;
+    if(area<minArea||(ch<3&&!(cw>=6&&ch>=2))||(cw>w*0.6&&cw>200*S)||(ch>h*0.3&&ch>80*S))continue;   // 紙の縁・写真の枠のような巨大なもの(小さな範囲では、文字そのものを捨てない)
+    comps.push({x0,y0,x1:x1+1,y1:y1+1,h:ch,w:cw});
+  }
+  if(!comps.length)return{chunks:[],hrules,vrules};
+  comps.sort((a,b)=>a.x0-b.x0);
+  const hs=comps.map(c=>c.h).sort((a,b)=>a-b),Hmax=hs[Math.floor(hs.length*0.97)]||hs[hs.length-1],Hmed=hs[hs.length>>1];
+  const vSep=(xa,xb,ya,yb)=>vrules.some(r=>r.x>=xa-2&&r.x<=xb+2&&r.y0<=yb&&r.y1>=ya);
+  const hSep=(ya,yb,xa,xb)=>hrules.some(r=>r.y>=ya-2&&r.y<=yb+2&&r.x0<=xb&&r.x1>=xa);
+  const uf=m=>{const p=Array.from({length:m},(_,i)=>i);const f=i=>{while(p[i]!==i){p[i]=p[p[i]];i=p[i];}return i;};return{f,u:(a,b)=>{p[f(a)]=f(b);}};};
+  // (1) 行: 横に近く、縦に重なる断片をつなぐ
+  const U=uf(comps.length);
+  for(let i=0;i<comps.length;i++){const a=comps[i];
+    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.5*Hmax)break;   // 字間の広い書式(均等割付)や、「、」の後の空きで、行が割れないように
+      if(!rowMode&&gap>1.4*Math.max(a.h,b.h,0.8*Hmed))continue;
+      const ov=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0),mn=Math.min(a.h,b.h);
+      let near=ov>=0.45*mn;
+      if(!near&&mn<0.35*Hmed){const dy=Math.abs((a.y0+a.y1)/2-(b.y0+b.y1)/2);near=dy<=0.6*Math.max(a.h,b.h)+0.5*Hmed;} // 細い横線(ニの棒・ー)は、縦位置が近ければ同じ行
+      if(!near)continue;
+      if(gap>0&&vSep(a.x1,b.x0,Math.max(a.y0,b.y0),Math.min(a.y1,b.y1)))continue;
+      U.u(i,j);}}
+  const lm=new Map();comps.forEach((c,i)=>{const r=U.f(i);let l=lm.get(r);if(!l){l={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,n:0,hs:[],ar:0,cs:[]};lm.set(r,l);}l.hs.push(c.h);l.ar+=c.w*c.h;l.cs.push(c);l.x0=Math.min(l.x0,c.x0);l.y0=Math.min(l.y0,c.y0);l.x1=Math.max(l.x1,c.x1);l.y1=Math.max(l.y1,c.y1);l.n++;});
+  // 行の中の「飛び抜けて広い隙間」で分ける(ラベルと値のように、字間より明らかに広い隙間。字間の広い書式でも、字間はそろっているので割れない)
+  const pieces=[];
+  for(const l of lm.values()){
+    const cs=[...l.cs].sort((a,b)=>a.x0-b.x0);if(cs.length<3){pieces.push(l);continue;}
+    const H=l.y1-l.y0,gaps=[],ex=c=>c.x1+((c.w<0.5*H&&c.h<0.5*H)?0.5*H:0);   // 「、」「。」などの小さい文字は、右側に半角ぶんの余白(その字の枠)があるので、隙間には数えない
+    let mx=ex(cs[0]);
+    for(let i=1;i<cs.length;i++){const g=cs[i].x0-mx;if(g>0)gaps.push(g);mx=Math.max(mx,ex(cs[i]));}
+    const med=gaps.length?[...gaps].sort((a,b)=>a-b)[gaps.length>>1]:0,T=Math.max(1.0*H,2.2*med);
+    let cur=[cs[0]];mx=ex(cs[0]);const groups=[];
+    for(let i=1;i<cs.length;i++){if(cs[i].x0-mx>T){groups.push(cur);cur=[];}cur.push(cs[i]);mx=Math.max(mx,ex(cs[i]));}
+    groups.push(cur);
+    if(groups.length===1){pieces.push(l);continue;}
+    groups.forEach(gp=>{const o={x0:1e9,y0:1e9,x1:0,y1:0,n:gp.length,hs:[],ar:0,cs:gp};gp.forEach(c=>{o.x0=Math.min(o.x0,c.x0);o.y0=Math.min(o.y0,c.y0);o.x1=Math.max(o.x1,c.x1);o.y1=Math.max(o.y1,c.y1);o.hs.push(c.h);o.ar+=c.w*c.h;});pieces.push(o);});
+  }
+  const lines=pieces.filter(l=>l.y1-l.y0>=4).sort((a,b)=>a.y0-b.y0);
+  lines.forEach(l=>{l.h=l.y1-l.y0;l.w=l.x1-l.x0;});
+  // (2) 塊: 行間が詰まっていて、左揃い/重なりがあり、大きさが近い行をつなぐ(間に横線があれば分ける)
+  const V=uf(lines.length);
+  for(let i=0;i<lines.length;i++){const a=lines[i];
+    for(let j=i+1;j<lines.length;j++){const b=lines[j],vg=b.y0-a.y1;if(vg>1.3*Math.max(a.h,b.h))break;
+      const mh=Math.min(a.h,b.h);if(vg<-0.5*mh)continue;if(vg>0.9*mh)continue;
+      if(Math.max(a.h,b.h)/mh>1.4)continue;
+      // 同じ塊にするのは、左端・右端・中心のどれかがそろっている行だけ(上の行の下にたまたま収まっているだけの短い行〈「理事長」など〉は別の塊)
+      const tol=0.8*Math.max(a.h,b.h);   // 行の始まり(左端)が違う行(字下げ)は別の塊。右端・中心がそろう行(右揃え・中央揃え)だけ例外
+      const mhh=Math.max(a.h,b.h),dl=Math.abs(a.x0-b.x0);   // 中央揃え・右揃えとみなすのは、中心(右端)がきっちりそろう(0.3文字以内)ときだけ。字下げした行は、たまたま中心が近くなりやすいが、きっちりはそろわない
+      if(!(dl<tol||Math.abs(a.x1-b.x1)<0.3*mhh||Math.abs((a.x0+a.x1)/2-(b.x0+b.x1)/2)<0.3*mhh))continue;
+      if(hSep(a.y1,b.y0,Math.max(a.x0,b.x0),Math.min(a.x1,b.x1)))continue;
+      V.u(i,j);}}
+  const cm=new Map();lines.forEach((l,i)=>{const r=V.f(i);let c=cm.get(r);if(!c){c={x0:l.x0,y0:l.y0,x1:l.x1,y1:l.y1,lines:[]};cm.set(r,c);}c.x0=Math.min(c.x0,l.x0);c.y0=Math.min(c.y0,l.y0);c.x1=Math.max(c.x1,l.x1);c.y1=Math.max(c.y1,l.y1);c.lines.push(l);});
+  const chunks=[...cm.values()].map(c=>{const hh=c.lines.map(l=>l.h).sort((a,b)=>a-b);c.gh=hh[hh.length>>1];return c;}).sort((a,b)=>(Math.abs(a.y0-b.y0)<0.5*Math.min(a.gh,b.gh)?a.x0-b.x0:a.y0-b.y0));
+  return{chunks,hrules,vrules};
+}
+// 文字数の目安(全角=1、英字・数字は幅が狭いので小さく)。幅÷これ = 1文字分の大きさ
+function charUnits(str){let u=0;for(const ch of Array.from(str)){const c=ch.codePointAt(0);
+  if(c===32)u+=0.3;else if(c>=0xFF61&&c<=0xFF9F)u+=0.5;else if(c>0x2E7F)u+=1;
+  else if(/[A-Z]/.test(ch))u+=0.66;else if(/[0-9]/.test(ch))u+=0.55;else if(/[a-z]/.test(ch))u+=0.5;else if(/[.,:;'!|]/.test(ch))u+=0.3;else u+=0.55;}return u;}
+const joinWords=ws=>{let t="";ws.forEach((w,i)=>{const s=w.str||w;if(i&&/[\x21-\x7E]$/.test(t)&&/^[\x21-\x7E]/.test(s))t+=" ";t+=s;});return t;};
+const wmedian=(arr)=>{if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a.v-b.v),tot=s.reduce((a,b)=>a+b.w,0);let acc=0;for(const e of s){acc+=e.w;if(acc>=tot/2)return e.v;}return s[s.length-1].v;};
+// 1つの塊を、ちょうどよい倍率で描き直して認識する
+// ---- 最高精度の認識エンジン: 国立国会図書館 NDLOCR-Lite(CC BY 4.0)の文字認識モデル(PARSeq)。行の切り出しは自前の画像解析。
+//   モデルは文字数別の3種(30字・50字・100字まで)。短い行は一番小さい約36MBだけで済み、長い行のときだけ追加で読み込む ----
+const NDL_BASE="https://raw.githubusercontent.com/ndl-lab/ndlocr-lite/d001dad2013ceabb5736ff8d637474e443eb73c2/src/model/";
+const NDL_FILES={256:"parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx",384:"parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx",768:"parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx"};
+const NDL_CHARS=" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρςστυφχψωϑϕϖϱϵ‐‑‒–—―‘’“”‥…※⁃⁻₋←↑→↓⇩−①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭■□▲△▽◆○●★☆♥♪❶❷❸❹❺❻❼❽❾、。〃々〆〇〈〉《》「」『』【】〔〕〝〟〳〴〵〻ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんゔ゛゜ゝゞゟァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ・ーヽヾヿㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ㈱㈲㈴㈾㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉㊞㸃一丁七万丈三上下不与丐丑且丕世丗丘丙丞両並个中丱串丶丸丹主丼丿乂乃久之乍乎乏乕乖乗乘乙九乞也乢乱乳乾亀亂亅了予争亊事二于云互五井亘亙些亜亞亟亠亡亢交亥亦亨享京亭亮亰亳亶亷人什仁仂仄仆仇今介仍从仏仔仕他仗付仙仝仞仟代令以仭仮仰仲件价任企伉伊伍伎伏伐休会伜伝伯估伴伶伸伹伺似伽佃但佇位低住佐佑体何佗余佚佛作佝佞佩佯佰佳併佶佻佼使侃來侈例侍侏侑侖侘供依侠価侫侭侮侯侵侶便係促俄俊俎俐俑俔俗俘俚俛保俟俠信俣俤俥修俯俱俳俵俶俸俺俾倅倆倉個倍倏們倒倔倖候倚借倡倣値倥倦倨倩倪倫倬倭倶倹偁偃假偈偉偏偐偕偖做停健偬偲側偵偶偸偽傀傅傍傑傘備傚催傭傲傳傴債傷傾僂僅僉僊働像僑僕僖僚僞僣僥僧僭僮僵價僻儀儁儂億儉儒儔儕儖儘儚償儡優儲儷儺儻儼儿兀允元兄充兆兇先光克兌免兎児兒兔党兜兢入內全兩兪八公六兮共兵其具典兼冀冂内円冉冊册再冏冐冑冒冓冕冖冗写冠冢冤冥冦冨冩冪冫冬冰冱冲决冴况冶冷冽凄凅准凉凋凌凍减凖凛凜凝凞几凡処凧凩凪凭凰凱凵凶凸凹出函凾刀刃刄分切刈刊刋刎刑刔列初判別刧利刪刮到刳制刷券刹刺刻剃剄則削剋剌前剏剔剖剛剝剞剣剤剥剩剪副剰剱割剳剴創剽剿劃劄劇劈劉劍劑劒劔力功加劣助努劫劬劭励労劵効劼劾勁勃勅勇勉勍勒動勗勘務勝勞募勠勢勣勤勦勧勲勳勵勸勹勺勾勿匁匂包匆匈匍匏匐匕化北匙匚匝匠匡匣匪匯匱匳匸匹区医匿區十千卅卆升午卉半卍卑卒卓協南単博卜卞占卦卩卮卯印危即却卵卷卸卻卽卿厂厄厖厘厚原厠厥厦厨厩厭厮厰厲厳厶去参參又叉及友双反収叔取受叙叛叟叡叢口古句叨叩只叫召叭叮可台叱史右叶号司叺吁吃各合吉吊吋同名后吏吐向君吝吟吠否吩含听吭吮吳吴吶吸吹吻吼吽吾吿呀呂呆呈呉告呎呑呟周呪呰呱味呵呶呷呻呼命咀咄咆咋和咎咏咐咒咜咢咤咥咨咩咫咬咯咲咳咸咼咽咾哀品哂哄哇哈哉哘員哢哥哦哨哩哭哮哲哺哽唄唆唇唏唐唔唖售唯唱唳唸唹唾啀啄啅商啌問啓啖啗啜啝啣啻啼啾喀喃善喇喉喊喋喘喙喚喜喝喞喟喧喨喩喪喫喬單喰営嗄嗅嗇嗔嗚嗜嗟嗣嗤嗷嗹嗽嗾嘆嘈嘉嘔嘖嘗嘘嘛嘩嘯嘱嘲嘴嘶嘸噂噌噎噐噛噤器噪噫噬噴噸噺嚀嚆嚇嚊嚏嚔嚙嚠嚢嚥嚩嚮嚴嚶嚼囀囁囂囃囈囉囊囎囑囓囗囘囚四回因団囮困囲図囹固国囿圀圃圄圈圉國圍圏園圓圖團圜土圦圧在圭地圷圸圻址坂均坊坎坏坐坑坡坤坦坩坪坿垂垈垉型垓垠垢垣垤垪垰垳垽埀埃埆埋城埒埓埔埖埜域埠埣埴埵執培基埼堀堂堅堆堊堋堕堙堝堡堤堪堯堰報場堵堺堽塀塁塊塋塑塒塔塗塘塙塚塞塡塢塩填塰塲塵塹塾境墅墓増墜增墟墨墫墮墳墸墹墺墻墾壁壅壇壊壌壑壓壔壕壗壘壙壜壞壟壤壥士壬壮壯声壱売壷壹壺壻壼壽夂変夊夏夐夕外夘夙多夛夜夢夥大天太夫夬夭央失夲夷夸夾奄奇奈奉奎奏奐契奔奕套奘奚奠奢奥奧奨奩奪奬奮女奴奸好妁如妃妄妊妍妓妖妙妛妝妣妥妨妬妲妹妻妾姆姉姊始姐姑姓委姙姚姜姥姦姨姪姫姬姶姻姿威娃娉娑娘娚娛娜娟娠娥娩娯娵娶娼婀婁婆婉婚婢婦婪婬婿媒媚媛媼媽媾嫁嫂嫉嫋嫌嫐嫖嫗嫡嫣嫦嫩嫺嫻嬉嬋嬌嬖嬢嬪嬬嬰嬲嬶嬾孀孃孅子孑孔孕字存孚孛孜孝孟季孤孥学孩孫孰孱孳孵學孺宀它宅宇守安宋完宍宏宕宗官宙定宛宜宝実客宣室宥宦宮宰害宴宵家宸容宿寂寃寄寅密寇寉富寐寒寓寔寛寝寞察寡寢寤寥實寧寨審寫寬寮寰寳寵寶寸寺対寿封専射尅将將專尉尊尋對導小少尓尖尙尚尠尢尤尨尭就尸尹尺尻尼尽尾尿局屁居屆屈届屋屍屎屏屐屑屓展屛属屠屡屢層履屬屮屯山屶屹岌岐岑岔岡岨岩岫岬岱岳岶岷岸岻岼岾峅峇峙峠峡峨峩峪峭峯峰島峺峻峽崇崋崎崑崔崕崖崗崘崙崚崛崟崢崩嵋嵌嵎嵐嵒嵜嵩嵬嵯嵳嵶嶂嶄嶇嶋嶌嶐嶝嶢嶬嶮嶷嶺嶼嶽巉巌巍巒巓巖巛川州巡巢巣工左巧巨巫差己已巳巴巵巷巻巽巾市布帆帋希帑帖帙帚帛帝帥師席帯帰帳帶帷常帽幀幃幄幅幇幌幎幔幕幗幟幡幢幣幤干平年幵并幷幸幹幺幻幼幽幾广庁広庄庇床序底庖店庚府庠度座庫庭庵庶康庸廁廂廃廈廉廊廏廐廓廖廚廛廝廟廠廡廢廣廨廩廬廰廱廳廴延廷廸建廻廼廾廿弁弃弄弉弊弋弌弍式弐弑弓弔引弖弗弘弛弟弥弦弧弩弭弯弱張強弸强弼弾彁彈彊彌彎彑当彖彗彙彜彝彡形彥彦彩彪彫彬彭彰影彳彷役彼彿往征徂徃径待徇很徊律後徐徑徒従得徘徙從徠御徨復循徭微徳徴徵德徹徼徽心必忌忍忖志忘忙応忝忠忤快忰忱念忸忻忽忿怎怏怐怒怕怖怙怛怜思怠怡急怦性怨怩怪怫怯怱怺恁恂恃恆恊恋恍恐恒恕恙恚恟恠恢恣恤恥恨恩恪恫恬恭息恰恵恷悁悃悄悅悉悋悌悍悒悔悖悗悚悛悟悠患悦悧悩悪悲悳悴悵悶悸悼悽情惆惇惑惓惘惚惜惟惠惡惣惧惨惰惱想惴惶惷惹惺惻愀愁愃愆愈愉愍愎意愕愚愛感愡愧愨愬愴愼愽愾愿慂慄慇慈慊態慌慍慎慓慕慘慙慚慝慟慢慣慥慧慨慫慮慯慰慱慳慴慵慶慷慾憂憇憊憎憐憑憔憖憙憚憤憧憩憫憬憮憲憶憺憾懃懆懇懈應懊懋懌懍懐懣懦懲懴懶懷懸懺懼懽懾懿戀戈戉戊戌戍戎成我戒戔或戚戛戝戞戟戡戦截戮戯戰戱戲戳戴戶戸戻戾房所扁扇扈扉手才扎打払托扛扞扠扣扨扮扱扶批扼找承技抂抃抄抉把抑抒抓抔投抖抗折抛抜択抦披抬抱抵抹抻押抽拂担拆拇拈拉拊拌拍拏拐拑拒拓拔拗拘拙招拜拝拠拡括拭拮拯拱拳拵拶拷拾拿持挂指挈按挌挑挙挟挧挨挫振挹挺挽挾挿捉捌捍捏捐捕捗捜捧捨捩捫据捲捶捷捺捻掀掃授掉掌掎掏排掖掘掛掟掠採探掣接控推掩措掫掬掲掴掵掻掾揀揃揄揆揉描提插揖揚換握揣揩揭揮援揶揷揺搆損搏搓搔搖搗搜搦搨搬搭搴搶携搾摂摎摑摘摧摩摯摶摸摺撃撈撒撓撕撚撞撤撥撩撫播撮撰撲撹撻撼擁擂擅擇擊操擒擔擘據擠擡擢擣擦擧擬擯擱擲擴擶擺擽擾攀攅攘攜攝攣攤攪攫攬支攴攵收攷攸改攺攻放政故效敍敎敏救敕敖敗敘教敝敞敢散敦敬数敲整敵敷數斂斃文斈斉斌斎斐斑斗料斛斜斟斡斤斥斧斫斬断斯新斷方於施旁旃旄旅旆旋旌族旒旗旙旛无旡既旣日旦旧旨早旬旭旱旺旻昂昃昆昇昊昌明昏易昔昜星映春昧昨昭是昴昵昶昻昼昿晁時晃晄晉晋晏晒晚晝晞晟晢晤晦晧晨晩普景晰晴晶智暁暃暄暇暈暉暎暑暖暗暘暝暢暦暫暮暴暸暹暼暾曁曄曆曇曉曖曙曚曜曝曠曦曩曰曲曳更曵曷書曹曼曽曾替最會月有朋服朏朔朕朖朗望朝朞期朦朧木未末本札朮朱朴朶朷朸机朽朿杁杆杉李杏材村杓杖杙杜杞束杠条杢杣杤来杪杭杯杰東杲杳杵杷杼松板枅枇枉枋枌析枕林枚果枝枠枡枢枦枩枯枳枴架枷枸枹柁柄柆柊柎柏某柑染柔柘柚柝柞柢柤查柧柩柬柮柯柱柳柴柵査柾柿栂栃栄栅栓栖栗栞校栢栩株栫栲栴核根格栽桀桁桂桃框案桍桎桐桑桓桔桙桜桝桟档桧桴桶桷桾桿梁梃梅梍梏梓梔梗梛條梟梠梢梦梧梨梭梯械梱梳梵梶梹梺梼棄棆棉棊棋棍棒棔棕棗棘棚棟棠棡棣棧森棯棲棹棺椀椁椄椅椈椋椌植椎椏椒椙椚椛検椡椢椣椥椦椨椪椰椴椶椹椽椿楊楓楔楕楙楚楜楝楞楠楡楢楪楫業楮楯楳楴極楷楸楹楼楽楾榁概榊榎榑榔榕榛榜榠榧榮榱榲榴榻榾榿槁槃槇槊構槌槍槎槐槓様槙槝槞槧槨槪槫槭槲槹槻槽槿樂樅樊樋樌樒樓樔樗標樛樞樟模樢樣権横樫樮樵樶樸樹樺樽橄橇橈橋橘橙機橡橢橦橫橲橸橿檀檄檍檎檐檗檜檠檢檣檪檬檮檳檸檻櫁櫂櫃櫑櫓櫚櫛櫞櫟櫨櫪櫺櫻欄欅權欒欖欝欟欠次欣欧欲欷欸欹欺欽款歃歇歉歌歎歐歓歔歙歛歟歡止正此步武歩歪歯歲歳歴歷歸歹死歿殀殃殄殆殉殊残殍殕殖殘殞殤殪殫殯殱殲殳殴段殷殺殻殼殿毀毅毆毋母毎每毒毓比毗毘毛毟毫毬毯毳氈氏民氓气気氛氣氤水氷永氾汀汁求汎汐汕汗汚汝汞江池汢汨汪汰汲汳決汽汾沁沂沃沈沌沍沐沒沓沖沙沚沛没沢沫沮沱河沸油沺治沼沽沾沿況泄泅泉泊泌泓法泗泙泛泝泡波泣泥注泪泯泰泱泳洇洋洌洒洗洙洛洞洟津洩洪洫洲洳洵洶洸活洽派流浄浅浙浚浜浣浤浦浩浪浬浮浴海浸浹涅消涉涌涎涓涕涙涛涜涯液涵涸涼淀淅淆淇淋淌淑淒淕淘淙淚淞淡淤淦淨淪淫淬淮深淳淵混淸淹淺添淼清渇済渉渊渋渓渕渙渚減渝渟渠渡渣渤渥渦温渫測渭渮港游渺渾湃湊湍湎湖湘湛湟湧湫湮湯湲湶湾湿満溂溌溏源準溘溜溝溟溢溥溪溫溯溲溶溷溺溽滂滄滅滉滊滋滌滑滓滔滕滝滞滬滯滲滴滷滸滾滿漁漂漆漉漏漑漓演漕漠漢漣漫漬漱漲漸漾漿潁潅潑潔潘潛潜潟潤潦潭潮潯潰潴潸潺潼澀澁澂澄澆澎澑澗澡澣澤澥澪澱澳澹激濁濂濃濆濔濕濘濛濟濠濡濤濫濬濮濯濱濳濶濺濾瀁瀉瀋瀏瀑瀕瀘瀚瀛瀝瀞瀟瀦瀧瀨瀬瀰瀲瀾灌灑灘灣火灯灰灸灼災炉炊炎炒炙炬炭炮炯炳炸点為烈烋烏烙烝烟烱烹烽焉焔焙焚焜無焦然焼煉煌煎煑煕煖煙煢煤煥煦照煩煬煮煽熄熈熊熏熔熕熙熟熨熬熱熹熾燃燈燉燎燐燒燔燕燗營燠燥燦燧燬燭燮燵燹燻燼燿爆爍爐爛爨爪爬爭爰爲爵父爺爻爼爽爾爿牀牆片版牋牌牒牘牙牛牝牟牡牢牧物牲牴特牽牾犀犁犂犇犒犖犠犢犧犬犯犲状犹狀狂狃狄狆狎狐狒狗狙狛狠狡狢狩独狭狷狸狹狼狽猊猖猗猛猜猝猟猥猩猪猫献猯猴猶猷猽猾猿獄獅獎獏獗獣獨獪獰獲獵獸獺獻玄玆率玉王玖玩玲玳玻珀珂珈珊珍珎珞珠珥珪班珮珱珸現球琅理琉琢琥琲琳琴琵琶琺琿瑁瑕瑙瑚瑛瑜瑞瑟瑠瑣瑤瑩瑪瑯瑰瑳瑶瑾璃璋璞璢璧環璽瓊瓏瓔瓜瓠瓢瓣瓦瓧瓩瓮瓰瓱瓲瓶瓷瓸甃甄甅甌甍甎甑甓甕甘甚甜甞生產産甥甦用甫甬田由甲申男甸町画甼畄畆畉畊畋界畍畏畑畔留畚畛畜畝畠畢畤略畦畧畩番畫畭異畳畴畵當畷畸畿疂疆疇疉疊疋疎疏疑疔疚疝疣疥疫疱疲疳疵疸疹疼疽疾痂痃病症痊痍痒痔痕痘痙痛痞痢痣痩痰痲痳痴痹痺痼痾痿瘁瘉瘋瘍瘟瘠瘡瘢瘤瘧瘰瘴瘻療癆癇癈癌癒癖癘癜癡癢癧癨癩癪癬癰癲癶癸発登發白百皀皃的皆皇皈皋皎皐皓皖皙皚皮皰皴皷皸皹皺皿盂盃盆盈益盍盒盖盗盛盜盞盟盡監盤盥盧盪目盲直相盻盾省眄眇眈眉看県眛眞真眠眤眥眦眩眷眸眺眼着睇睚睛睡督睥睦睨睪睫睹睾睿瞋瞎瞑瞞瞠瞥瞬瞭瞰瞳瞶瞹瞻瞼瞽瞿矇矍矗矚矛矜矢矣知矧矩短矮矯石矼砂砌砒研砕砠砥砦砧砲破砺砿硅硏硝硫硬硯硲硴硼碁碆碇碌碍碎碑碓碕碗碚碣碧碩碪碯碵確碼碾磁磅磆磊磋磐磑磔磚磧磨磬磯磴磽礁礇礎礑礒礙礦礪礫礬示礼社祀祁祇祈祉祐祓祕祖祗祚祝神祟祠祢祥票祭祷祺祿禀禁禄禅禊禍禎福禝禦禧禪禮禰禱禳禹禺禽禾禿秀私秉秋科秒秕秘租秡秣秤秦秧秩秬称移稀稅稈程稍税稔稗稘稙稚稜稟稠種稱稲稷稻稼稽稾稿穀穂穃穆穉積穎穏穐穗穡穢穣穩穫穰穴究穹空穽穿突窃窄窈窒窓窕窖窗窘窟窩窪窮窯窰窶窺窿竃竄竅竇竈竊立竍竏竒竓竕站竚竜竝竟章竡竢竣童竦竪竭端竰競竸竹竺竿笂笄笆笈笊笋笏笑笘笙笛笞笠笥符笨第笳笵笶笹筅筆筈等筋筌筍筏筐筑筒答策筝筥筧筬筮筰筱筴筵筺箆箇箋箍箏箒箔箕算箘箙箚箜箝箟管箪箭箱箴箸節篁範篆篇築篋篌篏篝篠篤篥篦篩篭篳篶篷簀簇簍簑簒簓簔簗簞簟簡簣簧簪簫簷簸簽簾簿籀籃籌籍籏籐籔籖籘籟籠籤籥籬米籵籾粁粂粃粉粋粍粐粒粕粗粘粛粟粡粢粤粥粧粨粫粭粮粱粲粳粹粽精糀糂糅糊糎糒糓糖糘糜糞糟糠糢糧糯糲糴糶糸糺系糾紀紂約紅紆紊紋納紐純紕紗紘紙級紛紜素紡索紫紬紮累細紲紳紵紹紺紿終絃組絅絆絋経絎絏結絕絖絛絞絡絢絣給絨絮統絲絳絵絶絹絽綁綉綏經継続綛綜綟綠綢綣綫綬維綮綯綰綱網綴綵綸綺綻綽綾綿緃緇緊緋総緑緒緕緖緘線緜緝緞締緡緣緤編緩緬緯緲練緻縁縄縅縉縊縋縒縛縞縟縡縢縣縦縫縮縱縲縵縷縹縺縻總績繁繃繆繊繋繍織繕繖繙繚繝繞繡繦繧繩繪繫繭繰繹繻繼繽繿纂纃纈纉續纎纏纐纒纓纔纖纛纜缶缸缺缼罅罌罍罎罐网罔罕罘罟罠罧罨罩罪罫置罰署罵罷罸罹羂羃羅羆羇羈羊羌美羔羚羝羞羣群羨義羮羯羲羶羸羹羽翁翅翆翊翌習翔翕翠翡翦翩翫翰翳翹翻翼耀老考耄者耆耋而耐耒耕耗耘耙耜耡耨耳耶耻耽耿聆聊聒聖聘聚聞聟聡聢聨聯聰聲聳聴聶職聹聽聾聿肄肅肆肇肉肋肌肓肖肘肚肛肝股肢肥肩肪肬肭肯肱育肴肺胃胄胆背胎胖胙胚胛胝胞胡胤胥胯胱胴胸胼能脂脅脆脇脈脉脊脚脛脣脩脫脯脱脳脹脾腆腋腎腐腑腓腔腕腟腥腦腫腮腰腱腴腸腹腺腿膀膂膃膈膊膏膓膕膚膜膝膠膣膤膨膩膰膳膵膸膺膽膾膿臀臂臆臈臉臍臑臓臘臙臚臟臠臣臥臧臨自臭至致臺臻臼臾舁舂舅與興舉舊舌舍舎舐舒舖舗舘舛舜舞舟舩航舫般舮舳舵舶舷舸船艀艇艘艙艚艝艟艢艤艦艨艪艫艮良艱色艶艷艸艾芋芍芒芙芝芟芥芦芫芬芭芯花芳芸芹芻芽苅苑苒苓苔苗苙苛苜苞苟苡苣若苦苧苫英苳苴苹苺苻茂范茄茅茆茉茎茖茗茘茜茣茨茫茯茱茲茴茵茶茸茹荀荅草荊荏荐荒荘荳荵荷荻荼莅莇莉莊莎莓莖莚莞莟莠莢莨莪莫莱莵莽菁菅菊菌菎菓菖菘菜菟菠菩菪菫華菰菱菲菴菷菻菽萃萄萇萊萋萌萍萎萓萠萢萩萪萬萱萵萸萼落葆葉葎著葛葡葢董葦葩葫葬葭葮葯葱葵葷葹葺蒂蒄蒋蒐蒔蒙蒜蒟蒡蒭蒲蒸蒹蒻蒼蒿蓁蓄蓆蓉蓊蓋蓍蓐蓑蓖蓙蓚蓬蓮蓴蓼蓿蔀蔆蔑蔓蔔蔕蔗蔘蔚蔟蔡蔣蔦蔬蔭蔵蔽蕀蕁蕃蕈蕉蕊蕋蕎蕕蕗蕘蕚蕣蕨蕩蕪蕭蕷蕾薀薄薇薈薊薐薑薔薗薙薛薜薤薦薨薩薪薫薬薮薯薰薹薺藁藉藍藏藐藕藜藝藤藥藩藪藷藹藺藻藾蘂蘆蘇蘊蘋蘓蘖蘗蘚蘢蘭蘯蘰蘿虍虎虐虔處虚虛虜虞號虧虫虱虹虻蚊蚋蚌蚓蚕蚣蚤蚩蚪蚫蚯蚰蚶蛄蛆蛇蛉蛋蛍蛎蛔蛙蛛蛞蛟蛤蛩蛬蛭蛮蛯蛸蛹蛻蛾蜀蜂蜃蜆蜈蜉蜊蜍蜑蜒蜘蜚蜜蜥蜩蜴蜷蜻蜿蝉蝋蝌蝎蝓蝕蝗蝙蝟蝠蝣蝦蝨蝪蝮蝴蝶蝸蝿螂融螟螢螩螫螯螳螺螻螽蟀蟄蟆蟇蟋蟐蟒蟠蟬蟯蟲蟶蟷蟹蟻蟾蠅蠍蠎蠏蠑蠕蠖蠟蠡蠢蠣蠧蠱蠶蠹蠻血衂衄衆行衍衒術街衙衛衝衞衡衢衣表衫衰衲衵衷衽衾衿袁袂袈袋袍袒袖袗袙袞袢袤袪被袮袰袱袴袵袷袿裁裂裃裄装裏裔裕裘裙補裝裟裡裨裲裳裴裸裹裼製裾褂褄複褊褌褐褒褓褝褞褥褪褫褶褸褻襁襃襄襌襍襖襞襟襠襤襦襪襭襯襲襴襷襾西要覃覆覇覈覊見規覓視覗覘覚覡覦覧覩親覬覯覲観覺覽覿觀角觚觜觝解触觧觴觸言訂訃計訊訌討訐訓訖託記訛訝訟訣訥訪設許訳訴訶診註証詁詆詈詐詑詒詔評詛詞詠詢詣試詩詫詬詭詮詰話該詳詼誂誄誅誇誉誌認誑誓誕誘誚語誠誡誣誤誥誦誨說説読誰課誹誼調諂諄談請諌諍諏諒論諚諛諜諞諠諡諢諤諦諧諫諭諮諱諳諷諸諺諾謀謁謂謄謇謌謎謐謔謖謗謙謚講謝謠謡謦謨謫謬謳謹謾譁譃證譌譎譏譖識譚譛譜譟警譫譬譯議譱譲譴護譽讀讃變讌讎讐讒讓讖讙讚谷谺谿豁豆豈豊豌豎豐豕豚象豢豪豫豬豸豹豺豼貂貅貉貊貌貍貎貔貘貝貞負財貢貧貨販貪貫責貭貮貯貰貲貳貴貶買貸費貼貽貿賀賁賂賃賄資賈賊賍賎賑賓賚賛賜賞賠賢賣賤賦質賭賴賺賻購賽贄贅贇贈贊贋贍贏贐贓贔贖赤赦赧赫赭走赱赳赴起趁超越趙趣趨足趺趾跂跋跌跏跖跚跛距跟跡跣跨跪跫路跳践跼跿踈踉踊踏踐踝踞踟踪踰踴踵蹂蹄蹇蹈蹉蹊蹌蹐蹕蹙蹟蹠蹣蹤蹲蹴蹶蹼躁躄躅躇躊躋躍躑躓躔躙躡躪身躬躯躰躱躾軅軆軈車軋軌軍軒軛軟転軣軫軸軻軼軽軾較輅載輊輌輒輓輔輕輙輛輜輝輟輦輩輪輯輳輸輹輻輾輿轂轄轅轆轉轌轍轎轗轜轟轡轢轣轤辛辜辞辟辣辧辨辭辮辯辰辱農辷辺辻込辿迂迄迅迎近返迚迠迢迥迦迩迪迫迭迯述迴迷迸迹迺追退送逃逅逆逋逍逎透逐逑逓途逕逖逗這通逝逞速造逡逢連逧逮週進逵逶逸逹逼逾遁遂遅遇遉遊運遍過遏遐遑遒道達違遖遘遙遜遞遠遡遣遥遨適遭遮遯遲遵遶遷選遺遼遽避邀邁邂邃還邇邉邊邏邑那邦邨邪邯邱邵邸郁郊郎郛郞郡郢郤部郭郵郷都鄂鄒鄕鄙鄭鄰鄲酉酊酋酌配酎酒酔酖酘酢酣酥酩酪酬酲酳酵酷酸醂醇醉醋醍醐醒醗醜醢醤醪醫醬醯醴醵醸醺釀釁釆采釈釉釋里重野量釐金釖釘釛釜針釟釡釣釦釧釵釶釼釿鈍鈎鈑鈔鈕鈞鈩鈬鈴鈶鈷鈿鉄鉅鉈鉉鉋鉐鉗鉚鉛鉞鉢鉤鉦鉱鉾銀銃銅銈銑銓銕銖銘銚銛銜銭銳銷銹鋏鋒鋤鋩鋪鋭鋲鋳鋸鋺鋼錄錆錏錐錘錙錚錠錢錣錦錨錫錬錮錯録錵錺錻鍄鍊鍋鍍鍔鍖鍛鍜鍠鍬鍮鍵鍼鍾鎌鎔鎖鎗鎚鎧鎬鎭鎮鎰鎹鏃鏈鏐鏑鏖鏗鏘鏝鏡鏤鏥鏨鐃鐇鐐鐓鐔鐘鐙鐚鐡鐫鐵鐶鐸鐺鑁鑄鑑鑒鑓鑚鑛鑞鑠鑢鑪鑰鑵鑷鑼鑽鑾鑿钁長門閂閃閇閉閊開閏閑間閔閖閘閙閠関閣閤閥閧閨閭閱閲閹閻閼閾闃闇闊闌闍闔闕闖闘關闡闢闥阜阡阨阪阮阯防阻阿陀陂附陋陌降陏限陛陜陝陞陟院陣除陥陦陪陬陰陲陳陵陶陷陸険陽隅隆隈隊隋隍階随隔隕隗隘隙際障隠隣隧隨險隰隱隲隴隶隷隸隹隻隼雀雁雄雅集雇雉雋雌雍雎雑雕雖雙雛雜離難雨雪雫雰雲零雷雹電需霄霆震霈霊霍霎霏霑霓霖霙霜霞霤霧霪霰露霸霹霽霾靂靄靆靈靉靑青靖静靜非靠靡面靤靦靨革靫靭靱靴靹靺靼鞁鞄鞅鞆鞋鞍鞏鞐鞘鞜鞠鞣鞦鞨鞫鞭鞳鞴韃韆韈韋韓韜韭韮韲音韵韶韻響頁頂頃項順須頌頏預頑頒頓頗領頚頡頤頬頭頴頷頸頻頼頽顆顋題額顎顏顔顕願顚顛類顧顫顯顰顱顳顴風颪颯颱颶飃飄飆飛飜食飢飩飫飭飮飯飲飴飼飽飾餃餅餉養餌餐餒餓餔餘餝餞餠餡餤館餬餮餽餾饂饅饉饋饌饐饑饒饕饗首馗馘香馥馨馬馭馮馳馴馼駁駄駅駆駈駐駑駒駕駘駛駝駟駢駭駮駱駲駸駻駿騁騅騎騏騒験騙騨騫騰騷騾驀驂驃驅驍驒驕驗驚驛驟驢驤驥驩驪驫骨骭骰骸骼髀髄髏髑髓體高髞髟髢髣髦髪髫髭髮髯髱髴髷髻鬆鬘鬚鬟鬢鬣鬥鬧鬨鬩鬪鬮鬯鬱鬲鬻鬼魁魂魃魄魅魍魎魏魑魔魘魚魯魴鮃鮎鮑鮒鮓鮖鮗鮟鮠鮨鮪鮫鮭鮮鮴鮹鯀鯆鯉鯊鯏鯑鯒鯔鯖鯛鯡鯢鯣鯤鯨鯰鯱鯲鯵鰄鰆鰈鰉鰊鰌鰍鰐鰒鰓鰔鰕鰛鰡鰤鰥鰭鰮鰯鰰鰲鰹鰺鰻鰾鱆鱇鱈鱒鱗鱚鱠鱧鱶鱸鳥鳧鳩鳫鳬鳰鳳鳴鳶鴃鴆鴇鴈鴉鴎鴒鴕鴛鴟鴣鴦鴨鴪鴫鴬鴻鴾鴿鵁鵄鵆鵈鵐鵑鵙鵜鵝鵞鵠鵡鵤鵬鵯鵲鵺鶇鶉鶏鶚鶤鶩鶫鶯鶲鶴鶸鶺鶻鷁鷂鷄鷆鷏鷓鷙鷦鷭鷯鷲鷸鷹鷺鷽鸚鸛鸞鹵鹸鹹鹼鹽鹿麁麈麋麌麑麒麓麕麗麝麟麥麦麩麪麭麴麸麹麺麻麼麾麿黃黄黌黍黎黏黐黑黒黔默黙黛黜黝點黠黥黨黯黴黶黷黹黻黼黽鼇鼈鼎鼓鼕鼠鼡鼬鼻鼾齊齋齎齏齒齔齟齠齡齢齣齦齧齪齬齲齶齷龍龕龜龝龠蘭朗寧旅蓮連廉惡類隆糖塚晴凞猪益神祥福靖精羽諸都飯飼館鶴僧免勉勤卑嘆器塀墨層悔慨懲敏既梅海漢琢社祉祈祐祖祝禎穀突節練繁署者臭著褐視謁謹賓贈逸難響頻﹣！＃＄％＆（）＊＋，－．／：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［］＿ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～￥𢌞￣〽◯│‾•◇桅痧〱閩▢◦─㐧◑煠你蒅卄縀匾嗩瘀歒〖〗虬糕𤍽◎剉晡▼𦾔儋㢲珉撿瀹叚帕芎脘樝𠮷鯽‼㤙焻㙒︎芩＼焮刕刁䕶怔";   // NDLmoji.yaml の charset_train(出力番号 i は、文字 NDL_CHARS[i-1]。0は終わり)
+const ndlSess={},ndlLoading={};
+function getNdl(wd){
+  if(ndlSess[wd])return Promise.resolve(ndlSess[wd]);
+  if(ndlLoading[wd])return ndlLoading[wd];
+  ndlLoading[wd]=(async()=>{
+    await loadOrt();
+    const buf=await fetchBuf(NDL_BASE+NDL_FILES[wd],"認識モデル("+({256:"小",384:"中",768:"大"})[wd]+")");
+    ndlSess[wd]=await ort.InferenceSession.create(buf,{executionProviders:["wasm"]});
+    return ndlSess[wd];
+  })().catch(e=>{delete ndlLoading[wd];throw e;});
+  return ndlLoading[wd];
+}
+// 1行の画像 → 文字列と確かさ(0〜100)。縦長なら左に90度回す。高さ24px・幅は モデルごとの固定(256/384/768)に縮めて読む
+async function ndlRead(cv,wd){
+  let src=cv;
+  if(cv.height>cv.width*1.5){const r=document.createElement("canvas");r.width=cv.height;r.height=cv.width;const c=r.getContext("2d");c.translate(0,cv.width);c.rotate(-Math.PI/2);c.drawImage(cv,0,0);src=r;}
+  const H=24,c2=document.createElement("canvas");c2.width=wd;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
+  cx.fillStyle="#fff";cx.fillRect(0,0,wd,H);cx.imageSmoothingQuality="high";cx.drawImage(src,0,0,wd,H);
+  const d=cx.getImageData(0,0,wd,H).data,HW=H*wd,f=new Float32Array(3*HW);
+  for(let i=0;i<HW;i++){f[i]=d[i*4]/127.5-1;f[HW+i]=d[i*4+1]/127.5-1;f[2*HW+i]=d[i*4+2]/127.5-1;}
+  const sess=await getNdl(wd),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,wd])});
+  const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
+  let str="",ps=0,n=0;
+  for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
+    if(bi===0)break;
+    let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);ps+=1/sum;n++;
+    str+=NDL_CHARS[bi-1]||"";}
+  return{str,conf:n?ps/n*100:0};
+}
+// 1行をNDLOCR-Liteで読む。文字数の見当(幅÷高さ)で小さいモデルから始め、長ければ大きいモデルで読み直す
+async function ndlLine(ch,x,y,S,Sb,flat){
+  const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12),R=ocrRange;
+  const bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);
+  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  const est=(l.x1-l.x0)/Math.max(1,l.h);
+  let wd=est<=26?256:est<=44?384:768,r=await ndlRead(cv,wd);
+  if(wd===256&&r.str.length>=25){wd=384;r=await ndlRead(cv,wd);}
+  if(wd===384&&r.str.length>=45){wd=768;r=await ndlRead(cv,wd);}
+  // 1〜2文字の短い行は、固定の幅に引き伸ばす方式(NDL)だと形が崩れて誤読する(「令和」→「和令」、「月」→「RJ」「11」)。NDL・PaddleOCR・Tesseractの3つで読み、多数決(同じ結果が2つ以上ならそれ。全部違えば、確かさと文字の種類で選ぶ)
+  if(r.str.trim().length<=2&&est<3){
+    const cands=[{str:cleanOcr(fixPaddle(r.str)),conf:r.conf,src:"ndl"}];
+    try{const o=await paddleLine(ch,x,y,S,Sb,flat);if(o&&o[0])cands.push({str:o[0].words.map(w=>w.str).join(""),conf:o[0].conf,src:"paddle"});}catch(e){console.warn("短い行をPaddleで読めませんでした",e);}
+    try{const t=await tessShort(cv,est);if(t&&t.str)cands.push({...t,src:"tess"});}catch(e){console.warn("短い行をTesseractで読めませんでした",e);}
+    const g=new Map();cands.forEach(c=>{if(!c.str)return;const k=c.str.replace(/\s+/g,"");const e=g.get(k)||{k,n:0,conf:0,cjk:/[\u3040-\u30ff\u3400-\u9fff]/.test(k)};e.n++;e.conf=Math.max(e.conf,c.conf);g.set(k,e);});
+    const best=[...g.values()].sort((a,b)=>b.n-a.n||((b.cjk&&est<1.6&&b.k.length===1)-(a.cjk&&est<1.6&&a.k.length===1))||b.conf-a.conf)[0];
+    if(best){r={str:best.k,conf:Math.max(60,best.conf)};}
+  }
+  if(!r.str.trim()||r.conf<35)return null;
+  const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
+  const txt=cleanOcr(fixPaddle(r.str));
+  if(!txt)return null;
+  if(/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(txt))return[];
+  return[{words:[{str:txt,conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}],conf:r.conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
+// 短い1行をTesseractで読む(1文字ならPSM10、それ以外は7)
+async function tessShort(cv,est){
+  const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
+  const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
+}
+const OCR_SPLIT_GAP=2;
+let lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+// 高精度エンジンで1行を読む(読めなければ null)
+async function paddleLine(ch,x,y,S,Sb,flat){
+  const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
+  const R=ocrRange,bx0=Math.max(R.x,x+l.x0/S-pad),by0=Math.max(R.y,y+l.y0/S-pad),bx1=Math.min(R.x+R.w,x+l.x1/S+pad),by1=Math.min(R.y+R.h,y+l.y1/S+pad);   // 範囲の外の文字を読み込まない
+  const cv=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  let seq=await paddleRec(cv),conf=seq.length?seq.reduce((a,b)=>a+b.p,0)/seq.length*100:0;
+  if(flat&&conf<90){   // 背景に模様・ムラがある写真は、背景を消した画像でも読んで、確かさが高い方を採る
+    const f=document.createElement("canvas");f.width=cv.width;f.height=cv.height;f.getContext("2d").drawImage(cv,0,0);flattenForOcr(f,2);
+    const s2=await paddleRec(f),c2=s2.length?s2.reduce((a,b)=>a+b.p,0)/s2.length*100:0;
+    if(c2>conf){seq=s2;conf=c2;}
+  }
+  if(!seq.length)return null;
+  if(conf<45)return null;
+  const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S,wd=bx1-bx0;
+  const words=[];let cur=null;
+  seq.forEach(c=>{if(c.ch===" "){cur=null;return;}
+    const px=bx0+c.pos*wd;
+    if(!cur){cur={str:"",conf:0,n:0,a:px,b:px};words.push(cur);}
+    cur.str+=c.ch;cur.conf+=c.p*100;cur.n++;cur.b=px;});
+  words.forEach(w=>{w.conf/=w.n;});
+  const ws=words.map(w=>({str:cleanOcr(fixPaddle(w.str)),conf:w.conf,x0:Math.max(X0,w.a),x1:Math.min(X1,w.b),y0:Y0,y1:Y1})).filter(w=>w.str);
+  if(!ws.length)return null;
+  if(ws.every(w=>/^[*＊.。,、・「」『』\s'"|｜\-_~=:;!！]+$/.test(w.str)))return[];   // 点線の区切りなど、記号だけの行は文字にしない
+  ws[0].x0=X0;ws[ws.length-1].x1=X1;    // 行の両端は、画像解析の位置(正確)
+  return[{words:ws,conf,x0:X0,x1:X1,y0:Y0,y1:Y1}];
+}
+async function ocrLines(worker,ch,x,y,S,flat){
+  const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
+  const pad=Math.max(1.5,ghPt*0.35);
+  const R=ocrRange,bx0=Math.max(R.x,x+ch.x0/S-pad),by0=Math.max(R.y,y+ch.y0/S-pad),bx1=Math.min(R.x+R.w,x+ch.x1/S+pad),by1=Math.min(R.y+R.h,y+ch.y1/S+pad);
+  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb,flat);if(o)return o;}
+  else if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
+  if(!worker)worker=await getOcr($("ocrLang").value);
+  const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
+  const single=ch.lines.length===1&&(ch.x1-ch.x0)<1.8*ch.gh;          // 1文字だけの塊
+  const first=single?"10":ch.lines.length>1?"6":"7";
+  const modes=[first,...["7","8","13","6"].filter(m=>m!==first)];
+  let out=[],best=null;
+  // 背景処理した画像で読み、確かさが低ければ、元の画像でも読んで、良い方を採う
+  const srcs=[];
+  if(flat){const f=document.createElement("canvas");f.width=raw.width;f.height=raw.height;f.getContext("2d").drawImage(raw,0,0);flattenForOcr(f,2);srcs.push(f);srcs.push(raw);}else srcs.push(raw);
+  for(const cv of srcs){
+    let cur=null;
+    for(const mode of modes){                                           // 読めなければ、別の読み方で再試行
+      await worker.setParameters({tessedit_pageseg_mode:mode});
+      const {data}=await worker.recognize(cv,{},{blocks:true});
+      let ls=data.lines||[];
+      if(!ls.length&&data.blocks)data.blocks.forEach(b=>(b.paragraphs||[]).forEach(pg=>ls.push(...(pg.lines||[]))));
+      out=[];collectLines(ls);
+      // 確かさ(信頼度の平均)。最初の読み方は緩め、再試行の結果は高いときだけ採用(罫線の切れ端などから、意味のない文字を作らない)
+      const cf=out.flatMap(l=>l.words.map(w=>w.conf==null?100:w.conf)),avg=cf.length?cf.reduce((a,b)=>a+b,0)/cf.length:0,nch=out.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0);
+      if(out.length&&(!cur||avg>cur.avg))cur={out,avg};
+      if(out.length&&avg>=(mode===first?30:60)&&!(nch<=2&&avg<60))break;
+    }
+    if(cur&&(!best||cur.avg>best.avg+10))best=cur;
+    if(best&&best.avg>=70)break;
+  }
+  out=best?best.out:[];
+  function collectLines(ls){
+  ls.forEach(ln=>{
+    if(ln.confidence!=null&&ln.confidence<25)return;
+    const ws=(ln.words&&ln.words.length?ln.words:[{text:ln.text,bbox:ln.bbox,confidence:ln.confidence}])
+      .map(w=>({str:cleanOcr(w.text||""),conf:w.confidence,x0:bx0+w.bbox.x0/Sb,x1:bx0+w.bbox.x1/Sb,y0:by0+w.bbox.y0/Sb,y1:by0+w.bbox.y1/Sb}))
+      .filter(w=>w.str&&!(w.conf!=null&&w.conf<8)&&!/^[_|¦｜\\/\-—―~.,'"`´:;*＊・•°]+$/.test(w.str));
+    if(!ws.length)return;
+    out.push({words:ws,conf:ws.reduce((a,w)=>a+(w.conf==null?100:w.conf),0)/ws.length,x0:Math.min(...ws.map(w=>w.x0)),x1:Math.max(...ws.map(w=>w.x1)),y0:Math.min(...ws.map(w=>w.y0)),y1:Math.max(...ws.map(w=>w.y1))});
+  });
+  }
+  out.sort((a,b)=>a.y0-b.y0);return out;
+}
+async function ocrChunk(worker,ch,x,y,S,flat){
+  const ghPt=ch.gh/S;let out=[];
+  if(ch.lines.length<=1)out=await ocrLines(worker,ch,x,y,S,flat);
+  else{const hm=[...ch.lines].map(l=>l.h).sort((a,b)=>a-b)[ch.lines.length>>1];
+   for(const l of ch.lines){if(l.n<=1&&l.h<0.6*hm)continue;  // 複数行の塊は、1行ずつ読む(読めなかった行があっても、他の行の位置・大きさがずれない)
+    out.push(...await ocrLines(worker,{x0:l.x0,y0:l.y0,x1:l.x1,y1:l.y1,lines:[l],gh:l.h},x,y,S,flat));}}
+  out.sort((a,b)=>a.y0-b.y0);
+  // 文字サイズ: 各行の「幅÷文字数の目安」の、文字数で重みをつけた中央値(行ごとにバラつかない)
+  const sizes=out.map(l=>{const u=charUnits(joinWords(l.words)),cf=l.conf==null?1:Math.max(0.05,l.conf/100);return{v:(l.x1-l.x0)/u,w:u*cf*cf,u};}).filter(e=>e.u>=3);
+  let size=sizes.length?wmedian(sizes):ghPt*0.95;
+  // 幅からの推定が、行の高さ(図形としての大きさ)から見て大きくずれるときは、高さの方を信じる
+  if(out.length&&ch.lines.length){const geo=out.map(l=>{const cy=(l.y0+l.y1)/2;let b=null,bd=1e9;ch.lines.forEach(sl=>{const d=Math.abs(y+(sl.y0+sl.y1)/2/S-cy);if(d<bd){bd=d;b=sl;}});
+      const cjk=/[\u3040-\u30ff\u3400-\u9fff]/.test(joinWords(l.words));return b.h/S/(cjk?0.92:0.8);}).sort((a,b)=>a-b),g=geo[geo.length>>1];
+    if(!sizes.length)size=g/1.3;else if(g>1.8*size)size=g/1.3;else if(size>1.5*g)size=g*1.15;}
+  const wt=sizes.reduce((a,b)=>a+b.w,0)||1;
+  // 行間: 行の中心の間隔の中央値 ÷ 文字サイズ
+  let lh=1.3;
+  if(ch.lines.length>=2){const ds=[];for(let i=1;i<ch.lines.length;i++)ds.push(((ch.lines[i].y0+ch.lines[i].y1)-(ch.lines[i-1].y0+ch.lines[i-1].y1))/2/S);ds.sort((a,b)=>a-b);lh=Math.max(1,Math.min(2.5,ds[ds.length>>1]/size));}
+  // 文字揃い: 左端・中心・右端のうち、そろっているもの
+  let align="left";
+  if(out.length>=2){const sp=a=>Math.max(...a)-Math.min(...a),thr=0.6*size;
+    const L=sp(out.map(l=>l.x0)),C=sp(out.map(l=>(l.x0+l.x1)/2)),R=sp(out.map(l=>l.x1));
+    if(L<thr)align="left";else if(C<=R&&C<thr)align="center";else if(R<thr)align="right";}
+  else if(out.length===1){const l=out[0],c=(l.x0+l.x1)/2,wd=l.x1-l.x0;
+    if(Math.abs(c-VW/2)<0.025*VW&&wd<0.8*VW&&l.x0>0.06*VW)align="center";else if(VW-l.x1<0.12*VW&&l.x0>0.45*VW)align="right";}
+  return{lines:out,size,wt,lh,align,ghPt};
+}
+async function doOcr(x,y,w,h){
+  if(ocrRunning){status("いま変換中です。終わるまでお待ちください。");return;}
+  if(w<6||h<6){status("文字にしたい範囲をドラッグしてください。");return;}
+  ocrRunning=true;$("bOcrPage").disabled=true;ocrRange={x,y,w,h,whole:w>=VW-1&&h>=VH-1};
+  const k=K(),rng=document.createElement("div");rng.className="ocrrng";   // 変換する範囲を枠で示す(終わると緑に)
+  rng.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;ov.appendChild(rng);
+  const whole=w>=VW-1&&h>=VH-1;
+  job.start(whole?"ページ全体を文字に変換しています…":"指定した範囲を文字に変換しています…");
+  try{
+    const n=await doOcrBody(x,y,w,h);
+    rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
+    if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。");}
+    else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
+  }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
+  finally{ocrRunning=false;$("bOcrPage").disabled=false;}
+}
+// 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
+function keepInRange(it,x,y,w,h){
+  const nl=Math.max(1,(it.txt||"").split("\n").length);
+  if(it.vx<x)it.vx=x;
+  if(it.vx+it.vw>x+w)it.vw=Math.max(8,x+w-it.vx);
+  if(it.vx+it.vw>x+w)it.vx=Math.max(x,x+w-it.vw);
+  for(let i=0;i<40&&it.size>4;i++){
+    const d=measureHost(it,1),hh=d.scrollHeight;d.remove();
+    if(hh<=nl*it.size*it.lh*1.3+1)break;    // 1行ごとに折り返さず収まっている
+    const k=(it.size-0.5)/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*k*10)/10):null);it.size=it.size-0.5;
+  }
+  const d=measureHost(it,1);if(d.scrollHeight>it.vh+0.5)it.vh=Math.ceil(d.scrollHeight);d.remove();
+  if(it.vy<y)it.vy=y;if(it.vy+it.vh>y+h)it.vy=Math.max(y,y+h-it.vh);
+}
+// 実際に使うフォントで文字を並べたときの幅が、元の画像の行の幅とぴったり合うように、文字サイズを微調整する(文字数の目安による推定を、実測で置き換える)。測るのは文字幅の計算だけなので、一瞬で終わる
+// ---- 照合: 元の画像と、変換した文字を実際に重ねて比べ、文字のサイズ・字間・位置・全角半角を自動で直す ----
+// 元の画像の「文字の濃さ」の地図(2画素/pt)。ぼかして、少しのずれを許す
+function boxBlur(a,w,h){const t=new Float32Array(a.length),o=new Float32Array(a.length);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-1;k<=1;k++){const xx=x+k;if(xx>=0&&xx<w){s+=a[y*w+xx];c++;}}t[y*w+x]=s/c;}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-1;k<=1;k++){const yy=y+k;if(yy>=0&&yy<h){s+=t[yy*w+x];c++;}}o[y*w+x]=s/c;}
+  return o;}
+function makeInk(cv,S){
+  const R=2,w=Math.max(1,Math.round(cv.width*R/S)),h=Math.max(1,Math.round(cv.height*R/S));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});
+  cx.imageSmoothingQuality="high";cx.drawImage(cv,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h).data,n=w*h,g=new Float32Array(n),hist=new Uint32Array(256);
+  for(let i=0;i<n;i++){const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
+  const pct=q=>{let a=0;const t=n*q;for(let v=0;v<256;v++){a+=hist[v];if(a>=t)return v;}return 255;};
+  const fg=pct(0.01),bg=pct(0.85),den=Math.max(60,bg-fg),I=new Float32Array(n);
+  for(let i=0;i<n;i++)I[i]=Math.max(0,Math.min(1,(bg-g[i])/den));
+  return{w,h,R,I:boxBlur(I,w,h)};
+}
+// 半角の英数字・記号を全角にした文字列(元が全角なのに、読み取りが半角のとき)
+const toFull=s=>s.replace(/[!-~]/g,c=>c==="-"?"－":c===":"?"：":String.fromCharCode(c.charCodeAt(0)+0xFEE0)).replace(/ /g,"　");
+let refCv=null,refCx=null;
+// 1行(run)の、サイズ・全角半角・字間・位置を、元の画像との重なり(ぼかしたDice係数)がいちばん大きくなるように選ぶ
+//  ・行の見えている幅は画像から正確にわかるので、サイズを決めれば字間は幅から決まる(探すのはサイズと全角半角だけ)
+//  ・最後に、位置(左右・上下)を細かく探す
+function refineRun(r,ink,ox,oy,fam){
+  const R=ink.R,n=Array.from(r.str).length;if(!(r.w>3)||!n)return -1;
+  if(!refCv){refCv=document.createElement("canvas");refCx=refCv.getContext("2d",{willReadFrequently:true});}
+  const mg=6,wx0=Math.max(0,Math.floor((r.x-ox-mg)*R)),wx1=Math.min(ink.w,Math.ceil((r.x+r.w-ox+mg)*R));
+  const hgt=(r.gh||r.size)*1.0,wy0=Math.max(0,Math.floor((r.base-oy-r.size*1.05-3)*R)),wy1=Math.min(ink.h,Math.ceil((r.base-oy+r.size*0.4+3)*R));
+  const ww=wx1-wx0,wh=wy1-wy0;if(ww<4||wh<4||ww*wh>200000)return -1;
+  const Iw=new Float32Array(ww*wh);let sumI=0;for(let y=0;y<wh;y++)for(let x=0;x<ww;x++){const v=ink.I[(wy0+y)*ink.w+wx0+x];Iw[y*ww+x]=v;sumI+=v;}
+  if(sumI<1)return -1;
+  refCv.width=ww;refCv.height=wh;
+  const measure=(str,size)=>{refCx.font=size+"px "+fam;const m=refCx.measureText(str);return{l:m.actualBoundingBoxLeft,w:m.actualBoundingBoxLeft+m.actualBoundingBoxRight};};
+  // 候補を描いて、(dx,dy)だけずらしたときの重なり。ぼかして比べる
+  const render=(str,size,ls)=>{
+    refCx.clearRect(0,0,ww,wh);refCx.fillStyle="#000";refCx.font=(size*R)+"px "+fam;refCx.textBaseline="alphabetic";
+    const m=measure(str,size*R),tx=(r.x-ox)*R-wx0+m.l,ty=(r.base-oy)*R-wy0;
+    if(ls){let cx=tx;for(const c of Array.from(str)){refCx.fillText(c,cx,ty);cx+=refCx.measureText(c).width+ls*R;}}else refCx.fillText(str,tx,ty);
+    const d=refCx.getImageData(0,0,ww,wh).data,T=new Float32Array(ww*wh);let sT=0;for(let i=0;i<ww*wh;i++){T[i]=d[i*4+3]/255;sT+=T[i];}
+    return{T:boxBlur(T,ww,wh),sT};
+  };
+  const dice=(T,sx,sy)=>{let ov=0,st=0;for(let y=0;y<wh;y++){const yy=y-sy;for(let x=0;x<ww;x++){const xx=x-sx;const t=(yy>=0&&yy<wh&&xx>=0&&xx<ww)?T[yy*ww+xx]:0;const i=Iw[y*ww+x];ov+=t<i?t:i;st+=t;}}return 2*ov/(sumI+st+1e-6);};
+  const best=(T,shifts)=>{let b={s:-1,dx:0,dy:0};for(const [sx,sy] of shifts){const sc=dice(T,sx,sy);if(sc>b.s)b={s:sc,dx:sx,dy:sy};}return b;};
+  const coarse=[[0,0],[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]];
+  const variants=[r.str];const fw=toFull(r.str);if(fw!==r.str&&/[!-~]/.test(r.str))variants.push(fw);
+  const size0=r.size;let baseSc=null,top=null;
+  const sg=/[\u3040-\u30ff\u3400-\u9fff]/.test(r.str)&&r.gh>0&&n>=3?r.gh/0.9:0;
+  variants.forEach((str,vi)=>{
+    const nn=Array.from(str).length;
+    const sizes=[];for(let k=0;k<=10;k++)sizes.push(Math.round(size0*(0.8+0.05*k)*10)/10);
+    if(sg)[0.9,0.95,1,1.05,1.1].forEach(f=>sizes.push(Math.round(sg*f*10)/10));   // 行の高さから見たサイズの近くも調べる
+    {const m0=measure(str,100);if(m0.w>0)sizes.push(Math.round(r.w/(m0.w/100)*10)/10);}   // 字間なしで、幅にちょうど合うサイズ
+    for(let k=0;k<sizes.length;k++){
+      const size=sizes[k];
+      if(sg&&(size>sg*1.35||size<sg*0.7))continue;   // 行の高さから見て明らかに大きすぎる・小さすぎるサイズは、候補にしない
+      const m=measure(str,100);let ls=nn>1?(r.w-m.w/100*size)/(nn-1):0;
+      if(ls<-0.15||ls>14)continue;   // 幅に収まらない大きさ(字間がマイナス)は候補にしない
+      if(ls>0.15&&ls<1.5)continue;   // 1.5pt未満の字間は誤差とみなし、字間なし(幅にちょうど合うサイズ)の候補に任せる
+      const rd=render(str,size,Math.abs(ls)<0.2?0:ls),b=best(rd.T,coarse);
+      const prior=sg?0.5*Math.abs(Math.log(size/sg)):0;   // 日本語の行は、文字の高さ(≒サイズ)も手がかりにする(弱く)
+      const cand={sc:b.s-prior,raw:b.s,str,size,ls:Math.abs(ls)<0.2?0:Math.round(ls*10)/10,dx:b.dx,dy:b.dy,vi,k};
+      if(vi===0&&k===0&&baseSc===null){const rb=render(str,size0,0),bb=best(rb.T,coarse);baseSc=bb.s;}   // いまの結果(サイズそのまま・字間なし)
+      if(!top||cand.sc>top.sc)top=cand;
+    }
+  });
+  if(!top||baseSc===null)return -1;
+  r.refScore=Math.max(top.raw,baseSc);
+  if(top.raw<baseSc+0.015)return 0;   // 良くならなければ、そのまま
+  // 位置の微調整(0.5pt刻み)
+  const rd=render(top.str,top.size,top.ls),fine=[];for(let sy=-4;sy<=4;sy++)for(let sx=-5;sx<=5;sx++)fine.push([sx,sy]);
+  const fb=best(rd.T,fine);
+  r.str=top.str;r.size=top.size;r.ls=top.ls;r.x+=fb.dx/R;r.base+=fb.dy/R;r.refined=true;r.refScore=fb.s;r.refBase=baseSc;
+  return 1;
+}
+async function refineRuns(runs,cv,S,ox,oy){
+  const ink=makeInk(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
+  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;}catch(e){st.skip++;console.warn("照合に失敗",e);}
+    if(i%6===5)await new Promise(res=>setTimeout(res,0));}   // 画面が固まらないよう、ときどき息継ぎ
+  return st;
+}
+let fitCtx=null;
+function fitOcrWidth(it,g){
+  if(!fitCtx)fitCtx=document.createElement("canvas").getContext("2d");
+  fitCtx.font="100px "+famOf("text");
+  const e=[];
+  g.forEach(r=>{if(!r.ocr||!(r.w>2)||!r.str)return;const m=fitCtx.measureText(r.str),w100=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;   // 画像から測った幅は「見えている文字の幅」なので、文字の送り幅ではなく、見えている幅で比べる
+    if(w100>0){const n=Array.from(r.str).length;e.push({v:r.w/(w100/100),w:n,run:r,w100,n,cjk:/[\u3040-\u30ff\u3400-\u9fff]/.test(r.str)&&r.gh>0});}});
+  if(!e.length)return;
+  const wq=(arr,q)=>{const t=[...arr].sort((a,b)=>a.v-b.v),tot=t.reduce((a,b)=>a+b.w,0);let acc=0;for(const z of t){acc+=z.w;if(acc>=tot*q)return z.v;}return t[t.length-1].v;};
+  // 字間(字送り)の検出: 日本語の行は、文字の高さ(≒サイズ)がわかる。幅から求めたサイズが、高さから求めたサイズより1.1倍以上大きいなら、文字の間が空いている(均等割付・字間の広い書式)
+  const tr=e.filter(z=>z.cjk&&z.n>=4).map(z=>({...z,sg:z.run.gh/0.9})).filter(z=>z.v/z.sg>1.1&&z.v/z.sg<1.8);
+  const cj=e.filter(z=>z.cjk&&z.n>=4);
+  if(cj.length&&tr.length>=cj.length*0.6){
+    const size=Math.max(4,Math.round(wq(tr.map(z=>({v:z.sg,w:z.w})),0.5)*10)/10);
+    const ls=tr.map(z=>({v:(z.run.w-z.w100/100*size)/(z.n-1),w:z.w}));
+    const lsv=Math.round(wq(ls,0.5)*10)/10;
+    if(lsv>0.3){const kk=size/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=size;it.ls=lsv;return;}
+  }
+  // 行の中の空白(単語の間)が読み取りで落ちていると、その行だけ幅が大きく出て、大きすぎる値になる → 中央値より少し低い側(下から35%)を採る
+  const ideal=wq(e,0.35),k0=ideal/it.size,k=Math.max(0.82,Math.min(1.2,k0));
+  const ns=Math.round(it.size*k*10)/10;if(ns===it.size)return;
+  const kk=ns/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=ns;
+}
+async function doOcrBody(x,y,w,h){
+  const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
+  const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
+  if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
+  if(ppMode){try{await getPaddle();}catch(e){console.warn(e);ppMode=false;status("高精度エンジンを読み込めなかったので、標準エンジンで認識します("+(e.message||e)+")");job.step("標準エンジンで認識します…");}}
+  if(!ppMode&&!ndlMode)worker=await getOcr(lang);
+  const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
+  status("画像を準備中…");job.step("画像を準備しています…",3);
+  const cv=await renderRegion(x,y,w,h,S);
+  const flat=$("ocrClean").checked&&flattenForOcr(cv);
+  status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
+  await new Promise(r=>setTimeout(r,20));
+  const seg=ocrSegment(cv,S);   // 範囲指定でも、大きな空白(ラベルと値のような離れた文字)は別の行に分ける
+  seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
+  if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
+  // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
+  const gha0=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),p80=gha0[Math.floor(gha0.length*0.8)]||0,gha=gha0.filter(v=>v>=0.5*p80),ghMed=gha[gha.length>>1]||0;   // 点の行(ごみ)が多くても、文字の行の高さの目安がぶれないように
+  seg.chunks=seg.chunks.filter(c=>{
+    if(c.lines.length!==1)return true;const l=c.lines[0],H=l.y1-l.y0,W=l.x1-l.x0;
+    if(l.n<=2&&c.gh<0.7*ghMed&&W<2.2*ghMed)return false;
+    // 「* . . . *」のような区切り(星と点が並ぶ): 周りの文字より小さく、断片が疎ら(枠の3割未満)、または断片の大半が行の高さの半分未満 → 文字ではない
+    const mh=[...l.hs].sort((a,b)=>a-b)[l.hs.length>>1];
+    if(l.n>=2&&l.n<=12&&H<0.8*ghMed&&W<14*H&&(l.ar<(l.n<=3?0.4:0.3)*W*H||mh<0.5*H))return false;
+    return true;});
+  const res=[];
+  for(let i=0;i<seg.chunks.length;i++){
+    status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
+    const r=await ocrChunk(worker,seg.chunks[i],x,y,S,flat);
+    if(r.lines.length)res.push(r);
+  }
+  // 1行だけの塊は、同じ高さに別の塊が並んでいたら、中央・右揃えとは言えない(ラベルの右の値が、たまたまページ中央にあるだけ)→ 左揃え
+  res.forEach((c,i)=>{if(c.lines.length!==1||c.align==="left")return;const l=c.lines[0],cy=(l.y0+l.y1)/2;
+    if(res.some((o,j)=>j!==i&&o.lines.some(m=>Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(c.size,o.size))))c.align="left";});
+  // 極端に小さい1〜2文字だけの結果(ごみ)は捨てる
+  {const nch=c=>c.lines.reduce((a,l)=>a+Array.from(joinWords(l.words)).length,0),md=wmedian(res.map(c=>({v:c.size,w:nch(c)})));
+   for(let i=res.length-1;i>=0;i--){if(nch(res[i])<=3&&res[i].size<0.7*md)res.splice(i,1);}}
+  if(!res.length){const msg="文字を認識できませんでした(画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
+  job.step("配置・大きさを整えています…",96);
+  // ページ全体で、近い大きさの塊は同じ大きさにそろえる(10%以内を1グループ)。最後に0.5pt刻み
+  const sorted=[...res].sort((a,b)=>a.size-b.size),groups=[];
+  sorted.forEach(c=>{const g=groups[groups.length-1];if(g&&c.size<=g.center*1.12){g.items.push(c);g.center=wmedian(g.items.map(e=>({v:e.size,w:e.wt})));}else groups.push({items:[c],center:c.size});});
+  groups.forEach(g=>g.items.forEach(c=>{c.final=Math.max(4,Math.min(72,Math.round(g.center*2)/2));}));
+  // 認識した語を、これまでと同じ「まとまりの規則」でつなぎ直す(同じ大きさで横に並ぶ=1つ、大きな空白・罫線で分ける)
+  let nl=0;const made=[],runs=[];
+  if(!fitCtx)fitCtx=document.createElement("canvas").getContext("2d");
+  res.forEach((c,ci)=>c.lines.forEach(l=>{nl++;
+    // 基準線: 画像の行の下端(見えている文字の下端)から、その文字列が基準線より下に出る量(実際のフォントで測る。句読点・g・yなどの下がり)を引く
+    fitCtx.font=c.final+"px "+famOf("text");const desc=fitCtx.measureText(joinWords(l.words)).actualBoundingBoxDescent||c.final*0.1,base=l.y1-desc+c.final*0.1;   // +0.1: 2種類のフォントの見本で、基準線が平均1.4pt(サイズの約0.1)上に出たのを補正(実測)
+    // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
+    const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
+    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,gh:l.y1-l.y0,conf:l.conf,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
+  // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
+  job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
+  const nref=await refineRuns(runs,cv,S,x,y);
+  lastRefine=nref;
+  buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
+    const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
+    if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
+    if(g.some(r=>r.refined)){const ls=g.filter(r=>r.refined).map(r=>r.ls||0).sort((a,b)=>a-b);it.ls=ls[ls.length>>1];if(!(it.ls>0.2))it.ls=0;}
+    const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
+    if(chs.length===1){ // 1つの塊だけなら、その塊の行間・揃いを使う
+      const c=res[chs[0]];it.lh=c.lh;it.align=c.align;
+      if(c.align==="center"){it.vw=(ux1-ux0)+slack;it.vx=(ux0+ux1)/2-it.vw/2;}
+      else if(c.align==="right"){it.vw=(ux1-ux0)+slack;it.vx=ux1-it.vw+fs*0.2;}
+    }
+    it.ocrMade=true;growToFit(it);clampToPage(it);
+    if(!ocrRange.whole)keepInRange(it,x,y,w,h);
+    made.push(it);
+  });
+  // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
+  items=items.filter(o=>!(o.ocrMade&&o.page===cur&&o.vx+o.vw/2>=x&&o.vx+o.vw/2<=x+w&&o.vy+o.vh/2>=y&&o.vy+o.vh/2<=y+h));
+  made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
+  lastOcrFirst=made[0]||null;
+  select(made[0],false);
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
+  return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
+}
+$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
+
+// ====== PDFへの反映(フォントは1回だけ埋め込む) ======
+// 入力中の枠と同じ折り返しで行に分ける(DOMで各文字の位置を測り、x座標が戻った所を行頭とする)
+function layoutText(it,wfn){
+  const d=measureHost(it,1);
+  const pos=[];
+  const walker=document.createTreeWalker(d,NodeFilter.SHOW_TEXT);let n;
+  while(n=walker.nextNode()){
+    let u=0;const rg=document.createRange();
+    for(const ch of Array.from(n.nodeValue)){
+      rg.setStart(n,u);rg.setEnd(n,u+ch.length);
+      const rc=rg.getClientRects()[0];pos.push(rc?{l:rc.left,t:rc.top,b:rc.bottom}:(pos.length?pos[pos.length-1]:{l:0,t:0,b:0}));u+=ch.length;
+    }
+  }
+  d.remove();
+  const lines=[];let cur={ch:[],w:0},ci=0,prev=null;
+  Array.from(it.txt).forEach((c,i)=>{
+    if(c==="\n"){lines.push(cur);cur={ch:[],w:0};prev=null;return;}
+    const ps=pos[ci++];
+    // 行頭: 左へ戻った、または、直前の文字より下の行(中央・右揃いでは左へ戻らないことがある)
+    if(cur.ch.length&&prev&&(ps.l<prev.l-0.5||ps.t>=prev.b-1)){lines.push(cur);cur={ch:[],w:0};}
+    prev=ps;
+    const sv=(it.sz&&it.sz[i])||it.size,w=wfn(c,sv)+(it.ls||0);   // 字間(letter-spacing)も、1文字の幅に含める
+    cur.ch.push({c,s:sv,w});cur.w+=w;
+  });
+  lines.push(cur);
+  let y=0;
+  lines.forEach(ln=>{
+    ln.size=Math.max(it.size,...ln.ch.map(x=>x.s));ln.base=y+baseOff(it.fmt,ln.size,it.lh);y+=ln.size*it.lh;
+    // 行の幅(行末の空白は数えない)と、揃えによる左へのずれ
+    let tw=0,k=ln.ch.length;while(k>0&&ln.ch[k-1].c===" ")k--;for(let q=0;q<k;q++)tw+=ln.ch[q].w;
+    ln.off=it.align==="center"?Math.max(0,(it.vw-tw)/2):it.align==="right"?Math.max(0,it.vw-tw):0;
+  });
+  return{lines,height:y};
+}
+function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
+async function commit(){
+  const todo=items.filter(it=>it.type==="img"||it.txt.trim()||it.type==="fix");
+  items=[];cs=null;
+  if(!todo.length||!bytes){renderOverlay();syncPanel();return;}
+  status("PDFに反映中…");
+  if(todo.some(it=>it.fmt==="text"&&it.type!=="img"))await ensureWebFont().catch(()=>{});
+  const doc=await PDFDocument.load(bytes);
+  let jp=null;
+  // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
+  for(const it of todo){
+    if(it.type!=="fix")continue;
+    const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
+    const c=it.cover,[a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
+    page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:hex2rgb(it.bg),borderWidth:0});
+  }
+  for(const it of todo){
+    const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
+    const rect=(x,y,w,h)=>{const [a1,b1]=toUser(x,y,W,H,r),[a2,b2]=toUser(x+w,y+h,W,H,r);return{x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1)};};
+    if(it.type==="img"){
+      const img=it.data.png?await doc.embedPng(it.data.bytes):await doc.embedJpg(it.data.bytes);
+      const [ax,ay]=toUser(it.vx,it.vy+it.vh,W,H,r);
+      page.drawImage(img,{x:ax,y:ay,width:it.vw,height:it.vh,rotate:degrees(r)});continue;
+    }
+    if(!it.txt.trim())continue;
+    growToFit(it);
+    if(it.fmt==="text"){
+      if(!jp){
+        doc.registerFontkit(fontkit);
+        status("日本語フォントを読み込み中…(初回のみ・約2MB)");
+        await loadFontBytes();
+        jp=await doc.embedFont(fontBytes,{subset:false});
+      }
+      const L=layoutText(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
+      L.lines.forEach(ln=>{
+        let off=ln.off||0;
+        if(it.ls){   // 字間がある文字は、1文字ずつ置く(PDFの文字間隔を指定する命令を使わずに、位置で表す)
+          ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);page.drawText(chr.c,{x:ax,y:ay,size:chr.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});}off+=chr.w;});
+          return;}
+        runsOf(ln).forEach(rn=>{
+          const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);
+          page.drawText(rn.str,{x:ax,y:ay,size:rn.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});
+          off+=rn.w;
+        });
+      });
+    }else{
+      const KK=4,cv=document.createElement("canvas"),cx=cv.getContext("2d");
+      const L=layoutText(it,(c,sv)=>{cx.font=`${sv*KK}px ${FAMILY_PIC}`;return cx.measureText(c).width/KK;});
+      cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(L.height*KK)+4;
+      cx.fillStyle=it.color;cx.textBaseline="alphabetic";
+      L.lines.forEach(ln=>{
+        let off=ln.off||0;
+        runsOf(ln).forEach(rn=>{cx.font=`${rn.s*KK}px ${FAMILY_PIC}`;cx.fillText(rn.str,off*KK,ln.base*KK);off+=rn.w;});
+      });
+      const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
+      const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
+      const iw=cv.width/KK,ih=cv.height/KK;const [ax,ay]=toUser(it.vx,it.vy+ih,W,H,r);
+      page.drawImage(img,{x:ax,y:ay,width:iw,height:ih,rotate:degrees(r)});
+    }
+  }
+  await setBytes(await doc.save(),true);
+}
+$("bCommit").onclick=busy(commit);
+// 動作確認用(テストが部品の中身を読む)
+// ===== PDFスタジオの「ページ編集」「歪み補正」フォームとして動く(?embed=1&form=edit|warp) =====
+// 親(束デスク)から、表示中の1ページだけのPDFを受け取り、編集して「保存して束に戻す」で返す。画面の名前・バージョンは親が上に表示する
+const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":"edit";
+if(EMBED){
+  document.body.classList.add("embed","emb-"+FORMKIND);
+  const send=m=>parent.postMessage(m,"*");
+  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
+  window.addEventListener("message",busy(async e=>{
+    const m=e.data;if(!m||m.type!=="load")return;
+    const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
+    fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
+    setMode(FORMKIND==="warp"?"warp":"sel");
+    status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":"このページを編集できます。");
+  }));
+  $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
+  $("embCancel").onclick=()=>send({type:"close"});
+  if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
+  send({type:"ready"});
+}
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+$("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
+setMode("sel");
+})();
+</script>
+</body>
+</html>

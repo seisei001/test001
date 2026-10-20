@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PDFスタジオ">
+<title>PDFスタジオ</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--panel-bg:#fff;--border:#dcdce0;--text:#1c1c1f;--muted:#6b6b73;--accent:#2563eb;--accent-hover:#1d4ed8;--danger:#dc2626;--sheet:#fff;--tw:170px;--gap:4px;}
+@media (prefers-color-scheme: dark){:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa3;--sheet:#2a2b30;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+html{-webkit-text-size-adjust:100%;}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+button{border:none;border-radius:8px;padding:8px 14px;min-height:44px;font-size:.9rem;cursor:pointer;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;}
+button:hover{background:var(--accent-hover);}
+button.sub{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+button:disabled{opacity:.4;cursor:default;}
+.hidden{display:none!important;}
+.ver{font-size:.72rem;font-weight:600;color:var(--muted);margin-left:8px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;vertical-align:middle;}
+/* 起動画面 */
+#splash{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;transition:opacity .35s;cursor:pointer;}
+#splash.out{opacity:0;pointer-events:none;}
+.sp-box{text-align:center;padding:24px;}
+.sp-icon{font-size:64px;line-height:1;}
+.sp-name{font-size:1.8rem;font-weight:700;margin-top:12px;}
+.sp-name .ver{color:#dbeafe;border-color:rgba(255,255,255,.5);}
+.sp-sub{margin-top:6px;font-size:1rem;opacity:.9;}
+/* アプリ全体 */
+#app{display:flex;flex-direction:column;height:100%;}
+.formhead{display:flex;align-items:center;gap:8px;padding:10px 16px 4px;}
+.formhead h1{margin:0;font-size:1.25rem;}
+.back-link{color:var(--muted);text-decoration:none;font-size:.85rem;margin-left:auto;}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 16px 8px;border-bottom:1px solid var(--border);}
+.toolbar .grp{display:flex;gap:6px;align-items:center;}
+.toolbar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.toolbar input[type=range]{width:110px;min-height:44px;}
+#cnt{font-size:.85rem;color:var(--muted);}
+#deskWrap{flex:1;overflow-y:scroll;overflow-x:hidden;padding:14px 12px 40px;position:relative;scrollbar-gutter:stable;}
+#deskWrap::-webkit-scrollbar{width:16px;}
+#deskWrap::-webkit-scrollbar-track{background:var(--bg);border-left:1px solid var(--border);}
+#deskWrap::-webkit-scrollbar-thumb{background:var(--muted);border-radius:8px;border:3px solid var(--bg);}
+#desk{display:flex;flex-wrap:wrap;gap:14px 10px;align-items:flex-start;align-content:flex-start;min-height:100%;}
+#empty{color:var(--muted);text-align:center;padding:60px 16px;font-size:.95rem;line-height:1.8;}
+#status{font-size:.8rem;color:var(--muted);padding:4px 16px;min-height:1.6em;border-top:1px solid var(--border);}
+/* 束(オブジェクト) */
+.card{position:relative;width:calc(var(--tw) + var(--gap) * 10 + 12px);padding:6px 6px 8px;border:2px solid transparent;border-radius:10px;text-align:center;user-select:none;-webkit-user-select:none;touch-action:pan-y;-webkit-touch-callout:none;}
+.card.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.card.dragging{opacity:.35;}
+.card.drop-before::before,.card.drop-after::after{content:"";position:absolute;top:4px;bottom:4px;width:5px;border-radius:3px;background:var(--accent);}
+.card.drop-before::before{left:-8px;}.card.drop-after::after{right:-8px;}
+.chk{position:absolute;top:4px;left:4px;z-index:30;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;opacity:.95;}
+.chk input{width:22px;height:22px;margin:0;}
+.stackwrap{padding:0 calc(var(--gap) * 5);display:flex;justify-content:center;}
+.stack{position:relative;width:var(--tw);}
+.stack canvas{display:block;width:100%;height:auto;position:relative;z-index:10;background:#fff;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.layer{position:absolute;inset:0;background:var(--sheet);border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.18);}
+.nav{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px;font-size:.78rem;color:var(--muted);}
+.nav button{min-height:34px;min-width:34px;padding:2px 8px;font-size:1rem;}
+.nav .pg{min-width:48px;}
+.nm{margin-top:4px;font-size:.78rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;}
+.ghost{position:fixed;z-index:3000;pointer-events:none;opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.35);border-radius:8px;overflow:hidden;background:#fff;}
+/* 画面(フォーム)のモーダル */
+.modal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;}
+.panel{background:var(--panel-bg);border:1px solid var(--border);border-radius:12px;width:min(440px,100%);max-height:100%;overflow:auto;padding:14px 16px 16px;box-shadow:0 10px 40px rgba(0,0,0,.4);}
+.panel .formhead{padding:0 0 8px;}
+.panel .info{color:var(--muted);font-size:.82rem;margin:0 0 10px;word-break:break-all;}
+.menubtns{display:flex;flex-direction:column;gap:8px;}
+.menubtns button{justify-content:flex-start;text-align:left;}
+.menubtns small{display:block;font-weight:400;opacity:.85;font-size:.74rem;}
+#formHost{background:var(--bg);padding:0;align-items:stretch;flex-direction:column;z-index:2500;}
+#formHost .formhead{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--panel-bg);}
+#formFrame{flex:1;width:100%;border:0;background:var(--bg);}
+</style>
+</head>
+<body>
+<div id="splash" title="タップで進む"><div class="sp-box"><div class="sp-icon">📄</div><div class="sp-name">PDFスタジオ<span class="ver" id="spVer">2.0</span></div><div class="sp-sub">PDF編集ソフト</div></div></div>
+
+<div id="app">
+  <div class="formhead"><h1 id="fnDesk">束デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
+  <div class="toolbar">
+    <div class="grp"><button id="bAdd">＋ PDFを開く</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden"></div>
+    <div class="grp"><button class="sub" id="bAll">全選択</button><button class="sub" id="bNone">全選択解除</button><button id="bMerge" disabled>選択を結合</button><span id="cnt"></span></div>
+    <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
+    <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
+  </div>
+  <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束をダブルクリック(スマホはダブルタップ)すると、機能メニューが開きます。</div></div>
+  <div id="status"></div>
+</div>
+
+<div id="menu" class="modal hidden"><div class="panel">
+  <div class="formhead"><h1>機能メニュー</h1><span class="ver" id="verMenu">2.0</span></div>
+  <p class="info" id="menuInfo"></p>
+  <div class="menubtns" id="menuBtns"></div>
+  <div style="margin-top:10px;text-align:right"><button class="sub" id="menuClose">閉じる</button></div>
+</div></div>
+
+<div id="formHost" class="modal hidden">
+  <div class="formhead"><h1 id="formName"></h1><span class="ver" id="formVer"></span><button class="sub" id="formClose" style="margin-left:auto">✕ 閉じる(保存しない)</button></div>
+  <iframe id="formFrame" title="フォーム"></iframe>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+"use strict";
+// ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
+const FORMS={
+  splash:{name:"PDFスタジオ",ver:"2.0"},
+  desk:{name:"束デスク",ver:"2.0"},
+  menu:{name:"機能メニュー",ver:"2.0"},
+  edit:{name:"ページ編集",ver:"2.0",src:"forms/editor.html?form=edit"},
+  warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
+};
+const $=id=>document.getElementById(id);
+const {PDFDocument}=PDFLib;
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+$("spVer").textContent=FORMS.splash.ver;$("fnDesk").textContent=FORMS.desk.name;$("verDesk").textContent=FORMS.desk.ver;$("verMenu").textContent=FORMS.menu.ver;
+const MAXL=5;   // 束の重なり表示の最大枚数(左右それぞれ)
+
+// ===== 起動画面(約1.5秒) =====
+{let done=false;const out=()=>{if(done)return;done=true;$("splash").classList.add("out");setTimeout(()=>$("splash").remove(),400);};
+ setTimeout(out,1500);$("splash").addEventListener("pointerdown",out);}
+
+// ===== 状態 =====
+let bundles=[];          // 表示順。{id,name,bytes,n,cur,sel,doc,card,key}
+let undoStack=[];
+let nextId=1;
+const status=m=>{$("status").textContent=m||"";};
+const baseName=n=>n.replace(/\.pdf$/i,"");
+
+// ===== 保存(ブラウザ内。外部に送らない) =====
+let dbp=null;
+function db(){if(dbp)return dbp;dbp=new Promise((res,rej)=>{try{const r=indexedDB.open("pdf-studio",1);r.onupgradeneeded=()=>{r.result.createObjectStore("bundles",{keyPath:"id"});r.result.createObjectStore("meta");};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});return dbp;}
+async function dbTx(store,mode,fn){try{const d=await db();return await new Promise((res,rej)=>{const tx=d.transaction(store,mode),o=fn(tx.objectStore(store));tx.oncomplete=()=>res(o&&o.result);tx.onerror=()=>rej(tx.error);});}catch(e){return null;}}
+let saveTimer=null;
+function persist(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{
+  await dbTx("bundles","readwrite",s=>{s.clear();bundles.forEach(b=>s.put({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur}));});
+  await dbTx("meta","readwrite",s=>s.put({order:bundles.map(b=>b.id),nextId},"state"));},300);}
+async function restore(){
+  const rows=await dbTx("bundles","readonly",s=>s.getAll()),meta=await dbTx("meta","readonly",s=>s.get("state"));
+  if(!rows||!rows.length)return;
+  const by=new Map(rows.map(r=>[r.id,r])),order=(meta&&meta.order)||rows.map(r=>r.id);
+  order.forEach(id=>{const r=by.get(id);if(r)bundles.push(mk(r.name,r.bytes,r.n,r.cur,r.id));});
+  nextId=Math.max(nextId,(meta&&meta.nextId)||0,...bundles.map(b=>b.id+1));
+}
+function mk(name,bytes,n,cur,id){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:""};}
+
+// ===== 元に戻す =====
+function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
+function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
+  bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
+
+// ===== PDFの読み込み =====
+async function addFiles(files){
+  let added=0;
+  for(const f of files){
+    if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf")continue;
+    try{const bytes=new Uint8Array(await f.arrayBuffer()),d=await PDFDocument.load(bytes,{ignoreEncryption:false});
+      if(!added)snap();bundles.push(mk(f.name,bytes,d.getPageCount(),0));added++;}
+    catch(e){status(`「${f.name}」を開けませんでした(暗号化されたPDFなどは非対応です)。`);}
+  }
+  if(added){render();persist();status(`${added}個のPDFを開きました。`);}
+}
+$("bAdd").onclick=()=>$("fAdd").click();
+$("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value="";};
+{const w=$("deskWrap");w.addEventListener("dragover",e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files"))e.preventDefault();});
+ w.addEventListener("drop",e=>{if(e.dataTransfer&&e.dataTransfer.files.length){e.preventDefault();addFiles([...e.dataTransfer.files]);}});}
+
+// ===== サムネイル =====
+let tw=170;
+try{tw=+localStorage.getItem("pdfStudioTw")||170;}catch{}
+function applySize(){document.documentElement.style.setProperty("--tw",tw+"px");$("rSize").value=tw;}
+$("rSize").oninput=()=>{tw=+$("rSize").value;applySize();try{localStorage.setItem("pdfStudioTw",tw);}catch{}clearTimeout(applySize.t);applySize.t=setTimeout(()=>bundles.forEach(b=>thumb(b)),180);};
+applySize();
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const b=bundles.find(x=>x.card===e.target);if(b)thumb(b);}}),{root:null,rootMargin:"300px"});
+let rq=Promise.resolve();
+function thumb(b){
+  if(!b.card)return;const key=b.cur+"|"+tw+"|"+(b.ver||0);if(b.key===key)return;
+  rq=rq.then(async()=>{
+    if(!b.card||b.key===key)return;
+    try{
+      if(!b.doc)b.doc=await pdfjsLib.getDocument({data:b.bytes.slice(0)}).promise;
+      const pg=await b.doc.getPage(b.cur+1),dpr=Math.min(2,window.devicePixelRatio||1),v0=pg.getViewport({scale:1}),sc=tw*dpr/v0.width,vp=pg.getViewport({scale:sc});
+      const cv=b.card.querySelector("canvas");cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+      const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+      await pg.render({canvasContext:cx,viewport:vp}).promise;b.key=key;
+    }catch(e){console.warn(e);}
+  });
+}
+
+// ===== 画面の描画 =====
+function selCount(){return bundles.filter(b=>b.sel).length;}
+function refreshBar(){const c=selCount();$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("empty").classList.toggle("hidden",bundles.length>0);}
+function buildCard(b){
+  const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
+  el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
+  el.querySelector("input").addEventListener("change",e=>{b.sel=e.target.checked;el.classList.toggle("sel",b.sel);refreshBar();});
+  el.querySelector(".prev").addEventListener("click",e=>{e.stopPropagation();flip(b,-1);});
+  el.querySelector(".next").addEventListener("click",e=>{e.stopPropagation();flip(b,1);});
+  attachDrag(el,b);
+  b.card=el;io.observe(el);return el;
+}
+function paintCard(b){
+  const el=b.card,n=b.n;
+  el.classList.toggle("sel",b.sel);el.querySelector("input").checked=b.sel;
+  el.querySelector(".nm").textContent=b.name;el.querySelector(".nm").title=b.name;
+  const st=el.querySelector(".stack");st.querySelectorAll(".layer").forEach(x=>x.remove());
+  const nav=el.querySelector(".nav");nav.classList.toggle("hidden",n<=1);
+  if(n>1){
+    const L=Math.min(MAXL,n-1-b.cur),R=Math.min(MAXL,b.cur),cv=st.querySelector("canvas");
+    for(let k=L;k>=1;k--){const d=document.createElement("div");d.className="layer";d.style.transform=`translateX(${-k*4}px)`;d.style.zIndex=String(5-k);st.insertBefore(d,cv);}
+    for(let k=R;k>=1;k--){const d=document.createElement("div");d.className="layer";d.style.transform=`translateX(${k*4}px)`;d.style.zIndex=String(5-k);st.insertBefore(d,cv);}
+    el.querySelector(".pg").textContent=`${b.cur+1} / ${n}`;
+    el.querySelector(".prev").disabled=b.cur<=0;el.querySelector(".next").disabled=b.cur>=n-1;
+  }
+}
+function render(){
+  const desk=$("desk");
+  const keep=new Set(bundles.map(b=>b.id));
+  [...desk.children].forEach(c=>{if(!keep.has(+c.dataset.id)){io.unobserve(c);c.remove();}});
+  bundles.forEach((b,i)=>{
+    if(!b.card||!b.card.isConnected)buildCard(b);
+    paintCard(b);
+    const at=desk.children[i];if(at!==b.card)desk.insertBefore(b.card,at||null);
+    thumb(b);
+  });
+  refreshBar();
+}
+function flip(b,d){const c=Math.max(0,Math.min(b.n-1,b.cur+d));if(c===b.cur)return;b.cur=c;paintCard(b);thumb(b);persist();}
+
+// ===== 選択 =====
+$("bAll").onclick=()=>{bundles.forEach(b=>b.sel=true);render();};
+$("bNone").onclick=()=>{bundles.forEach(b=>b.sel=false);render();};
+
+// ===== ドラッグで並び替え(マウス: そのまま / タッチ: 長押ししてから) =====
+let drag=null;
+function attachDrag(el,b){
+  let st=null,lastTap=0;
+  el.addEventListener("pointerdown",e=>{
+    if(e.button>0||e.target.closest(".chk,.nav"))return;
+    st={x:e.clientX,y:e.clientY,id:e.pointerId,touch:e.pointerType!=="mouse",t:setTimeout(()=>{if(st&&st.touch){st.armed=true;if(navigator.vibrate)try{navigator.vibrate(15);}catch{}}},350),armed:e.pointerType==="mouse"};
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!st||e.pointerId!==st.id)return;
+    const dx=e.clientX-st.x,dy=e.clientY-st.y,mv=Math.hypot(dx,dy);
+    if(!drag){
+      if(st.touch&&!st.armed){if(mv>10){clearTimeout(st.t);st=null;}return;}
+      if(mv>6&&st.armed){startDrag(el,b,e);}
+    }
+    if(drag&&drag.b===b)moveDrag(e);
+  });
+  const end=e=>{
+    if(!st||(e.pointerId!==undefined&&e.pointerId!==st.id))return;clearTimeout(st.t);
+    const wasDrag=drag&&drag.b===b,moved=Math.hypot(e.clientX-st.x,e.clientY-st.y);
+    st=null;
+    if(wasDrag){finishDrag(e.type==="pointerup");return;}
+    if(e.type==="pointerup"&&moved<8){const now=Date.now();if(now-lastTap<350){lastTap=0;openMenu(b);}else lastTap=now;}   // ダブルクリック/ダブルタップ
+  };
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
+  el.addEventListener("dblclick",e=>{if(e.target.closest(".chk,.nav"))return;openMenu(b);});
+  el.addEventListener("contextmenu",e=>{if(e.pointerType==="touch")e.preventDefault();});
+}
+function startDrag(el,b,e){
+  const r=el.getBoundingClientRect(),cv=el.querySelector("canvas"),g=document.createElement("div");g.className="ghost";
+  const c2=document.createElement("canvas");c2.width=cv.width;c2.height=cv.height;c2.getContext("2d").drawImage(cv,0,0);c2.style.cssText=`display:block;width:${Math.min(r.width,tw)}px;height:auto`;g.appendChild(c2);document.body.appendChild(g);
+  drag={b,el,g,ox:Math.min(r.width,tw)/2,oy:20,target:null,after:false};el.classList.add("dragging");
+  try{el.setPointerCapture(e.pointerId);}catch{}
+}
+function moveDrag(e){
+  const d=drag;d.g.style.left=(e.clientX-d.ox)+"px";d.g.style.top=(e.clientY-d.oy)+"px";
+  // 挿入位置: ポインタに最も近い束の、左半分=その前、右半分=その後ろ
+  let best=null,bd=1e9;
+  for(const c of $("desk").children){if(c===d.el)continue;const r=c.getBoundingClientRect(),cx=Math.max(r.left,Math.min(e.clientX,r.right)),cy=Math.max(r.top,Math.min(e.clientY,r.bottom)),dd=Math.hypot(e.clientX-cx,e.clientY-cy);
+    if(dd<bd){bd=dd;best={c,after:e.clientX>(r.left+r.right)/2};}}
+  $("desk").querySelectorAll(".drop-before,.drop-after").forEach(x=>x.classList.remove("drop-before","drop-after"));
+  d.target=best;if(best)best.c.classList.add(best.after?"drop-after":"drop-before");
+  const w=$("deskWrap").getBoundingClientRect();   // 端に近づいたら自動でスクロール
+  if(e.clientY<w.top+50)$("deskWrap").scrollTop-=14;else if(e.clientY>w.bottom-50)$("deskWrap").scrollTop+=14;
+}
+function finishDrag(drop){
+  const d=drag;drag=null;d.g.remove();d.el.classList.remove("dragging");
+  $("desk").querySelectorAll(".drop-before,.drop-after").forEach(x=>x.classList.remove("drop-before","drop-after"));
+  if(!drop||!d.target)return;
+  const tb=bundles.find(x=>x.card===d.target.c);if(!tb||tb===d.b)return;
+  snap();bundles=bundles.filter(x=>x!==d.b);let i=bundles.indexOf(tb);if(d.target.after)i++;bundles.splice(i,0,d.b);render();persist();status("束を移動しました。");
+}
+document.addEventListener("touchmove",e=>{if(drag)e.preventDefault();},{passive:false});   // タッチでドラッグ中は、画面をスクロールさせない
+
+// ===== 束の操作 =====
+const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;};
+async function burst(b){   // 全ページをばらす → 1ページずつのPDF
+  if(b.n<2)return;
+  const src=await PDFDocument.load(b.bytes),out=[];
+  for(let i=0;i<b.n;i++){const d=await PDFDocument.create();(await d.copyPages(src,[i])).forEach(p=>d.addPage(p));out.push(mk(`${baseName(b.name)}_p${String(i+1).padStart(2,"0")}.pdf`,new Uint8Array(await d.save()),1,0));}
+  snap();const i=bundles.indexOf(b);if(b.doc){try{b.doc.destroy();}catch{}}bundles.splice(i,1,...out);render();persist();status(`${out.length}枚のPDFにばらしました。「元に戻す」で戻せます。`);
+}
+async function splitAt(b){   // 表示中のページから後ろを、別の束に(表示中のページは後ろの束に入る)
+  if(b.n<2||b.cur<1)return;
+  const src=await PDFDocument.load(b.bytes),mkpart=async(idx,name)=>{const d=await PDFDocument.create();(await d.copyPages(src,idx)).forEach(p=>d.addPage(p));return mk(name,new Uint8Array(await d.save()),idx.length,0);};
+  const a=[...Array(b.cur).keys()],z=[...Array(b.n-b.cur).keys()].map(i=>i+b.cur);
+  const A=await mkpart(a,`${baseName(b.name)}_前.pdf`),B=await mkpart(z,`${baseName(b.name)}_後.pdf`);
+  snap();const i=bundles.indexOf(b);if(b.doc){try{b.doc.destroy();}catch{}}bundles.splice(i,1,A,B);render();persist();status(`${b.cur}ページ目の前で、2つの束に分けました。「元に戻す」で戻せます。`);
+}
+async function mergeSelected(){   // 選択した束を、表示の並び順(左上から右へ、次の段の左から)に、1つの束に
+  const sel=bundles.filter(b=>b.sel);if(sel.length<2)return;
+  status("結合中…");
+  const out=await PDFDocument.create();
+  for(const b of sel){const s=await PDFDocument.load(b.bytes);(await out.copyPages(s,s.getPageIndices())).forEach(p=>out.addPage(p));}
+  const nb=mk(`結合_${stamp()}.pdf`,new Uint8Array(await out.save()),out.getPageCount(),0);
+  snap();const first=bundles.indexOf(sel[0]);sel.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
+  bundles=bundles.filter(b=>!b.sel);bundles.splice(Math.min(first,bundles.length),0,nb);render();persist();status(`${sel.length}個の束を結合しました(${nb.n}ページ)。「元に戻す」で戻せます。`);
+}
+$("bMerge").onclick=()=>mergeSelected().catch(e=>status("結合できませんでした: "+(e.message||e)));
+$("bUndo").onclick=undo;
+async function saveBundle(b){
+  const name=b.name.endsWith(".pdf")?b.name:b.name+".pdf";
+  if(window.showSaveFilePicker){
+    try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});const w=await h.createWritable();await w.write(new Blob([b.bytes],{type:"application/pdf"}));await w.close();status(`「${h.name}」として保存しました。`);}
+    catch(e){if(e&&e.name==="AbortError")status("保存をやめました。");else throw e;}
+  }else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);status("ダウンロードしました(Chrome・Edgeでは保存先を選べます)。");}
+}
+function removeBundle(b){snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();persist();status(`「${b.name}」を削除しました。「元に戻す」で戻せます。`);}
+
+// ===== 機能メニュー(ダブルクリック) =====
+let menuB=null;
+function openMenu(b){
+  menuB=b;$("menuInfo").textContent=`${b.name}(${b.n}ページ${b.n>1?`・いま ${b.cur+1} ページ目を表示`:""})`;
+  const bx=$("menuBtns");bx.innerHTML="";
+  const add=(label,sub,fn,dis,cls)=>{const x=document.createElement("button");if(cls)x.className=cls;x.disabled=!!dis;x.innerHTML=`<span>${label}${sub?`<small>${sub}</small>`:""}</span>`;x.onclick=()=>{closeMenu();fn();};bx.appendChild(x);};
+  const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
+  add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
+  add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
+  add("🗂 全ページをばらす","1枚ずつのPDFにする",()=>burst(b).catch(e=>status("失敗: "+e.message)),b.n<2);
+  add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
+  add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
+  add("💾 名前を付けて保存","この束を、PDFファイルとして保存",()=>saveBundle(b).catch(e=>status("保存できませんでした: "+e.message)));
+  add("🗑 デスクから削除","元のファイルは消えません",()=>removeBundle(b),false,"danger");
+  $("menu").classList.remove("hidden");
+}
+function closeMenu(){$("menu").classList.add("hidden");}
+$("menuClose").onclick=closeMenu;
+$("menu").addEventListener("pointerdown",e=>{if(e.target===$("menu"))closeMenu();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();}});
+
+// ===== 別の画面(フォーム): ページ編集・歪み補正 =====
+let formB=null;
+function openForm(kind,b){
+  const F=FORMS[kind];formB=b;
+  $("formName").textContent=F.name;$("formVer").textContent=F.ver;
+  const fr=$("formFrame");fr.src=F.src+"&embed=1";$("formHost").classList.remove("hidden");fr._kind=kind;
+}
+function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
+$("formClose").onclick=closeForm;
+window.addEventListener("message",async e=>{
+  const m=e.data;if(!m||typeof m!=="object"||e.source!==$("formFrame").contentWindow)return;
+  if(m.type==="ready"&&formB){   // 表示中の1ページだけを、1ページのPDFにして渡す
+    const src=await PDFDocument.load(formB.bytes),d=await PDFDocument.create();(await d.copyPages(src,[formB.cur])).forEach(p=>d.addPage(p));
+    const bytes=new Uint8Array(await d.save());e.source.postMessage({type:"load",bytes,name:`${baseName(formB.name)}_p${formB.cur+1}.pdf`},"*",[bytes.buffer]);
+  }else if(m.type==="result"&&formB){   // 編集した1ページを、束の同じ位置に戻す
+    const b=formB,src=await PDFDocument.load(b.bytes),ed=await PDFDocument.load(m.bytes),out=await PDFDocument.create();
+    const before=[...Array(b.cur).keys()],after=[...Array(b.n-b.cur-1).keys()].map(i=>i+b.cur+1);
+    (await out.copyPages(src,before)).forEach(p=>out.addPage(p));(await out.copyPages(ed,[0])).forEach(p=>out.addPage(p));(await out.copyPages(src,after)).forEach(p=>out.addPage(p));
+    snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
+    closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました。「元に戻す」で戻せます。");
+  }else if(m.type==="close")closeForm();
+});
+
+// ===== 起動 =====
+restore().then(()=>{render();if(bundles.length)status("前回の束を復元しました(このブラウザの中だけに保存されています)。");});
+window.pdfStudioDebug={bundles:()=>bundles.map(b=>({id:b.id,name:b.name,n:b.n,cur:b.cur,sel:b.sel})),forms:FORMS};
+</script>
+</body>
+</html>
