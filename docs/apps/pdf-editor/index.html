@@ -90,7 +90,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </head>
 <body>
 <header>
-<div id="ver" title="バージョン">1.00</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
+<div id="ver" title="バージョン">1.01</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
 <h1>📄 PDFエディタ</h1>
 <p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
@@ -516,8 +516,8 @@ function buildBlocks(list,gapOverride){
       if(dy>Math.max(a.size,b.size)*1.7)break;
       if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
       if(!similar(a.size,b.size,0.25)||Math.abs((a.runs[0].ls||0)-(b.runs[0].ls||0))>0.6||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
-      const tol=Math.max(a.size,b.size)*1.0;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけでは、つなげない)
-      if(Math.abs(a.x-b.x)<tol||Math.abs((a.x+a.w)-(b.x+b.w))<tol||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<tol)par[find(j)]=find(i);
+      const tol=Math.max(a.size,b.size)*0.7;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけ・字下げの違う行は、つなげない)
+      {const dl=Math.abs(a.x-b.x),sz=Math.max(a.size,b.size);if(dl<tol||Math.abs((a.x+a.w)-(b.x+b.w))<0.3*sz||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<0.3*sz)par[find(j)]=find(i);}
     }
   }
   const groups=new Map();
@@ -1294,8 +1294,9 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
       const mh=Math.min(a.h,b.h);if(vg<-0.5*mh)continue;if(vg>0.9*mh)continue;
       if(Math.max(a.h,b.h)/mh>1.4)continue;
       // 同じ塊にするのは、左端・右端・中心のどれかがそろっている行だけ(上の行の下にたまたま収まっているだけの短い行〈「理事長」など〉は別の塊)
-      const tol=1.5*Math.max(a.h,b.h);
-      if(!(Math.abs(a.x0-b.x0)<tol||Math.abs(a.x1-b.x1)<tol||Math.abs((a.x0+a.x1)/2-(b.x0+b.x1)/2)<tol))continue;
+      const tol=0.8*Math.max(a.h,b.h);   // 行の始まり(左端)が違う行(字下げ)は別の塊。右端・中心がそろう行(右揃え・中央揃え)だけ例外
+      const mhh=Math.max(a.h,b.h),dl=Math.abs(a.x0-b.x0);   // 中央揃え・右揃えとみなすのは、中心(右端)がきっちりそろう(0.3文字以内)ときだけ。字下げした行は、たまたま中心が近くなりやすいが、きっちりはそろわない
+      if(!(dl<tol||Math.abs(a.x1-b.x1)<0.3*mhh||Math.abs((a.x0+a.x1)/2-(b.x0+b.x1)/2)<0.3*mhh))continue;
       if(hSep(a.y1,b.y0,Math.max(a.x0,b.x0),Math.min(a.x1,b.x1)))continue;
       V.u(i,j);}}
   const cm=new Map();lines.forEach((l,i)=>{const r=V.f(i);let c=cm.get(r);if(!c){c={x0:l.x0,y0:l.y0,x1:l.x1,y1:l.y1,lines:[]};cm.set(r,c);}c.x0=Math.min(c.x0,l.x0);c.y0=Math.min(c.y0,l.y0);c.x1=Math.max(c.x1,l.x1);c.y1=Math.max(c.y1,l.y1);c.lines.push(l);});
