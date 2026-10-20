@@ -497,7 +497,7 @@ function buildBlocks(list,gapOverride){
     l.rs.sort((a,b)=>a.x-b.x);let cur=null,last=null;
     l.rs.forEach(r=>{
       const gap=cur?r.x-(cur.x+cur.w):0;
-      const join=cur&&last&&similar(last.size,r.size)&&!isLeader(last)&&!isLeader(r)
+      const join=cur&&last&&similar(last.size,r.size)&&Math.abs((last.ls||0)-(r.ls||0))<0.6&&!isLeader(last)&&!isLeader(r)
         &&gap<Math.max(last.size,r.size)*gapMul&&!vSepBetween(cur.x+cur.w,r.x,l.base,Math.max(cur.size,r.size));
       if(join){cur.runs.push(r);cur.w=Math.max(cur.w,r.x+r.w-cur.x);cur.size=Math.max(cur.size,r.size);}
       else{cur={runs:[r],x:r.x,w:r.w,base:l.base,size:r.size};segs.push(cur);}
@@ -513,7 +513,7 @@ function buildBlocks(list,gapOverride){
       const b=segs[j],dy=b.base-a.base;
       if(dy>Math.max(a.size,b.size)*1.7)break;
       if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
-      if(!similar(a.size,b.size,0.25)||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
+      if(!similar(a.size,b.size,0.25)||Math.abs((a.runs[0].ls||0)-(b.runs[0].ls||0))>0.6||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
       const tol=Math.max(a.size,b.size)*1.0;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけでは、つなげない)
       if(Math.abs(a.x-b.x)<tol||Math.abs((a.x+a.w)-(b.x+b.w))<tol||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<tol)par[find(j)]=find(i);
     }
@@ -1274,15 +1274,15 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
   // (1) 行: 横に近く、縦に重なる断片をつなぐ
   const U=uf(comps.length);
   for(let i=0;i<comps.length;i++){const a=comps[i];
-    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.8*Hmax)break;   // 字間の広い書式(均等割付)や、「、」の後の空きで、行が割れないように
-      if(!rowMode&&gap>1.6*Math.max(a.h,b.h,0.8*Hmed))continue;
+    for(let j=i+1;j<comps.length;j++){const b=comps[j],gap=b.x0-a.x1;if(!rowMode&&gap>1.5*Hmax)break;   // 字間の広い書式(均等割付)や、「、」の後の空きで、行が割れないように
+      if(!rowMode&&gap>1.4*Math.max(a.h,b.h,0.8*Hmed))continue;
       const ov=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0),mn=Math.min(a.h,b.h);
       let near=ov>=0.45*mn;
       if(!near&&mn<0.35*Hmed){const dy=Math.abs((a.y0+a.y1)/2-(b.y0+b.y1)/2);near=dy<=0.6*Math.max(a.h,b.h)+0.5*Hmed;} // 細い横線(ニの棒・ー)は、縦位置が近ければ同じ行
       if(!near)continue;
       if(gap>0&&vSep(a.x1,b.x0,Math.max(a.y0,b.y0),Math.min(a.y1,b.y1)))continue;
       U.u(i,j);}}
-  const lm=new Map();comps.forEach((c,i)=>{const r=U.f(i);let l=lm.get(r);if(!l){l={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,n:0};lm.set(r,l);}l.x0=Math.min(l.x0,c.x0);l.y0=Math.min(l.y0,c.y0);l.x1=Math.max(l.x1,c.x1);l.y1=Math.max(l.y1,c.y1);l.n++;});
+  const lm=new Map();comps.forEach((c,i)=>{const r=U.f(i);let l=lm.get(r);if(!l){l={x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,n:0,hs:[],ar:0};lm.set(r,l);}l.hs.push(c.h);l.ar+=c.w*c.h;l.x0=Math.min(l.x0,c.x0);l.y0=Math.min(l.y0,c.y0);l.x1=Math.max(l.x1,c.x1);l.y1=Math.max(l.y1,c.y1);l.n++;});
   const lines=[...lm.values()].filter(l=>l.y1-l.y0>=4).sort((a,b)=>a.y0-b.y0);
   lines.forEach(l=>{l.h=l.y1-l.y0;l.w=l.x1-l.x0;});
   // (2) 塊: 行間が詰まっていて、左揃い/重なりがあり、大きさが近い行をつなぐ(間に横線があれば分ける)
@@ -1501,6 +1501,85 @@ function keepInRange(it,x,y,w,h){
   if(it.vy<y)it.vy=y;if(it.vy+it.vh>y+h)it.vy=Math.max(y,y+h-it.vh);
 }
 // 実際に使うフォントで文字を並べたときの幅が、元の画像の行の幅とぴったり合うように、文字サイズを微調整する(文字数の目安による推定を、実測で置き換える)。測るのは文字幅の計算だけなので、一瞬で終わる
+// ---- 照合: 元の画像と、変換した文字を実際に重ねて比べ、文字のサイズ・字間・位置・全角半角を自動で直す ----
+// 元の画像の「文字の濃さ」の地図(2画素/pt)。ぼかして、少しのずれを許す
+function boxBlur(a,w,h){const t=new Float32Array(a.length),o=new Float32Array(a.length);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-1;k<=1;k++){const xx=x+k;if(xx>=0&&xx<w){s+=a[y*w+xx];c++;}}t[y*w+x]=s/c;}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-1;k<=1;k++){const yy=y+k;if(yy>=0&&yy<h){s+=t[yy*w+x];c++;}}o[y*w+x]=s/c;}
+  return o;}
+function makeInk(cv,S){
+  const R=2,w=Math.max(1,Math.round(cv.width*R/S)),h=Math.max(1,Math.round(cv.height*R/S));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});
+  cx.imageSmoothingQuality="high";cx.drawImage(cv,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h).data,n=w*h,g=new Float32Array(n),hist=new Uint32Array(256);
+  for(let i=0;i<n;i++){const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
+  const pct=q=>{let a=0;const t=n*q;for(let v=0;v<256;v++){a+=hist[v];if(a>=t)return v;}return 255;};
+  const fg=pct(0.01),bg=pct(0.85),den=Math.max(60,bg-fg),I=new Float32Array(n);
+  for(let i=0;i<n;i++)I[i]=Math.max(0,Math.min(1,(bg-g[i])/den));
+  return{w,h,R,I:boxBlur(I,w,h)};
+}
+// 半角の英数字・記号を全角にした文字列(元が全角なのに、読み取りが半角のとき)
+const toFull=s=>s.replace(/[!-~]/g,c=>c==="-"?"－":c===":"?"：":String.fromCharCode(c.charCodeAt(0)+0xFEE0)).replace(/ /g,"　");
+let refCv=null,refCx=null;
+// 1行(run)の、サイズ・全角半角・字間・位置を、元の画像との重なり(ぼかしたDice係数)がいちばん大きくなるように選ぶ
+//  ・行の見えている幅は画像から正確にわかるので、サイズを決めれば字間は幅から決まる(探すのはサイズと全角半角だけ)
+//  ・最後に、位置(左右・上下)を細かく探す
+function refineRun(r,ink,ox,oy,fam){
+  const R=ink.R,n=Array.from(r.str).length;if(!(r.w>3)||!n)return false;
+  if(!refCv){refCv=document.createElement("canvas");refCx=refCv.getContext("2d",{willReadFrequently:true});}
+  const mg=6,wx0=Math.max(0,Math.floor((r.x-ox-mg)*R)),wx1=Math.min(ink.w,Math.ceil((r.x+r.w-ox+mg)*R));
+  const hgt=(r.gh||r.size)*1.0,wy0=Math.max(0,Math.floor((r.base-oy-r.size*1.05-3)*R)),wy1=Math.min(ink.h,Math.ceil((r.base-oy+r.size*0.4+3)*R));
+  const ww=wx1-wx0,wh=wy1-wy0;if(ww<4||wh<4||ww*wh>200000)return false;
+  const Iw=new Float32Array(ww*wh);let sumI=0;for(let y=0;y<wh;y++)for(let x=0;x<ww;x++){const v=ink.I[(wy0+y)*ink.w+wx0+x];Iw[y*ww+x]=v;sumI+=v;}
+  if(sumI<1)return false;
+  refCv.width=ww;refCv.height=wh;
+  const measure=(str,size)=>{refCx.font=size+"px "+fam;const m=refCx.measureText(str);return{l:m.actualBoundingBoxLeft,w:m.actualBoundingBoxLeft+m.actualBoundingBoxRight};};
+  // 候補を描いて、(dx,dy)だけずらしたときの重なり。ぼかして比べる
+  const render=(str,size,ls)=>{
+    refCx.clearRect(0,0,ww,wh);refCx.fillStyle="#000";refCx.font=(size*R)+"px "+fam;refCx.textBaseline="alphabetic";
+    const m=measure(str,size*R),tx=(r.x-ox)*R-wx0+m.l,ty=(r.base-oy)*R-wy0;
+    if(ls){let cx=tx;for(const c of Array.from(str)){refCx.fillText(c,cx,ty);cx+=refCx.measureText(c).width+ls*R;}}else refCx.fillText(str,tx,ty);
+    const d=refCx.getImageData(0,0,ww,wh).data,T=new Float32Array(ww*wh);let sT=0;for(let i=0;i<ww*wh;i++){T[i]=d[i*4+3]/255;sT+=T[i];}
+    return{T:boxBlur(T,ww,wh),sT};
+  };
+  const dice=(T,sx,sy)=>{let ov=0,st=0;for(let y=0;y<wh;y++){const yy=y-sy;for(let x=0;x<ww;x++){const xx=x-sx;const t=(yy>=0&&yy<wh&&xx>=0&&xx<ww)?T[yy*ww+xx]:0;const i=Iw[y*ww+x];ov+=t<i?t:i;st+=t;}}return 2*ov/(sumI+st+1e-6);};
+  const best=(T,shifts)=>{let b={s:-1,dx:0,dy:0};for(const [sx,sy] of shifts){const sc=dice(T,sx,sy);if(sc>b.s)b={s:sc,dx:sx,dy:sy};}return b;};
+  const coarse=[[0,0],[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]];
+  const variants=[r.str];const fw=toFull(r.str);if(fw!==r.str&&/[!-~]/.test(r.str))variants.push(fw);
+  const size0=r.size;let baseSc=null,top=null;
+  const sg=/[\u3040-\u30ff\u3400-\u9fff]/.test(r.str)&&r.gh>0&&n>=3?r.gh/0.9:0;
+  variants.forEach((str,vi)=>{
+    const nn=Array.from(str).length;
+    const sizes=[];for(let k=0;k<=10;k++)sizes.push(Math.round(size0*(0.8+0.05*k)*10)/10);
+    if(sg)[0.9,0.95,1,1.05,1.1].forEach(f=>sizes.push(Math.round(sg*f*10)/10));   // 行の高さから見たサイズの近くも調べる
+    {const m0=measure(str,100);if(m0.w>0)sizes.push(Math.round(r.w/(m0.w/100)*10)/10);}   // 字間なしで、幅にちょうど合うサイズ
+    for(let k=0;k<sizes.length;k++){
+      const size=sizes[k];
+      const m=measure(str,100);let ls=nn>1?(r.w-m.w/100*size)/(nn-1):0;
+      if(ls<-0.15||ls>14)continue;   // 幅に収まらない大きさ(字間がマイナス)は候補にしない
+      if(ls>0.15&&ls<1.5)continue;   // 1.5pt未満の字間は誤差とみなし、字間なし(幅にちょうど合うサイズ)の候補に任せる
+      const rd=render(str,size,Math.abs(ls)<0.2?0:ls),b=best(rd.T,coarse);
+      const prior=sg?0.5*Math.abs(Math.log(size/sg)):0;   // 日本語の行は、文字の高さ(≒サイズ)も手がかりにする(弱く)
+      const cand={sc:b.s-prior,raw:b.s,str,size,ls:Math.abs(ls)<0.2?0:Math.round(ls*10)/10,dx:b.dx,dy:b.dy,vi,k};
+      if(vi===0&&k===0&&baseSc===null){const rb=render(str,size0,0),bb=best(rb.T,coarse);baseSc=bb.s;}   // いまの結果(サイズそのまま・字間なし)
+      if(!top||cand.sc>top.sc)top=cand;
+    }
+  });
+  if(!top||baseSc===null)return false;
+  r.refScore=Math.max(top.raw,baseSc);
+  if(top.raw<baseSc+0.015)return false;   // 良くならなければ、そのまま
+  // 位置の微調整(0.5pt刻み)
+  const rd=render(top.str,top.size,top.ls),fine=[];for(let sy=-4;sy<=4;sy++)for(let sx=-5;sx<=5;sx++)fine.push([sx,sy]);
+  const fb=best(rd.T,fine);
+  r.str=top.str;r.size=top.size;r.ls=top.ls;r.x+=fb.dx/R;r.base+=fb.dy/R;r.refined=true;r.refScore=fb.s;r.refBase=baseSc;
+  return true;
+}
+async function refineRuns(runs,cv,S,ox,oy){
+  const ink=makeInk(cv,S),fam=famOf("text");let n=0;
+  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{if(refineRun(r,ink,ox,oy,fam))n++;}catch(e){console.warn("照合に失敗",e);}
+    if(i%6===5)await new Promise(res=>setTimeout(res,0));}   // 画面が固まらないよう、ときどき息継ぎ
+  return n;
+}
 let fitCtx=null;
 function fitOcrWidth(it,g){
   if(!fitCtx)fitCtx=document.createElement("canvas").getContext("2d");
@@ -1540,8 +1619,14 @@ async function doOcrBody(x,y,w,h){
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
-  const gha=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),ghMed=gha[gha.length>>1]||0;
-  seg.chunks=seg.chunks.filter(c=>!(c.lines.length===1&&c.lines[0].n<=2&&c.gh<0.7*ghMed&&(c.x1-c.x0)<2.2*ghMed));
+  const gha0=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),p80=gha0[Math.floor(gha0.length*0.8)]||0,gha=gha0.filter(v=>v>=0.5*p80),ghMed=gha[gha.length>>1]||0;   // 点の行(ごみ)が多くても、文字の行の高さの目安がぶれないように
+  seg.chunks=seg.chunks.filter(c=>{
+    if(c.lines.length!==1)return true;const l=c.lines[0],H=l.y1-l.y0,W=l.x1-l.x0;
+    if(l.n<=2&&c.gh<0.7*ghMed&&W<2.2*ghMed)return false;
+    // 「* . . . *」のような区切り(星と点が並ぶ): 周りの文字より小さく、断片が疎ら(枠の3割未満)、または断片の大半が行の高さの半分未満 → 文字ではない
+    const mh=[...l.hs].sort((a,b)=>a-b)[l.hs.length>>1];
+    if(l.n>=2&&l.n<=12&&H<0.8*ghMed&&W<14*H&&(l.ar<(l.n<=3?0.4:0.3)*W*H||mh<0.5*H))return false;
+    return true;});
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
     status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
@@ -1568,11 +1653,14 @@ async function doOcrBody(x,y,w,h){
     fitCtx.font=c.final+"px "+famOf("text");const desc=fitCtx.measureText(joinWords(l.words)).actualBoundingBoxDescent||c.final*0.1,base=l.y1-desc+c.final*0.1;   // +0.1: 2種類のフォントの見本で、基準線が平均1.4pt(サイズの約0.1)上に出たのを補正(実測)
     // 範囲を指定したときは、1行は必ず1つ(行の途中の空白で分けない・日本語の文字の間に空白を入れない)。ページ全体のときは、表のように離れた文字は分ける
     const ws=ocrRange.whole?l.words:[{str:joinWords(l.words).replace(/([^\x00-\x7F]) +/g,"$1").replace(/ +(?=[^\x00-\x7F])/g,"").replace(/ {2,}/g," "),x0:l.x0,x1:l.x1,y0:l.y0,y1:l.y1}];
-    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,gh:l.y1-l.y0,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
+    ws.forEach(wd=>runs.push({str:wd.str,x:wd.x0,base,w:wd.x1-wd.x0,size:c.final,ocr:true,ch:ci,gh:l.y1-l.y0,conf:l.conf,box:{x:wd.x0-1,y:Math.min(wd.y0,l.y0)-1.5,w:wd.x1-wd.x0+2,h:(Math.max(wd.y1,l.y1)-Math.min(wd.y0,l.y0))+3}}));}));
   // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
+  job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
+  const nref=await refineRuns(runs,cv,S,x,y);
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
-    if(g.some(r=>r.ocr))fitOcrWidth(it,g);
+    if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
+    if(g.some(r=>r.refined)){const ls=g.filter(r=>r.refined).map(r=>r.ls||0).sort((a,b)=>a-b);it.ls=ls[ls.length>>1];if(!(it.ls>0.2))it.ls=0;}
     const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
     if(chs.length===1){ // 1つの塊だけなら、その塊の行間・揃いを使う
       const c=res[chs[0]];it.lh=c.lh;it.align=c.align;
