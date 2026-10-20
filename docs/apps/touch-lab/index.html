@@ -49,7 +49,7 @@ h2{margin:0 0 6px;font-size:1rem}
 <body>
 <header>
 <a class="back-link" href="../../">← ハブに戻る</a>
-<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.01</span></h1>
+<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.02</span></h1>
 <div class="sub">指の動きをどう読み取れるかを調べる実験場です(端末内だけで動きます)</div>
 </header>
 <main>
@@ -83,7 +83,9 @@ h2{margin:0 0 6px;font-size:1rem}
 <label for="dist" style="margin-top:8px">2回の位置のずれの上限 <b id="distv">24</b>px</label>
 <input type="range" id="dist" min="4" max="80" step="2" value="24">
 <label for="ta" style="margin-top:8px">ボードの touch-action(画面側の拡大・移動の邪魔をするか)</label>
-<select id="ta"><option value="manipulation">manipulation(ダブルタップ拡大なし・ピンチ/移動は有効)</option><option value="none">none(全部こちらで受ける)</option><option value="auto">auto(ブラウザ任せ)</option></select>
+<select id="ta"><option value="none">none(全部こちらで受ける)</option><option value="manipulation">manipulation(ダブルタップ拡大なし・ピンチ/移動は有効)</option><option value="auto">auto(ブラウザ任せ)</option></select>
+<label style="margin-top:8px;display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="pdT" checked style="width:22px;height:22px"> 指を離した瞬間の拡大を止める(touchend の preventDefault)</label>
+<label style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="pdG" checked style="width:22px;height:22px"> ページ全体のピンチ拡大を止める(gesturestart)</label>
 </div>
 </div>
 
@@ -122,7 +124,13 @@ let gap=350,dist=24;
 $("gap").oninput=e=>{gap=+e.target.value;$("gapv").textContent=gap;};
 $("dist").oninput=e=>{dist=+e.target.value;$("distv").textContent=dist;};
 $("ta").onchange=e=>{board.style.touchAction=e.target.value;log("touch-action → "+e.target.value);};
-board.style.touchAction="manipulation";
+board.style.touchAction="none";
+// iPhoneのSafariは touch-action だけではダブルタップ拡大を止めきれないので、離した瞬間の既定動作とピンチ拡大も止める
+let pdT=true,pdG=true;
+$("pdT").onchange=e=>{pdT=e.target.checked;log("touchendで拡大を止める → "+pdT);};
+$("pdG").onchange=e=>{pdG=e.target.checked;log("ピンチ拡大を止める → "+pdG);};
+board.addEventListener("touchend",e=>{if(pdT&&e.cancelable)e.preventDefault();},{passive:false});
+["gesturestart","gesturechange","gestureend"].forEach(n=>document.addEventListener(n,e=>{if(pdG)e.preventDefault();},{passive:false}));
 
 // ---- 判定の集計 ----
 const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ"};
@@ -210,7 +218,7 @@ board.addEventListener("dblclick",e=>{hit("native",`対象:${nameOf(objAt(e.targ
 board.addEventListener("contextmenu",e=>e.preventDefault());
 // 画面側の動き(拡大・スクロール)を記録
 if(window.visualViewport){let ls=1;visualViewport.addEventListener("resize",()=>{const s=visualViewport.scale;if(Math.abs(s-ls)>.01){log(`⚠画面の拡大率が変わった ${ls.toFixed(2)}→${s.toFixed(2)}`);ls=s;}});}
-window.addEventListener("scroll",()=>log(`⚠ページがスクロールした y=${scrollY|0}`),{passive:true});
+let scT=0,scN=0,scY0=0;window.addEventListener("scroll",()=>{if(!scN)scY0=scrollY;scN++;clearTimeout(scT);scT=setTimeout(()=>{log(`⚠ページがスクロールした y=${scY0|0}→${scrollY|0}(${scN}回分まとめ)`);scN=0;},250);},{passive:true});
 setTab(1);
 window.touchLabDebug={cnt,sel:()=>[...sel]};
 })();
