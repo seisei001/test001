@@ -1,6 +1,6 @@
 ---
 name: PDFアプリ
-description: WEBアプリハブの「📄 PDFエディタ」(docs/apps/pdf-editor/)を、さらに優れたアプリへ育てていく作業の手順書。PDFエディタの機能追加・不具合修正・見た目の調整・OCR・PDF内の文字の訂正・文字サイズや折り返しなどの改善を頼まれたとき、「PDFアプリ」「PDFエディタを良くして」と言われたとき、PDFアプリの動作確認や公開(PR→マージ)をするときに必ず読むこと。アプリの構造、これまでの設計判断とハマりどころ、動作確認の環境(scripts/)、ユーザーとのやり取りの作法、次の改善アイデアをまとめている。
+description: (バージョン表示つき・公開のたびに0.01ずつ上げる)WEBアプリハブの「📄 PDFエディタ」(docs/apps/pdf-editor/)を、さらに優れたアプリへ育てていく作業の手順書。PDFエディタの機能追加・不具合修正・見た目の調整・OCR・PDF内の文字の訂正・文字サイズや折り返しなどの改善を頼まれたとき、「PDFアプリ」「PDFエディタを良くして」と言われたとき、PDFアプリの動作確認や公開(PR→マージ)をするときに必ず読むこと。アプリの構造、これまでの設計判断とハマりどころ、動作確認の環境(scripts/)、ユーザーとのやり取りの作法、次の改善アイデアをまとめている。
 ---
 
 # PDFアプリ(PDFエディタを育てる作業のスキル)
@@ -8,6 +8,7 @@ description: WEBアプリハブの「📄 PDFエディタ」(docs/apps/pdf-edito
 ## 0. このスキルの位置づけ
 - 対象: `docs/apps/pdf-editor/index.html`(単一ファイル、約1000行、ビルドなし)。公開URL: https://seisei001.github.io/test001/apps/pdf-editor/
 - ハブ全体の規約(meta・戻るリンク・ダークモード・44px・16px・apps.json・公開手順)は **`webapp-hub` スキル**に従う。このスキルはPDFエディタ固有の知識と、改善を繰り返す手順。
+- **バージョン**: 画面の右上に表示(`index.html` の `<div id="ver">`)。**1.00 から始め、公開(PRのマージ)のたびに 0.01 ずつ上げる**(1.00 → 1.01 → 1.02 …)。詳しくは §4。
 - 作業のたびに、**このスキルの「現在できること」「ハマりどころ」「次の改善アイデア」を最新にする**(§9)。
 
 ## 1. 改善を繰り返す手順(1サイクル)
@@ -16,7 +17,8 @@ description: WEBアプリハブの「📄 PDFエディタ」(docs/apps/pdf-edito
 3. **実装**: `docs/apps/pdf-editor/index.html` を編集。大きな変更は、Pythonで「探す文字列→置換」する小さなスクリプトにすると安全(見つからなければ失敗させる)。編集のたびに構文確認:
    `node -e "const s=require('fs').readFileSync('docs/apps/pdf-editor/index.html','utf8');const m=s.match(/<script>([\s\S]*?)<\/script>/g).pop().replace(/<\/?script>/g,'');new Function(m);console.log('syntax ok')"`
 4. **動作確認(必須・実際に動かす)**: §2 の環境でヘッドレスChromiumを動かす。**入力中の画面**と**確定後のPDF(`pdftoppm`で画像化)**を並べて目で見る。「たぶん動く」で報告しない。確認できなかったことは、できなかったと書く。
-5. **ドキュメント更新**: `webapp-hub` スキルの収録アプリ表(pdf-editor の行)、`README.md` の収録アプリ、このスキル(§7・§8)。
+5. **バージョンを 0.01 上げる**(§4)。`node scripts/test-version.js <新しい版>` で、右上に出ていることを確認する。
+5'. **ドキュメント更新**: `webapp-hub` スキルの収録アプリ表(pdf-editor の行)、`README.md` の収録アプリ、このスキル(§7・§8)。
 6. **コミット&push**: `git add -A && git commit -m "PDFエディタ: …"` → `git push -u origin <枝>`。コミットの末尾には、その時のシステムの指示にある attribution 行(Co-Authored-By / Claude-Session)を付ける。
 7. **報告(概要を短く)→ ユーザーが「PRを作ってマージして公開して」と言ったら** PR作成→マージ(§4)。ユーザーが言う前にPRを作らない(「OCRも作ってからマージしよう」のように、先に包括的な許可がある場合はそれに従う)。
 8. 公開後は「強制再読み込み(Ctrl+Shift+R)」を案内し、**実際のPDFで試した結果を教えてもらう**。うまくいかないPDFは「どんなPDFか・どこでつまずいたか」を聞く(写真・スクショは大きな手がかり。例: 点線の枠が断片単位で描かれていることが写真で分かった)。
@@ -36,6 +38,7 @@ node .claude/skills/pdf-app/scripts/make-warp-photo.js     # 歪んだ写真のP
 node .claude/skills/pdf-app/scripts/test-warp.js           # 歪み補正: 補正の前後で「OCRで読めた行数」を比べる(一括・部分の両方)。画像は $PDFAPP_WORK/shot_warp_*.png
 node .claude/skills/pdf-app/scripts/test-warp-curve.js     # 歪み補正: 一括でも中の点で曲げられる(25点)/エラーなし
 node .claude/skills/pdf-app/scripts/test-ocr-range.js      # OCRの範囲指定・変換中/完了の表示・全体認識後の範囲指定・再変換の置き換え
+node .claude/skills/pdf-app/scripts/test-version.js 1.00     # 右上のバージョン表示(公開のたびに0.01上げる)
 node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシート)のOCR(写真は $PDFAPP_WORK/samples/receipt_photo.jpg。リポジトリに入れない)
 ```
 - `scripts/harness.js` の `launch()` / `drag()` / `save()` を使って、新しい確認シナリオを書く(`example-test.js` を手本に)。
@@ -77,6 +80,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - `gh` は使えない。**GitHub MCP** を使う: `ToolSearch` で `select:mcp__github__create_pull_request,mcp__github__merge_pull_request` を読み込む。接続が切れていたら、もう一度 `ToolSearch` を呼ぶと待ってくれる。
 - `owner: seisei001`, `repo: test001`, `base: docs`, `head: claude/pdf-editor-vN`。PRの本文は「概要 / 変更内容 / 注意 / 確認」の見出しで、確認できたことと**未確認のこと**を分けて書き、末尾に `🤖 Generated with [Claude Code](https://claude.com/claude-code)` と セッションURL を付ける。
 - マージは `merge_method: squash`。`docs` に入ると数分でGitHub Pagesに反映される(Pagesの設定変更は不要)。
+- **バージョンの決まり(ユーザー指示)**: 公開するPRごとに、`index.html` の `<div id="ver">…</div>` の数字を **0.01 ずつ上げる**(最初の公開=**1.00**、次は 1.01、その次は 1.02。1.99の次は 2.00)。**PRに入れるコミットで上げる**(マージ後に別PRで上げない)。PRのタイトル・本文にも「バージョン 1.01」と書く。前のPRがまだ公開前(同じ枝・まだマージしていない)なら、上げずに同じ版でよい。表示は右上の固定(`#ver`)。ユーザーが画面を送ってきたら、まず**右上の版を見て、最新が反映されているか**を確かめる(古いページが残っているのが原因のことがある)。
 - マージ済みのPRに追加コミットを積まない。次の改善は §1-2 で新しい枝を切る。
 
 ## 5. 設計の決まり・ハマりどころ(これまでの学び)
@@ -149,6 +153,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 毎回の完了報告に「公開するならPRを作ってマージしますか?」を添える。許可が出たら §4。
 
 ## 7. 現在できること(最新)
+**(バージョン1.00時点の要約)** ページ操作(新規・開く・結合・分割・回転・削除・並べ替え・空白追加・元に戻す)/文字・画像の追加と、部品の選択・訂正/PDF内の文字の訂正(横並びを1まとまりに、大きな空白・罫線で分ける)/**OCR**(エンジン3つ: 国会図書館NDLOCR-Lite〈既定〉・PaddleOCR・Tesseract。範囲指定・ページ全体。変換中の帯と完了表示。1行ごとの切り出し・字間・全角半角・サイズ・位置を、**元の画像と重ねて照合して自動で整え直す**)/**歪み補正**(一括・部分。5×5の格子点の曲線)/**名前を付けて保存**・上書き保存/元の画像と重ねる赤い透かし表示・位置の微調整/字間の入力欄/右上のバージョン表示。
 新規(空白A4)/開く/結合/分割/回転/削除/並べ替え/空白追加/元に戻す(20段)/ダウンロード。文字・画像の追加(ドラッグで範囲指定→その場で入力)、部品の選択・移動・サイズ変更・削除、「文字として/画像として」の切替、文字サイズ(初期10.5pt、範囲選択・右クリック・パネル、枠のリサイズで自動調整)、折り返しは単語の区切り+枠の自動拡大、PDF内の文字の選択・訂正・加筆・削除(まとまり判定、表のセル/行の扱い、1つにまとめるオプション)、画像の文字のOCR(範囲/ページ全体、日本語・英語)、歪み補正(一括=四隅の台形補正+四隅の自動提案/部分=範囲指定+4辺のベジェ曲線、プレビューつき)。
 
 **未確認・既知の制限**: Mac・スマホ・Firefox/Safari、実際のWord/Excel由来PDFや実際のスキャン書類での精度、縦書き、回転したテキスト、暗号化PDF、罫線が画像のPDFの区切り検出、背景が模様の場合の隠し方、OCR認識データの実ネットワークでの取得。
@@ -164,7 +169,19 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 8. 大きなPDFの高速化(サムネイルの遅延描画、描画命令の解析の再利用)。
 9. 作業の自動化: 回帰テストのシナリオを `scripts/` に増やす(表・フォーム・スキャン・回転ページ・日本語/英語)。
 
+## 10. このソフトを一から作るときの手順(要約)
+1. **土台**: `docs/apps/pdf-editor/index.html` 1ファイル(ビルドなし)。`pdf-lib 1.17.1`(編集・書き出し)、`@pdf-lib/fontkit`+`M PLUS 1p`(日本語。`subset:false`)、`pdfjs-dist 3.11.174`(表示・文字位置・罫線)をCDNから。ハブの規約(`webapp-hub` スキル)に従う。
+2. **表示と編集**: ページを canvas に描き、その上に `#ov`(部品の枠)を重ねる。部品は `items[]`(文字・画像・PDF文字の訂正=`fix`)。確定(`commit`)までPDFは変えない。プレビューと書き出しで同じフォント・同じ折り返し(`layoutText`)を使う(見た目=出力)。
+3. **PDF内の文字の訂正**: pdf.js の文字+`getOperatorList` の罫線 → `buildBlocks`(同じ大きさで横に並ぶ=1つ、大きな空白・罫線で分ける)→ `newFix`(元の文字を背景色で隠し、新しい文字を重ねる)。
+4. **OCR**: 範囲を描画 → `ocrSegment`(二値化→罫線を消す→断片→行→塊)→ 1行ごとに認識(NDL/Paddle/Tesseract)→ `refineRuns`(元の画像と照合してサイズ・全角半角・字間・位置を決める)→ `buildBlocks` でまとめ直す。
+5. **歪み補正**: 格子点(5×5)を通る曲線で元画像→出力を対応づけ(`makePixMap`)。一括は射影変換から始める。
+6. **保存**: `showSaveFilePicker`(名前を付けて保存)、非対応ブラウザはダウンロード。
+7. **動作確認**: `scripts/`(ヘッドレスChromium+CDNをnpmに差し替え)。**正解つきの見本**(`make-scan-layout.js` の layout/form/track)で数字を測ってから公開する。
+8. **公開**: PR→マージ。**公開のたびにバージョンを0.01上げる**(§4)。
+9. **ユーザーの画面(スクリーンショット)を最優先の手がかりにする**: 右上の版→変換完了の表示(照合の行数)→赤い透かしの重なり、の順に見る。
+
 ## 9. このスキルの更新ルール
+- **公開するたびに、右上のバージョンを 0.01 上げ、このスキルの §7 の先頭(「バージョンX.XX時点」)も更新する**。
 - 機能を足した/不具合を直したら、§5(学び)・§7(できること)・§8(次の案)を更新する。
 - 動作確認の手順や部品の版を変えたら、`scripts/` と §2 を同時に直す。
 - 収録アプリの表(`webapp-hub` スキル)と `README.md` も更新する(`webapp-hub` の「アプリを追加・変更したら更新」の規約)。

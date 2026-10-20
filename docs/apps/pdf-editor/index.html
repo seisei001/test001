@@ -45,6 +45,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button{border-radius:0;background:transparent;color:var(--accent);border:1px solid var(--accent);}
 .seg button:first-child{border-radius:8px 0 0 8px;}.seg button:last-child{border-radius:0 8px 8px 0;}
 .seg button.on{background:var(--accent);color:#fff;}
+#ver{position:fixed;top:6px;right:10px;z-index:1500;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel-bg,#fff);border:1px solid var(--border);border-radius:999px;padding:2px 10px;opacity:.9;pointer-events:none;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
 #job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(560px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.9rem;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
 #job.done{border-color:#16a34a;border-width:2px;}
@@ -89,6 +90,7 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 </head>
 <body>
 <header>
+<div id="ver" title="バージョン">1.00</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
 <h1>📄 PDFエディタ</h1>
 <p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
@@ -1372,7 +1374,7 @@ async function tessShort(cv,est){
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
 const OCR_SPLIT_GAP=2;
-let lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+let lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
@@ -1481,7 +1483,7 @@ async function doOcr(x,y,w,h){
   try{
     const n=await doOcrBody(x,y,w,h);
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok)job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。誤認識は、枠をタップして直してください。`);
+    if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。");}
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrRunning=false;$("bOcrPage").disabled=false;}
@@ -1525,13 +1527,13 @@ let refCv=null,refCx=null;
 //  ・行の見えている幅は画像から正確にわかるので、サイズを決めれば字間は幅から決まる(探すのはサイズと全角半角だけ)
 //  ・最後に、位置(左右・上下)を細かく探す
 function refineRun(r,ink,ox,oy,fam){
-  const R=ink.R,n=Array.from(r.str).length;if(!(r.w>3)||!n)return false;
+  const R=ink.R,n=Array.from(r.str).length;if(!(r.w>3)||!n)return -1;
   if(!refCv){refCv=document.createElement("canvas");refCx=refCv.getContext("2d",{willReadFrequently:true});}
   const mg=6,wx0=Math.max(0,Math.floor((r.x-ox-mg)*R)),wx1=Math.min(ink.w,Math.ceil((r.x+r.w-ox+mg)*R));
   const hgt=(r.gh||r.size)*1.0,wy0=Math.max(0,Math.floor((r.base-oy-r.size*1.05-3)*R)),wy1=Math.min(ink.h,Math.ceil((r.base-oy+r.size*0.4+3)*R));
-  const ww=wx1-wx0,wh=wy1-wy0;if(ww<4||wh<4||ww*wh>200000)return false;
+  const ww=wx1-wx0,wh=wy1-wy0;if(ww<4||wh<4||ww*wh>200000)return -1;
   const Iw=new Float32Array(ww*wh);let sumI=0;for(let y=0;y<wh;y++)for(let x=0;x<ww;x++){const v=ink.I[(wy0+y)*ink.w+wx0+x];Iw[y*ww+x]=v;sumI+=v;}
-  if(sumI<1)return false;
+  if(sumI<1)return -1;
   refCv.width=ww;refCv.height=wh;
   const measure=(str,size)=>{refCx.font=size+"px "+fam;const m=refCx.measureText(str);return{l:m.actualBoundingBoxLeft,w:m.actualBoundingBoxLeft+m.actualBoundingBoxRight};};
   // 候補を描いて、(dx,dy)だけずらしたときの重なり。ぼかして比べる
@@ -1565,20 +1567,20 @@ function refineRun(r,ink,ox,oy,fam){
       if(!top||cand.sc>top.sc)top=cand;
     }
   });
-  if(!top||baseSc===null)return false;
+  if(!top||baseSc===null)return -1;
   r.refScore=Math.max(top.raw,baseSc);
-  if(top.raw<baseSc+0.015)return false;   // 良くならなければ、そのまま
+  if(top.raw<baseSc+0.015)return 0;   // 良くならなければ、そのまま
   // 位置の微調整(0.5pt刻み)
   const rd=render(top.str,top.size,top.ls),fine=[];for(let sy=-4;sy<=4;sy++)for(let sx=-5;sx<=5;sx++)fine.push([sx,sy]);
   const fb=best(rd.T,fine);
   r.str=top.str;r.size=top.size;r.ls=top.ls;r.x+=fb.dx/R;r.base+=fb.dy/R;r.refined=true;r.refScore=fb.s;r.refBase=baseSc;
-  return true;
+  return 1;
 }
 async function refineRuns(runs,cv,S,ox,oy){
-  const ink=makeInk(cv,S),fam=famOf("text");let n=0;
-  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{if(refineRun(r,ink,ox,oy,fam))n++;}catch(e){console.warn("照合に失敗",e);}
+  const ink=makeInk(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
+  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;}catch(e){st.skip++;console.warn("照合に失敗",e);}
     if(i%6===5)await new Promise(res=>setTimeout(res,0));}   // 画面が固まらないよう、ときどき息継ぎ
-  return n;
+  return st;
 }
 let fitCtx=null;
 function fitOcrWidth(it,g){
@@ -1657,6 +1659,7 @@ async function doOcrBody(x,y,w,h){
   // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
   job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
   const nref=await refineRuns(runs,cv,S,x,y);
+  lastRefine=nref;
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
@@ -1677,7 +1680,7 @@ async function doOcrBody(x,y,w,h){
   lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
-  return{ok:true,lines:nl,parts:made.length};
+  return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
 
