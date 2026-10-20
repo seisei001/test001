@@ -117,5 +117,12 @@
     "description": "PDFを「束」として並べ、結合・分割・ばらす・ページ編集・歪み補正を機能ごとの画面で行うPDF編集ソフト",
     "path": "apps/pdf-studio/",
     "icon": "🗂️"
+  },
+  {
+    "id": "touch-lab",
+    "name": "iPhone操作検証",
+    "description": "ダブルタップ・選択・範囲指定・長押し・2本指など、iPhoneの指の動きがどう読み取れるかを試す実験場",
+    "path": "apps/touch-lab/",
+    "icon": "👆"
   }
 ]
