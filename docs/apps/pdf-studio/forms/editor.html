@@ -71,9 +71,9 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
-#ov.draw{cursor:crosshair;touch-action:pan-y;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
+#ov.draw{cursor:crosshair;touch-action:manipulation;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
 .ring{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:3px solid #2563eb;border-radius:50%;pointer-events:none;animation:ringf .6s forwards;z-index:8;}
-@keyframes ringf{to{opacity:0;transform:scale(1.8);}}
+@keyframes ringf{to{opacity:0;}}
 #ov.ghost .cover{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
 #ov.ghost .ibox.cmp .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}   /* 赤く重ねるのは、元の文字の訂正・画像から変換した文字だけ(自分で入力した文字は、ふつうの色のまま) */
 #ov.ghost .ibox.cmp{background:transparent!important;}
@@ -91,13 +91,13 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;}
 .hdl.mv{left:-8px;top:-8px;cursor:move;}.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
 body.pt-touch .hdl{width:36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;font-size:18px;line-height:36px;text-align:center;opacity:.55;animation:hblink .5s 3;}
-body.pt-touch .hdl.mv{left:-38px;top:-38px;}body.pt-touch .hdl.rs{right:-38px;bottom:-38px;}
+body.pt-touch .hdl.mv{left:-38px;top:-38px;transform:scale(var(--zs,1));transform-origin:100% 100%;}body.pt-touch .hdl.rs{right:-38px;bottom:-38px;transform:scale(var(--zs,1));transform-origin:0 0;}   /* 画面を拡大したときは、印を小さくして、見た目の大きさを一定に */
 body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{content:"⇲";}
-@keyframes hblink{50%{opacity:1;transform:scale(1.2);}}
+@keyframes hblink{50%{opacity:1;}}
 .sample{position:absolute;left:0;top:0;color:rgba(0,0,0,.28);pointer-events:none;white-space:nowrap;}   /* 空の枠の、1文字の見本 */
 .grip{position:absolute;width:22px;height:22px;border-radius:50%;background:#2563eb;color:#fff;font-size:12px;line-height:22px;text-align:center;touch-action:none;cursor:nwse-resize;z-index:6;}
-body.pt-touch .grip{width:36px;height:36px;line-height:36px;font-size:16px;}
-.editbtn{display:none;position:absolute;left:0;bottom:-46px;z-index:7;min-height:40px;padding:4px 14px;font-size:.95rem;margin:0;}
+body.pt-touch .grip{width:36px;height:36px;line-height:36px;font-size:16px;transform:scale(var(--zs,1));}
+.editbtn{display:none;position:absolute;left:0;bottom:-46px;z-index:7;min-height:40px;padding:4px 14px;font-size:.95rem;margin:0;transform:scale(var(--zs,1));transform-origin:0 0;}
 body.pt-touch .editbtn{display:block;}
 
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
@@ -791,7 +791,11 @@ function boxStyle(it,el){
   if(t){t.style.fontFamily=famOf(it.fmt);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
-document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);   // 最後に触れたのが指かマウスか
+document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);
+// 画面を拡大(ピンチ)したときも、印・矢印・ボタンの見た目の大きさを一定にする。拡大率は、親(束デスク)から受け取る(単独で開いたときは、自分の拡大率)
+let zoomFromParent=null;
+function applyZoom(sc){document.documentElement.style.setProperty("--zs",String(Math.max(0.2,Math.min(1,1/(sc||1)))));}
+if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,()=>{if(zoomFromParent==null)applyZoom(visualViewport.scale);}));   // 最後に触れたのが指かマウスか
 let ptHold=null;
 document.addEventListener("pointermove",e=>{if(ptHold&&e.pointerId===ptHold.id&&Math.hypot(e.clientX-ptHold.x,e.clientY-ptHold.y)>10){clearTimeout(ptHold.tm);ptHold=null;}},true);
 document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
@@ -1041,16 +1045,9 @@ function rangeOk(){
   return true;
 }
 // マウス: ドラッグでそのまま範囲指定
-// 指: 1本指のドラッグはスクロール。何もない所の長押し(0.5秒)→ドラッグ、または2本指ドラッグで範囲指定。長押しだけ(動かさない)は、その場所のタップと同じ
+// 指: 1本指のドラッグはスクロール。何もない所の長押し(0.5秒)→ドラッグで範囲指定。長押しだけ(動かさない)は、その場所のタップと同じ。2本指は、画面の拡大・縮小に使う(範囲指定には使わない)
 const tpts=new Map();let tlp=null;
 function ringAt(x,y){const rc=ov.getBoundingClientRect(),r=document.createElement("div");r.className="ring";r.style.left=(x-rc.left)+"px";r.style.top=(y-rc.top)+"px";ov.appendChild(r);setTimeout(()=>r.remove(),700);if(navigator.vibrate)try{navigator.vibrate(15);}catch{}}
-function drawTwo(){
-  if(!rub||!two)return;const a=[...tpts.values()];if(a.length<2)return;
-  const rc=ov.getBoundingClientRect(),k=K(),cl=(v,m)=>Math.max(0,Math.min(m,v));
-  rub.sx=cl((a[0].x-rc.left)/k,VW);rub.sy=cl((a[0].y-rc.top)/k,VH);rub.x=cl((a[1].x-rc.left)/k,VW);rub.y=cl((a[1].y-rc.top)/k,VH);
-  const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
-  rub.d.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;
-}
 ov.addEventListener("pointerdown",e=>{
   if(e.target!==ov)return;
   if(!rangeOk())return;
@@ -1060,15 +1057,10 @@ ov.addEventListener("pointerdown",e=>{
     if(tlp)clearTimeout(tlp.tm);
     const id=e.pointerId;
     tlp={id,armed:false,tm:setTimeout(()=>{const q=tpts.get(id);if(!q||tpts.size!==1||two)return;tlp.armed=true;ringAt(q.x0,q.y0);beginRange({clientX:q.x0,clientY:q.y0,pointerId:id,preventDefault(){}});},500)};
-  }else if(tpts.size===2&&!two){
-    if(tlp){clearTimeout(tlp.tm);if(tlp.armed&&rub){return;}}   // 長押しの範囲指定の途中で、2本目の指が触れても無視
-    const a=[...tpts.values()];two=true;
-    beginRange({clientX:a[0].x,clientY:a[0].y,pointerId:[...tpts.keys()][0],preventDefault(){}});drawTwo();
-  }
+  }else if(tlp&&!tlp.armed)clearTimeout(tlp.tm);   // 2本指(画面の拡大・縮小)のときは、長押しにしない
 });
 document.addEventListener("pointermove",e=>{
   const q=tpts.get(e.pointerId);if(!q)return;q.x=e.clientX;q.y=e.clientY;
-  if(two){drawTwo();return;}
   if(tlp&&!tlp.armed&&e.pointerId===tlp.id&&Math.hypot(q.x-q.x0,q.y-q.y0)>10){clearTimeout(tlp.tm);}   // 長押しの前に動いたら、スクロール
 },true);
 const endTouch=e=>{
@@ -1080,9 +1072,8 @@ const endTouch=e=>{
   if(quick&&cs){pruneEmpty(cs);cs=null;renderOverlay();syncPanel();}   // 何もない所を軽くタップ: 選択を外すだけ
 };
 document.addEventListener("pointerup",endTouch,true);document.addEventListener("pointercancel",endTouch,true);
-// 長押しの範囲指定中・2本指のときだけ、スクロール・拡大を止める
-ov.addEventListener("touchmove",e=>{if((tlp&&tlp.armed)||two||e.touches.length>=2){if(e.cancelable)e.preventDefault();}},{passive:false});
-ov.addEventListener("touchstart",e=>{if(e.touches.length>=2&&e.cancelable)e.preventDefault();},{passive:false});
+// 長押しの範囲指定中だけ、スクロールを止める(2本指の拡大・縮小は止めない)
+ov.addEventListener("touchmove",e=>{if(tlp&&tlp.armed&&e.touches.length<2){if(e.cancelable)e.preventDefault();}},{passive:false});
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== 歪み補正: 一括(台形補正) / 部分(上下左右のベジェ曲線で曲面を伸ばす) ======
@@ -1952,7 +1943,8 @@ if(EMBED){
   const send=m=>parent.postMessage(m,"*");
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",busy(async e=>{
-    const m=e.data;if(!m||m.type!=="load")return;
+    const m=e.data;if(m&&m.type==="zoom"){zoomFromParent=m.scale;applyZoom(m.scale);return;}
+    if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
     fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
     setMode(FORMKIND==="warp"?"warp":"sel");
