@@ -196,3 +196,4 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 確認: `PDFAPP_TARGET=pdf-studio node scripts/test-studio.js`(デスク)と `test-studio-forms.js`(フォーム)。事前に make-studio-pdfs.js / make-warp-photo.js。未確認: 実機のタッチ長押しドラッグ・iPhone表示・巨大PDF。
 - **束デスクの操作の決まり(iPhone実機の検証=docs/apps/touch-lab で決めた)**: 選ぶ=チェック(複数可、最初は左上が選択)/ 並べ替え=指では「ちょうど1つ選んでいる束」の本体をつかんで動かす(0個・2個以上選択中は動かない。選択中の束は touch-action:none)/ マウスはどの束でも動かせる / 機能メニュー=束の右上「⋮」(マウスはダブルクリックでも)/ 指でのダブルタップ・長押しは使わない(ダブルタップは画面拡大と競合する)。確認は `test-studio-touch.js`(CDPのタッチ)。束デスク 2.01。
 - **暗号化PDF(束デスク2.02)**: pdf-libで開けないPDFは、pdf.jsで各ページを画像(JPEG)にして新しいPDFにして読み込む。パスワード付きは入力を求める(分からなければ開けない)。確認は `test-studio-encrypted.js`(pypdfで enc_owner.pdf / enc_user.pdf=パスワードabc を作る)。
+- **文字枠の初期サイズ(ページ編集2.01)**: 「＋文字」で枠をドラッグして作ると、枠の高さに1行が入る大きさ(高さ÷1.3、幅÷4まで、6〜72pt、0.5pt刻み)を自動で決め、サイズ欄にも表示。タップだけの枠は14pt。確認は `test-studio-textsize.js`。
