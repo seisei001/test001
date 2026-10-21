@@ -11,7 +11,7 @@ const S=WORK+'/samples/';
   ok('起動画面が出ている',await page.evaluate(()=>!!document.getElementById('splash')&&!document.getElementById('splash').classList.contains('out')));
   await page.waitForTimeout(2300);
   ok('約1.5秒で消える',await page.evaluate(()=>!document.getElementById('splash')));
-  ok('画面の名前とバージョン(束デスク 2.04)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.04'));
+  ok('画面の名前とバージョン(束デスク 2.05)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.05'));
   // 読み込み
   await page.setInputFiles('#fAdd',[S+'studio_A4.pdf',S+'studio_B1.pdf',S+'studio_C7.pdf',S+'studio_D2.pdf']);await page.waitForTimeout(2500);
   let b=await st();ok('4つの束が並ぶ: '+b.map(x=>x.name+'('+x.n+')').join(' '),b.length===4);

@@ -115,9 +115,9 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
-  desk:{name:"束デスク",ver:"2.04"},
+  desk:{name:"束デスク",ver:"2.05"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.10",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.11",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -416,7 +416,9 @@ window.addEventListener("message",async e=>{
     (await out.copyPages(src,before)).forEach(p=>out.addPage(p));(await out.copyPages(ed,[0])).forEach(p=>out.addPage(p));(await out.copyPages(src,after)).forEach(p=>out.addPage(p));
     snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
     closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました。「元に戻す」で戻せます。");
-  }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching)vvLastEnd=Date.now();else if(window.visualViewport)vvKeep=vvNow();   // フォームの中の指の数(親は、フォームの中の指の操作を直接見られない)
+  }else if(m.type==="needzoom"){sendZoom();
+  }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
+     // フォームの中の指の数(親は、フォームの中の指の操作を直接見られない)
   }else if(m.type==="close")closeForm();
 });
 
