@@ -556,14 +556,20 @@ function sampleColors(box){
 }
 
 // --- 部品 ---
-// 作った枠の大きさから、適当なサイズ(pt)を決める。
-//  高さが低い枠(32pt以下=1行の欄): 高さの6割(欄に1行が余裕をもって入る)。ただし1行に6文字は入る大きさまで
-//  高さのある枠(複数行): 高さに1行が入る大きさを上限に、横幅も考える(1行に全角16文字ほど=幅÷16。狭くても10pt以上)、36ptまで
-//  タップだけで作った枠(高さ0)は14pt
+// 作った枠の大きさから、適当なサイズ(pt)を決める。基準は、そのページにある文字の大きさ(中央値。無ければ10.5pt。大きなページは、A4の幅(595)との比で大きくする)
+//  1行の欄(横長の枠、または高さ32pt以下): 高さの6割。ただし基準の1.6倍まで、1行に6文字は入る大きさまで
+//  複数行の枠(高い枠): 高さに1行が入る大きさを上限に、横幅も考える(1行に全角16文字ほど=幅÷16。基準以上)、36pt(基準の比で)まで
+//  タップだけで作った枠(高さ0)は、基準の1.3倍
+function refSize(){
+  const u=Math.max(1,VW/595),sz=runs.filter(r=>r.size>=5*u&&r.size<=40*u).map(r=>r.size).sort((a,b)=>a-b);
+  return sz.length?sz[Math.floor(sz.length/2)]:10.5*u;
+}
 function autoSize(w,h){
-  if(h<8)return 14;
-  const v=h<=32?Math.min(h*0.6,w/6):Math.min(h/1.3,Math.max(w/16,10),36);
-  return Math.max(6,Math.min(36,Math.round(v*2)/2));
+  const ref=refSize(),u=Math.max(1,VW/595);
+  if(h<8)return Math.round(ref*1.3*2)/2;
+  const one=h<=32*u||w/h>=2.5;
+  const v=one?Math.min(h*0.6,ref*1.6,w/6):Math.min(h/1.3,Math.max(w/16,ref),36*u);
+  return Math.max(6*u,Math.min(36*u,Math.round(v*2)/2));
 }
 function newText(x,y,w,h){
   const size=autoSize(w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
@@ -919,7 +925,7 @@ ov.addEventListener("pointerdown",e=>{
       await doOcr(x,y,w,h);
       if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
       return;}
-    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    if(mode==="text"){await loadRuns().catch(()=>{});it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
       it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};

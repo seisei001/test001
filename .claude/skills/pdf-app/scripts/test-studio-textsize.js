@@ -10,7 +10,7 @@ const {launch,WORK}=require('./harness');
   const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
   await fr.locator('[data-m=text]').click();
   const ov=await fr.locator('#ov').boundingBox(),k=ov.width/420;
-  const cases=[['細長い1行(幅200×高さ20pt)',200,20],['フォームの欄(幅110×高さ24pt)',110,24],['大きめ(幅300×高さ60pt)',300,60],['小さい(幅100×高さ12pt)',100,12],['幅が狭い(幅40×高さ100pt)',40,100],['タップだけ',0,0]];
+  const cases=[['細長い1行(幅200×高さ20pt)',200,20],['フォームの欄(幅110×高さ24pt)',110,24],['大きめ(幅300×高さ60pt)',300,60],['フォームの欄(幅108×高さ40pt)',108,40],['小さい(幅100×高さ12pt)',100,12],['幅が狭い(幅40×高さ100pt)',40,100],['タップだけ',0,0]];
   let y=20;
   for(const [n,w,h] of cases){
     if(w===0){await page.mouse.click(ov.x+30*k,ov.y+y*k);}
