@@ -48,7 +48,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px 40px;display:flex;flex-directi
 .c4 .ck{position:absolute;left:-2px;top:-2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
 .c4 .ck input{width:24px;height:24px}
 .c4 .mn{position:absolute;right:-2px;top:-2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text);font-size:1.4rem;margin:0;padding:0;border-radius:8px}
-.c4 .hd{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.18);border-radius:0 0 6px 6px;font-size:1.3rem;touch-action:none;cursor:grab}
+.c4.mv{touch-action:none;cursor:grab}
+.c4 .hd{display:none;position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.18);border-radius:0 0 6px 6px;font-size:1.3rem;touch-action:none;cursor:grab}
 .c4.sel{border-color:var(--sel)}
 .lp{box-shadow:0 0 0 4px rgba(37,99,235,.5)!important;transition:box-shadow .15s}
 h2{margin:0 0 6px;font-size:1rem}
@@ -58,7 +59,7 @@ h2{margin:0 0 6px;font-size:1rem}
 <body>
 <header>
 <a class="back-link" href="../../">← ハブに戻る</a>
-<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.03</span></h1>
+<h1><span id="fn">iPhone操作検証</span><span class="ver" id="ver">0.04</span></h1>
 <div class="sub">指の動きをどう読み取れるかを調べる実験場です(端末内だけで動きます)</div>
 </header>
 <main>
@@ -67,7 +68,7 @@ h2{margin:0 0 6px;font-size:1rem}
 <button data-t="1" class="on">① 同じ場所を2回</button>
 <button data-t="2">② 選んでから2回</button>
 <button data-t="3">③ その他の案</button>
-<button data-t="4">④ 持ち手・⋮・チェック</button>
+<button data-t="4">④ 選択・⋮・動かす</button>
 </div>
 <div class="how" id="how"></div>
 </div>
@@ -116,7 +117,7 @@ const board=$("board"),rub=$("rubber"),logEl=$("log");
 const HOW={
 1:"<b>やること:</b> 背景(何もない所)と物(A・B・C)で、それぞれ <b>同じ場所を素早く2回タップ</b>。次に、1回目と2回目を少しずらしてタップ(どこまでずれると2回と判定されるか)。ゆっくり2回も試す(間隔の上限を超えるか)。",
 2:"<b>やること:</b> 物をタップして <b>選択(橙の枠)</b>。そのまま <b>同じ物をもう一度素早く2回タップ</b>(選択済みでのダブルタップ)。選択して少し待ってから2回、別の物を選んでから2回、も試す。選択の状態も一緒に記録されます。",
-4:"<b>やること:</b> カードの <b>☑(左上)</b> をタップして選ぶ、<b>⋮(右上)</b> をタップしてメニュー、<b>下の持ち手(⠿)</b> を指でつかんで横・縦に動かして並べ替え。持ち手以外の場所(カード本体)を指でなぞると、ページが普通にスクロールするかも確かめてください。指・マウス・ペンの種類もログに出ます。",
+4:"<b>やること:</b> 最初は <b>カード1が選択</b>されています。<b>ちょうど1枚だけ選んでいるとき、そのカードの本体をつかんで動かせます</b>(橙の枠のカード)。☑(左上)で選択を変える、⋮(右上)でメニュー。何も選んでいないとき・2枚以上選んでいるときは動きません。選択していないカードをなぞると、ページが普通にスクロールするかも確かめてください。",
 3:"<b>案:</b> ⓐ長押し(0.5秒) ⓑ2本指で同時にタップ ⓒ1回タップ→すぐ押したままドラッグ(ダブルタップ+ドラッグ) ⓓ3回連続タップ ⓔ背景をドラッグして範囲選択(物が橙になる) ⓕ2本指でつまむ/動かす(画面側の拡大・移動と競合しないか、ログの scale/スクロールを見る)"
 };
 let tab=1;
@@ -146,7 +147,7 @@ board.addEventListener("touchend",e=>{if(pdT&&e.cancelable)e.preventDefault();},
 ["gesturestart","gesturechange","gestureend"].forEach(n=>document.addEventListener(n,e=>{if(pdG)e.preventDefault();},{passive:false}));
 
 // ---- 判定の集計 ----
-const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ",twoDbl:"2本指ダブルタップ",chk:"☑ チェック",menu:"⋮ メニュー",grab:"持ち手: つかんだ",reorder:"持ち手: 並べ替え完了",hcancel:"持ち手: 途中でキャンセルされた",body:"カード本体のタップ"};
+const NAMES={native:"ブラウザ標準の dblclick",dtap:"ダブルタップ(自前判定)",dtapSel:"ダブルタップ(選択済みの物の上)",triple:"3回連続タップ",long:"長押し 0.5秒",two:"2本指タップ",dtapDrag:"タップ→押したままドラッグ",range:"範囲選択(ドラッグ)",tap:"単タップ",twoDbl:"2本指ダブルタップ",chk:"☑ チェック",menu:"⋮ メニュー",grab:"動かす: つかんだ",reorder:"動かす: 並べ替え完了",hcancel:"動かす: 途中でキャンセルされた",body:"カード本体のタップ"};
 const cnt={};Object.keys(NAMES).forEach(k=>cnt[k]=0);
 function renderRes(){$("res").innerHTML=Object.keys(NAMES).map(k=>`<span>${NAMES[k]}</span><span class="n">${cnt[k]}</span>`).join("");}
 renderRes();
@@ -236,16 +237,17 @@ let scT=0,scN=0,scY0=0;window.addEventListener("scroll",()=>{if(!scN)scY0=scroll
 // ---- 実験④: ☑ チェック・⋮ メニュー・持ち手(⠿)で並べ替え ----
 const b2=$("board2");
 ["1","2","3","4","5"].forEach(n=>{const c=document.createElement("div");c.className="c4";c.dataset.id=n;
-  c.innerHTML=`<label class="ck"><input type="checkbox" aria-label="選択"></label><button class="mn" aria-label="メニュー">⋮</button>${n}<div class="hd" title="つかんで動かす">⠿</div>`;b2.appendChild(c);});
-b2.addEventListener("change",e=>{if(e.target.matches(".ck input")){const c=e.target.closest(".c4");c.classList.toggle("sel",e.target.checked);hit("chk",`カード${c.dataset.id} ${e.target.checked?"選択":"解除"}`);}});
+  c.innerHTML=`<label class="ck"><input type="checkbox" aria-label="選択"></label><button class="mn" aria-label="メニュー">⋮</button>${n}`;b2.appendChild(c);});
+const updMv=()=>{const on=[...b2.children].filter(c=>c.querySelector(".ck input").checked);[...b2.children].forEach(c=>{c.classList.toggle("sel",c.querySelector(".ck input").checked);c.classList.toggle("mv",on.length===1&&on[0]===c);});};
+b2.addEventListener("change",e=>{if(e.target.matches(".ck input")){const c=e.target.closest(".c4");updMv();hit("chk",`カード${c.dataset.id} ${e.target.checked?"選択":"解除"} (選択中:${[...b2.children].filter(k=>k.querySelector(".ck input").checked).length}枚)`);}});
+b2.children[0].querySelector(".ck input").checked=true;updMv();   // 最初は左上のカードが選択されている
 b2.addEventListener("click",e=>{const m=e.target.closest(".mn");if(m){hit("menu",`カード${m.closest(".c4").dataset.id}`);return;}
-  if(e.target.closest(".ck,.hd"))return;const c=e.target.closest(".c4");if(c)hit("body",`カード${c.dataset.id}(何も起きない)`);});
-let gd=null;
-b2.addEventListener("pointerdown",e=>{const h=e.target.closest(".hd");if(!h)return;
-  const c=h.closest(".c4"),r=c.getBoundingClientRect();
+  if(e.target.closest(".ck"))return;const c=e.target.closest(".c4");if(c&&!gd&&performance.now()-lastDragEnd>400)hit("body",`カード${c.dataset.id}のタップ`);});
+let gd=null,lastDragEnd=0;
+b2.addEventListener("pointerdown",e=>{const c=e.target.closest(".c4.mv");if(!c||e.target.closest(".ck,.mn"))return;
   gd={id:e.pointerId,c,sx:e.clientX,sy:e.clientY,from:[...b2.children].indexOf(c),moves:0,type:e.pointerType};
-  h.setPointerCapture(e.pointerId);c.classList.add("drag");hit("grab",`カード${c.dataset.id} ${e.pointerType}`);
-  log(`  持ち手 down ${e.pointerType} scale:${vs()}`);e.preventDefault();});
+  c.setPointerCapture(e.pointerId);c.classList.add("drag");hit("grab",`カード${c.dataset.id} ${e.pointerType}`);
+  log(`  本体 down ${e.pointerType} scale:${vs()}`);});
 b2.addEventListener("pointermove",e=>{if(!gd||e.pointerId!==gd.id)return;gd.moves++;
   const c=gd.c;c.style.transform=`translate(${e.clientX-gd.sx}px,${e.clientY-gd.sy}px)`;
   const kids=[...b2.children].filter(k=>k!==c);
@@ -258,9 +260,9 @@ b2.addEventListener("pointermove",e=>{if(!gd||e.pointerId!==gd.id)return;gd.move
   const nr=c.getBoundingClientRect();gd.sx+=nr.left-oldRect.left+0;gd.sy+=nr.top-oldRect.top+0;c.style.transform=`translate(${e.clientX-gd.sx}px,${e.clientY-gd.sy}px)`;
 });
 function endG(e,cancel){if(!gd||e.pointerId!==gd.id)return;const c=gd.c;c.classList.remove("drag");c.style.transform="";
-  const to=[...b2.children].indexOf(c);log(`  持ち手 ${cancel?"cancel":"up"} 動いた回数:${gd.moves} ${gd.type} scale:${vs()}`);
+  const to=[...b2.children].indexOf(c);log(`  本体 ${cancel?"cancel":"up"} 動いた回数:${gd.moves} ${gd.type} scale:${vs()}`);
   if(cancel)hit("hcancel",`カード${c.dataset.id} 動いた回数:${gd.moves}`);else if(gd.moves>1)hit("reorder",`カード${c.dataset.id} ${gd.from+1}番目→${to+1}番目 (${gd.moves}回動いた)`);
-  gd=null;}
+  gd=null;lastDragEnd=performance.now();}
 b2.addEventListener("pointerup",e=>endG(e,false));
 b2.addEventListener("pointercancel",e=>endG(e,true));
 
