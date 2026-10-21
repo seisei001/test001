@@ -114,7 +114,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
-  desk:{name:"束デスク",ver:"2.01"},
+  desk:{name:"束デスク",ver:"2.02"},
   menu:{name:"機能メニュー",ver:"2.0"},
   edit:{name:"ページ編集",ver:"2.0",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
@@ -161,15 +161,43 @@ function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.do
   bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
 
 // ===== PDFの読み込み =====
+// 暗号化されたPDFなど、PDFを編集する部品では開けないものを、各ページの画像にして、新しいPDFにする
+async function rasterize(bytes,name){
+  const task=pdfjsLib.getDocument({data:bytes.slice()});
+  task.onPassword=(update,reason)=>{   // 開くのにパスワードが必要なPDF
+    const pw=prompt(reason===pdfjsLib.PasswordResponses.INCORRECT_PASSWORD?`「${name}」のパスワードが違います。もう一度入力してください`:`「${name}」はパスワードで保護されています。パスワードを入力してください`);
+    if(pw===null){task.destroy();return;}update(pw);};
+  let doc;try{doc=await task.promise;}catch(e){throw new Error(e&&e.name==="PasswordException"?"パスワードが分からないため、開けません":"このPDFは開けません");}
+  const out=await PDFDocument.create(),MAXPX=2400;
+  for(let i=1;i<=doc.numPages;i++){
+    status(`「${name}」を画像にして読み込み中… ${i} / ${doc.numPages}`);
+    const pg=await doc.getPage(i),v1=pg.getViewport({scale:1}),sc=Math.min(2,MAXPX/Math.max(v1.width,v1.height)),vp=pg.getViewport({scale:sc});
+    const cv=document.createElement("canvas");cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+    const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+    await pg.render({canvasContext:cx,viewport:vp}).promise;
+    const blob=await new Promise(res=>cv.toBlob(res,"image/jpeg",0.88)),img=await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+    out.addPage([v1.width,v1.height]).drawImage(img,{x:0,y:0,width:v1.width,height:v1.height});
+    cv.width=cv.height=0;pg.cleanup();
+  }
+  const n=doc.numPages;try{doc.destroy();}catch{}
+  return{bytes:new Uint8Array(await out.save()),n};
+}
 async function addFiles(files){
-  let added=0;
+  let added=0,lastNote="";
   for(const f of files){
     if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf")continue;
-    try{const bytes=new Uint8Array(await f.arrayBuffer()),d=await PDFDocument.load(bytes,{ignoreEncryption:false});
-      if(!added)snap();bundles.push(mk(f.name,bytes,d.getPageCount(),0));added++;}
-    catch(e){status(`「${f.name}」を開けませんでした(暗号化されたPDFなどは非対応です)。`);}
+    let bytes=new Uint8Array(await f.arrayBuffer());
+    try{
+      let n,note="";
+      try{n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();}
+      catch(e){   // 暗号化などで編集用に開けないPDFは、各ページを画像にして、新しいPDFとして読み込む
+        status(`「${f.name}」は編集用に開けないため、各ページを画像にして読み込みます…`);
+        const r=await rasterize(bytes,f.name);bytes=r.bytes;n=r.n;note="(暗号化されていたため、各ページを画像にして読み込みました。文字は画像になっています)";
+      }
+      if(!added)snap();bundles.push(mk(f.name,bytes,n,0));added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
+    }catch(e){status(`「${f.name}」を開けませんでした(${e&&e.message?e.message:"読み込みに失敗"})。`);}
   }
-  if(added){defaultSel();render();persist();status(`${added}個のPDFを開きました。`);}
+  if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
 }
 $("bAdd").onclick=()=>$("fAdd").click();
 $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value="";};
