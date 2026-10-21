@@ -79,13 +79,14 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
 .cover{position:absolute;pointer-events:none;}
+.cvo{position:absolute;pointer-events:none;outline:1px dashed rgba(239,68,68,.95);z-index:4;}
 .ibox{position:absolute;outline:1px dashed rgba(37,99,235,.8);line-height:1.3;color:#000;}
 .ibox.on{outline:2px solid #2563eb;z-index:5;}
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 .ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
 .hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
-.hdl.mv{left:-13px;top:-13px;}.hdl.rs{right:-13px;bottom:-13px;cursor:nwse-resize;}
+.hdl.mv{left:-28px;top:-28px;}.hdl.rs{right:-28px;bottom:-28px;cursor:nwse-resize;}   /* 枠の外(角の斜め外)に置く: 文字の上にあると、文字の最初・最後をドラッグで選べない */
 
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -184,6 +185,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 <p class="hint" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠の右下(⇲)をドラッグして大きさを変えると、枠に収まる最大の文字サイズに自動で合わせます(複数行や、サイズを混ぜた文字は相対比を保ちます)。<b>文字を範囲選択してからサイズを変えると、選択した部分だけ</b>変わります(選択なしなら枠全体)。枠の上で<b>右クリック</b>でもサイズを選べます。</p>
 </div>
 <div class="row" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
+<label style="margin-top:8px" class="hidden" id="sEraseOnWrap"><input type="checkbox" id="sEraseOn" checked> 元の文字を、背景色で隠す(赤い点線の範囲。外すと、元の文字・背景をそのまま残して、上に重ねる)</label>
 <div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
 <div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo">ページ操作・ダウンロード時も自動で反映されます</span></div>
@@ -572,6 +574,15 @@ function newText(x,y,w,h){
   const size=autoSize(w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
   return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3};
 }
+// 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
+function tightCovers(list){
+  const rs=list.map(r=>{const b=r.box||{x:r.x-0.5,y:r.base-r.size*0.88,w:r.w+1,h:r.size*1.1};return{x:b.x,y:b.y,w:b.w,h:b.h,s:r.size};}).sort((a,b)=>(Math.abs(a.y-b.y)<a.s*0.4?a.x-b.x:a.y-b.y));
+  const out=[];
+  rs.forEach(r=>{const l=out[out.length-1];
+    if(l&&Math.abs(l.y-r.y)<r.s*0.4&&r.x-(l.x+l.w)<r.s*0.8){const x1=Math.max(l.x+l.w,r.x+r.w),y0=Math.min(l.y,r.y),y1=Math.max(l.y+l.h,r.y+r.h);l.w=x1-l.x;l.y=y0;l.h=y1-y0;}
+    else out.push({x:r.x,y:r.y,w:r.w,h:r.h,s:r.s});});
+  return out.map(({x,y,w,h})=>({x,y,w,h}));
+}
 function newFix(list){
   const boxes=list.map(runBox);
   const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
@@ -592,10 +603,14 @@ function newFix(list){
     if(li){txt+="\n";sz.push(null);}
     l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
   });
-  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
+  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
   growToFit(fx);clampToPage(fx);return fx;
 }
+function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
+  if(it&&it.type==="text"&&!(it.txt||"").trim()){const i=items.indexOf(it);if(i>=0)items.splice(i,1);}
+}
 function select(it,focus){
+  if(cs&&cs!==it)pruneEmpty(cs);
   if(it!==cs)lastSel=null;
   cs=it;renderOverlay();syncPanel();
   if(it&&focus&&it.type!=="img"){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
@@ -776,8 +791,11 @@ function renderOverlay(){
       d.style.cssText=`left:${x0*k}px;top:${y0*k}px;width:${(x1-x0)*k}px;height:${(y1-y0)*k}px`;ov.appendChild(d);});
   }
   items.filter(it=>it.page===cur).forEach(it=>{
-    if(it.type==="fix"){const c=document.createElement("div");c.className="cover";
-      c.style.cssText=`left:${it.cover.x*k}px;top:${it.cover.y*k}px;width:${it.cover.w*k}px;height:${it.cover.h*k}px;background:${it.bg}`;ov.appendChild(c);}
+    if(it.type==="fix"&&it.erase!==false){
+      (it.covers||[it.cover]).forEach(cv=>{const c=document.createElement("div");c.className="cover";
+        c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${it.bg}`;ov.appendChild(c);
+        if(it===cs){const o=document.createElement("div");o.className="cvo";o.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px`;ov.appendChild(o);}});   // 選択中は、消える範囲を赤い点線で見せる
+    }
   });
   items.filter(it=>it.page===cur).forEach(it=>{
     const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+((it.type==="fix"||it.ocrMade)?" cmp":"");
@@ -865,6 +883,7 @@ function syncPanel(){
   $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
   $("selTextBox").classList.toggle("hidden",it.type==="img");
   $("sErase").classList.toggle("hidden",it.type!=="fix");
+  $("sEraseOnWrap").classList.toggle("hidden",it.type!=="fix");$("sEraseOn").checked=it.erase!==false;
   $("sColor").value=it.color||"#000000";showSize();
   ["L","C","R"].forEach((k,i)=>$("sA"+k).classList.toggle("on",(it.align||"left")===["left","center","right"][i]));
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
@@ -878,6 +897,7 @@ $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
 $("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
 ["L","C","R"].forEach((k,i)=>{$("sA"+k).onclick=()=>{if(cs&&cs.type!=="img"){cs.align=["left","center","right"][i];syncPanel();refreshSel();}};});
 $("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
+$("sEraseOn").onchange=()=>{if(cs&&cs.type==="fix"){cs.erase=$("sEraseOn").checked;renderOverlay();}};
 $("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文字は置かない)
   if(!cs||cs.type!=="fix")return;
   cs.txt="";cs.sz=[];const el=itemEls.get(cs.id),t=el&&el.querySelector(".t");
@@ -896,7 +916,7 @@ ov.addEventListener("pointerdown",e=>{
   if(e.target!==ov)return;
   if(!bytes)return;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
-  if(cs){cs=null;renderOverlay();syncPanel();}
+  if(cs){pruneEmpty(cs);cs=null;renderOverlay();syncPanel();}
   e.preventDefault();ov.setPointerCapture(e.pointerId);
   const rc=ov.getBoundingClientRect(),k=K();
   const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
@@ -1767,8 +1787,9 @@ async function commit(){
   for(const it of todo){
     if(it.type!=="fix")continue;
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
-    const c=it.cover,[a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
-    page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:hex2rgb(it.bg),borderWidth:0});
+    if(it.erase===false)continue;   // 背景(元の文字)を消さない設定
+    for(const c of (it.covers||[it.cover])){const [a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
+      page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:hex2rgb(it.bg),borderWidth:0});}
   }
   for(const it of todo){
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360;
@@ -1837,7 +1858,7 @@ if(EMBED){
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});
 }
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
