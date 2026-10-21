@@ -97,10 +97,10 @@ button:disabled{opacity:.4;cursor:default;}
 </div>
 
 <div id="menu" class="modal hidden"><div class="panel">
-  <div class="formhead"><h1>機能メニュー</h1><span class="ver" id="verMenu">2.0</span></div>
+  <div class="formhead"><button class="sub" id="menuBack">← 戻る</button><h1>機能メニュー</h1><span class="ver" id="verMenu">2.01</span></div>
   <p class="info" id="menuInfo"></p>
   <div class="menubtns" id="menuBtns"></div>
-  <div style="margin-top:10px;text-align:right"><button class="sub" id="menuClose">閉じる</button></div>
+  <div style="margin-top:10px;text-align:right"><button class="sub" id="menuClose">← 戻る</button></div>
 </div></div>
 
 <div id="formHost" class="modal hidden">
@@ -116,7 +116,7 @@ button:disabled{opacity:.4;cursor:default;}
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
   desk:{name:"束デスク",ver:"2.03"},
-  menu:{name:"機能メニュー",ver:"2.0"},
+  menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.07",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
 };
@@ -377,7 +377,7 @@ function openMenu(b){
   $("menu").classList.remove("hidden");
 }
 function closeMenu(){$("menu").classList.add("hidden");}
-$("menuClose").onclick=closeMenu;
+$("menuClose").onclick=closeMenu;$("menuBack").onclick=closeMenu;   // 戻る(上と下の両方。束デスクに戻る)
 $("menu").addEventListener("pointerdown",e=>{if(e.target===$("menu"))closeMenu();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();}});
 
