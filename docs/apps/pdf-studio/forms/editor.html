@@ -85,7 +85,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 .ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
 .hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
-.hdl.mv{left:-13px;top:-13px;}.hdl.rs{right:-13px;bottom:-13px;cursor:nwse-resize;}
+.hdl.mv{left:-28px;top:-28px;}.hdl.rs{right:-28px;bottom:-28px;cursor:nwse-resize;}   /* 枠の外(角の斜め外)に置く: 文字の上にあると、文字の最初・最後をドラッグで選べない */
 
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -595,7 +595,11 @@ function newFix(list){
   const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0}};
   growToFit(fx);clampToPage(fx);return fx;
 }
+function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
+  if(it&&it.type==="text"&&!(it.txt||"").trim()){const i=items.indexOf(it);if(i>=0)items.splice(i,1);}
+}
 function select(it,focus){
+  if(cs&&cs!==it)pruneEmpty(cs);
   if(it!==cs)lastSel=null;
   cs=it;renderOverlay();syncPanel();
   if(it&&focus&&it.type!=="img"){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
@@ -896,7 +900,7 @@ ov.addEventListener("pointerdown",e=>{
   if(e.target!==ov)return;
   if(!bytes)return;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
-  if(cs){cs=null;renderOverlay();syncPanel();}
+  if(cs){pruneEmpty(cs);cs=null;renderOverlay();syncPanel();}
   e.preventDefault();ov.setPointerCapture(e.pointerId);
   const rc=ov.getBoundingClientRect(),k=K();
   const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
