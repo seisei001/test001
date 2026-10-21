@@ -71,7 +71,9 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
-#ov.draw{cursor:crosshair;touch-action:none;}
+#ov.draw{cursor:crosshair;touch-action:pan-y;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
+.ring{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:3px solid #2563eb;border-radius:50%;pointer-events:none;animation:ringf .6s forwards;z-index:8;}
+@keyframes ringf{to{opacity:0;transform:scale(1.8);}}
 #ov.ghost .cover{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
 #ov.ghost .ibox.cmp .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}   /* 赤く重ねるのは、元の文字の訂正・画像から変換した文字だけ(自分で入力した文字は、ふつうの色のまま) */
 #ov.ghost .ibox.cmp{background:transparent!important;}
@@ -969,10 +971,8 @@ $("sClose").onclick=()=>select(null);
 
 // --- ドラッグで範囲指定 ---
 let rub=null;
-ov.addEventListener("pointerdown",e=>{
-  if(e.target!==ov)return;
-  if(!bytes)return;
-  if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return;}
+let two=false;
+function beginRange(e){
   if(cs){pruneEmpty(cs);cs=null;renderOverlay();syncPanel();}
   e.preventDefault();ov.setPointerCapture(e.pointerId);
   const rc=ov.getBoundingClientRect(),k=K();
@@ -1029,12 +1029,60 @@ ov.addEventListener("pointerdown",e=>{
     if(it.type==="text"&&!tap){const e=estimate(it.vw,it.vh,it.size);status(`枠の大きさから、1行およそ${e.per}文字×${e.lines}行(約${e.chars}文字)として、${it.size}ptにしました。サイズ欄で変えられます。`);}
     select(it,true);
   });
-  const mv=ev=>{if(!rub)return;const rc2=ov.getBoundingClientRect(),k2=K();
+  const mv=ev=>{if(!rub||two)return;const rc2=ov.getBoundingClientRect(),k2=K();
     rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
     const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
     rub.d.style.cssText=`left:${x*k2}px;top:${y*k2}px;width:${w*k2}px;height:${h*k2}px`;};
   ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
+}
+function rangeOk(){
+  if(!bytes)return false;
+  if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return false;}
+  return true;
+}
+// マウス: ドラッグでそのまま範囲指定
+// 指: 1本指のドラッグはスクロール。何もない所の長押し(0.5秒)→ドラッグ、または2本指ドラッグで範囲指定。長押しだけ(動かさない)は、その場所のタップと同じ
+const tpts=new Map();let tlp=null;
+function ringAt(x,y){const rc=ov.getBoundingClientRect(),r=document.createElement("div");r.className="ring";r.style.left=(x-rc.left)+"px";r.style.top=(y-rc.top)+"px";ov.appendChild(r);setTimeout(()=>r.remove(),700);if(navigator.vibrate)try{navigator.vibrate(15);}catch{}}
+function drawTwo(){
+  if(!rub||!two)return;const a=[...tpts.values()];if(a.length<2)return;
+  const rc=ov.getBoundingClientRect(),k=K(),cl=(v,m)=>Math.max(0,Math.min(m,v));
+  rub.sx=cl((a[0].x-rc.left)/k,VW);rub.sy=cl((a[0].y-rc.top)/k,VH);rub.x=cl((a[1].x-rc.left)/k,VW);rub.y=cl((a[1].y-rc.top)/k,VH);
+  const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
+  rub.d.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;
+}
+ov.addEventListener("pointerdown",e=>{
+  if(e.target!==ov)return;
+  if(!rangeOk())return;
+  if(e.pointerType==="mouse"){beginRange(e);return;}
+  tpts.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now()});
+  if(tpts.size===1){
+    if(tlp)clearTimeout(tlp.tm);
+    const id=e.pointerId;
+    tlp={id,armed:false,tm:setTimeout(()=>{const q=tpts.get(id);if(!q||tpts.size!==1||two)return;tlp.armed=true;ringAt(q.x0,q.y0);beginRange({clientX:q.x0,clientY:q.y0,pointerId:id,preventDefault(){}});},500)};
+  }else if(tpts.size===2&&!two){
+    if(tlp){clearTimeout(tlp.tm);if(tlp.armed&&rub){return;}}   // 長押しの範囲指定の途中で、2本目の指が触れても無視
+    const a=[...tpts.values()];two=true;
+    beginRange({clientX:a[0].x,clientY:a[0].y,pointerId:[...tpts.keys()][0],preventDefault(){}});drawTwo();
+  }
 });
+document.addEventListener("pointermove",e=>{
+  const q=tpts.get(e.pointerId);if(!q)return;q.x=e.clientX;q.y=e.clientY;
+  if(two){drawTwo();return;}
+  if(tlp&&!tlp.armed&&e.pointerId===tlp.id&&Math.hypot(q.x-q.x0,q.y-q.y0)>10){clearTimeout(tlp.tm);}   // 長押しの前に動いたら、スクロール
+},true);
+const endTouch=e=>{
+  const q=tpts.get(e.pointerId);if(!q)return;
+  const quick=!two&&tlp&&!tlp.armed&&e.type==="pointerup"&&performance.now()-q.t<400&&Math.hypot(q.x-q.x0,q.y-q.y0)<10;
+  tpts.delete(e.pointerId);
+  if(tlp&&e.pointerId===tlp.id)clearTimeout(tlp.tm);
+  if(!tpts.size){tlp=null;two=false;}
+  if(quick&&cs){pruneEmpty(cs);cs=null;renderOverlay();syncPanel();}   // 何もない所を軽くタップ: 選択を外すだけ
+};
+document.addEventListener("pointerup",endTouch,true);document.addEventListener("pointercancel",endTouch,true);
+// 長押しの範囲指定中・2本指のときだけ、スクロール・拡大を止める
+ov.addEventListener("touchmove",e=>{if((tlp&&tlp.armed)||two||e.touches.length>=2){if(e.cancelable)e.preventDefault();}},{passive:false});
+ov.addEventListener("touchstart",e=>{if(e.touches.length>=2&&e.cancelable)e.preventDefault();},{passive:false});
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== 歪み補正: 一括(台形補正) / 部分(上下左右のベジェ曲線で曲面を伸ばす) ======

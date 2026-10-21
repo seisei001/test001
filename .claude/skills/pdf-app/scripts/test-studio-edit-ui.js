@@ -42,12 +42,34 @@ const {launch,WORK}=require('./harness');
   const T=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y}]});
   await fr.locator('[data-m=sel]').click();
   const tap=async(x,y)=>{await T('touchStart',x,y);await page.waitForTimeout(60);await T('touchEnd');await page.waitForTimeout(500);};
-  await tap(ov.x+60*k,ov.y+60*k);   // PDFの文字をタップ→訂正の部品
+  const n0=(await items()).length;
+  await tap(ov.x+60*k,ov.y+60*k);
+  ok('指で軽くタップしても、何も作られない',(await items()).length===n0);
+  await T('touchStart',ov.x+60*k,ov.y+60*k);await page.waitForTimeout(700);await T('touchEnd');await page.waitForTimeout(600);   // PDFの文字を長押し→訂正の部品(タップと同じ)
+  ok('PDFの文字を長押し(動かさない)すると、その文字が訂正の部品になる',(await items()).length===n0+1);
   const st=()=>f.evaluate(()=>({touch:document.body.classList.contains('pt-touch'),hdl:document.querySelectorAll('.hdl').length,edit:document.querySelector('.ibox.on .t')?.contentEditable,btn:!!document.querySelector('.editbtn'),active:document.activeElement?.className}));
   const s=await st();ok('指でタップ: 選ぶだけで、入力の状態にならない(キーボードなし)・印と「✎入力」が出る: '+JSON.stringify(s),s.touch&&s.hdl===2&&s.edit!=='true'&&s.btn);
   const tb=await fr.locator('.ibox.on .t').boundingBox();
   await T('touchStart',tb.x+tb.width/2,tb.y+tb.height/2);await page.waitForTimeout(700);await T('touchEnd');await page.waitForTimeout(400);
   const s2=await st();ok('枠の中を長押しすると、入力できる(カーソルが入る): '+JSON.stringify(s2),s2.edit==='true'&&s2.active==='t');
+  // 1本指のスクロール / 長押し→ドラッグの範囲指定 / 2本指ドラッグの範囲指定
+  await fr.locator('[data-m=text]').click();
+  const nA=(await items()).length,sy0=await f.evaluate(()=>scrollY);
+  await T('touchStart',ov.x+300*k,ov.y+250*k);for(let i=1;i<=8;i++){await T('touchMove',ov.x+300*k,ov.y+250*k-i*25);await page.waitForTimeout(16);}await T('touchEnd');await page.waitForTimeout(500);
+  ok('1本指のドラッグでは、何も作られない(範囲指定にならない)',(await items()).length===nA);
+  const R=(async()=>{await T('touchStart',ov.x+30*k,ov.y+255*k);await page.waitForTimeout(700);for(let i=1;i<=8;i++){await T('touchMove',ov.x+30*k+i*14,ov.y+255*k+i*3);await page.waitForTimeout(16);}await T('touchEnd');await page.waitForTimeout(600);});
+  await f.evaluate(()=>window.scrollTo(0,0));
+  const ov2=await fr.locator('#ov').boundingBox();
+  await R();
+  ok('何もない所を長押し→ドラッグで、範囲(文字の枠)ができる',/枠の大きさから/.test(await f.evaluate(()=>document.getElementById('status').textContent))&&(await items()).pop().vw>30);
+  // 2本指ドラッグ
+  await fr.locator('[data-m=text]').click();
+  const T2=(type,a,b)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:a[0],y:a[1],id:0},{x:b[0],y:b[1],id:1}]});
+  await page.evaluate(()=>0);
+  await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);const ov3=await fr.locator('#ov').boundingBox();
+  const a0=[ov3.x+250*k,ov3.y+255*k];await T2('touchStart',a0,[a0[0]+20,a0[1]+8]);for(let i=1;i<=8;i++){await T2('touchMove',a0,[a0[0]+20+i*18,a0[1]+8+i*5]);await page.waitForTimeout(16);}await T2('touchEnd');await page.waitForTimeout(700);
+  const lastIt=(await items()).pop();
+  ok('2本指ドラッグで、2本の指を角にした範囲(文字の枠)ができる',(await items()).some(i=>i.vy>240&&i.vw>100));
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();
