@@ -62,14 +62,20 @@ const {launch,WORK}=require('./harness');
   const ov2=await fr.locator('#ov').boundingBox();
   await R();
   ok('何もない所を長押し→ドラッグで、範囲(文字の枠)ができる',/枠の大きさから/.test(await f.evaluate(()=>document.getElementById('status').textContent))&&(await items()).pop().vw>30);
-  // 2本指ドラッグ
+  // 2本指(拡大・縮小)では、範囲指定にならない
   await fr.locator('[data-m=text]').click();
   const T2=(type,a,b)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:a[0],y:a[1],id:0},{x:b[0],y:b[1],id:1}]});
-  await page.evaluate(()=>0);
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);const ov3=await fr.locator('#ov').boundingBox();
+  const nB=(await items()).length;
   const a0=[ov3.x+250*k,ov3.y+255*k];await T2('touchStart',a0,[a0[0]+20,a0[1]+8]);for(let i=1;i<=8;i++){await T2('touchMove',a0,[a0[0]+20+i*18,a0[1]+8+i*5]);await page.waitForTimeout(16);}await T2('touchEnd');await page.waitForTimeout(700);
-  const lastIt=(await items()).pop();
-  ok('2本指ドラッグで、2本の指を角にした範囲(文字の枠)ができる',(await items()).some(i=>i.vy>240&&i.vw>100));
+  ok('2本指のドラッグでは、範囲指定(枠の作成)にならない',(await items()).length===nB);
+  // 画面を拡大したとき、印の見た目の大きさを一定にする(親から拡大率を受け取る)
+  await T('touchStart',ov3.x+300*k,ov3.y+20*k);await page.waitForTimeout(700);for(let i=1;i<=6;i++){await T('touchMove',ov3.x+300*k+i*12,ov3.y+20*k+i*4);await page.waitForTimeout(16);}await T('touchEnd');await page.waitForTimeout(600);
+  await f.evaluate(()=>window.postMessage({type:'zoom',scale:1},'*'));await page.waitForTimeout(300);
+  const sc1=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
+  await f.evaluate(()=>window.postMessage({type:'zoom',scale:3},'*'));await page.waitForTimeout(300);
+  const sc3=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
+  ok(`画面を3倍に拡大すると、印は約1/3に縮む(拡大なし ${sc1.toFixed(2)} → 3倍 ${sc3.toFixed(2)})`,sc1>0.95&&Math.abs(sc3-1/3)<0.05);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();

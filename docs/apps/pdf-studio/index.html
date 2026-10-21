@@ -117,7 +117,7 @@ const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
   desk:{name:"束デスク",ver:"2.03"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.07",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.08",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -390,11 +390,14 @@ function openForm(kind,b){
 }
 function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
 $("formClose").onclick=closeForm;
+// 画面の拡大率(ピンチ)を、フォームに伝える(フォームの印・ボタンの見た目の大きさを一定にするため)
+function sendZoom(){try{const w=$("formFrame").contentWindow;if(w)w.postMessage({type:"zoom",scale:(window.visualViewport&&visualViewport.scale)||1},"*");}catch{}}
+if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,sendZoom));
 window.addEventListener("message",async e=>{
   const m=e.data;if(!m||typeof m!=="object"||e.source!==$("formFrame").contentWindow)return;
   if(m.type==="ready"&&formB){   // 表示中の1ページだけを、1ページのPDFにして渡す
     const src=await PDFDocument.load(formB.bytes),d=await PDFDocument.create();(await d.copyPages(src,[formB.cur])).forEach(p=>d.addPage(p));
-    const bytes=new Uint8Array(await d.save());e.source.postMessage({type:"load",bytes,name:`${baseName(formB.name)}_p${formB.cur+1}.pdf`},"*",[bytes.buffer]);
+    const bytes=new Uint8Array(await d.save());e.source.postMessage({type:"load",bytes,name:`${baseName(formB.name)}_p${formB.cur+1}.pdf`},"*",[bytes.buffer]);sendZoom();
   }else if(m.type==="result"&&formB){   // 編集した1ページを、束の同じ位置に戻す
     const b=formB,src=await PDFDocument.load(b.bytes),ed=await PDFDocument.load(m.bytes),out=await PDFDocument.create();
     const before=[...Array(b.cur).keys()],after=[...Array(b.n-b.cur-1).keys()].map(i=>i+b.cur+1);
