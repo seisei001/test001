@@ -14,7 +14,7 @@ const {launch,WORK}=require('./harness');
   // --- マウス ---
   await fr.locator('[data-m=text]').click();
   await drag(40,200,200,34);
-  ok('空の枠に、見本の「あ」と大きさの矢印が出る',await f.evaluate(()=>!!document.querySelector('.ibox.on .sample')&&!!document.querySelector('.ibox.on .grip')));
+  ok('空の枠に、見本の「あ」と、ピンクの鉛筆が出る',await f.evaluate(()=>!!document.querySelector('.ibox.on .sample')&&!!document.querySelector('.ibox.on .grip')));
   const cur=await f.evaluate(()=>({mv:getComputedStyle(document.querySelector('.hdl.mv')).cursor,rs:getComputedStyle(document.querySelector('.hdl.rs')).cursor,t:getComputedStyle(document.querySelector('.ibox.on .t')).cursor,ol:getComputedStyle(document.querySelector('.ibox.on')).outline}));
   ok(`カーソルの形: 左上=${cur.mv} 右下=${cur.rs} 枠内=${cur.t}`,cur.mv==='move'&&cur.rs==='nwse-resize'&&cur.t==='text');
   ok('入力できる枠は、実線(入力モード): '+cur.ol,/solid/.test(cur.ol)&&await f.evaluate(()=>document.querySelector('.ibox.on').classList.contains('edit')));
@@ -36,19 +36,16 @@ const {launch,WORK}=require('./harness');
   const s1=(await items()).pop().size;ok(`矢印を引くと、1文字の大きさが変わる(${s0}→${s1}pt)`,s1>s0+3);
   await page.keyboard.type('Ab');await page.waitForTimeout(400);
   ok('大きさを決めたあとは、自動で枠に合わせない('+(await items()).pop().size+'pt)',(await items()).pop().size===s1);
-  // A− A＋
-  await fr.locator('#sPlus').click();await page.waitForTimeout(200);ok('A＋で0.5pt大きくなる',(await items()).pop().size===s1+0.5);
-  // 枠の縦の比率だけで文字サイズが変わる(横幅は変えても、文字サイズは同じ)/ 右の境界を超えたら折り返して、枠が下に伸びる
   await fr.locator('[data-m=text]').click();await drag(40,150,150,34);await page.keyboard.type('ABC');await page.waitForTimeout(300);
   const q0=(await items()).find(i=>i.txt==='ABC');
   let bb=await fr.locator('.ibox.on').boundingBox();
   await page.mouse.move(bb.x+bb.width+2,bb.y+bb.height+2);await page.mouse.down();await page.mouse.move(bb.x+bb.width+2+60,bb.y+bb.height+2,{steps:5});await page.mouse.up();await page.waitForTimeout(300);
   const q1=(await items()).find(i=>i.txt==='ABC');
-  ok(`横幅だけ変えても、文字サイズは同じ(${q0.size}→${q1.size}pt)・幅は広がる`,q1.size===q0.size&&q1.vw>q0.vw+20);
+  ok(`枠の幅を変えても、文字サイズは同じ(${q0.size}→${q1.size}pt)・幅は広がる`,q1.size===q0.size&&q1.vw>q0.vw+20);
   bb=await fr.locator('.ibox.on').boundingBox();
   await page.mouse.move(bb.x+bb.width+2,bb.y+bb.height+2);await page.mouse.down();await page.mouse.move(bb.x+bb.width+2,bb.y+bb.height+2+bb.height,{steps:5});await page.mouse.up();await page.waitForTimeout(300);
   const q2=(await items()).find(i=>i.txt==='ABC');
-  ok(`縦を約2倍にすると、文字サイズが約2倍になる(${q1.size}→${q2.size}pt)`,q2.size>q1.size*1.7&&q2.size<q1.size*2.3);
+  ok(`縦を約2倍にしても、文字サイズは同じ(${q1.size}→${q2.size}pt)。枠は自由に大きくなる(高さ${Math.round(q1.vh)}→${Math.round(q2.vh)})`,q2.size===q1.size&&q2.vh>q1.vh*1.6);
   await fr.locator('[data-m=text]').click();await drag(190,5,70,26);   // 狭い枠に長い文字
   await page.keyboard.type('WWWWWWWWWWWWWWWWWWWWWWWW');await page.waitForTimeout(400);
   const w1=(await items()).find(i=>/^W+$/.test(i.txt)),h0=Math.max(26,w1.size*1.3);
@@ -56,16 +53,12 @@ const {launch,WORK}=require('./harness');
   // 矢印は、文字の最後の右下に付く
   const gp=await f.evaluate(()=>{const g=document.querySelector('.ibox.on .grip').getBoundingClientRect(),t=document.querySelector('.ibox.on .t').getBoundingClientRect();return{gx:g.left+g.width/2,gy:g.top+g.height/2,tr:t.right,tb:t.bottom,tl:t.left,tt:t.top};});
   ok('矢印は、枠の下側(最後の行)の、文字のあたりに付く',gp.gy>gp.tt+(gp.tb-gp.tt)*0.5&&gp.gx<gp.tr+5);
-  // 文字サイズの入力(✥の上でダブルクリック/右クリック)
+  ok('枠の右上の「文字」「訂正」の表記が無い',await f.evaluate(()=>document.querySelectorAll('.ibox .tag').length===0));
+  ok('文字サイズ欄は表示だけ(ピンクの鉛筆で変える)・A−/A＋・サイズ入力は無い',await f.evaluate(()=>document.getElementById('sSize').readOnly&&!document.getElementById('sPlus')&&!document.getElementById('sMinus')));
   const mvb=await fr.locator('.hdl.mv').boundingBox();
   await page.mouse.dblclick(mvb.x+mvb.width/2,mvb.y+mvb.height/2);await page.waitForTimeout(300);
-  ok('✥の上でダブルクリックすると、文字サイズの入力が出る',await f.evaluate(()=>!!document.getElementById('sizePop')));
-  await fr.locator('#spIn').fill('24');await fr.locator('#spOk').click();await page.waitForTimeout(300);
-  ok('24と入力して決定すると、24ptになる',(await items()).find(i=>/^W+$/.test(i.txt)).size===24);
-  const mvb2=await fr.locator('.hdl.mv').boundingBox();
-  await page.mouse.click(mvb2.x+mvb2.width/2,mvb2.y+mvb2.height/2,{button:'right'});await page.waitForTimeout(300);
-  ok('右クリックでも、文字サイズの入力が出る(一覧つき)',await f.evaluate(()=>!!document.getElementById('sizePop')&&document.querySelectorAll('#spList option').length>=10));
-  await page.keyboard.press('Escape');await page.waitForTimeout(200);
+  ok('✥のダブルクリックで、文字サイズの入力は出ない',await f.evaluate(()=>!document.getElementById('sizePop')));
+  ok('矢印は、ピンクの鉛筆(✎)',await f.evaluate(()=>{const g=document.querySelector('.ibox.on .grip');return !!g&&g.textContent==='✎';}));
   // --- 指 ---
   const cdp=await page.context().newCDPSession(page);
   const T=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y}]});
