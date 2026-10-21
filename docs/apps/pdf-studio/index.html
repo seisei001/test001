@@ -56,6 +56,8 @@ button:disabled{opacity:.4;cursor:default;}
 .card.drop-before::before{left:-8px;}.card.drop-after::after{right:-8px;}
 .chk{position:absolute;top:4px;left:4px;z-index:30;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;opacity:.95;}
 .chk input{width:22px;height:22px;margin:0;}
+.mnb{position:absolute;top:4px;right:4px;z-index:30;width:34px;height:34px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:1.2rem;opacity:.95;}
+.card.mv{touch-action:none;cursor:grab;}
 .stackwrap{padding:0 calc(var(--gap) * 5);display:flex;justify-content:center;}
 .stack{position:relative;width:var(--tw);}
 .stack canvas{display:block;width:100%;height:auto;position:relative;z-index:10;background:#fff;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.25);}
@@ -89,7 +91,7 @@ button:disabled{opacity:.4;cursor:default;}
     <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
     <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
   </div>
-  <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束をダブルクリック(スマホはダブルタップ)すると、機能メニューが開きます。</div></div>
+  <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束の右上の「⋮」で、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
   <div id="status"></div>
 </div>
 
@@ -112,7 +114,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
-  desk:{name:"束デスク",ver:"2.0"},
+  desk:{name:"束デスク",ver:"2.01"},
   menu:{name:"機能メニュー",ver:"2.0"},
   edit:{name:"ページ編集",ver:"2.0",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
@@ -149,6 +151,8 @@ async function restore(){
   order.forEach(id=>{const r=by.get(id);if(r)bundles.push(mk(r.name,r.bytes,r.n,r.cur,r.id));});
   nextId=Math.max(nextId,(meta&&meta.nextId)||0,...bundles.map(b=>b.id+1));
 }
+// 最初は、左上の束が選択されている(1つだけ選んでいるときは、その束をつかんで動かせる)
+function defaultSel(){if(bundles.length&&!bundles.some(b=>b.sel))bundles[0].sel=true;}
 function mk(name,bytes,n,cur,id){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:""};}
 
 // ===== 元に戻す =====
@@ -165,7 +169,7 @@ async function addFiles(files){
       if(!added)snap();bundles.push(mk(f.name,bytes,d.getPageCount(),0));added++;}
     catch(e){status(`「${f.name}」を開けませんでした(暗号化されたPDFなどは非対応です)。`);}
   }
-  if(added){render();persist();status(`${added}個のPDFを開きました。`);}
+  if(added){defaultSel();render();persist();status(`${added}個のPDFを開きました。`);}
 }
 $("bAdd").onclick=()=>$("fAdd").click();
 $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value="";};
@@ -196,13 +200,14 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
-  el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
+  el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
   el.querySelector("input").addEventListener("change",e=>{b.sel=e.target.checked;el.classList.toggle("sel",b.sel);refreshBar();});
   el.querySelector(".prev").addEventListener("click",e=>{e.stopPropagation();flip(b,-1);});
   el.querySelector(".next").addEventListener("click",e=>{e.stopPropagation();flip(b,1);});
+  el.querySelector(".mnb").addEventListener("click",e=>{e.stopPropagation();openMenu(b);});
   attachDrag(el,b);
   b.card=el;io.observe(el);return el;
 }
@@ -238,32 +243,31 @@ function flip(b,d){const c=Math.max(0,Math.min(b.n-1,b.cur+d));if(c===b.cur)retu
 $("bAll").onclick=()=>{bundles.forEach(b=>b.sel=true);render();};
 $("bNone").onclick=()=>{bundles.forEach(b=>b.sel=false);render();};
 
-// ===== ドラッグで並び替え(マウス: そのまま / タッチ: 長押ししてから) =====
-let drag=null;
+// ===== ドラッグで並び替え(マウス: どの束でも / 指: ちょうど1つ選んでいる束の本体をつかむ) =====
+let drag=null,lastType="mouse";
 function attachDrag(el,b){
-  let st=null,lastTap=0;
+  let st=null;
   el.addEventListener("pointerdown",e=>{
-    if(e.button>0||e.target.closest(".chk,.nav"))return;
-    st={x:e.clientX,y:e.clientY,id:e.pointerId,touch:e.pointerType!=="mouse",t:setTimeout(()=>{if(st&&st.touch){st.armed=true;if(navigator.vibrate)try{navigator.vibrate(15);}catch{}}},350),armed:e.pointerType==="mouse"};
+    lastType=e.pointerType;
+    if(e.button>0||e.target.closest(".chk,.nav,.mnb"))return;
+    // 指・ペン: ちょうど1つだけ選んでいる束だけ、本体をつかんで動かせる。マウス: どの束でも動かせる(近道)
+    if(e.pointerType!=="mouse"&&!(b.sel&&selCount()===1))return;
+    st={x:e.clientX,y:e.clientY,id:e.pointerId};
   });
   el.addEventListener("pointermove",e=>{
     if(!st||e.pointerId!==st.id)return;
     const dx=e.clientX-st.x,dy=e.clientY-st.y,mv=Math.hypot(dx,dy);
-    if(!drag){
-      if(st.touch&&!st.armed){if(mv>10){clearTimeout(st.t);st=null;}return;}
-      if(mv>6&&st.armed){startDrag(el,b,e);}
-    }
+    if(!drag&&mv>6)startDrag(el,b,e);
     if(drag&&drag.b===b)moveDrag(e);
   });
   const end=e=>{
-    if(!st||(e.pointerId!==undefined&&e.pointerId!==st.id))return;clearTimeout(st.t);
+    if(!st||(e.pointerId!==undefined&&e.pointerId!==st.id))return;
     const wasDrag=drag&&drag.b===b,moved=Math.hypot(e.clientX-st.x,e.clientY-st.y);
     st=null;
     if(wasDrag){finishDrag(e.type==="pointerup");return;}
-    if(e.type==="pointerup"&&moved<8){const now=Date.now();if(now-lastTap<350){lastTap=0;openMenu(b);}else lastTap=now;}   // ダブルクリック/ダブルタップ
   };
   el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
-  el.addEventListener("dblclick",e=>{if(e.target.closest(".chk,.nav"))return;openMenu(b);});
+  el.addEventListener("dblclick",e=>{if(lastType!=="mouse"||e.target.closest(".chk,.nav,.mnb"))return;openMenu(b);});   // ダブルクリックはマウスだけの近道(指は ⋮ ボタン)
   el.addEventListener("contextmenu",e=>{if(e.pointerType==="touch")e.preventDefault();});
 }
 function startDrag(el,b,e){
@@ -327,7 +331,7 @@ async function saveBundle(b){
 }
 function removeBundle(b){snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();persist();status(`「${b.name}」を削除しました。「元に戻す」で戻せます。`);}
 
-// ===== 機能メニュー(ダブルクリック) =====
+// ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
 function openMenu(b){
   menuB=b;$("menuInfo").textContent=`${b.name}(${b.n}ページ${b.n>1?`・いま ${b.cur+1} ページ目を表示`:""})`;
@@ -372,7 +376,7 @@ window.addEventListener("message",async e=>{
 });
 
 // ===== 起動 =====
-restore().then(()=>{render();if(bundles.length)status("前回の束を復元しました(このブラウザの中だけに保存されています)。");});
+restore().then(()=>{defaultSel();render();if(bundles.length)status("前回の束を復元しました(このブラウザの中だけに保存されています)。");});
 window.pdfStudioDebug={bundles:()=>bundles.map(b=>({id:b.id,name:b.name,n:b.n,cur:b.cur,sel:b.sel})),forms:FORMS};
 </script>
 </body>

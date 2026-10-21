@@ -194,3 +194,4 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 画面: 起動画面(約1.5秒)/束デスク(束の一覧・めくり・チェック結合・分割・ばらす・ドラッグ並べ替え・元に戻す・IndexedDB保存)/機能メニュー(ダブルクリック)/ページ編集・歪み補正(`forms/editor.html?form=edit|warp&embed=1` をiframeで埋め込み。postMessage: ready→load→result/close。表示中の1ページだけ渡し、保存で束のそのページを差し替える)。
 - `forms/editor.html` はPDFエディタ本体のコピー+埋め込み用の追加。エディタ側を直したら両方に反映するか、どちらに入れるか決める。
 - 確認: `PDFAPP_TARGET=pdf-studio node scripts/test-studio.js`(デスク)と `test-studio-forms.js`(フォーム)。事前に make-studio-pdfs.js / make-warp-photo.js。未確認: 実機のタッチ長押しドラッグ・iPhone表示・巨大PDF。
+- **束デスクの操作の決まり(iPhone実機の検証=docs/apps/touch-lab で決めた)**: 選ぶ=チェック(複数可、最初は左上が選択)/ 並べ替え=指では「ちょうど1つ選んでいる束」の本体をつかんで動かす(0個・2個以上選択中は動かない。選択中の束は touch-action:none)/ マウスはどの束でも動かせる / 機能メニュー=束の右上「⋮」(マウスはダブルクリックでも)/ 指でのダブルタップ・長押しは使わない(ダブルタップは画面拡大と競合する)。確認は `test-studio-touch.js`(CDPのタッチ)。束デスク 2.01。
