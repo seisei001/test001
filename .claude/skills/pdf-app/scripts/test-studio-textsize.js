@@ -17,7 +17,7 @@ const {launch,WORK}=require('./harness');
     else{await page.mouse.move(ov.x+20*k,ov.y+y*k);await page.mouse.down();await page.mouse.move(ov.x+(20+w)*k,ov.y+(y+h)*k,{steps:6});await page.mouse.up();}
     await page.waitForTimeout(500);
     const items=await f.evaluate(()=>window.pdfEditorDebug.items());const it=items[items.length-1];
-    console.log(`${n}: サイズ ${it.size}pt (欄: ${await f.evaluate(()=>document.getElementById('nSize').value)})`);
+    console.log(`${n}: サイズ ${it.size}pt (欄: ${await f.evaluate(()=>document.getElementById('nSize').value)}) 状態: ${(await f.evaluate(()=>document.getElementById('status').textContent)).slice(0,60)}`);
     await fr.locator('[data-m=text]').click();y+=h+24;
   }
   await page.screenshot({path:WORK+'/shot_textsize.png'});

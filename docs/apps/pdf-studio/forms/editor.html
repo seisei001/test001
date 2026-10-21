@@ -556,28 +556,20 @@ function sampleColors(box){
 }
 
 // --- 部品 ---
-// 作った枠の大きさから、適当なサイズ(pt)を決める。
-//  基準: 枠の中央線と同じ高さにある文字(同じ行のラベルなど)の大きさの中央値。無ければ、そのページの文字の中央値。それも無ければ10.5pt(大きなページは、A4の幅(595)との比で大きく)
-//  1行の欄(横長の枠、または高さ32pt以下): 高さの6割。ただし基準の1.6倍まで、1行に6文字は入る大きさまで
-//  複数行の枠(高い枠): 高さに1行が入る大きさを上限に、横幅も考える(1行に全角16文字ほど=幅÷16。基準以上)、36pt(基準の比で)まで
-//  タップだけで作った枠(高さ0)は、基準の1.3倍
-const medOf=a=>{const v=a.slice().sort((p,q)=>p-q);return v[Math.floor(v.length/2)];};
-function refSize(x,y,w,h){
-  const u=Math.max(1,VW/595),ok=runs.filter(r=>r.size>=5*u&&r.size<=40*u);
-  const cy=y+h/2,tol=Math.max(h/2,0)+2;
-  const row=ok.filter(r=>Math.abs((r.base-r.size*0.35)-cy)<=Math.max(tol,r.size*0.6));   // 枠の中央線の高さにある文字
-  if(row.length)return medOf(row.map(r=>r.size));
-  return ok.length?medOf(ok.map(r=>r.size)):10.5*u;
-}
-function autoSize(x,y,w,h){
-  const ref=refSize(x,y,w,h),u=Math.max(1,VW/595);
-  if(h<8)return Math.round(ref*1.3*2)/2;
+// 作った枠の大きさから、入る文字数を推定して、適当なサイズ(pt)を決める(全角の1文字=サイズ×サイズ、行の高さ=サイズ×1.3)。前後の文字は見ない
+//  縦横比が2.5以上(横長)か、高さが32pt以下: 1行の欄。高さの6割の大きさ(欄に余裕をもって入る)。ただし1行に6文字は入る大きさまで、17pt(A4の幅比)まで
+//  それ以外(複数行の枠): 1行に全角16文字ほど入る大きさ(幅÷16。10.5pt以上)。ただし高さに1行が入る大きさまで、36ptまで
+//  タップだけで作った枠(高さ0)は14pt
+function autoSize(w,h){
+  const u=Math.max(1,VW/595);
+  if(h<8)return 14*u;
   const one=h<=32*u||w/h>=2.5;
-  const v=one?Math.min(h*0.6,ref*1.6,w/6):Math.min(h/1.3,Math.max(w/16,ref),36*u);
+  const v=one?Math.min(h*0.6,w/6,17*u):Math.min(h/1.3,Math.max(w/16,10.5*u),36*u);
   return Math.max(6*u,Math.min(36*u,Math.round(v*2)/2));
 }
+function estimate(w,h,s){const per=Math.max(1,Math.floor(w/s)),lines=Math.max(1,Math.floor(h/(s*1.3)));return{per,lines,chars:per*lines};}
 function newText(x,y,w,h){
-  const size=autoSize(x,y,w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
+  const size=autoSize(w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
   return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3};
 }
 function newFix(list){
@@ -930,7 +922,7 @@ ov.addEventListener("pointerdown",e=>{
       await doOcr(x,y,w,h);
       if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
       return;}
-    if(mode==="text"){await loadRuns().catch(()=>{});it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
       it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};
@@ -957,6 +949,7 @@ ov.addEventListener("pointerdown",e=>{
         if(made.length>1)status(`${made.length}個のまとまり(表のセルなど)を選びました。枠をタップして1つずつ書き換えられます。`);
       }
     }
+    if(it.type==="text"&&!tap){const e=estimate(it.vw,it.vh,it.size);status(`枠の大きさから、1行およそ${e.per}文字×${e.lines}行(約${e.chars}文字)として、${it.size}ptにしました。サイズ欄で変えられます。`);}
     select(it,true);
   });
   const mv=ev=>{if(!rub)return;const rc2=ov.getBoundingClientRect(),k2=K();
