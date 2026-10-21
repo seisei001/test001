@@ -80,13 +80,23 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
 .cover{position:absolute;pointer-events:none;}
 .cvo{position:absolute;pointer-events:none;outline:1px dashed rgba(239,68,68,.95);z-index:4;}
-.ibox{position:absolute;outline:1px dashed rgba(37,99,235,.8);line-height:1.3;color:#000;}
-.ibox.on{outline:2px solid #2563eb;z-index:5;}
+.ibox{position:absolute;outline:1px dashed rgba(37,99,235,.42);line-height:1.3;color:#000;}
+.ibox.on{outline:1px dashed rgba(37,99,235,.75);z-index:5;}
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:normal;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 .ibox .tag{position:absolute;right:0;top:-1.4em;font-size:10px;background:#2563eb;color:#fff;padding:0 4px;border-radius:3px;line-height:1.4;pointer-events:none;white-space:nowrap;}
-.hdl{position:absolute;width:26px;height:26px;border-radius:50%;background:#2563eb;color:#fff;font-size:14px;line-height:26px;text-align:center;touch-action:none;z-index:6;cursor:move;}
-.hdl.mv{left:-28px;top:-28px;}.hdl.rs{right:-28px;bottom:-28px;cursor:nwse-resize;}   /* 枠の外(角の斜め外)に置く: 文字の上にあると、文字の最初・最後をドラッグで選べない */
+/* 枠の動かす・大きさのつまみ: パソコンは、角に置いたカーソルの形(十字・斜め矢印)で。見えない小さな範囲。iPhoneなどの指は、角の外に印を出して点滅 */
+.hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;}
+.hdl.mv{left:-8px;top:-8px;cursor:move;}.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
+body.pt-touch .hdl{width:36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;font-size:18px;line-height:36px;text-align:center;opacity:.55;animation:hblink .5s 3;}
+body.pt-touch .hdl.mv{left:-38px;top:-38px;}body.pt-touch .hdl.rs{right:-38px;bottom:-38px;}
+body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{content:"⇲";}
+@keyframes hblink{50%{opacity:1;transform:scale(1.2);}}
+.sample{position:absolute;left:0;top:0;color:rgba(0,0,0,.28);pointer-events:none;white-space:nowrap;}   /* 空の枠の、1文字の見本 */
+.grip{position:absolute;width:22px;height:22px;border-radius:50%;background:#2563eb;color:#fff;font-size:12px;line-height:22px;text-align:center;touch-action:none;cursor:nwse-resize;z-index:6;}
+body.pt-touch .grip{width:36px;height:36px;line-height:36px;font-size:16px;}
+.editbtn{display:none;position:absolute;left:0;bottom:-46px;z-index:7;min-height:40px;padding:4px 14px;font-size:.95rem;margin:0;}
+body.pt-touch .editbtn{display:block;}
 
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -175,7 +185,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 <h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
 <div id="selTextBox">
 <div class="row">
-<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5"></label>
+<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5"></label><button class="sub-btn" id="sMinus" title="0.5pt小さく">A−</button><button class="sub-btn" id="sPlus" title="0.5pt大きく">A＋</button>
 <label>字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label>色 <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
@@ -572,7 +582,7 @@ function autoSize(w,h){
 function estimate(w,h,s){const per=Math.max(1,Math.floor(w/s)),lines=Math.max(1,Math.floor(h/(s*1.3)));return{per,lines,chars:per*lines};}
 function newText(x,y,w,h){
   const size=autoSize(w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
-  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3};
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true};
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
 function tightCovers(list){
@@ -729,7 +739,7 @@ function setSelRange(t,start,end){
 }
 const activeRange=it=>(lastSel&&lastSel.id===it.id&&lastSel.end>lastSel.start)?{start:lastSel.start,end:lastSel.end}:null;
 function applySize(it,size,range){
-  size=Math.max(4,Math.min(400,Math.round(size*10)/10));
+  size=Math.max(4,Math.min(400,Math.round(size*10)/10));it.autoFit=false;   // サイズを決めたら、自動で合わせるのは止める
   const chars=Array.from(it.txt),n=chars.length;
   if(range&&range.end>range.start){
     if(!it.sz)it.sz=[];while(it.sz.length<n)it.sz.push(null);
@@ -779,6 +789,24 @@ function boxStyle(it,el){
   if(t){t.style.fontFamily=famOf(it.fmt);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
+document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);   // 最後に触れたのが指かマウスか
+let ptHold=null;
+document.addEventListener("pointermove",e=>{if(ptHold&&e.pointerId===ptHold.id&&Math.hypot(e.clientX-ptHold.x,e.clientY-ptHold.y)>10){clearTimeout(ptHold.tm);ptHold=null;}},true);
+document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
+document.addEventListener("pointercancel",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
+const isTouch=()=>document.body.classList.contains("pt-touch");
+function caretAt(t,x,y){   // 指を置いた位置に、入力のカーソルを置く
+  let r=null;
+  if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(p&&t.contains(p.offsetNode)){r=document.createRange();r.setStart(p.offsetNode,p.offset);}}
+  else if(document.caretRangeFromPoint){r=document.caretRangeFromPoint(x,y);if(r&&!t.contains(r.startContainer))r=null;}
+  const g=getSelection();g.removeAllRanges();
+  if(r){r.collapse(true);g.addRange(r);}else{const q=document.createRange();q.selectNodeContents(t);q.collapse(false);g.addRange(q);}
+}
+function startEdit(it,x,y){   // iPhone: 長押し・「✎ 入力」で入力を始める(タップでは、キーボードを出さない)
+  it._editing=true;if(cs!==it)select(it,false);else renderOverlay();
+  const t=itemEls.get(it.id)?.querySelector(".t");if(!t)return;
+  t.contentEditable="true";t.focus();if(x!=null)caretAt(t,x,y);else{const q=document.createRange();q.selectNodeContents(t);q.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(q);}
+}
 function renderOverlay(){
   if(!pdfView)return;
   const k=K();ov.innerHTML="";itemEls.clear();
@@ -803,14 +831,16 @@ function renderOverlay(){
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
       buildText(it,t,k);
-      if(it===cs)t.contentEditable="true";
+      if(it===cs&&(!isTouch()||it._editing))t.contentEditable="true";
       t.addEventListener("input",e=>{
         readEditor(it,t);
-        if(growToFit(it))boxStyle(it,el);
+        if(it.type==="text"&&it.txt.trim()){const sm=el.querySelector(".sample"),g=el.querySelector(".grip");if(sm)sm.remove();if(g)g.remove();}   // 1文字でも入れたら、見本と矢印は消える
+        if(it.type==="text"&&it.autoFit!==false&&it.txt.trim()){if(fitSize(it,{size:it.size,sz:it.sz?it.sz.slice():[]})){boxStyle(it,el);showSize();}}   // 枠に収まる最大の大きさに自動で合わせる(サイズを手で決めたら止まる)
+        else if(growToFit(it))boxStyle(it,el);
         clearTimeout(it._rb);if(!e.isComposing)it._rb=setTimeout(()=>softRebuild(it,t),450);
       });
       t.addEventListener("compositionend",()=>{clearTimeout(it._rb);it._rb=setTimeout(()=>softRebuild(it,t),450);});
-      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};});
+      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};if(isTouch()){setTimeout(()=>{if(document.activeElement!==t){it._editing=false;t.contentEditable="false";}},0);}});   // 指: 入力を終えたら、次のタップでキーボードが出ないようにする
       t.addEventListener("beforeinput",e=>{
         if(e.inputType==="insertParagraph"){e.preventDefault();document.execCommand("insertLineBreak");}
         else if(e.inputType==="insertFromPaste"||e.inputType==="insertFromDrop"){
@@ -819,11 +849,35 @@ function renderOverlay(){
         }else if(e.inputType.startsWith("format"))e.preventDefault();
       });
       el.appendChild(t);
+      if(it.type==="text"&&!it.txt){   // 空の枠: 1文字の見本と、大きさを変える矢印
+        const sm=document.createElement("div");sm.className="sample";sm.textContent="あ";sm.style.cssText=`font-size:${it.size*k}px;line-height:${it.lh};font-family:${famOf(it.fmt)}`;el.appendChild(sm);
+        const gr=document.createElement("div");gr.className="grip";gr.textContent="⤡";
+        const place=()=>{const g=isTouch()?18:11;gr.style.left=(it.size*k-g)+"px";gr.style.top=(it.size*it.lh*k-g)+"px";};place();
+        gr.addEventListener("pointerdown",e=>{
+          e.stopPropagation();e.preventDefault();gr.setPointerCapture(e.pointerId);
+          const rc=el.getBoundingClientRect();
+          const mvf=ev=>{const dx=(ev.clientX-rc.left)/k,dy=(ev.clientY-rc.top)/k;
+            const sz=Math.max(4,Math.min(200,Math.round(((dx+dy/it.lh)/2)*2)/2));
+            it.size=sz;it.autoFit=false;$("nSize").value=sz;it.vh=Math.max(it.vh,sz*it.lh);
+            sm.style.fontSize=sz*k+"px";boxStyle(it,el);place();showSize();};
+          const up=()=>{gr.removeEventListener("pointermove",mvf);gr.removeEventListener("pointerup",up);gr.removeEventListener("pointercancel",up);};
+          gr.addEventListener("pointermove",mvf);gr.addEventListener("pointerup",up);gr.addEventListener("pointercancel",up);
+        });
+        el.appendChild(gr);
+      }
     }
     const tag=document.createElement("span");tag.className="tag";
     tag.textContent=it.type==="img"?"画像":(it.type==="fix"?"訂正":"文字")+(it.fmt==="pic"?"(画像)":"");
     el.appendChild(tag);
-    el.addEventListener("pointerdown",e=>{e.stopPropagation();if(cs!==it){e.preventDefault();select(it,true);}});
+    el.addEventListener("pointerdown",e=>{
+      e.stopPropagation();
+      if(cs!==it){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
+      if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip,.editbtn")){   // 枠の中の長押しで、入力を始める
+        const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
+        const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid)startEdit(it,x0,y0);},500);
+        ptHold={id:pid,tm,x:x0,y:y0};
+      }
+    });
     el.addEventListener("contextmenu",e=>{
       if(it.type==="img")return;e.preventDefault();e.stopPropagation();
       let range=null;
@@ -832,9 +886,11 @@ function renderOverlay(){
       showCtx(e,it,range);
     });
     if(it===cs){
-      const mv=document.createElement("div");mv.className="hdl mv";mv.textContent="✥";
-      const rs=document.createElement("div");rs.className="hdl rs";rs.textContent="⇲";
+      const mv=document.createElement("div");mv.className="hdl mv";
+      const rs=document.createElement("div");rs.className="hdl rs";
       dragHandle(mv,it,el,false);dragHandle(rs,it,el,true);el.append(mv,rs);
+      if(it.type!=="img"&&isTouch()&&!it._editing){const eb=document.createElement("button");eb.className="editbtn";eb.textContent="✎ 入力";
+        eb.addEventListener("pointerdown",e=>e.stopPropagation());eb.addEventListener("click",e=>{e.stopPropagation();startEdit(it);});el.appendChild(eb);}
     }
     ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);
   });
@@ -892,6 +948,7 @@ function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(
   const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
 $("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>0)applySize(cs,v,activeRange(cs));}};
 $("sLs").onchange=()=>{if(cs&&cs.type!=="img"){cs.ls=Math.max(-2,Math.min(40,+$("sLs").value||0))||0;growToFit(cs);renderOverlay();syncPanel();}};   // 字間: 文字と文字の間の空き(元の書式が均等割付などのとき、変換で自動でも入る)
+[["sMinus",-0.5],["sPlus",0.5]].forEach(([id,d])=>{$(id).onclick=()=>{if(cs&&cs.type!=="img"){const v=(+$("sSize").value||cs.size)+d;if(v>0)applySize(cs,v,activeRange(cs));}};});
 $("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
 $("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
