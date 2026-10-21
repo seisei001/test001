@@ -58,6 +58,7 @@ button:disabled{opacity:.4;cursor:default;}
 .chk input{width:22px;height:22px;margin:0;}
 .mnb{position:absolute;top:4px;right:4px;z-index:30;width:34px;height:34px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:1.2rem;opacity:.95;}
 .card.mv{touch-action:none;cursor:grab;}
+.card .mnb{display:none;}.card.mv .mnb{display:flex;}   /* ⋮は、ちょうど1つ選んでいる束にだけ出る */
 .stackwrap{padding:0 calc(var(--gap) * 5);display:flex;justify-content:center;}
 .stack{position:relative;width:var(--tw);}
 .stack canvas{display:block;width:100%;height:auto;position:relative;z-index:10;background:#fff;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.25);}
@@ -91,7 +92,7 @@ button:disabled{opacity:.4;cursor:default;}
     <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
     <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
   </div>
-  <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束の右上の「⋮」で、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
+  <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
   <div id="status"></div>
 </div>
 
@@ -114,7 +115,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
-  desk:{name:"束デスク",ver:"2.02"},
+  desk:{name:"束デスク",ver:"2.03"},
   menu:{name:"機能メニュー",ver:"2.0"},
   edit:{name:"ページ編集",ver:"2.07",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
@@ -295,7 +296,7 @@ function attachDrag(el,b){
     if(wasDrag){finishDrag(e.type==="pointerup");return;}
   };
   el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
-  el.addEventListener("dblclick",e=>{if(lastType!=="mouse"||e.target.closest(".chk,.nav,.mnb"))return;openMenu(b);});   // ダブルクリックはマウスだけの近道(指は ⋮ ボタン)
+  el.addEventListener("dblclick",e=>{if(lastType!=="mouse"||e.target.closest(".chk,.nav,.mnb"))return;if(b.sel&&selCount()===1)openMenu(b);});   // ダブルクリックはマウスだけの近道。ちょうど1つ選んでいる束でだけメニューが開く(指は ⋮ ボタン)
   el.addEventListener("contextmenu",e=>{if(e.pointerType==="touch")e.preventDefault();});
 }
 function startDrag(el,b,e){

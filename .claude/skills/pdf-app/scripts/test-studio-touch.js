@@ -29,8 +29,10 @@ const S=WORK+'/samples/';
   ok('2つ選ぶと、動かせる束がない: '+await mvs(),(await mvs())==='0000');
   const n1=await names();b0=await box(0);b2=await box(2);await swipe(b0.x+b0.width/2,b0.y+b0.height/2,b2.x+b2.width-4,b2.y+b2.height/2);
   ok('2つ選択中は、指で動かしても並びが変わらない',await names()===n1);
-  // ⋮ でメニュー
-  await page.locator('.card').nth(1).locator('.mnb').click();await page.waitForTimeout(300);
+  // ⋮ でメニュー(ちょうど1つ選んでいる束にだけ ⋮ が出る)
+  await page.locator('.card').nth(2).locator('input[type=checkbox]').uncheck();
+  ok('1つだけ選んでいる束にだけ ⋮ が見える',await page.evaluate(()=>[...document.querySelectorAll('.card')].filter(c=>getComputedStyle(c.querySelector('.mnb')).display!=='none').length===1));
+  await page.locator('.card.mv .mnb').click();await page.waitForTimeout(300);
   ok('⋮ ボタンで機能メニューが開く',await page.evaluate(()=>!document.getElementById('menu').classList.contains('hidden')));
   await page.screenshot({path:WORK+'/shot_studio_touch.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));

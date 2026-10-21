@@ -11,7 +11,7 @@ const S=WORK+'/samples/';
   ok('起動画面が出ている',await page.evaluate(()=>!!document.getElementById('splash')&&!document.getElementById('splash').classList.contains('out')));
   await page.waitForTimeout(2300);
   ok('約1.5秒で消える',await page.evaluate(()=>!document.getElementById('splash')));
-  ok('画面の名前とバージョン(束デスク 2.02)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.02'));
+  ok('画面の名前とバージョン(束デスク 2.03)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.03'));
   // 読み込み
   await page.setInputFiles('#fAdd',[S+'studio_A4.pdf',S+'studio_B1.pdf',S+'studio_C7.pdf',S+'studio_D2.pdf']);await page.waitForTimeout(2500);
   let b=await st();ok('4つの束が並ぶ: '+b.map(x=>x.name+'('+x.n+')').join(' '),b.length===4);
@@ -40,7 +40,10 @@ const S=WORK+'/samples/';
   await page.click('#bUndo');await page.waitForTimeout(800);b=await st();ok('元に戻す→4つ',b.length===4);
   // 全選択・解除
   await page.click('#bAll');ok('全選択',(await st()).every(x=>x.sel));await page.click('#bNone');ok('全選択解除',(await st()).every(x=>!x.sel));
-  // ダブルクリック→機能メニュー
+  // ダブルクリック→機能メニュー(ちょうど1つ選んでいる束でだけ)
+  await page.locator('.card').nth(2).locator('canvas').dblclick();await page.waitForTimeout(300);
+  ok('何も選んでいないとき、ダブルクリックでメニューは開かない',await page.evaluate(()=>document.getElementById('menu').classList.contains('hidden')));
+  await page.locator('.card').nth(2).locator('input[type=checkbox]').check();
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.waitForTimeout(300);
   const items=await page.evaluate(()=>[...document.querySelectorAll('#menuBtns button')].map(x=>x.textContent.replace(/\s+/g,' ').trim().slice(0,14)));
   console.log('    メニュー:',items.join(' / '));
@@ -51,6 +54,7 @@ const S=WORK+'/samples/';
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.locator('#menuBtns button',{hasText:'ここで分割'}).click();await page.waitForTimeout(1500);
   b=await st();ok('分割: '+b.map(x=>x.name.slice(0,10)+'('+x.n+')').join(' ')+' (C7→前2+後5)',b.length===5&&b[2].n===2&&b[3].n===5);
   // ばらす
+  await page.click('#bNone');await page.locator('.card').nth(0).locator('input[type=checkbox]').check();
   await page.locator('.card').nth(0).locator('canvas').dblclick();await page.locator('#menuBtns button',{hasText:'全ページをばらす'}).click();await page.waitForTimeout(2000);
   b=await st();ok('ばらす: A(4)→1ページ×4 (全'+b.length+'個)',b.length===8&&b.slice(0,4).every(x=>x.n===1));
   // 並び替え(マウスのドラッグ: 先頭の束を、最後の束の右へ)
