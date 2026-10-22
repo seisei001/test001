@@ -122,6 +122,23 @@ const {launch,WORK}=require('./harness');
   const p3=await popAt(3,{l:vl,t:vt,w:vvw,h:vvh});
   ok(`吹き出しは、拡大しても見た目の大きさが同じ(幅 ${p1&&p1.w.toFixed(0)} → ${p3&&(p3.w*3).toFixed(0)})`,p1&&p3&&Math.abs(p1.w-p3.w*3)<4);
   ok(`吹き出しは、いま見えている範囲に全部入る(${p3&&JSON.stringify(p3)})`,p3&&p3.x>=vl-fb.l-1&&p3.y>=vt-fb.t-1&&p3.x+p3.w<=vl-fb.l+vvw+1&&p3.y+p3.h<=vt-fb.t+vvh+1);
+  // 拡大中に、ドラッグが見えている範囲の端に来たら、ゆっくり画面を動かすよう親に頼む(止まっていても続く)
+  await f.evaluate(()=>{const o=document.getElementById('sizePop');if(o)o.remove();window.scrollTo(0,0);});
+  const fsz=await f.evaluate(()=>({w:innerWidth,h:innerHeight}));
+  await page.evaluate(()=>{window._pan=[];window.scrollBy=(x,y)=>{window._pan.push([x,y]);};});
+  const setVV=(sc,vv)=>page.evaluate(([sc,vv])=>{const d=(n,v)=>Object.defineProperty(window.visualViewport,n,{configurable:true,get:()=>v});d('scale',sc);d('offsetLeft',vv.l);d('offsetTop',vv.t);d('width',vv.w);d('height',vv.h);sendZoom();},[sc,vv]);
+  const edgeRun=async(sc)=>{
+    await setVV(sc,{l:fb.l,t:fb.t,w:fsz.w/sc,h:fsz.h/sc});await page.waitForTimeout(400);
+    await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(150);
+    const ovb=await fr.locator('#ov').boundingBox();const sx=ovb.x+20,sy=Math.max(ovb.y+30,fb.t+60);
+    await page.evaluate(()=>{window._pan=[];});
+    await T('touchStart',sx,sy);await page.waitForTimeout(700);
+    const ex=fb.l+fsz.w/sc-10;for(let i=1;i<=6;i++){await T('touchMove',sx+(ex-sx)*i/6,sy+3*i);await page.waitForTimeout(30);}
+    await page.waitForTimeout(800);await T('touchEnd');await page.waitForTimeout(300);
+    return page.evaluate(()=>window._pan.slice());};
+  const pz=await edgeRun(2.5);const p1x=await edgeRun(1);
+  ok(`拡大中は、右の端で止めていても、画面を右へゆっくり動かすよう頼み続ける(${pz.length}回・1回あたり最大 ${Math.max(0,...pz.map(v=>v[0])).toFixed(2)}px)`,pz.length>=15&&pz.every(v=>v[0]>=0)&&Math.max(...pz.map(v=>v[0]))<=1.3);
+  ok(`拡大していないときは、動かさない(${p1x.length}回)`,p1x.length===0);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();

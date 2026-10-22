@@ -1006,17 +1006,37 @@ function showSizePop(it,anchor){
   setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);
 }
 document.addEventListener("pointerdown",e=>{if(sizePop&&!sizePop.contains(e.target))hideSizePop();},true);
+// 画面を拡大しているとき、ドラッグ中の指が見えている範囲の端に来たら、その向きへゆっくり画面を動かす(指は止まっていても動かし続ける)
+//  まず、このフォーム自身をスクロール。動かせなかった分は、親に頼む(親が画面を動かす)。apply(x,y)で、動いたぶんを含めた指の位置を渡す
+function edgePan(apply){
+  let x=0,y=0,p0=null,raf=0,on=true;
+  const tick=()=>{raf=0;if(!on)return;
+    const s=zoomFromParent||1;
+    if(s>1.05&&pvv&&p0){
+      const cx=x+(pvv.x-p0.x),cy=y+(pvv.y-p0.y),M=40/s,A=pvv;   // 画面の端から40px以内
+      const f=(c,a,w)=>c>a+w-M?(c-(a+w-M))/M:c<a+M?-(a+M-c)/M:0;
+      const ax=Math.max(-1,Math.min(1,f(cx,A.x,A.w)))*3/s,ay=Math.max(-1,Math.min(1,f(cy,A.y,A.h)))*3/s;   // 1コマ最大3px(ゆっくり)
+      if(ax||ay){
+        const sx0=scrollX,sy0=scrollY;window.scrollBy(ax,ay);
+        const rx=ax-(scrollX-sx0),ry=ay-(scrollY-sy0);
+        if(Math.abs(rx)>0.01||Math.abs(ry)>0.01)parent.postMessage({type:"pan",dx:rx,dy:ry},"*");
+        apply(cx,cy);}
+    }
+    raf=requestAnimationFrame(tick);};
+  return{move(ev){x=ev.clientX;y=ev.clientY;p0=pvv?{x:pvv.x,y:pvv.y}:{x:0,y:0};if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;}};
+}
 function dragHandle(h,it,el,resize){
   h.addEventListener("pointerdown",e=>{
     e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
-    const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
+    const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh,sX0=scrollX,sY0=scrollY;
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
     let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
-    const mvf=ev=>{if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
+    const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
+    const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
       if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
-    const up=()=>{if(lpTm)clearTimeout(lpTm);h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
+    const up=()=>{if(lpTm)clearTimeout(lpTm);if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
   });
   if(!resize){h.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});h.addEventListener("dblclick",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});}   // マウス: 右クリック・ダブルクリックで、文字の設定
@@ -1065,8 +1085,9 @@ function beginRange(e){
   const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
   const d=document.createElement("div");d.className="rub";ov.appendChild(d);
   rub={sx,sy,x:sx,y:sy,d,id:e.pointerId};
+  const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mv({clientX:x,clientY:y,syn:true}));
   const fin=busy(async ev=>{
-    ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
+    if(ep)ep.stop();ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
     const r=rub;rub=null;if(!r)return;r.d.remove();
     if(mode==="sel")await loadRuns();
     await ensureWebFont().catch(()=>{});
@@ -1116,7 +1137,7 @@ function beginRange(e){
     select(it,true);
     if(isTouch()&&it&&it.type!=="img"&&tap){const rc3=ov.getBoundingClientRect(),k3=K();startEdit(it,rc3.left+r.sx*k3,rc3.top+r.sy*k3);}   // 指で長押しして枠ができたら、そのまま入力モードへ
   });
-  const mv=ev=>{if(!rub||two)return;const rc2=ov.getBoundingClientRect(),k2=K();
+  const mv=ev=>{if(!rub||two)return;if(ep&&!ev.syn)ep.move(ev);const rc2=ov.getBoundingClientRect(),k2=K();
     rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
     const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
     rub.d.style.cssText=`left:${x*k2}px;top:${y*k2}px;width:${w*k2}px;height:${h*k2}px`;};
