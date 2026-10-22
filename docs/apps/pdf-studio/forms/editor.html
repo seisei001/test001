@@ -99,9 +99,6 @@ body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{conte
 .grip::after{content:"";position:absolute;inset:-7px;}
 body.pt-touch .grip{width:18px;height:18px;line-height:16px;font-size:12px;transform:scale(var(--zs,1));}
 body.pt-touch .grip::after{inset:-12px;}
-.editbtn{display:none;position:absolute;left:calc(100% + 6px);top:0;z-index:7;min-height:40px;padding:4px 12px;font-size:.95rem;margin:0;white-space:nowrap;transform:scale(var(--zs,1));transform-origin:0 0;}   /* 枠の右に出す(右に余白がないときは、枠の左) */
-.editbtn.left{left:auto;right:calc(100% + 6px);transform-origin:100% 0;}
-body.pt-touch .editbtn{display:block;}
 
 .part{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -389,7 +386,21 @@ async function ensureWebFont(){
   await loadFontBytes();
   const ff=new FontFace("PdfJP",fontBytes.slice(0));await ff.load();document.fonts.add(ff);webFontOK=true;
 }
-const famOf=fmt=>fmt==="pic"?FAMILY_PIC:'"PdfJP",sans-serif';
+// フォントの種類(画面・PDFの両方で同じフォントを使う。選んだときに初めて読み込む)
+const FONTS={
+  gothic:{label:"ゴシック",fam:"PdfJP",url:FONT_URL,pic:FAMILY_PIC},
+  mincho:{label:"明朝",fam:"PdfMincho",url:"https://cdn.jsdelivr.net/npm/@expo-google-fonts/sawarabi-mincho@0.4.1/400Regular/SawarabiMincho_400Regular.ttf",pic:'"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK JP","Noto Serif JP",serif'},
+  maru:{label:"丸ゴシック",fam:"PdfMaru",url:"https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-rounded-1c@0.4.1/400Regular/MPLUSRounded1c_400Regular.ttf",pic:'"Hiragino Maru Gothic ProN","Yu Gothic","Noto Sans CJK JP",sans-serif'}
+};
+const fontBytesBy={},webFontBy={};
+async function loadFontKey(key){if(key==="gothic"){await loadFontBytes();return fontBytes;}
+  if(!fontBytesBy[key]){const res=await fetch(FONTS[key].url);if(!res.ok)throw new Error("フォントを取得できませんでした");fontBytesBy[key]=await res.arrayBuffer();}return fontBytesBy[key];}
+async function ensureWebFontKey(key){
+  if(!key||key==="gothic"){await ensureWebFont();return;}
+  if(webFontBy[key])return;const b=await loadFontKey(key);
+  const ff=new FontFace(FONTS[key].fam,b.slice(0));await ff.load();document.fonts.add(ff);webFontBy[key]=true;
+}
+const famOf=(fmt,font)=>{const F=FONTS[font]||FONTS.gothic;return fmt==="pic"?F.pic:`"${F.fam}",sans-serif`;};
 const metCache={};
 function baseOff(fmt,size,lh){ // 枠の上端から1行目のベースラインまでの距離(CSSの行ボックスと同じ計算)
   const key=fmt+(webFontOK?"1":"0");
@@ -673,7 +684,7 @@ function buildText(it,t,k){
 function measureHost(it,g){
   const d=document.createElement("div");
   d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
-  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt);d.style.fontSize=it.size*g+"px";d.style.letterSpacing=(it.ls||0)*g+"px";
+  d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt,it.font);d.style.fontSize=it.size*g+"px";d.style.letterSpacing=(it.ls||0)*g+"px";
   buildText(it,d,g);document.body.appendChild(d);return d;
 }
 // 枠が足りなければ広げる(単語が枠より長い→幅、行数が多い→高さ)
@@ -791,7 +802,7 @@ window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
-  if(t){t.style.fontFamily=famOf(it.fmt);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
+  if(t){t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=it.type==="fix"?it.bg:"transparent";
 }
 document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);
@@ -868,7 +879,7 @@ function renderOverlay(){
       });
       el.appendChild(t);
       if(it.type==="text"&&!it.txt){   // 空の枠: 1文字の見本
-        const sm=document.createElement("div");sm.className="sample";sm.textContent="あ";sm.style.cssText=`font-size:${it.size*k}px;line-height:${it.lh};font-family:${famOf(it.fmt)}`;el.appendChild(sm);
+        const sm=document.createElement("div");sm.className="sample";sm.textContent="あ";sm.style.cssText=`font-size:${it.size*k}px;line-height:${it.lh};font-family:${famOf(it.fmt,it.font)}`;el.appendChild(sm);
       }
       if(it===cs){   // 文字の大きさを変える矢印: 文字の最後の右下に付く(うすいピンク)
         const gr=document.createElement("div");gr.className="grip";gr.textContent="✎";gr.title="文字の大きさ(ドラッグ)";
@@ -888,7 +899,7 @@ function renderOverlay(){
     el.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       if(cs!==it){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
-      if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip,.editbtn")){   // 枠の中の長押しで、入力を始める
+      if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip")){   // 枠の中の長押しで、入力を始める
         const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
         const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid)startEdit(it,x0,y0);},500);
         ptHold={id:pid,tm,x:x0,y:y0};
@@ -899,8 +910,6 @@ function renderOverlay(){
       const mv=document.createElement("div");mv.className="hdl mv";
       const rs=document.createElement("div");rs.className="hdl rs";
       dragHandle(mv,it,el,false);dragHandle(rs,it,el,true);el.append(mv,rs);
-      if(it.type!=="img"&&isTouch()&&!it._editing){const eb=document.createElement("button");eb.className="editbtn";eb.textContent="⌨ 入力";if((it.vx+it.vw)*k+110>ov.clientWidth)eb.classList.add("left");
-        eb.addEventListener("pointerdown",e=>e.stopPropagation());eb.addEventListener("click",e=>{e.stopPropagation();startEdit(it);});el.appendChild(eb);}
     }
     ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);placeGrip(it,el);
   });
@@ -926,18 +935,48 @@ function fitSize(it,o){
   if(growToFit(it)){}
   return true;
 }
+// 文字の設定(ドキュワークの文字の設定と同じく、フォント・サイズ(pt)・文字色)。✥の上で、右クリック・ダブルクリック・(指は)長押しで出る
+const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
+let sizePop=null;
+function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;}}
+function showSizePop(it,anchor){
+  hideSizePop();if(it.type==="img")return;
+  const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
+  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:${Math.max(4,Math.min(innerWidth-250,r.left))}px;top:${Math.max(4,Math.min(innerHeight-190,r.bottom+4))}px`;
+  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px">${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
+<span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
+<span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
+<span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
+  document.body.appendChild(d);sizePop=d;
+  const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
+  inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"gothic";col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
+  const ok=async()=>{
+    const v=parseFloat(String(inp.value).replace(",",".")),fk=fsel.value,cl=col.value;hideSizePop();
+    try{await ensureWebFontKey(fk);}catch(e){status("フォントを読み込めませんでした: "+e.message);return;}
+    it.font=fk;it.color=cl;if(v>0)applySize(it,v,null);
+    const el=itemEls.get(it.id);if(el){const t=el.querySelector(".t");if(t)buildText(it,t,K());growToFit(it);boxStyle(it,el);placeGrip(it,el);}
+    syncPanel();
+  };
+  d.querySelector("#spOk").onclick=ok;d.querySelector("#spX").onclick=hideSizePop;
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();ok();}else if(e.key==="Escape")hideSizePop();});
+  d.addEventListener("pointerdown",e=>e.stopPropagation());
+  setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);
+}
+document.addEventListener("pointerdown",e=>{if(sizePop&&!sizePop.contains(e.target))hideSizePop();},true);
 function dragHandle(h,it,el,resize){
   h.addEventListener("pointerdown",e=>{
     e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
     const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh;
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
-    const mvf=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
+    let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
+    const mvf=ev=>{if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
       if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
-    const up=()=>{h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
+    const up=()=>{if(lpTm)clearTimeout(lpTm);h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
   });
+  if(!resize){h.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});h.addEventListener("dblclick",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});}   // マウス: 右クリック・ダブルクリックで、文字の設定
 }
 function syncPanel(){
   const it=cs;
@@ -1879,9 +1918,9 @@ async function commit(){
   items=[];cs=null;
   if(!todo.length||!bytes){renderOverlay();syncPanel();return;}
   status("PDFに反映中…");
-  if(todo.some(it=>it.fmt==="text"&&it.type!=="img"))await ensureWebFont().catch(()=>{});
+  for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img").map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
   const doc=await PDFDocument.load(bytes);
-  let jp=null;
+  const pfCache={};
   // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
   for(const it of todo){
     if(it.type!=="fix")continue;
@@ -1901,12 +1940,14 @@ async function commit(){
     if(!it.txt.trim())continue;
     growToFit(it);
     if(it.fmt==="text"){
-      if(!jp){
+      const fkey=FONTS[it.font]?it.font:"gothic";
+      if(!pfCache[fkey]){
         doc.registerFontkit(fontkit);
-        status("日本語フォントを読み込み中…(初回のみ・約2MB)");
-        await loadFontBytes();
-        jp=await doc.embedFont(fontBytes,{subset:false});
+        status(`日本語フォント(${FONTS[fkey].label})を読み込み中…(初回のみ・数MB)`);
+        const fb=await loadFontKey(fkey);
+        pfCache[fkey]=await doc.embedFont(fb,{subset:false});   // 使う文字だけにする(subset)と、先頭の文字が欠けることがあるため、全部を入れる
       }
+      const jp=pfCache[fkey];
       const L=layoutText(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
       L.lines.forEach(ln=>{
         let off=ln.off||0;
@@ -1921,12 +1962,12 @@ async function commit(){
       });
     }else{
       const KK=4,cv=document.createElement("canvas"),cx=cv.getContext("2d");
-      const L=layoutText(it,(c,sv)=>{cx.font=`${sv*KK}px ${FAMILY_PIC}`;return cx.measureText(c).width/KK;});
+      const L=layoutText(it,(c,sv)=>{cx.font=`${sv*KK}px ${famOf("pic",it.font)}`;return cx.measureText(c).width/KK;});
       cv.width=Math.ceil(it.vw*KK)+4;cv.height=Math.ceil(L.height*KK)+4;
       cx.fillStyle=it.color;cx.textBaseline="alphabetic";
       L.lines.forEach(ln=>{
         let off=ln.off||0;
-        runsOf(ln).forEach(rn=>{cx.font=`${rn.s*KK}px ${FAMILY_PIC}`;cx.fillText(rn.str,off*KK,ln.base*KK);off+=rn.w;});
+        runsOf(ln).forEach(rn=>{cx.font=`${rn.s*KK}px ${famOf("pic",it.font)}`;cx.fillText(rn.str,off*KK,ln.base*KK);off+=rn.w;});
       });
       const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
       const img=await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
