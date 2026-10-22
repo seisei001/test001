@@ -115,10 +115,10 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
-  desk:{name:"束デスク",ver:"2.05"},
+  desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.17",src:"forms/editor.html?form=edit"},
-  warp:{name:"歪み補正",ver:"2.0",src:"forms/editor.html?form=warp"}
+  edit:{name:"ページ編集",ver:"2.18",src:"forms/editor.html?form=edit"},
+  warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -137,29 +137,17 @@ let nextId=1;
 const status=m=>{$("status").textContent=m||"";};
 const baseName=n=>n.replace(/\.pdf$/i,"");
 
-// ===== 保存(ブラウザ内。外部に送らない) =====
-let dbp=null;
-function db(){if(dbp)return dbp;dbp=new Promise((res,rej)=>{try{const r=indexedDB.open("pdf-studio",1);r.onupgradeneeded=()=>{r.result.createObjectStore("bundles",{keyPath:"id"});r.result.createObjectStore("meta");};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});return dbp;}
-async function dbTx(store,mode,fn){try{const d=await db();return await new Promise((res,rej)=>{const tx=d.transaction(store,mode),o=fn(tx.objectStore(store));tx.oncomplete=()=>res(o&&o.result);tx.onerror=()=>rej(tx.error);});}catch(e){return null;}}
-let saveTimer=null;
-function persist(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{
-  await dbTx("bundles","readwrite",s=>{s.clear();bundles.forEach(b=>s.put({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur}));});
-  await dbTx("meta","readwrite",s=>s.put({order:bundles.map(b=>b.id),nextId},"state"));},300);}
-async function restore(){
-  const rows=await dbTx("bundles","readonly",s=>s.getAll()),meta=await dbTx("meta","readonly",s=>s.get("state"));
-  if(!rows||!rows.length)return;
-  const by=new Map(rows.map(r=>[r.id,r])),order=(meta&&meta.order)||rows.map(r=>r.id);
-  order.forEach(id=>{const r=by.get(id);if(r)bundles.push(mk(r.name,r.bytes,r.n,r.cur,r.id));});
-  nextId=Math.max(nextId,(meta&&meta.nextId)||0,...bundles.map(b=>b.id+1));
-}
+// ===== データはこのページを開いている間だけ(ブラウザには残さない。次に開くときは空の状態) =====
+function persist(){}
+try{indexedDB.deleteDatabase("pdf-studio");}catch{}   // 以前のバージョンがブラウザに残したデータを消す
 // 最初は、左上の束が選択されている(1つだけ選んでいるときは、その束をつかんで動かせる)
 function defaultSel(){if(bundles.length&&!bundles.some(b=>b.sel))bundles[0].sel=true;}
-function mk(name,bytes,n,cur,id){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:""};}
+function mk(name,bytes,n,cur,id,handle,dirty){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:"",handle:handle||null,dirty:!!dirty};}   // handle=読み込んだ元のファイル(上書き保存用) dirty=変更フラグ
 
 // ===== 元に戻す =====
-function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
+function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur,handle:b.handle,dirty:b.dirty})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
 function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
-  bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
+  bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id,r.handle,r.dirty));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
 
 // ===== PDFの読み込み =====
 // 暗号化されたPDFなど、PDFを編集する部品では開けないものを、各ページの画像にして、新しいPDFにする
@@ -185,7 +173,8 @@ async function rasterize(bytes,name){
 }
 async function addFiles(files){
   let added=0,lastNote="";
-  for(const f of files){
+  for(const it of files){
+    const f=it.f||it,fh=it.h||null;
     if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf")continue;
     let bytes=new Uint8Array(await f.arrayBuffer());
     try{
@@ -195,15 +184,22 @@ async function addFiles(files){
         status(`「${f.name}」は編集用に開けないため、各ページを画像にして読み込みます…`);
         const r=await rasterize(bytes,f.name);bytes=r.bytes;n=r.n;note="(暗号化されていたため、各ページを画像にして読み込みました。文字は画像になっています)";
       }
-      if(!added)snap();bundles.push(mk(f.name,bytes,n,0));added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
+      if(!added)snap();bundles.push(mk(f.name,bytes,n,0,null,note?null:fh,!!note));added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
     }catch(e){status(`「${f.name}」を開けませんでした(${e&&e.message?e.message:"読み込みに失敗"})。`);}
   }
   if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
 }
-$("bAdd").onclick=()=>$("fAdd").click();
+$("bAdd").onclick=async()=>{
+  if(window.showOpenFilePicker){   // 元のファイルを覚えて、あとで上書き保存できるようにする
+    try{const hs=await showOpenFilePicker({multiple:true,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});await addFiles(await Promise.all(hs.map(async h=>({f:await h.getFile(),h}))));}
+    catch(e){if(!e||e.name!=="AbortError")$("fAdd").click();}
+    return;}
+  $("fAdd").click();};
 $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value="";};
 {const w=$("deskWrap");w.addEventListener("dragover",e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files"))e.preventDefault();});
- w.addEventListener("drop",e=>{if(e.dataTransfer&&e.dataTransfer.files.length){e.preventDefault();addFiles([...e.dataTransfer.files]);}});}
+ w.addEventListener("drop",async e=>{if(e.dataTransfer&&e.dataTransfer.files.length){e.preventDefault();
+   const its=[...e.dataTransfer.items||[]].filter(i=>i.kind==="file"),hs=await Promise.all(its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):null));
+   const fs=[...e.dataTransfer.files];addFiles(fs.map((f,k)=>({f,h:hs[k]&&hs[k].kind==="file"&&hs[k].name===f.name?hs[k]:null})));}});}
 
 // ===== サムネイル =====
 let tw=170;
@@ -243,7 +239,7 @@ function buildCard(b){
 function paintCard(b){
   const el=b.card,n=b.n;
   el.classList.toggle("sel",b.sel);el.querySelector("input").checked=b.sel;
-  el.querySelector(".nm").textContent=b.name;el.querySelector(".nm").title=b.name;
+  el.querySelector(".nm").textContent=(b.dirty?"● ":"")+b.name;el.querySelector(".nm").title=b.name+(b.dirty?"(変更あり・未保存)":"");
   const st=el.querySelector(".stack");st.querySelectorAll(".layer").forEach(x=>x.remove());
   const nav=el.querySelector(".nav");nav.classList.toggle("hidden",n<=1);
   if(n>1){
@@ -330,12 +326,12 @@ const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.g
 async function burst(b){   // 全ページをばらす → 1ページずつのPDF
   if(b.n<2)return;
   const src=await PDFDocument.load(b.bytes),out=[];
-  for(let i=0;i<b.n;i++){const d=await PDFDocument.create();(await d.copyPages(src,[i])).forEach(p=>d.addPage(p));out.push(mk(`${baseName(b.name)}_p${String(i+1).padStart(2,"0")}.pdf`,new Uint8Array(await d.save()),1,0));}
+  for(let i=0;i<b.n;i++){const d=await PDFDocument.create();(await d.copyPages(src,[i])).forEach(p=>d.addPage(p));out.push(mk(`${baseName(b.name)}_p${String(i+1).padStart(2,"0")}.pdf`,new Uint8Array(await d.save()),1,0,null,null,true));}
   snap();const i=bundles.indexOf(b);if(b.doc){try{b.doc.destroy();}catch{}}bundles.splice(i,1,...out);render();persist();status(`${out.length}枚のPDFにばらしました。「元に戻す」で戻せます。`);
 }
 async function splitAt(b){   // 表示中のページから後ろを、別の束に(表示中のページは後ろの束に入る)
   if(b.n<2||b.cur<1)return;
-  const src=await PDFDocument.load(b.bytes),mkpart=async(idx,name)=>{const d=await PDFDocument.create();(await d.copyPages(src,idx)).forEach(p=>d.addPage(p));return mk(name,new Uint8Array(await d.save()),idx.length,0);};
+  const src=await PDFDocument.load(b.bytes),mkpart=async(idx,name)=>{const d=await PDFDocument.create();(await d.copyPages(src,idx)).forEach(p=>d.addPage(p));return mk(name,new Uint8Array(await d.save()),idx.length,0,null,null,true);};
   const a=[...Array(b.cur).keys()],z=[...Array(b.n-b.cur).keys()].map(i=>i+b.cur);
   const A=await mkpart(a,`${baseName(b.name)}_前.pdf`),B=await mkpart(z,`${baseName(b.name)}_後.pdf`);
   snap();const i=bundles.indexOf(b);if(b.doc){try{b.doc.destroy();}catch{}}bundles.splice(i,1,A,B);render();persist();status(`${b.cur}ページ目の前で、2つの束に分けました。「元に戻す」で戻せます。`);
@@ -345,20 +341,36 @@ async function mergeSelected(){   // 選択した束を、表示の並び順(左
   status("結合中…");
   const out=await PDFDocument.create();
   for(const b of sel){const s=await PDFDocument.load(b.bytes);(await out.copyPages(s,s.getPageIndices())).forEach(p=>out.addPage(p));}
-  const nb=mk(`結合_${stamp()}.pdf`,new Uint8Array(await out.save()),out.getPageCount(),0);
+  const nb=mk(`結合_${stamp()}.pdf`,new Uint8Array(await out.save()),out.getPageCount(),0,null,null,true);
   snap();const first=bundles.indexOf(sel[0]);sel.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
   bundles=bundles.filter(b=>!b.sel);bundles.splice(Math.min(first,bundles.length),0,nb);render();persist();status(`${sel.length}個の束を結合しました(${nb.n}ページ)。「元に戻す」で戻せます。`);
 }
 $("bMerge").onclick=()=>mergeSelected().catch(e=>status("結合できませんでした: "+(e.message||e)));
 $("bUndo").onclick=undo;
-async function saveBundle(b){
+async function writeTo(h,b){const w=await h.createWritable();await w.write(new Blob([b.bytes],{type:"application/pdf"}));await w.close();}
+async function saveBundle(b){   // 名前を付けて保存。保存できたらtrue
   const name=b.name.endsWith(".pdf")?b.name:b.name+".pdf";
   if(window.showSaveFilePicker){
-    try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});const w=await h.createWritable();await w.write(new Blob([b.bytes],{type:"application/pdf"}));await w.close();status(`「${h.name}」として保存しました。`);}
-    catch(e){if(e&&e.name==="AbortError")status("保存をやめました。");else throw e;}
-  }else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);status("ダウンロードしました(Chrome・Edgeでは保存先を選べます)。");}
+    try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});await writeTo(h,b);b.handle=h;b.dirty=false;paintCard(b);status(`「${h.name}」として保存しました。`);return true;}
+    catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}throw e;}
+  }else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);b.dirty=false;paintCard(b);status("ダウンロードしました(Chrome・Edgeでは保存先を選べます)。");return true;}
 }
-function removeBundle(b){snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();persist();status(`「${b.name}」を削除しました。「元に戻す」で戻せます。`);}
+async function overwriteBundle(b){   // 読み込んだ元のファイルに上書き。保存できたらtrue
+  if(!b.handle)return saveBundle(b);
+  try{await writeTo(b.handle,b);b.dirty=false;paintCard(b);status(`「${b.handle.name}」に上書き保存しました。`);return true;}
+  catch(e){status("上書きできませんでした。名前を付けて保存します。");return saveBundle(b);}
+}
+// 変更のある束を閉じるとき: 上書き保存/名前を付けて保存/保存しない/やめる
+function askSave(b){return new Promise(res=>{
+  const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+  o.innerHTML=`<div style="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:420px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4)"><p style="margin:0 0 12px;font-weight:600"></p><p style="margin:0 0 14px;font-size:.9rem;opacity:.8">変更されています。保存しますか?</p><div style="display:flex;flex-direction:column;gap:8px"></div></div>`;
+  o.querySelector("p").textContent="「"+b.name+"」";
+  const box=o.querySelector("div div"),done=v=>{o.remove();res(v);};
+  [[b.handle?"上書き保存(元のファイル)":null,"over"],["名前を付けて保存","as"],["保存しない","no"],["やめる(閉じない)","cancel"]].forEach(([t,v])=>{if(!t)return;const x=document.createElement("button");x.textContent=t;x.style.minHeight="44px";if(v==="no")x.className="sub-btn";x.onclick=()=>done(v);box.appendChild(x);});
+  document.body.appendChild(o);});}
+async function removeBundle(b){
+  if(b.dirty){const a=await askSave(b);if(a==="cancel")return;if(a==="over"){if(!await overwriteBundle(b))return;}else if(a==="as"){if(!await saveBundle(b))return;}}
+  snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);}
 
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
@@ -373,7 +385,7 @@ function openMenu(b){
   add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
   add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
   add("💾 名前を付けて保存","この束を、PDFファイルとして保存",()=>saveBundle(b).catch(e=>status("保存できませんでした: "+e.message)));
-  add("🗑 デスクから削除","元のファイルは消えません",()=>removeBundle(b),false,"danger");
+  add("✕ 閉じる","変更があれば、保存するか確認します(元のファイルは消えません)",()=>removeBundle(b),false,"danger");
   $("menu").classList.remove("hidden");
 }
 function closeMenu(){$("menu").classList.add("hidden");}
@@ -405,6 +417,7 @@ function vvChange(){
   if(Math.abs(cur.s-vvKeep.s)>0.02||Math.abs(cur.l-vvKeep.l)>6||Math.abs(cur.t-vvKeep.t)>6)vvRestore();
 }
 if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,vvChange));
+window.addEventListener("beforeunload",e=>{if(bundles.some(b=>b.dirty)){e.preventDefault();e.returnValue="";}});   // 保存していない変更があるまま閉じようとしたら、ブラウザが確認する
 window.addEventListener("message",async e=>{
   const m=e.data;if(!m||typeof m!=="object"||e.source!==$("formFrame").contentWindow)return;
   if(m.type==="ready"&&formB){   // 表示中の1ページだけを、1ページのPDFにして渡す
@@ -414,7 +427,7 @@ window.addEventListener("message",async e=>{
     const b=formB,src=await PDFDocument.load(b.bytes),ed=await PDFDocument.load(m.bytes),out=await PDFDocument.create();
     const before=[...Array(b.cur).keys()],after=[...Array(b.n-b.cur-1).keys()].map(i=>i+b.cur+1);
     (await out.copyPages(src,before)).forEach(p=>out.addPage(p));(await out.copyPages(ed,[0])).forEach(p=>out.addPage(p));(await out.copyPages(src,after)).forEach(p=>out.addPage(p));
-    snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
+    snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
     closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました。「元に戻す」で戻せます。");
   }else if(m.type==="needzoom"){sendZoom();
   }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
@@ -423,7 +436,7 @@ window.addEventListener("message",async e=>{
 });
 
 // ===== 起動 =====
-restore().then(()=>{defaultSel();render();if(bundles.length)status("前回の束を復元しました(このブラウザの中だけに保存されています)。");});
+render();
 window.pdfStudioDebug={bytes:i=>Array.from(bundles[i].bytes),bundles:()=>bundles.map(b=>({id:b.id,name:b.name,n:b.n,cur:b.cur,sel:b.sel})),forms:FORMS};
 </script>
 </body>
