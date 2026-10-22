@@ -1013,9 +1013,9 @@ function panDbg(t){let d=document.getElementById("panDbg");
   if(t==null){if(d)d.remove();return;}
   if(!d){d=document.createElement("div");d.id="panDbg";document.body.appendChild(d);}
   const A=pvv||{x:0,y:0};
-  d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:12px/1.4 monospace;padding:4px 6px;border-radius:6px;white-space:pre;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
+  d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-width:${Math.round(A.w*0.8)}px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
 function edgePan(apply){
-  let x=0,y=0,p0=null,raf=0,on=true,n=0;
+  let x=0,y=0,p0=null,raf=0,on=true,n=0,accX=0,accY=0;
   const tick=()=>{raf=0;if(!on)return;
     const s=zoomFromParent||1;
     if(s>1.05&&pvv&&p0){
@@ -1025,8 +1025,8 @@ function edgePan(apply){
       panDbg(`拡大 ${s.toFixed(2)}倍\n指 ${cx.toFixed(0)},${cy.toFixed(0)}\n見える範囲 x ${A.x.toFixed(0)}〜${(A.x+A.w).toFixed(0)} y ${A.y.toFixed(0)}〜${(A.y+A.h).toFixed(0)}\n端の近さ ${ax.toFixed(1)},${ay.toFixed(1)}  依頼${n}回\n${panRes}`);
       if(ax||ay){n++;
         const sx0=scrollX,sy0=scrollY;window.scrollBy(ax,ay);
-        const rx=ax-(scrollX-sx0),ry=ay-(scrollY-sy0);
-        if(Math.abs(rx)>0.01||Math.abs(ry)>0.01)parent.postMessage({type:"pan",dx:rx,dy:ry},"*");
+        accX+=ax-(scrollX-sx0);accY+=ay-(scrollY-sy0);   // 小さい量は、たまってから親に頼む(端数が切り捨てられて動かないのを避ける)
+        if(Math.abs(accX)>=4||Math.abs(accY)>=4){parent.postMessage({type:"pan",dx:accX,dy:accY},"*");accX=accY=0;}
         apply(cx,cy);}
     }
     raf=requestAnimationFrame(tick);};

@@ -125,7 +125,7 @@ const {launch,WORK}=require('./harness');
   // 拡大中に、ドラッグが見えている範囲の端に来たら、ゆっくり画面を動かすよう親に頼む(止まっていても続く)
   await f.evaluate(()=>{const o=document.getElementById('sizePop');if(o)o.remove();window.scrollTo(0,0);});
   const fsz=await f.evaluate(()=>({w:innerWidth,h:innerHeight}));
-  await page.evaluate(()=>{window._pan=[];window.scrollBy=(x,y)=>{window._pan.push([x,y]);};});
+  await page.evaluate(()=>{window._pan=[];window.scrollTo=(x,y)=>{window._pan.push([x,y]);};});
   const setVV=(sc,vv)=>page.evaluate(([sc,vv])=>{const d=(n,v)=>Object.defineProperty(window.visualViewport,n,{configurable:true,get:()=>v});d('scale',sc);d('offsetLeft',vv.l);d('offsetTop',vv.t);d('width',vv.w);d('height',vv.h);sendZoom();},[sc,vv]);
   const edgeRun=async(sc)=>{
     await setVV(sc,{l:fb.l,t:fb.t,w:fsz.w/sc,h:fsz.h/sc});await page.waitForTimeout(400);
@@ -137,7 +137,8 @@ const {launch,WORK}=require('./harness');
     await page.waitForTimeout(800);await T('touchEnd');await page.waitForTimeout(300);
     return page.evaluate(()=>window._pan.slice());};
   const pz=await edgeRun(2.5);const p1x=await edgeRun(1);
-  ok(`拡大中は、右の端で止めていても、画面を右へゆっくり動かすよう頼み続ける(${pz.length}回・1回あたり最大 ${Math.max(0,...pz.map(v=>v[0])).toFixed(2)}px)`,pz.length>=15&&pz.every(v=>v[0]>=0)&&Math.max(...pz.map(v=>v[0]))<=1.3);
+  const mono=pz.every((v,i)=>i===0||v[0]>=pz[i-1][0]),span=pz.length?pz[pz.length-1][0]-pz[0][0]:0;
+  ok(`拡大中は、右の端で止めていても、画面を右へゆっくり動かし続ける(${pz.length}回・合計 ${span.toFixed(0)}px)`,pz.length>=5&&mono&&span>20&&span<200);
   ok(`拡大していないときは、動かさない(${p1x.length}回)`,p1x.length===0);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();

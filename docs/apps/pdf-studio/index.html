@@ -117,7 +117,7 @@ const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.0"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.21",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.22",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -394,7 +394,7 @@ $("menu").addEventListener("pointerdown",e=>{if(e.target===$("menu"))closeMenu()
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();}});
 
 // ===== 別の画面(フォーム): ページ編集・歪み補正 =====
-let formB=null;
+let formB=null,panPos=null;
 function openForm(kind,b){
   const F=FORMS[kind];formB=b;
   $("formName").textContent=F.name;$("formVer").textContent=F.ver;
@@ -432,7 +432,9 @@ window.addEventListener("message",async e=>{
     snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
     closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました。「元に戻す」で戻せます。");
   }else if(m.type==="pan"){const v=window.visualViewport,b0=v?{l:v.pageLeft,t:v.pageTop,ol:v.offsetLeft,ot:v.offsetTop}:null,sx0=scrollX,sy0=scrollY,src=e.source;
-    try{window.scrollBy(+m.dx||0,+m.dy||0);}catch{}
+    const now=Date.now();if(!panPos||now-panPos.t>600)panPos={x:scrollX,y:scrollY,t:now};   // 小数の位置を覚えて、端数が切り捨てられないようにする
+    panPos.x+=+m.dx||0;panPos.y+=+m.dy||0;panPos.t=now;
+    try{window.scrollTo(panPos.x,panPos.y);}catch{}
     setTimeout(()=>{sendZoom();try{src.postMessage({type:"panres",t:`親の画面を動かす依頼: ${(+m.dx).toFixed(1)},${(+m.dy).toFixed(1)}\n親のスクロール位置 ${sx0.toFixed(0)},${sy0.toFixed(0)} → ${scrollX.toFixed(0)},${scrollY.toFixed(0)}\n見える左上 ${b0?`${b0.l.toFixed(0)},${b0.t.toFixed(0)} → ${v.pageLeft.toFixed(0)},${v.pageTop.toFixed(0)}`:"不明"}\n${document.scrollingElement.scrollWidth}x${document.scrollingElement.scrollHeight} (内容の大きさ)`},"*");}catch{}},60);   // 拡大中のドラッグが画面の端に来たとき、ゆっくり画面を動かす
   }else if(m.type==="needzoom"){sendZoom();
   }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
