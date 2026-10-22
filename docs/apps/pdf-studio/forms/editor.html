@@ -1008,22 +1008,29 @@ function showSizePop(it,anchor){
 document.addEventListener("pointerdown",e=>{if(sizePop&&!sizePop.contains(e.target))hideSizePop();},true);
 // 画面を拡大しているとき、ドラッグ中の指が見えている範囲の端に来たら、その向きへゆっくり画面を動かす(指は止まっていても動かし続ける)
 //  まず、このフォーム自身をスクロール。動かせなかった分は、親に頼む(親が画面を動かす)。apply(x,y)で、動いたぶんを含めた指の位置を渡す
+let panRes="";   // 親が画面を動かせたかの報告(原因調べ用の表示に出す)
+function panDbg(t){let d=document.getElementById("panDbg");
+  if(t==null){if(d)d.remove();return;}
+  if(!d){d=document.createElement("div");d.id="panDbg";document.body.appendChild(d);}
+  const A=pvv||{x:0,y:0};
+  d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:12px/1.4 monospace;padding:4px 6px;border-radius:6px;white-space:pre;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
 function edgePan(apply){
-  let x=0,y=0,p0=null,raf=0,on=true;
+  let x=0,y=0,p0=null,raf=0,on=true,n=0;
   const tick=()=>{raf=0;if(!on)return;
     const s=zoomFromParent||1;
     if(s>1.05&&pvv&&p0){
-      const cx=x+(pvv.x-p0.x),cy=y+(pvv.y-p0.y),M=40/s,A=pvv;   // 画面の端から40px以内
+      const cx=x+(pvv.x-p0.x),cy=y+(pvv.y-p0.y),M=64/s,A=pvv;   // 画面の端から64px以内(指の太さがあるので、端ぎりぎりでなくても動かす)
       const f=(c,a,w)=>c>a+w-M?(c-(a+w-M))/M:c<a+M?-(a+M-c)/M:0;
       const ax=Math.max(-1,Math.min(1,f(cx,A.x,A.w)))*3/s,ay=Math.max(-1,Math.min(1,f(cy,A.y,A.h)))*3/s;   // 1コマ最大3px(ゆっくり)
-      if(ax||ay){
+      panDbg(`拡大 ${s.toFixed(2)}倍\n指 ${cx.toFixed(0)},${cy.toFixed(0)}\n見える範囲 x ${A.x.toFixed(0)}〜${(A.x+A.w).toFixed(0)} y ${A.y.toFixed(0)}〜${(A.y+A.h).toFixed(0)}\n端の近さ ${ax.toFixed(1)},${ay.toFixed(1)}  依頼${n}回\n${panRes}`);
+      if(ax||ay){n++;
         const sx0=scrollX,sy0=scrollY;window.scrollBy(ax,ay);
         const rx=ax-(scrollX-sx0),ry=ay-(scrollY-sy0);
         if(Math.abs(rx)>0.01||Math.abs(ry)>0.01)parent.postMessage({type:"pan",dx:rx,dy:ry},"*");
         apply(cx,cy);}
     }
     raf=requestAnimationFrame(tick);};
-  return{move(ev){x=ev.clientX;y=ev.clientY;p0=pvv?{x:pvv.x,y:pvv.y}:{x:0,y:0};if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;}};
+  return{move(ev){x=ev.clientX;y=ev.clientY;p0=pvv?{x:pvv.x,y:pvv.y}:{x:0,y:0};if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;setTimeout(()=>panDbg(null),2500);}};
 }
 function dragHandle(h,it,el,resize){
   h.addEventListener("pointerdown",e=>{
@@ -2049,7 +2056,8 @@ if(EMBED){
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
-  window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();}});   // 拡大率は、処理中でも必ず受け取る
+  window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
+    if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
