@@ -517,6 +517,8 @@ async function loadRuns(){
     if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
     runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
   }
+  // 同じ文字が、ほぼ同じ場所に2回書かれているPDF(太字風・影・二重の文字)は、1つにする(つなげて、文字が二つになるのを防ぐ)
+  {const kept=[];runs.forEach(r=>{if(!kept.some(q=>q.str===r.str&&Math.abs(q.x-r.x)<Math.max(q.size,r.size)*0.35&&Math.abs(q.base-r.base)<Math.max(q.size,r.size)*0.35))kept.push(r);});runs=kept;}
   seps=await loadSeps(p,vp);
   recomputeBlocks();
 }
@@ -836,7 +838,7 @@ function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
   if(t){t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
-  el.style.background=it.type==="fix"?it.bg:"transparent";
+  el.style.background=(it.type!=="img"&&bgModeOf(it)==="all")?bgOf(it):"transparent";   // 枠の中の色は、「白抜き」のときだけ。完全透明・余白透明では、透明のまま(隠すのは、文字のところだけ)
   fixSync(it,el);
 }
 document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);
