@@ -626,7 +626,7 @@ function autoSize(w,h){
   const u=Math.max(1,VW/595);
   if(h<8)return 14*u;
   const one=h<=32*u||w/h>=2.5;
-  const v=one?Math.min(h*0.6,w/6,17*u):Math.min(h/1.3,Math.max(w/16,10.5*u),36*u);
+  const v=one?Math.min(h*0.76,w/4,28*u):Math.min(h/1.3,Math.max(w/16,10.5*u),36*u);
   return Math.max(6*u,Math.min(36*u,Math.round(v*2)/2));
 }
 function estimate(w,h,s){const per=Math.max(1,Math.floor(w/s)),lines=Math.max(1,Math.floor(h/(s*1.3)));return{per,lines,chars:per*lines};}
@@ -2023,7 +2023,7 @@ if(EMBED){
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
-    fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
+    fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];cs=null;lastSel=null;hideSizePop();blockOf=new Map();runs=[];runsFor=-1;curBase=null;imgData=null;syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
     setMode(FORMKIND==="warp"?"warp":"sel");
     status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":"このページを編集できます。");
   }));
