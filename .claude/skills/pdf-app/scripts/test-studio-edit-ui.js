@@ -108,6 +108,7 @@ const {launch,WORK}=require('./harness');
   await f.evaluate(()=>window.postMessage({type:'zoom',scale:1},'*'));await page.waitForTimeout(300);
   const sc1=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
   await f.evaluate(()=>window.postMessage({type:'zoom',scale:3},'*'));await page.waitForTimeout(600);
+  await f.waitForFunction(()=>{const e=document.querySelector('.hdl.mv');return e&&new DOMMatrix(getComputedStyle(e).transform).a<0.4;},null,{timeout:4000}).catch(()=>{});
   const sc3=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
   ok(`画面を3倍に拡大すると、印は約1/3に縮む(拡大なし ${sc1.toFixed(2)} → 3倍 ${sc3.toFixed(2)})`,sc1>0.95&&Math.abs(sc3-1/3)<0.05);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
