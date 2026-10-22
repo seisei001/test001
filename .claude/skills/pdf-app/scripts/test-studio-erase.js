@@ -18,12 +18,19 @@ const {launch,WORK}=require('./harness');
   const xs=it.covers.map(c=>c[0]),ys=it.covers.map(c=>c[1]),x1=Math.max(...it.covers.map(c=>c[0]+c[2])),y1=Math.max(...it.covers.map(c=>c[1]+c[3]));
   const union=(x1-Math.min(...xs))*(y1-Math.min(...ys));
   ok(`隠す範囲は、全体を囲む四角(${union})より狭い(${total})`,items.length>=1&&total<union*0.95);
-  ok('選択すると、赤い点線の枠と「元の文字を隠す」チェックが出る',await f.evaluate(()=>document.querySelectorAll('.cvo').length>0&&!document.getElementById('sEraseOnWrap').classList.contains('hidden')));
+  const vis=()=>f.evaluate(()=>({cover:[...document.querySelectorAll('.cover')].filter(e=>e.style.display!=='none').length,cvo:[...document.querySelectorAll('.cvo')].filter(e=>e.style.display!=='none').length,same:document.querySelectorAll('.ibox.same').length}));
+  const v0=await vis();
+  ok('文字を変えていない訂正の部品は、背景を白抜きしない(隠す四角・赤い点線が出ない)・元の文字のまま: '+JSON.stringify(v0),v0.cover===0&&v0.cvo===0&&v0.same>=1);
+  // 変えていない部品は、PDFに何も書かない(フォントが増えない)
+  // 文字を変える(1文字足す)と、元の文字を隠す範囲が出る
+  const t0=await fr.locator('.ibox.on .t').boundingBox();
+  await page.mouse.click(t0.x+t0.width-6,t0.y+t0.height/2);await page.waitForTimeout(200);await page.keyboard.press('End');await page.keyboard.type('X');await page.waitForTimeout(400);
+  const v1=await vis();
+  ok('文字を変えると、元の文字を隠す範囲(赤い点線・背景)が出る: '+JSON.stringify(v1),v1.cover>=1&&v1.cvo>=1);
   await page.screenshot({path:WORK+'/shot_erase_on.png'});
-  const c0=await f.evaluate(()=>document.querySelectorAll('.cover').length),sel0=(await f.evaluate(()=>window.pdfEditorDebug.items())).findIndex(i=>i.erase);
   await fr.locator('#sEraseOn').uncheck();await page.waitForTimeout(300);
   const c1=await f.evaluate(()=>document.querySelectorAll('.cover').length);
-  ok(`チェックを外すと、選択中の部品の隠す範囲(赤い点線・背景)が消える(背景の四角 ${c0}→${c1})`,c1<c0&&await f.evaluate(()=>document.querySelectorAll('.cvo').length===0&&window.pdfEditorDebug.items().some(i=>i.erase===false)));
+  ok('チェックを外すと、選択中の部品の背景の四角と点線が消える',await f.evaluate(()=>document.querySelectorAll('.cvo').length===0&&window.pdfEditorDebug.items().some(i=>i.erase===false)));
   await page.screenshot({path:WORK+'/shot_erase_off.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();
