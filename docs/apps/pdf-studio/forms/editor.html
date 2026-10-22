@@ -970,18 +970,27 @@ function fitSize(it,o){
 }
 // 文字の設定(ドキュワークの文字の設定と同じく、フォント・サイズ(pt)・文字色)。✥の上で、右クリック・ダブルクリック・(指は)長押しで出る
 const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
-let sizePop=null;
-function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;}}
+let sizePop=null,sizePopRect=null,pvv=null;
+// 設定の吹き出し: 画面を拡大しても同じ大きさで、いま見えている範囲の中に(枠の近くに)出す
+function placeSizePop(){
+  const d=sizePop;if(!d||!sizePopRect)return;
+  const z=parseFloat(document.documentElement.style.getPropertyValue("--zs"))||1,A=pvv||{x:0,y:0,w:innerWidth,h:innerHeight};
+  const pw=d.offsetWidth*z,ph=d.offsetHeight*z,m=6*z,R=sizePopRect;
+  const x0=A.x+m,x1=A.x+A.w-pw-m,y0=A.y+m,y1=A.y+A.h-ph-m;
+  let top=R.bottom+4*z;if(top>y1)top=R.top-ph-4*z;   // 下に入らなければ、枠の上に
+  d.style.left=Math.max(x0,Math.min(x1,R.left))+"px";d.style.top=Math.max(y0,Math.min(y1,top))+"px";
+}
+function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 function showSizePop(it,anchor){
   hideSizePop();if(it.type==="img")return;
   const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
-  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:${Math.max(4,Math.min(innerWidth-290,r.left))}px;top:${Math.max(4,Math.min(innerHeight-240,r.bottom+4))}px`;
+  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
   d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px">${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
 <span>背景</span><select id="spBg" style="min-height:36px;font-size:16px"><option value="none">完全透明(何も隠さない)</option><option value="text">余白透明(文字のところだけ白抜き)</option><option value="all">白抜き(枠の全体)</option></select>
 <span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
-  document.body.appendChild(d);sizePop=d;
+  document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
   inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"gothic";d.querySelector("#spBg").value=bgModeOf(it);col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
   const ok=async()=>{
@@ -2019,7 +2028,7 @@ if(EMBED){
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
-  window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="zoom"){zoomFromParent=m.scale;applyZoom(m.scale);}});   // 拡大率は、処理中でも必ず受け取る
+  window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
