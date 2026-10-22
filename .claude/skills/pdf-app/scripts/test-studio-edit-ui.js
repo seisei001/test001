@@ -105,9 +105,9 @@ const {launch,WORK}=require('./harness');
   ok('2本指のドラッグでは、範囲指定(枠の作成)にならない',(await items()).length===nB);
   // 画面を拡大したとき、印の見た目の大きさを一定にする(親から拡大率を受け取る)
   await T('touchStart',ov3.x+300*k,ov3.y+20*k);await page.waitForTimeout(700);for(let i=1;i<=6;i++){await T('touchMove',ov3.x+300*k+i*12,ov3.y+20*k+i*4);await page.waitForTimeout(16);}await T('touchEnd');await page.waitForTimeout(600);
-  await f.evaluate(()=>window.postMessage({type:'zoom',scale:1},'*'));await page.waitForTimeout(300);
+  await page.evaluate(()=>{Object.defineProperty(window.visualViewport,'scale',{configurable:true,get:()=>1});sendZoom();});await page.waitForTimeout(400);
   const sc1=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
-  await f.evaluate(()=>window.postMessage({type:'zoom',scale:3},'*'));await page.waitForTimeout(600);
+  await page.evaluate(()=>{Object.defineProperty(window.visualViewport,'scale',{configurable:true,get:()=>3});sendZoom();});await page.waitForTimeout(600);
   await f.waitForFunction(()=>{const e=document.querySelector('.hdl.mv');return e&&new DOMMatrix(getComputedStyle(e).transform).a<0.4;},null,{timeout:4000}).catch(()=>{});
   const sc3=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
   ok(`画面を3倍に拡大すると、印は約1/3に縮む(拡大なし ${sc1.toFixed(2)} → 3倍 ${sc3.toFixed(2)})`,sc1>0.95&&Math.abs(sc3-1/3)<0.05);
