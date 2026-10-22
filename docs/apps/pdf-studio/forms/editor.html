@@ -79,7 +79,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #ov.ghost .ibox.cmp{background:transparent!important;}
 #ov.noitems .ibox,#ov.noitems .ibox *,#ov.noitems .run{pointer-events:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
-.run{position:absolute;border:1px dotted rgba(37,99,235,.55);background:rgba(37,99,235,.06);pointer-events:none;}
+.run{position:absolute;border:1px dotted rgba(37,99,235,.55);pointer-events:none;}   /* 色は付けない(重なると濃くなるため) */
 .cover{position:absolute;pointer-events:none;z-index:0;}
 .ibox{z-index:1;}
 .cvo{position:absolute;pointer-events:none;outline:1px dashed rgba(239,68,68,.95);z-index:4;}
@@ -2028,7 +2028,7 @@ if(EMBED){
     status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":"このページを編集できます。");
   }));
   $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
-  $("embCancel").onclick=()=>send({type:"close"});
+  $("embCancel").onclick=()=>{const changed=hist.length>0||items.some(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)

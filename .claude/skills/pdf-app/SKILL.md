@@ -216,3 +216,10 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - **変えていない訂正の部品は、何もしない(ページ編集2.14)**: 訂正(fix)の部品は、作った時点の内容(fixSig=文字・大きさ・色・位置・フォント・字間・揃え)を it.sig0 に覚え、変えた(fixChanged)ときだけ、元の文字を隠す四角(背景)を出し、PDFにも書く。変えていないときは、元の文字・罫線・記号をそのまま見せ(.ibox.same は文字を透明に)、保存してもPDFが元のまま(フォントも増えない)。OCR(ocrMade)は常に反映。確認は `test-studio-unchanged.js`(見た目のmd5が元と同じ)・`test-studio-erase.js`。
 - **背景の三つの選び方(ページ編集2.15)**: ✥の設定ポップアップの「背景」= 完全透明(none: 何も隠さない)/ 余白透明(text: 標準。文字のあるところだけ白抜き=訂正した元の文字の隠す範囲+入力した文字の行ごとの四角)/ 白抜き(all: 枠の全体)。it.bgMode(旧 it.erase===false は none)。coverRects(it)が、画面(renderCovers。.cover は枠より下 z-index:0)と保存(commit)の両方で使われる。変えていない訂正の部品は、どのモードでも何もしない。記号・罫線など文字でないものは、変換せず、そのまま残す(OCRで取り込まない)。入力した文字(type:text)の背景色は、枠のまわりの色(sampleColors)。確認は `test-studio-erase.js`・`test-studio-bg.js`(保存したPDFの罫線の画素)。
 - **完全透明・余白透明で枠の中が白くなる/文字が二つになる(ページ編集2.16)**: 枠の中の色(boxStyle)は「白抜き」(all)のときだけ(以前は訂正の部品が常に背景色で塗っていて、透明を選んでも白かった)。同じ文字が、ほぼ同じ場所に2回書かれているPDF(太字風・二重の文字)は、loadRuns で1つにする(囲むと「文字文字」と二つになった)。確認は `make-dup-pdf.js` + `test-studio-dup.js`。
+
+### 束デスク 2.06 / ページ編集 2.18 / 歪み補正 2.01(データを残さない・保存確認)
+- ブラウザ(IndexedDB)に束を保存しない。起動時に旧データ `pdf-studio` を削除し、次に開くときは空の状態(他の人にデータが渡らないため)。`persist()` は空関数。
+- 束に `handle`(読み込んだ元ファイル。showOpenFilePicker/ドロップの `getAsFileSystemHandle`)と `dirty`(変更フラグ)。ばらす・分割・結合・ページ編集の結果で dirty。名前に「●」。
+- 「✕ 閉じる」(`removeBundle`)は dirty なら `askSave`: 上書き保存(handleがあるときだけ)/名前を付けて保存/保存しない/やめる。タブを閉じるときは beforeunload で確認。iPhoneなど showSaveFilePicker が無い環境は、ダウンロードで保存。
+- ページ編集の「保存しない」は、変更があれば破棄の確認。PDF部品の枠(`.run`)に薄い色は付けない(重なると濃くなる)。
+- test-studio-save.js が上の動作を確認。test-studio-forms.js は、メニューを開くため束のチェックを1つだけ付ける。
