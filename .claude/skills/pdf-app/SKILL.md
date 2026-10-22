@@ -227,3 +227,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 ### ページ編集 2.19(文字設定の吹き出しを、拡大に追随させない)
 - 親(index.html `sendZoom`)が、拡大率に加えて、いま見えている範囲 `vv`(visualViewport のオフセット・大きさをフォーム内の座標にしたもの)を送る。フォームは `placeSizePop()` で、`--zs` 倍して見た目の大きさを一定にし、見えている範囲に必ず収まるよう(枠の下→入らなければ上)に置く。ピンチ・スクロールのたびに親が送り直すので、位置も追随する。
 - test-studio-edit-ui.js で、親の visualViewport を差し替えて確認。実機(iPhone)は未確認。
+
+### ページ編集 2.20(拡大中、ドラッグが端に来たらゆっくり画面を動かす)
+- `edgePan(apply)`: 指のドラッグ(範囲指定・枠の大きさ変更・✥移動)中に、見えている範囲(`pvv`)の端から40px以内なら、1コマ最大3px(画面上)で動かし続ける(指が止まっていても)。先にフォーム自身をスクロールし、動かせなかった分を親に `{type:"pan",dx,dy}` で頼む(親は `window.scrollBy` → `sendZoom`)。指の位置は、親が返す `pvv` の変化分を足して補正。拡大1.05倍以下・マウスでは動かない。
+- iPhoneで `window.scrollBy` が画面(visual viewport)を動かせるかは未確認(動かなければ、実機で別の方法が必要)。
