@@ -223,3 +223,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 「✕ 閉じる」(`removeBundle`)は dirty なら `askSave`: 上書き保存(handleがあるときだけ)/名前を付けて保存/保存しない/やめる。タブを閉じるときは beforeunload で確認。iPhoneなど showSaveFilePicker が無い環境は、ダウンロードで保存。
 - ページ編集の「保存しない」は、変更があれば破棄の確認。PDF部品の枠(`.run`)に薄い色は付けない(重なると濃くなる)。
 - test-studio-save.js が上の動作を確認。test-studio-forms.js は、メニューを開くため束のチェックを1つだけ付ける。
+
+### ページ編集 2.19(文字設定の吹き出しを、拡大に追随させない)
+- 親(index.html `sendZoom`)が、拡大率に加えて、いま見えている範囲 `vv`(visualViewport のオフセット・大きさをフォーム内の座標にしたもの)を送る。フォームは `placeSizePop()` で、`--zs` 倍して見た目の大きさを一定にし、見えている範囲に必ず収まるよう(枠の下→入らなければ上)に置く。ピンチ・スクロールのたびに親が送り直すので、位置も追随する。
+- test-studio-edit-ui.js で、親の visualViewport を差し替えて確認。実機(iPhone)は未確認。

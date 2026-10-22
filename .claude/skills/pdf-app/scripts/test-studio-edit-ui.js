@@ -111,6 +111,17 @@ const {launch,WORK}=require('./harness');
   await f.waitForFunction(()=>{const e=document.querySelector('.hdl.mv');return e&&new DOMMatrix(getComputedStyle(e).transform).a<0.4;},null,{timeout:4000}).catch(()=>{});
   const sc3=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
   ok(`画面を3倍に拡大すると、印は約1/3に縮む(拡大なし ${sc1.toFixed(2)} → 3倍 ${sc3.toFixed(2)})`,sc1>0.95&&Math.abs(sc3-1/3)<0.05);
+  // 文字設定の吹き出しは、拡大しても同じ見た目の大きさで、いま見えている範囲の中に出る
+  const popAt=async(sc,vv)=>{
+    await page.evaluate(([sc,vv])=>{Object.defineProperty(window.visualViewport,'scale',{configurable:true,get:()=>sc});Object.defineProperty(window.visualViewport,'offsetLeft',{configurable:true,get:()=>vv.l});Object.defineProperty(window.visualViewport,'offsetTop',{configurable:true,get:()=>vv.t});Object.defineProperty(window.visualViewport,'width',{configurable:true,get:()=>vv.w});Object.defineProperty(window.visualViewport,'height',{configurable:true,get:()=>vv.h});sendZoom();},[sc,vv]);await page.waitForTimeout(400);
+    await f.evaluate(()=>{const h=document.querySelector('.hdl.mv');h.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));});await page.waitForTimeout(400);
+    return f.evaluate(()=>{const d=document.getElementById('sizePop');if(!d)return null;const r=d.getBoundingClientRect();return{x:r.left,y:r.top,w:r.width,h:r.height};});};
+  const fb=await page.evaluate(()=>{const r=document.getElementById('formFrame').getBoundingClientRect();return{l:r.left,t:r.top};});
+  const p1=await popAt(1,{l:0,t:0,w:390,h:700});
+  const vvw=130,vvh=233,vl=fb.l+120,vt=fb.t+200;   // 3倍に拡大して、ページの右下寄りを見ている
+  const p3=await popAt(3,{l:vl,t:vt,w:vvw,h:vvh});
+  ok(`吹き出しは、拡大しても見た目の大きさが同じ(幅 ${p1&&p1.w.toFixed(0)} → ${p3&&(p3.w*3).toFixed(0)})`,p1&&p3&&Math.abs(p1.w-p3.w*3)<4);
+  ok(`吹き出しは、いま見えている範囲に全部入る(${p3&&JSON.stringify(p3)})`,p3&&p3.x>=vl-fb.l-1&&p3.y>=vt-fb.t-1&&p3.x+p3.w<=vl-fb.l+vvw+1&&p3.y+p3.h<=vt-fb.t+vvh+1);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();
