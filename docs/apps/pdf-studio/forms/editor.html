@@ -558,6 +558,8 @@ function buildBlocks(list,gapOverride){
   segs.forEach((sg,i)=>{const r=find(i);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(...sg.runs);});
   return [...groups.values()];
 }
+// すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
+const taken=q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return items.some(it=>it.page===cur&&it.type==="fix"&&(it.covers||[it.cover]).some(c=>cx>=c.x-1&&cx<=c.x+c.w+1&&cy>=c.y-1&&cy<=c.y+c.h+1));};
 const runBox=r=>r.box||({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
 // ページ画像から文字色・背景色を推定
 function sampleColors(box){
@@ -841,7 +843,7 @@ function renderOverlay(){
   const k=K();ov.innerHTML="";itemEls.clear();
   if(mode==="sel"&&runsFor===cur){
     const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
-    blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);
+    blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);if(g.every(taken))return;   // 訂正の部品にした文字には、点線の枠を出さない
       const bs=g.map(runBox),x0=Math.min(...bs.map(b=>b.x)),y0=Math.min(...bs.map(b=>b.y));
       const x1=Math.max(...bs.map(b=>b.x+b.w)),y1=Math.max(...bs.map(b=>b.y+b.h));
       const d=document.createElement("div");d.className="run";
@@ -1054,9 +1056,9 @@ function beginRange(e){
       let groups=[];
       if(tap){
         const r0=runs.find(q=>{const bx=runBox(q);return r.sx>=bx.x&&r.sx<=bx.x+bx.w&&r.sy>=bx.y&&r.sy<=bx.y+bx.h;});
-        if(r0)groups=[blockOf.get(r0)||[r0]];
+        if(r0&&!taken(r0)){const g=(blockOf.get(r0)||[r0]).filter(q=>!taken(q));if(g.length)groups=[g];}
       }else{
-        const inside=runs.filter(q=>{const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+        const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});   // すでに訂正の部品にした文字は、取り込まない
         if(inside.length)groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
       }
       if(!groups.length){

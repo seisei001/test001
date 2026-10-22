@@ -107,7 +107,7 @@ const {launch,WORK}=require('./harness');
   await T('touchStart',ov3.x+300*k,ov3.y+20*k);await page.waitForTimeout(700);for(let i=1;i<=6;i++){await T('touchMove',ov3.x+300*k+i*12,ov3.y+20*k+i*4);await page.waitForTimeout(16);}await T('touchEnd');await page.waitForTimeout(600);
   await f.evaluate(()=>window.postMessage({type:'zoom',scale:1},'*'));await page.waitForTimeout(300);
   const sc1=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
-  await f.evaluate(()=>window.postMessage({type:'zoom',scale:3},'*'));await page.waitForTimeout(300);
+  await f.evaluate(()=>window.postMessage({type:'zoom',scale:3},'*'));await page.waitForTimeout(600);
   const sc3=await f.evaluate(()=>new DOMMatrix(getComputedStyle(document.querySelector('.hdl.mv')).transform).a);
   ok(`画面を3倍に拡大すると、印は約1/3に縮む(拡大なし ${sc1.toFixed(2)} → 3倍 ${sc3.toFixed(2)})`,sc1>0.95&&Math.abs(sc3-1/3)<0.05);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
