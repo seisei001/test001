@@ -19,6 +19,8 @@ const f1=(h,t)=>{const bh=bag(h),bt=bag(t);let ov=0;for(const [c,n] of bh)ov+=Ma
       await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
       const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
       await f.evaluate(e=>{document.getElementById('ocrEngine').value=e;},ENG);
+      if(process.env.THR_MIN)await f.evaluate(v=>{window.OCR_THR_MIN=+v;},process.env.THR_MIN);
+      if(process.env.SEG_LOOSE)await f.evaluate(()=>{window.OCR_SEG_LOOSE=true;});
       await fr.locator('[data-m=ocr]').click();await fr.locator('#bOcrPage').click();
       await f.waitForFunction(()=>/個のまとまり|認識できません|読み込めません/.test(document.querySelector('#status').textContent),null,{timeout:900000});
       const items=(await f.evaluate(()=>window.pdfEditorDebug.items())).sort((a,b)=>(Math.abs(a.vy-b.vy)<6?a.vx-b.vx:a.vy-b.vy));
