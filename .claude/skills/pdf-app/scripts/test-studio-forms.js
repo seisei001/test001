@@ -14,7 +14,7 @@ const S=WORK+'/samples/';
   await page.locator('.card').nth(0).locator('.next').click();await page.waitForTimeout(400);
   await page.locator('.card').nth(0).locator('canvas').dblclick();
   await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(2500);
-  ok('フォームの名前と版: '+await page.textContent('#formName')+' '+await page.textContent('#formVer'),/ページ編集/.test(await page.textContent('#formName'))&&(await page.textContent('#formVer')).includes('2.22'));
+  ok('フォームの名前と版: '+await page.textContent('#formName')+' '+await page.textContent('#formVer'),/ページ編集/.test(await page.textContent('#formName'))&&(await page.textContent('#formVer')).includes('2.23'));
   const fr=page.frameLocator('#formFrame');
   await fr.locator('#embSave').waitFor({timeout:20000});
   await page.waitForTimeout(1500);
