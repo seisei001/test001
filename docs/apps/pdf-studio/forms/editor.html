@@ -158,7 +158,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </div>
 <p class="hint" id="modeHint" style="margin:0 0 8px"></p>
 <div class="row" id="optText" style="margin-bottom:8px">
-<label>サイズ(pt) <input type="number" id="nSize" value="14" readonly min="4" max="400" step="0.5"></label>
+<label>サイズ(pt) <input type="number" id="nSize" value="14" min="4" max="400" step="0.5" title="これから作る枠の文字の大きさ。空にすると、枠の大きさから自動で決めます"></label>
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
 <div class="row hidden" id="optFix" style="margin-bottom:8px">
@@ -190,7 +190,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
 <div id="selTextBox">
 <div class="row">
-<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5" readonly title="文字の大きさは、ピンクの鉛筆で変えます"></label>
+<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5" title="文字の大きさ(選んだ範囲があればその範囲だけ)"></label>
 <label>字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label>色 <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
@@ -630,8 +630,9 @@ function autoSize(w,h){
   return Math.max(6*u,Math.min(36*u,Math.round(v*2)/2));
 }
 function estimate(w,h,s){const per=Math.max(1,Math.floor(w/s)),lines=Math.max(1,Math.floor(h/(s*1.3)));return{per,lines,chars:per*lines};}
+let newSizePt=null;   // 「サイズ」欄に自分で入れた値(これから作る枠に使う)
 function newText(x,y,w,h){
-  const size=autoSize(w,h);$("nSize").value=size;   // 割り出したサイズを、欄にも表示する
+  const size=newSizePt||autoSize(w,h);if(!newSizePt)$("nSize").value=size;   // 自分で決めたサイズがなければ、枠から割り出したサイズを、欄にも表示する
   return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true};
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
@@ -813,7 +814,7 @@ function showSize(){
   if(!cs||cs.type==="img")return;
   const r=activeRange(cs);const v=r?((cs.sz&&cs.sz[r.start])||cs.size):cs.size;
   $("sSize").value=Math.round(v*10)/10;
-  $("sSizeLbl").textContent="文字サイズ(pt)・ピンクの鉛筆で変更";
+  $("sSizeLbl").textContent="文字サイズ(pt)";
 }
 // ---- 右クリックでサイズ変更 ----
 const ctx=document.createElement("div");ctx.id="ctx";ctx.classList.add("hidden");document.body.appendChild(ctx);
@@ -903,6 +904,16 @@ function renderOverlay(){
       });
       t.addEventListener("compositionend",()=>{clearTimeout(it._rb);it._rb=setTimeout(()=>softRebuild(it,t),450);});
       t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};if(isTouch()){setTimeout(()=>{if(document.activeElement!==t){it._editing=false;t.contentEditable="false";}},0);}});   // 指: 入力を終えたら、次のタップでキーボードが出ないようにする
+      t.addEventListener("paste",e=>{   // 貼り付けは文字だけ。ブラウザ任せにせず、文字のデータを直接書き換える(改行・末尾の改行・サイズ指定のずれを避ける)
+        e.preventDefault();
+        const tx=((e.clipboardData&&e.clipboardData.getData("text/plain"))||"").replace(/\r\n?/g,"\n");
+        if(!tx)return;
+        const chars=Array.from(it.txt),sz0=(it.sz||[]).slice(0,chars.length);while(sz0.length<chars.length)sz0.push(null);
+        const r=getSelRange(t)||{start:chars.length,end:chars.length},ins=Array.from(tx);
+        chars.splice(r.start,r.end-r.start,...ins);sz0.splice(r.start,r.end-r.start,...ins.map(()=>null));
+        it.txt=chars.join("");it.sz=sz0;buildText(it,t,k);setSelRange(t,r.start+ins.length,r.start+ins.length);
+        t.dispatchEvent(new Event("input",{bubbles:true}));
+      });
       t.addEventListener("beforeinput",e=>{
         if(e.inputType==="insertParagraph"){e.preventDefault();document.execCommand("insertLineBreak");}
         else if(e.inputType==="insertFromPaste"||e.inputType==="insertFromDrop"){
@@ -1074,6 +1085,11 @@ function syncPanel(){
 }
 function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);
   const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
+$("nSize").onchange=()=>{const v=+$("nSize").value;
+  if(!(v>0)){newSizePt=null;return;}   // 空: 自動
+  newSizePt=Math.max(4,Math.min(400,Math.round(v*10)/10));
+  if(cs&&cs.type!=="img")applySize(cs,newSizePt,activeRange(cs));};   // 選んでいる枠があれば、その枠にも
+$("nSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("nSize").onchange();}};
 $("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>0)applySize(cs,v,activeRange(cs));}};
 $("sLs").onchange=()=>{if(cs&&cs.type!=="img"){cs.ls=Math.max(-2,Math.min(40,+$("sLs").value||0))||0;growToFit(cs);renderOverlay();syncPanel();}};   // 字間: 文字と文字の間の空き(元の書式が均等割付などのとき、変換で自動でも入る)
 $("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};

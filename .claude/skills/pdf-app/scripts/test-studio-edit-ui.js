@@ -2,7 +2,7 @@
 process.env.PDFAPP_TARGET='pdf-studio';
 const {launch,WORK}=require('./harness');
 (async()=>{
-  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));await page.context().grantPermissions(['clipboard-read','clipboard-write']).catch(()=>{});
   const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);
   await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/form.pdf']);await page.waitForTimeout(1500);
@@ -48,18 +48,27 @@ const {launch,WORK}=require('./harness');
   ok(`縦を約2倍にしても、文字サイズは同じ(${q1.size}→${q2.size}pt)。枠は自由に大きくなる(高さ${Math.round(q1.vh)}→${Math.round(q2.vh)})`,q2.size===q1.size&&q2.vh>q1.vh*1.6);
   await fr.locator('[data-m=text]').click();await drag(190,5,70,26);   // 狭い枠に長い文字
   await page.keyboard.type('WWWWWWWWWWWWWWWWWWWWWWWW');await page.waitForTimeout(400);
-  const w1=(await items()).find(i=>/^W+$/.test(i.txt)),h0=Math.max(26,w1.size*1.3);
+  const w1=(await items()).find(i=>/^W+/.test(i.txt)),h0=Math.max(26,w1.size*1.3);
   ok(`右の境界を超えたら折り返して、枠が下に伸びる(幅は${Math.round(w1.vw)}のまま・高さ${Math.round(w1.vh)}・文字サイズ${w1.size}pt)`,w1.vw<100&&w1.vh>h0*1.5);
   // 矢印は、文字の最後の右下に付く
   const gp=await f.evaluate(()=>{const g=document.querySelector('.ibox.on .grip').getBoundingClientRect(),t=document.querySelector('.ibox.on .t').getBoundingClientRect();return{gx:g.left+g.width/2,gy:g.top+g.height/2,tr:t.right,tb:t.bottom,tl:t.left,tt:t.top};});
   ok('矢印は、枠の下側(最後の行)の、文字のあたりに付く',gp.gy>gp.tt+(gp.tb-gp.tt)*0.5&&gp.gx<gp.tr+5);
   ok('枠の右上の「文字」「訂正」の表記が無い',await f.evaluate(()=>document.querySelectorAll('.ibox .tag').length===0));
-  ok('文字サイズ欄は表示だけ(ピンクの鉛筆で変える)・A−/A＋・「入力」ボタンは無い',await f.evaluate(()=>document.getElementById('sSize').readOnly&&!document.getElementById('sPlus')&&!document.getElementById('sMinus')&&!document.querySelector('.editbtn')));
+  ok('文字サイズ欄は入力できる・A−/A＋・「入力」ボタンは無い',await f.evaluate(()=>!document.getElementById('sSize').readOnly&&!document.getElementById('nSize').readOnly&&!document.getElementById('sPlus')&&!document.getElementById('sMinus')&&!document.querySelector('.editbtn')));
+  // ＋文字の「サイズ」欄: 選んでいる枠の文字の大きさが変わる
+  await fr.locator('#nSize').fill('20');await fr.locator('#nSize').press('Enter');await page.waitForTimeout(300);
+  ok('「サイズ」欄に入れると、選んでいる枠の文字の大きさが変わる('+(await items()).pop().size+'pt)',(await items()).pop().size===20);
+  // 貼り付け(改行・末尾の改行が増えない・カーソルが飛ばない)
+  await f.evaluate(()=>document.querySelector('.ibox.on .t').focus());await page.keyboard.press('Control+End');
+  await f.evaluate(()=>navigator.clipboard.writeText('P1\nP2\r\nP3\n')).catch(()=>{});
+  await page.keyboard.press('Control+V');await page.waitForTimeout(800);await page.keyboard.type('Z');await page.waitForTimeout(600);
+  const pt=(await items()).pop().txt;
+  ok('貼り付け: 改行どおり・末尾の改行が増えず、続けて入力できる '+JSON.stringify(pt),/P1\nP2\nP3\nZ$/.test(pt)||/P1\nP2\nP3Z\n$/.test(pt));
   const mvb=await fr.locator('.hdl.mv').boundingBox();
   await page.mouse.dblclick(mvb.x+mvb.width/2,mvb.y+mvb.height/2);await page.waitForTimeout(300);
   ok('✥のダブルクリックで、文字の設定(フォント・サイズ・文字色)が出る',await f.evaluate(()=>!!document.getElementById('sizePop')&&!!document.getElementById('spFont')&&!!document.getElementById('spIn')&&!!document.getElementById('spColor')&&document.querySelectorAll('#spFont option').length>=3));
   await fr.locator('#spFont').selectOption('mincho');await fr.locator('#spIn').fill('14');await fr.locator('#spColor').fill('#ff0000');await fr.locator('#spOk').click();await page.waitForTimeout(2500);
-  const wq=(await items()).find(i=>/^W+$/.test(i.txt));
+  const wq=(await items()).find(i=>/^W+/.test(i.txt));
   const cs3=await f.evaluate(()=>{const t=document.querySelector('.ibox.on .t');const c=getComputedStyle(t);return{fam:c.fontFamily,color:c.color,size:parseFloat(t.style.fontSize)};});
   ok(`フォント(明朝)・サイズ(14pt)・文字色(赤)が変わる: ${cs3.fam} ${cs3.color} ${wq.size}pt`,wq.size===14&&/PdfMincho/.test(cs3.fam)&&cs3.color==='rgb(255, 0, 0)');
   ok('矢印は、ピンクの鉛筆(✎)',await f.evaluate(()=>{const g=document.querySelector('.ibox.on .grip');return !!g&&g.textContent==='✎';}));
