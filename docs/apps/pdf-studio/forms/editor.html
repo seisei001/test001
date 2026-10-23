@@ -92,7 +92,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 /* 枠の動かす・大きさのつまみ: パソコンは、角に置いたカーソルの形(十字・斜め矢印)で。見えない小さな範囲。iPhoneなどの指は、角の外に印を出して点滅 */
 .hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;}
-.hdl.mv{left:-8px;top:-8px;cursor:move;}.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
+.hdl.mv{left:-8px;top:-8px;cursor:move;}body.ctrl .hdl.mv:hover{cursor:copy;}body.ctrl .hdl.mv:hover::after{content:"＋";position:absolute;left:12px;top:-14px;width:18px;height:18px;border-radius:50%;background:#16a34a;color:#fff;font:bold 14px/18px sans-serif;text-align:center;pointer-events:none;}   /* Ctrlを押すと、✥の右上に＋(コピー) */.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
 body.pt-touch .hdl{width:36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;font-size:18px;line-height:36px;text-align:center;opacity:.55;animation:hblink .5s 3;}
 body.pt-touch .hdl.mv{left:-38px;top:-38px;transform:scale(var(--zs,1));transform-origin:100% 100%;}body.pt-touch .hdl.rs{right:-38px;bottom:-38px;transform:scale(var(--zs,1));transform-origin:0 0;}   /* 画面を拡大したときは、印を小さくして、見た目の大きさを一定に */
 body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{content:"⇲";}
@@ -993,13 +993,22 @@ function placeSizePop(){
 }
 function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 function showSizePop(it,anchor){
-  hideSizePop();if(it.type==="img")return;
+  hideSizePop();
   const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
+  if(it.type==="img"){   // 画像の枠: コピー・消去だけ
+    d.style.cssText="position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:flex;gap:6px;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0";
+    d.innerHTML='<button id="spCopy" class="sub-btn" style="min-height:36px;margin:0">コピー</button><button id="spDel" class="sub-btn" style="min-height:36px;margin:0;color:#dc2626">消去</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button>';
+    document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
+    d.querySelector("#spCopy").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDel").onclick=()=>{hideSizePop();deleteItem(it);};d.querySelector("#spX").onclick=hideSizePop;
+    d.addEventListener("pointerdown",e=>e.stopPropagation());return;
+  }
+
   d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
   d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px">${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
 <span>背景</span><select id="spBg" style="min-height:36px;font-size:16px"><option value="none">完全透明(何も隠さない)</option><option value="text">余白透明(文字のところだけ白抜き)</option><option value="all">白抜き(枠の全体)</option></select>
+<span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:36px;margin:0">コピー</button><button id="spDel" class="sub-btn" style="min-height:36px;margin:0;color:#dc2626">消去</button></span>
 <span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
   document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
@@ -1011,6 +1020,7 @@ function showSizePop(it,anchor){
     const el=itemEls.get(it.id);if(el){const t=el.querySelector(".t");if(t)buildText(it,t,K());growToFit(it);boxStyle(it,el);placeGrip(it,el);}
     syncPanel();
   };
+  d.querySelector("#spCopy").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDel").onclick=()=>{hideSizePop();deleteItem(it);};
   d.querySelector("#spOk").onclick=ok;d.querySelector("#spX").onclick=hideSizePop;
   inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();ok();}else if(e.key==="Escape")hideSizePop();});
   d.addEventListener("pointerdown",e=>e.stopPropagation());
@@ -1054,8 +1064,31 @@ function edgePan(apply){
     raf=requestAnimationFrame(tick);};
   return{move(ev){x=ev.clientX;y=ev.clientY;p0=pvv?{x:pvv.x,y:pvv.y}:{x:0,y:0};if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;setTimeout(()=>panDbg(null),2500);}};
 }
+// ---- 枠のコピー・消去 ----
+function dupItem(it){   // 同じ内容の枠を、同じ位置に作って選ぶ(PDFの文字の訂正の枠は、ふつうの文字の枠としてコピーする。元の文字は隠さない)
+  const c=Object.assign({},it,{id:nextId++,page:cur});
+  c.sz=it.sz?it.sz.slice():[];
+  if(it.type==="fix"){c.type="text";["runs","covers","cover","sig0","fixSig","ocrMade"].forEach(k=>delete c[k]);c.bgMode="none";c.erase=false;}
+  items.push(c);select(c,false);status("枠をコピーしました。コピーした枠を動かしてください。");return c;
+}
+function deleteItem(it,skipAsk){
+  if(!it||!items.includes(it))return;
+  if(!skipAsk&&!confirm("この枠を消去してもよろしいですか?"))return;
+  items.splice(items.indexOf(it),1);hideSizePop();
+  if(cs===it)cs=null;renderOverlay();syncPanel();status("枠を消去しました。");
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Control"||e.key==="Meta")document.body.classList.add("ctrl");
+  if(e.key!=="Delete"||!cs||e.defaultPrevented)return;
+  const a=document.activeElement,tag=a&&a.tagName;
+  if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA")return;
+  if(a&&a.isContentEditable&&(cs.txt||"").length)return;   // 文字を入力しているときは、ふつうに文字を消す
+  e.preventDefault();deleteItem(cs);
+});
+document.addEventListener("keyup",e=>{if(e.key==="Control"||e.key==="Meta")document.body.classList.remove("ctrl");});
+window.addEventListener("blur",()=>document.body.classList.remove("ctrl"));
 function dragHandle(h,it,el,resize){
-  h.addEventListener("pointerdown",e=>{
+  const begin=(h,it,el,e)=>{
     e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
     const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh,sX0=scrollX,sY0=scrollY;
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
@@ -1067,6 +1100,15 @@ function dragHandle(h,it,el,resize){
       boxStyle(it,el);};
     const up=()=>{if(lpTm)clearTimeout(lpTm);if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
+  };
+  h.addEventListener("pointerdown",e=>{
+    if(!resize&&e.pointerType==="mouse"&&(e.ctrlKey||e.metaKey)){   // Ctrl+ドラッグ: コピーした枠を動かす(元の枠はそのまま)
+      e.stopPropagation();e.preventDefault();
+      const c=dupItem(it),el2=itemEls.get(c.id),h2=el2&&el2.querySelector(".hdl.mv");
+      if(h2){begin(h2,c,el2,e);return;}
+    }
+    if(!resize){const a=document.activeElement;if(a&&a.isContentEditable)a.blur();}   // ✥を押したら、枠を選んだだけの状態に(Deleteキーで枠を消せる)
+    begin(h,it,el,e);
   });
   if(!resize){h.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});h.addEventListener("dblclick",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});}   // マウス: 右クリック・ダブルクリックで、文字の設定
 }
