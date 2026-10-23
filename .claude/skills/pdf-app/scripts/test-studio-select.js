@@ -19,9 +19,10 @@ const {launch,WORK}=require('./harness');
   ok('そのとき、枠は動かない',JSON.stringify(await pos())===JSON.stringify(p0));
   // 空の新しい枠は、選択を外すと消える
   await fr.locator('[data-m=text]').click();
-  await page.mouse.click(ov.x+250*k,ov.y+200*k);await page.waitForTimeout(400);
+  const ovT=await fr.locator('#ov').boundingBox();   // 方式を変えると、上の設定欄の高さが変わり、ページの位置がずれる
+  await page.mouse.click(ovT.x+250*k,ovT.y+200*k);await page.waitForTimeout(400);
   const n1=(await pos()).length;
-  await fr.locator('[data-m=sel]').click();await page.mouse.click(ov.x+250*k,ov.y+285*k);await page.waitForTimeout(400);
+  await fr.locator('[data-m=sel]').click();const ovS=await fr.locator('#ov').boundingBox();await page.mouse.click(ovS.x+250*k,ovS.y+285*k);await page.waitForTimeout(400);
   const n2=(await pos()).length;
   ok(`空の枠を作ってから、別の所をタップすると消える(${n1}→${n2})`,n1===2&&n2===1);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
