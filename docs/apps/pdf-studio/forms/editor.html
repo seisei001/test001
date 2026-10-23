@@ -164,7 +164,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <div class="row hidden" id="optFix" style="margin-bottom:8px">
 <label><input type="checkbox" id="ovGhost"> 元の画像と重ねて位置を確認する(変換した文字を赤、元の画像をそのまま表示)</label>
 <label><input type="checkbox" id="fxJoin"> 範囲内の文字を、行も含めて全部1つの枠にまとめる</label>
-<label>空白がこの倍数以上なら分ける <input type="number" id="fxGap" value="10" min="1" max="40" step="0.5" style="width:80px"> ×文字サイズ</label>
+<label>空白がこの倍数以上なら分ける(大きいほど分けない。標準は、空白では分けない) <input type="number" id="fxGap" value="200" min="1" max="400" step="0.5" style="width:80px"> ×文字サイズ</label>
 </div>
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
@@ -527,7 +527,7 @@ async function loadRuns(){
 //  縦: 行間が詰まっていて(1.7倍以内)左揃い/重なりがあり、文字サイズが近ければ同じ段落。間に横線があれば分ける
 const similar=(a,b,t=0.15)=>Math.abs(a-b)<=Math.max(a,b)*t;
 function buildBlocks(list,gapOverride){
-  const gapMul=gapOverride||Math.max(1,+$("fxGap").value||10);
+  const gapMul=gapOverride||Math.max(1,+$("fxGap").value||200);
   const vSepBetween=(xa,xb,base,size)=>seps.v.some(v=>v.x>xa-0.5&&v.x<xb+0.5&&v.y0<=base+size*0.3&&v.y1>=base-size*0.8);
   const hSepBetween=(a,b)=>seps.h.some(h=>h.y>a.base+a.size*0.25&&h.y<b.base-b.size*0.8&&h.x1>Math.max(a.x,b.x)&&h.x0<Math.min(a.x+a.w,b.x+b.w));
   const lines=[];
