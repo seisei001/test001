@@ -1549,7 +1549,7 @@ const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"
 Object.entries({"說":"説","錄":"録","總":"総","稅":"税","證":"証","學":"学","辦":"弁","額":"額","查":"査","说":"説","绿":"録","财":"財","经":"経","济":"済","资":"資","费":"費","银":"銀","钱":"銭","记":"記","录":"録","总":"総","议":"議","报":"報","请":"請","证":"証","纳":"納","约":"約","结":"結","构":"構","种":"種","无":"無","为":"為","对":"対","现":"現","实":"実","项":"項","须":"須","调":"調","个":"個","该":"該","过":"過","还":"還","进":"進","运":"運","选":"選","邮":"郵","达":"達","连":"連","适":"適","产":"産","区":"区","国":"国","学":"学","会":"会","员":"員","电":"電","话":"話","号":"号","码":"碼","号码":"番号","领":"領","収":"収","审":"審","专":"専","权":"権","属":"属","构":"構","确":"確","认":"認","处":"処","办":"弁","题":"題","别":"別","师":"師","简":"簡","绍":"紹","预":"預","备":"備","术":"術","样":"様","档":"档","级":"級","额":"額","须":"須"}).forEach(([k,v])=>{if(k.length===1&&!(k in SC2JP))SC2JP[k]=v;});   // 簡体字を日本語の字に(足りない分)
 const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(?<=[0-9０-９]) ?[一ー] ?(?=[0-9０-９])/g,"-")   // 数字と数字の間の「一」「ー」は、ハイフン(住所・電話番号)
   .replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
-const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
+const cleanOcr=t=>t.replace(/·/g,"・").replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
 function flattenForOcr(cv,br){
   const cx=cv.getContext("2d",{willReadFrequently:true}),w=cv.width,h=cv.height;
@@ -1576,13 +1576,13 @@ function flattenForOcr(cv,br){
   cx.putImageData(im,0,0);return true;
 }
 // ---- 画像の解析: 文字の断片 → 行 → 塊(段落・セル)。罫線は消して、塊の区切りに使う ----
-function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ高さに並ぶ断片は、離れていても1行にする(行の途中で2つに分けない)
+function ocrSegment(cv,S,rowMode,thrMin){   // rowMode: 範囲指定のとき、同じ高さに並ぶ断片は、離れていても1行にする(行の途中で2つに分けない)
   const w=cv.width,h=cv.height,id=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h;
   const g=new Uint8Array(n),hist=new Uint32Array(256);
   for(let i=0;i<n;i++){const v=(id[i*4]*.3+id[i*4+1]*.59+id[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
   let sum=0;for(let v=0;v<256;v++)sum+=v*hist[v];
   let wB=0,sB=0,best=0,thr=128;for(let v=0;v<256;v++){wB+=hist[v];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=v*hist[v];const mB=sB/wB,mF=(sum-sB)/wF,bt=wB*wF*(mB-mF)*(mB-mF);if(bt>best){best=bt;thr=v;}}
-  thr=Math.max(thr,window.OCR_THR_MIN||OCR_THR_MIN_DEFAULT);   // 薄い灰色の文字(見本の「２－２－２」など)も拾う: 大津の方法の値が低すぎるときは、下限まで上げる
+  if(thrMin)thr=Math.max(thr,thrMin);   // (2回目の探索用)薄い灰色の文字も拾えるよう、しきい値の下限を上げる
   const mask=new Uint8Array(n);let dark=0;for(let i=0;i<n;i++){if(g[i]<=thr){mask[i]=1;dark++;}}
   if(dark>n*0.5)for(let i=0;i<n;i++)mask[i]^=1;
   // 罫線(長く続く黒い線)を見つけて消す
@@ -1761,7 +1761,7 @@ async function tessShort(cv,est){
   const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
-const OCR_THR_MIN_DEFAULT=0,OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
+const OCR_GAP_THR=210,OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
 let lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
@@ -1978,15 +1978,17 @@ function makeInkHi(cv,S){   // 1文字ずつの照合用: 縮小しない(元の
   for(let i=0;i<n;i++)I[i]=Math.max(0,Math.min(1,(bg-g[i])/den));
   return{w,h,R:S,I};
 }
+const EMOJI=/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u,SYMS=["●","○","▲","△","■","□","◆","◇","★","☆","※","◎","▼","▽"];   // エンジンが、記号(●▲など)を絵文字と読むことがある
+const ALT=c=>CONF[c]||(EMOJI.test(c)?SYMS:null);
 function verifyChars(r,ink,ox,oy,fam){
-  const chars=Array.from(r.str);if(!chars.some(c=>CONF[c]))return 0;
+  const chars=Array.from(r.str);if(!chars.some(c=>ALT(c)))return 0;
   if(!refCv){refCv=document.createElement("canvas");refCx=refCv.getContext("2d",{willReadFrequently:true});}
   const R=ink.R,size=r.size,ls=r.ls||0,base=(r.base-oy)*R;let changed=0;
   refCx.font=(size*R)+"px "+fam;const mL=refCx.measureText(r.str).actualBoundingBoxLeft||0;
   let cx=(r.x-ox)*R+mL;
   for(let i=0;i<chars.length;i++){
     refCx.font=(size*R)+"px "+fam;const adv=refCx.measureText(chars[i]).width;
-    if(CONF[chars[i]]){
+    if(ALT(chars[i])){
       const x0=Math.max(0,Math.floor(cx-2*R)),x1=Math.min(ink.w,Math.ceil(cx+adv+2*R)),y0=Math.max(0,Math.floor(base-size*1.05*R)),y1=Math.min(ink.h,Math.ceil(base+size*0.3*R)),w=x1-x0,h=y1-y0;
       if(w>=4&&h>=4&&w*h<90000){
         const Iw=new Float32Array(w*h);let sumI=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=ink.I[(y0+y)*ink.w+x0+x];Iw[y*w+x]=v;sumI+=v;}
@@ -1999,8 +2001,8 @@ function verifyChars(r,ink,ox,oy,fam){
             const B=boxBlur(T,w,h);let best=0;
             for(let sy=-3;sy<=3;sy++)for(let sx=-3;sx<=3;sx++){let ov=0,st=0;for(let y=0;y<h;y++){const yy=y-sy;for(let x=0;x<w;x++){const xx=x-sx;const t=(yy>=0&&yy<h&&xx>=0&&xx<w)?B[yy*w+xx]:0;const q=IB[y*w+x];ov+=t<q?t:q;st+=t;}}const sc=2*ov/(sB+st+1e-6);if(sc>best)best=sc;}   // 少しずらして、いちばん合うところ
             return best;};
-          const cur=score(chars[i]);let bc=chars[i],bs=cur;
-          CONF[chars[i]].forEach(c=>{const sc=score(c);if(sc>bs+0.025&&sc>cur+0.025){bs=sc;bc=c;}});
+          const emo=EMOJI.test(chars[i]),cur=emo?0.3:score(chars[i]);let bc=chars[i],bs=cur;   // 絵文字は、記号のどれが合うかだけを見る(0.3より合うものがなければ、そのまま)
+          ALT(chars[i]).forEach(c=>{const sc=score(c);if(sc>bs+(emo?0:0.025)&&sc>cur+(emo?0:0.025)){bs=sc;bc=c;}});
           if(bc!==chars[i]){chars[i]=bc;changed++;}
         }
       }
@@ -2057,7 +2059,30 @@ async function maskCodes(cv){
   }
   return n;
 }
+// 2回目の探索(薄い灰色の文字の拾い残しを足す)。1回目(標準のしきい値)で見つけた行は、そのまま。
+// しきい値を上げて探し直した行のうち、1回目の行に覆われていない部分(行の続きの薄い文字・まるごと薄い行)だけを、新しい塊として足す。
+// ごみを足しても、あとの「元の画像と重ねた一致度」の確認で除かれる。しきい値を上げただけで全体を置き換えると、背景が濃いページで壊れるため、足すだけにする
+function fillGaps(seg1,seg2){
+  const L1=seg1.chunks.flatMap(c=>c.lines),extra=[];
+  if(!L1.length)return extra;
+  const hs=L1.map(l=>l.h).sort((a,b)=>a-b),hMed=hs[hs.length>>1];
+  for(const c of seg2.chunks)for(const l of c.lines){
+    if(l.h<0.6*hMed||l.h>2.2*hMed||l.n<2)continue;
+    const cy=(l.y0+l.y1)/2,cov=L1.filter(m=>m.h>=0.6*hMed&&Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(m.h,l.h)&&m.x1+0.5*l.h>=l.x0&&m.x0-0.5*l.h<=l.x1).map(m=>[m.x0-0.5*l.h,m.x1+0.5*l.h]).sort((a,b)=>a[0]-b[0]);
+    let res=[[l.x0,l.x1]];
+    cov.forEach(([a,b])=>{const nx=[];res.forEach(([r0,r1])=>{if(b<=r0||a>=r1)nx.push([r0,r1]);else{if(a>r0)nx.push([r0,a]);if(b<r1)nx.push([b,r1]);}});res=nx;});
+    res.forEach(([r0,r1])=>{
+      const cs=(l.cs||[]).filter(k=>k.x0>=r0-1&&k.x1<=r1+1);
+      if(!cs.length||(cs.length<2&&cov.length))return;   // 覆われていない部分が、断片1つだけのとき(ごみ・飾り)は足さない
+      const o={x0:1e9,y0:1e9,x1:0,y1:0,n:cs.length,hs:[],ar:0,cs};cs.forEach(k=>{o.x0=Math.min(o.x0,k.x0);o.y0=Math.min(o.y0,k.y0);o.x1=Math.max(o.x1,k.x1);o.y1=Math.max(o.y1,k.y1);o.hs.push(k.h);o.ar+=k.w*k.h;});
+      o.h=o.y1-o.y0;o.w=o.x1-o.x0;if(o.h<4||o.w<0.8*o.h)return;
+      extra.push({x0:o.x0,y0:o.y0,x1:o.x1,y1:o.y1,lines:[o],gh:o.h,gap:true});
+    });
+  }
+  return extra;
+}
 async function doOcrBody(x,y,w,h){
+  let nGap=0;
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
   if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
@@ -2070,13 +2095,14 @@ async function doOcrBody(x,y,w,h){
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
   status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
-  const seg=ocrSegment(cv,S);   // 範囲指定でも、大きな空白(ラベルと値のような離れた文字)は別の行に分ける
+  const seg=ocrSegment(cv,S);
+  try{const extra=fillGaps(seg,ocrSegment(cv,S,false,OCR_GAP_THR));seg.chunks.push(...extra);nGap=extra.length;}catch(e){console.warn('2回目の探索に失敗',e);}   // 範囲指定でも、大きな空白(ラベルと値のような離れた文字)は別の行に分ける
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
   if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
   const gha0=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),p80=gha0[Math.floor(gha0.length*0.8)]||0,gha=gha0.filter(v=>v>=0.5*p80),ghMed=gha[gha.length>>1]||0;   // 点の行(ごみ)が多くても、文字の行の高さの目安がぶれないように
   seg.chunks=seg.chunks.filter(c=>{
-    if(window.OCR_SEG_LOOSE)return true;   // (試験用)区切りの除外をしない
+    if(window.OCR_SEG_LOOSE||c.gap)return true;   // 2回目の探索で足した塊は、区切りの除外をしない(ごみは、あとの重ね合わせの確認で除く)
     if(c.lines.length!==1)return true;const l=c.lines[0],H=l.y1-l.y0,W=l.x1-l.x0;
     if(l.n<=2&&c.gh<0.7*ghMed&&W<2.2*ghMed)return false;
     // 「* . . . *」のような区切り(星と点が並ぶ): 周りの文字より小さく、断片が疎ら(枠の3割未満)、または断片の大半が行の高さの半分未満 → 文字ではない
@@ -2267,7 +2293,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t)=>ocrSegment(cv,S,r,t),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
