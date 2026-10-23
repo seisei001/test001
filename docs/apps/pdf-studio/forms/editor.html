@@ -1582,6 +1582,7 @@ function ocrSegment(cv,S,rowMode){   // rowMode: 範囲指定のとき、同じ�
   for(let i=0;i<n;i++){const v=(id[i*4]*.3+id[i*4+1]*.59+id[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
   let sum=0;for(let v=0;v<256;v++)sum+=v*hist[v];
   let wB=0,sB=0,best=0,thr=128;for(let v=0;v<256;v++){wB+=hist[v];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=v*hist[v];const mB=sB/wB,mF=(sum-sB)/wF,bt=wB*wF*(mB-mF)*(mB-mF);if(bt>best){best=bt;thr=v;}}
+  thr=Math.max(thr,window.OCR_THR_MIN||OCR_THR_MIN_DEFAULT);   // 薄い灰色の文字(見本の「２－２－２」など)も拾う: 大津の方法の値が低すぎるときは、下限まで上げる
   const mask=new Uint8Array(n);let dark=0;for(let i=0;i<n;i++){if(g[i]<=thr){mask[i]=1;dark++;}}
   if(dark>n*0.5)for(let i=0;i<n;i++)mask[i]^=1;
   // 罫線(長く続く黒い線)を見つけて消す
@@ -1760,7 +1761,7 @@ async function tessShort(cv,est){
   const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
-const OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
+const OCR_THR_MIN_DEFAULT=0,OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
 let lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
@@ -2075,6 +2076,7 @@ async function doOcrBody(x,y,w,h){
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
   const gha0=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),p80=gha0[Math.floor(gha0.length*0.8)]||0,gha=gha0.filter(v=>v>=0.5*p80),ghMed=gha[gha.length>>1]||0;   // 点の行(ごみ)が多くても、文字の行の高さの目安がぶれないように
   seg.chunks=seg.chunks.filter(c=>{
+    if(window.OCR_SEG_LOOSE)return true;   // (試験用)区切りの除外をしない
     if(c.lines.length!==1)return true;const l=c.lines[0],H=l.y1-l.y0,W=l.x1-l.x0;
     if(l.n<=2&&c.gh<0.7*ghMed&&W<2.2*ghMed)return false;
     // 「* . . . *」のような区切り(星と点が並ぶ): 周りの文字より小さく、断片が疎ら(枠の3割未満)、または断片の大半が行の高さの半分未満 → 文字ではない
