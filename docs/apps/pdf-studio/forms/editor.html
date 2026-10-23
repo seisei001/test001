@@ -1014,7 +1014,9 @@ function panDbg(t){let d=document.getElementById("panDbg");
   if(!d){d=document.createElement("div");d.id="panDbg";document.body.appendChild(d);}
   const A=pvv||{x:0,y:0};
   d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-width:${Math.round(A.w*0.8)}px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
+const EDGE_PAN=false;   // 封印中: iPhoneで、長押しだけで縦長の枠ができる・画面が勝手に動くなどの不具合が出たため(2.23)。直せたらtrueに戻す
 function edgePan(apply){
+  if(!EDGE_PAN)return{move(){},stop(){}};
   let x=0,y=0,p0=null,raf=0,on=true,n=0,accX=0,accY=0;
   const tick=()=>{raf=0;if(!on)return;
     const s=zoomFromParent||1;
