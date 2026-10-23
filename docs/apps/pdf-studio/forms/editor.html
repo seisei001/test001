@@ -1014,6 +1014,14 @@ function panDbg(t){let d=document.getElementById("panDbg");
   if(!d){d=document.createElement("div");d.id="panDbg";document.body.appendChild(d);}
   const A=pvv||{x:0,y:0};
   d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-width:${Math.round(A.w*0.8)}px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
+// 拡大中、ドラッグした指が見えている範囲の端に来たら、そこでいったん止める(画面を動かしてから、続きをドラッグしてもらう)
+function atEdge(ev){const s=zoomFromParent||1;if(s<=1.05||!pvv)return false;const M=28/s;
+  return ev.clientX<pvv.x+M||ev.clientX>pvv.x+pvv.w-M||ev.clientY<pvv.y+M||ev.clientY>pvv.y+pvv.h-M;}
+function edgeToast(t){let d=document.getElementById("edgeToast");if(!d){d=document.createElement("div");d.id="edgeToast";document.body.appendChild(d);}
+  const A=pvv||{x:0,y:0,w:innerWidth};
+  d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(37,99,235,.95);color:#fff;font:14px/1.4 sans-serif;padding:8px 12px;border-radius:8px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+8}px;top:${A.y+8}px;max-width:${Math.round(A.w*0.9)}px`;d.textContent=t;
+  clearTimeout(edgeToast.t);edgeToast.t=setTimeout(()=>d.remove(),3500);}
+const EDGE_MSG="画面の端に来たので、ここで止めました。画面を動かして、枠の右下の角(⇲)から続きをドラッグしてください。";
 const EDGE_PAN=false;   // 封印中: iPhoneで、長押しだけで縦長の枠ができる・画面が勝手に動くなどの不具合が出たため(2.23)。直せたらtrueに戻す
 function edgePan(apply){
   if(!EDGE_PAN)return{move(){},stop(){}};
@@ -1041,7 +1049,7 @@ function dragHandle(h,it,el,resize){
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
     let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
     const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
-    const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
+    const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
       if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
@@ -1094,6 +1102,7 @@ function beginRange(e){
   const sx=(e.clientX-rc.left)/k,sy=(e.clientY-rc.top)/k;
   const d=document.createElement("div");d.className="rub";ov.appendChild(d);
   rub={sx,sy,x:sx,y:sy,d,id:e.pointerId};
+  const rub0={x:e.clientX,y:e.clientY};
   const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mv({clientX:x,clientY:y,syn:true}));
   const fin=busy(async ev=>{
     if(ep)ep.stop();ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
@@ -1146,7 +1155,7 @@ function beginRange(e){
     select(it,true);
     if(isTouch()&&it&&it.type!=="img"&&tap){const rc3=ov.getBoundingClientRect(),k3=K();startEdit(it,rc3.left+r.sx*k3,rc3.top+r.sy*k3);}   // 指で長押しして枠ができたら、そのまま入力モードへ
   });
-  const mv=ev=>{if(!rub||two)return;if(ep&&!ev.syn)ep.move(ev);const rc2=ov.getBoundingClientRect(),k2=K();
+  const mv=ev=>{if(!rub||two)return;if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-rub0.x,ev.clientY-rub0.y)>12&&atEdge(ev)){fin(ev);edgeToast(EDGE_MSG);return;}const rc2=ov.getBoundingClientRect(),k2=K();
     rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
     const x=Math.min(rub.sx,rub.x),y=Math.min(rub.sy,rub.y),w=Math.abs(rub.x-rub.sx),h=Math.abs(rub.y-rub.sy);
     rub.d.style.cssText=`left:${x*k2}px;top:${y*k2}px;width:${w*k2}px;height:${h*k2}px`;};
