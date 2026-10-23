@@ -648,11 +648,16 @@ function naturalWidth(it){
   if(!mctx)mctx=document.createElement("canvas").getContext("2d");
   const fam=famOf(it.fmt||"text",it.font),ls=it.ls||0;let best=0,cur=0,n=0;
   Array.from(it.txt||"").forEach((c,i)=>{
-    if(c==="\n"){best=Math.max(best,cur-(n?ls:0));cur=0;n=0;return;}
-    const sv=(it.sz&&it.sz[i])||it.size;mctx.font=`${sv}px ${fam}`;cur+=mctx.measureText(c).width+ls;n++;});
-  return Math.max(best,cur-(n?ls:0));
+    if(c==="\n"){best=Math.max(best,cur);cur=0;n=0;return;}
+    const sv=(it.sz&&it.sz[i])||it.size;mctx.font=`${sv}px ${fam}`;cur+=mctx.measureText(c).width+ls;n++;});   // 字間は、ブラウザと同じく最後の文字の後にも付ける(折り返しの判定がずれないように)
+  return Math.max(best,cur);
 }
-const tightW=(it,inkW)=>Math.ceil((Math.max(naturalWidth(it),inkW)+it.size*0.1)*10)/10;   // 文字の幅(と、元の見えている幅の大きい方)+ほんの少し
+const tightW=(it,inkW)=>{   // 文字の幅(と、元の見えている幅の大きい方)+ほんの少し。実際の表示で折り返さない幅まで、少しずつ広げて確かめる
+  let w=Math.ceil((Math.max(naturalWidth(it),inkW)+it.size*0.15)*10)/10;
+  const keep=it.vw;it.vw=1e5;const d0=measureHost(it,1),h0=d0.scrollHeight;d0.remove();
+  for(let k=0;k<14;k++){it.vw=w;const d=measureHost(it,1),h=d.scrollHeight;d.remove();if(h<=h0+0.5)break;w=Math.ceil(w*1.05*10)/10;}
+  it.vw=keep;return w;
+};
 function newFix(list){
   const boxes=list.map(runBox);
   const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
@@ -1515,7 +1520,10 @@ async function paddleRec(cv){
   const chars=ppDict.length===C?["",...ppDict.slice(1)]:ppDict.length+1===C?["",...ppDict]:["",...ppDict," "];
   const seq=[];let prev=0;
   for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
-    if(bi!==0&&bi!==prev&&chars[bi]!==undefined){let p=bv;if(p>1||p<0){let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);p=1/sum;}seq.push({ch:chars[bi],p,pos:(t+0.5)/T});}
+    if(bi!==0&&bi!==prev&&chars[bi]!==undefined){let p=bv,sm=1;if(p>1||p<0){let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);p=1/sum;sm=0;}
+      const alts=[];if(p<0.95){const tp=[];for(let c=1;c<C;c++){if(c===bi)continue;const v=a[t*C+c];if(tp.length<3||v>tp[tp.length-1][0]){tp.push([v,c]);tp.sort((x,y)=>y[0]-x[0]);if(tp.length>3)tp.pop();}}
+        tp.forEach(([v,c])=>{if(chars[c]===undefined)return;const q=sm?v:Math.exp(v-bv)*p;if(q>=0.01)alts.push({ch:chars[c],p:q});});}   // 確かさが低い文字だけ、2位・3位の候補も残す(あとで、単語として自然な方を選ぶ)
+      seq.push({ch:chars[bi],p,pos:(t+0.5)/T,alts});}
     prev=bi;}
   return seq;
 }
@@ -1539,7 +1547,8 @@ async function renderRegion(x,y,w,h,scale){
 // 高精度エンジン(中国語と共通のモデル)が出しがちな、中国語の字形・小数点の誤りを直す(お金の「1,800」が「1.800」になる等)
 const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"買","单":"単","发":"発","级":"級","类":"類","门":"門","问":"問","间":"間","时":"時","线":"線","设":"設","计":"計","认":"認","识":"識","读":"読","写":"写","仅":"僅","东":"東","车":"車","长":"長","马":"馬","鸟":"鳥","关":"関","开":"開","应":"応","业":"業","务":"務","报":"報","处":"処","预":"預","钱":"銭","银":"銀","税":"税","总":"総","点":"点","机":"機","电":"電","话":"話","号":"号","区":"区","页":"頁","图":"図","圆":"円","额":"額","费":"費","货":"貨","纸":"紙","印":"印","销":"販"};
 Object.entries({"說":"説","錄":"録","總":"総","稅":"税","證":"証","學":"学","辦":"弁","額":"額","查":"査","说":"説","绿":"録","财":"財","经":"経","济":"済","资":"資","费":"費","银":"銀","钱":"銭","记":"記","录":"録","总":"総","议":"議","报":"報","请":"請","证":"証","纳":"納","约":"約","结":"結","构":"構","种":"種","无":"無","为":"為","对":"対","现":"現","实":"実","项":"項","须":"須","调":"調","个":"個","该":"該","过":"過","还":"還","进":"進","运":"運","选":"選","邮":"郵","达":"達","连":"連","适":"適","产":"産","区":"区","国":"国","学":"学","会":"会","员":"員","电":"電","话":"話","号":"号","码":"碼","号码":"番号","领":"領","収":"収","审":"審","专":"専","权":"権","属":"属","构":"構","确":"確","认":"認","处":"処","办":"弁","题":"題","别":"別","师":"師","简":"簡","绍":"紹","预":"預","备":"備","术":"術","样":"様","档":"档","级":"級","额":"額","须":"須"}).forEach(([k,v])=>{if(k.length===1&&!(k in SC2JP))SC2JP[k]=v;});   // 簡体字を日本語の字に(足りない分)
-const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
+const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(?<=[0-9０-９]) ?[一ー] ?(?=[0-9０-９])/g,"-")   // 数字と数字の間の「一」「ー」は、ハイフン(住所・電話番号)
+  .replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
 const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
 function flattenForOcr(cv,br){
@@ -1670,6 +1679,37 @@ function getNdl(wd){
   return ndlLoading[wd];
 }
 // 1行の画像 → 文字列と確かさ(0〜100)。縦長なら左に90度回す。高さ24px・幅は モデルごとの固定(256/384/768)に縮めて読む
+// ---- 単語として自然な組み合わせを選ぶ(文脈・辞書による選び直し) ----
+// 確かさの低い文字(多くても5か所)の、2位・3位の候補と、形の似た字を試し、「エンジンの確かさ + 単語としての自然さ」がいちばん高い組み合わせを選ぶ。
+// 単語としての自然さ = ブラウザ内蔵の日本語辞書(Intl.Segmenter)で、細かく切れるほど悪い + 帳票でよく使う語(LEX)が含まれるほど良い
+const LEX=("特定非営利活動法人,特定非営利活動,非営利活動,一般社団法人,一般財団法人,公益社団法人,公益財団法人,社会福祉法人,医療法人,学校法人,宗教法人,税理士法人,弁護士法人,監査法人,司法書士法人,行政書士法人,株式会社,有限会社,合同会社,合資会社,協同組合,"+
+  "公認会計士,税理士,弁護士,司法書士,行政書士,社会保険労務士,代表取締役,取締役,理事長,代表理事,事務所,税務署長,税務署,税務代理権限証書,税務代理,権限証書,委任状,委任者,委任事項,委任期間,委任します,代理人,代理人氏名,代理人住所,代理人名称,氏名又は名称,住所又は居所,事務所の名称,事務所の所在地,所在地,"+
+  "電話番号,郵便番号,法人番号,個人番号,整理番号,登録番号,提出先,提出年月日,令和,平成,昭和,年分,所得税,消費税,法人税,相続税,贈与税,源泉所得税,復興特別所得税,地方消費税,申告,納税,納付,還付,調査,通知,結果説明,終了,同意,以下同じ,上記のもの,下記の権限,"+
+  "北海道,青森県,岩手県,宮城県,秋田県,山形県,福島県,茨城県,栃木県,群馬県,埼玉県,千葉県,東京都,神奈川県,新潟県,富山県,石川県,福井県,山梨県,長野県,岐阜県,静岡県,愛知県,三重県,滋賀県,京都府,大阪府,兵庫県,奈良県,和歌山県,鳥取県,島根県,岡山県,広島県,山口県,徳島県,香川県,愛媛県,高知県,福岡県,佐賀県,長崎県,熊本県,大分県,宮崎県,鹿児島県,沖縄県").split(",");
+const SEGJ=(typeof Intl!=="undefined"&&Intl.Segmenter)?new Intl.Segmenter("ja",{granularity:"word"}):null;
+function lexScore(s){
+  let sc=0;if(SEGJ){let n=0;for(const g of SEGJ.segment(s)){if(g.isWordLike!==false||/[\u3040-\u30ff\u3400-\u9fff]/.test(g.segment))n++;}sc-=1.2*n;}
+  for(const w of LEX){let i=s.indexOf(w);while(i>=0){sc+=0.6*w.length;i=s.indexOf(w,i+w.length);}}
+  return sc;
+}
+function lmRerank(items){   // items: [{ch,p,alts:[{ch,p}]}] → 文字の配列
+  const base=items.map(i=>i.ch);
+  if(items.length<2||typeof CONF==="undefined")return base;
+  const unc=items.map((it,i)=>({i,p:it.p})).filter(o=>o.p<0.9&&items[o.i].ch!==" ").sort((a,b)=>a.p-b.p).slice(0,5).map(o=>o.i).sort((a,b)=>a-b);
+  if(!unc.length)return base;
+  const cands=unc.map(i=>{const it=items[i],m=new Map([[it.ch,Math.log(Math.max(it.p,1e-3))]]);
+    (it.alts||[]).forEach(a=>{if(a.p>=0.01&&!m.has(a.ch))m.set(a.ch,Math.log(a.p));});
+    (CONF[it.ch]||[]).forEach(c=>{if(!m.has(c))m.set(c,Math.log(0.02));});
+    return[...m.entries()].sort((x,y)=>y[1]-x[1]).slice(0,4);});
+  let best=null,baseSc=null;const cur=[];
+  const rec=(k,lp)=>{
+    if(k===unc.length){const arr=base.slice();unc.forEach((pos,j)=>{arr[pos]=cur[j][0];});const sc=lp+lexScore(arr.join(""));
+      if(baseSc===null)baseSc=sc;   // 最初の組み合わせ = エンジンが選んだもの
+      if(!best||sc>best.sc)best={sc,arr};return;}
+    for(const c of cands[k]){cur[k]=c;rec(k+1,lp+c[1]);}};
+  rec(0,0);
+  return best&&best.sc>baseSc+1.0?best.arr:base;   // 十分に良くなるときだけ変える
+}
 async function ndlRead(cv,wd){
   let src=cv;
   if(cv.height>cv.width*1.5){const r=document.createElement("canvas");r.width=cv.height;r.height=cv.width;const c=r.getContext("2d");c.translate(0,cv.width);c.rotate(-Math.PI/2);c.drawImage(cv,0,0);src=r;}
@@ -1679,12 +1719,15 @@ async function ndlRead(cv,wd){
   for(let i=0;i<HW;i++){f[i]=d[i*4]/127.5-1;f[HW+i]=d[i*4+1]/127.5-1;f[2*HW+i]=d[i*4+2]/127.5-1;}
   const sess=await getNdl(wd),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,wd])});
   const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
-  let str="",ps=0,n=0;
+  let str="",ps=0,n=0;const items=[];
   for(let t=0;t<T;t++){let bi=0,bv=-1e30;for(let c=0;c<C;c++){const v=a[t*C+c];if(v>bv){bv=v;bi=c;}}
     if(bi===0)break;
-    let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);ps+=1/sum;n++;
+    let sum=0;for(let c=0;c<C;c++)sum+=Math.exp(a[t*C+c]-bv);const p1=1/sum;ps+=p1;n++;
+    const alts=[];if(p1<0.95){const tp=[];for(let c=1;c<C;c++){if(c===bi)continue;const v=a[t*C+c];if(tp.length<3||v>tp[tp.length-1][0]){tp.push([v,c]);tp.sort((x,y)=>y[0]-x[0]);if(tp.length>3)tp.pop();}}
+      tp.forEach(([v,c])=>{const q=Math.exp(v-bv)*p1;if(q>=0.01&&NDL_CHARS[c-1])alts.push({ch:NDL_CHARS[c-1],p:q});});}
+    items.push({ch:NDL_CHARS[bi-1]||"",p:p1,alts});
     str+=NDL_CHARS[bi-1]||"";}
-  return{str,conf:n?ps/n*100:0};
+  return{str,conf:n?ps/n*100:0,items};
 }
 // 1行をNDLOCR-Liteで読む。文字数の見当(幅÷高さ)で小さいモデルから始め、長ければ大きいモデルで読み直す
 async function ndlLine(ch,x,y,S,Sb,flat){
@@ -1705,6 +1748,7 @@ async function ndlLine(ch,x,y,S,Sb,flat){
     if(best){r={str:best.k,conf:Math.max(60,best.conf)};}
   }
   if(!r.str.trim()||r.conf<35)return null;
+  if(r.items&&r.items.length&&r.items.length===Array.from(r.str).length){const nc=lmRerank(r.items);r.str=nc.join("");}   // 単語として自然な組み合わせに選び直す
   const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
   const txt=cleanOcr(fixPaddle(r.str));
   if(!txt)return null;
@@ -1716,7 +1760,7 @@ async function tessShort(cv,est){
   const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
-const OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.25;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる
+const OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
 let lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
@@ -1731,6 +1775,7 @@ async function paddleLine(ch,x,y,S,Sb,flat){
   }
   if(!seq.length)return null;
   if(conf<45)return null;
+  {const nc=lmRerank(seq);seq.forEach((c,i)=>{if(nc[i]!==c.ch){c.lm=c.ch;c.ch=nc[i];}});}   // 単語として自然な組み合わせに選び直す
   const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S,wd=bx1-bx0;
   const words=[];let cur=null;
   seq.forEach(c=>{if(c.ch===" "){cur=null;return;}
@@ -1922,7 +1967,7 @@ function refineRun(r,ink,ox,oy,fam){
   return 1;
 }
 // 見た目が似ていて、読み間違えやすい文字の組(エンジンは「士」を「土」と読むなど)。元の画像と重ねて、どちらが合うかを1文字ずつ選ぶ
-const CONF_GROUPS=["士土","己已巳","未末","日曰","大太犬","千干","人入","午牛","戸戶","矢失","由田甲申","白自百","間閒","右石","云去","贈增"];   // 漢字どうしだけ(カタカナと漢字の「ト・卜」「ロ・口」などは、形だけでは決められない)
+const CONF_GROUPS=["士土","己已巳","未末","戸戶","間閒"];   // 漢字どうしで、形の違いがはっきり見えるものだけ(人・入、千・干などは差が小さく、かえって誤って直すので対象外)。カタカナと漢字の「ト・卜」「ロ・口」も形では決められない
 const CONF=(()=>{const m={};CONF_GROUPS.forEach(g=>{const a=Array.from(g);a.forEach(c=>{(m[c]=m[c]||new Set());a.forEach(d=>{if(d!==c)m[c].add(d);});});});Object.keys(m).forEach(k=>{m[k]=[...m[k]];});return m;})();
 function makeInkHi(cv,S){   // 1文字ずつの照合用: 縮小しない(元の解像度のまま)
   const w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h,g=new Float32Array(n),hist=new Uint32Array(256);
@@ -1993,6 +2038,24 @@ function fitOcrWidth(it,g){
   const ns=Math.round(it.size*k*10)/10;if(ns===it.size)return;
   const kk=ns/it.size;it.sz=(it.sz||[]).map(v=>v?Math.max(4,Math.round(v*kk*10)/10):null);it.size=ns;
 }
+// 二次元コード(QR)を見つけて白く塗る(コードの模様を、数字や文字と読み間違えない)。見つけた数を返す
+let jsqrP=null;
+function loadJsQR(){if(window.jsQR)return Promise.resolve();return jsqrP||(jsqrP=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";s.onload=res;s.onerror=()=>{jsqrP=null;rej(new Error("jsQR"));};document.head.appendChild(s);}));}
+async function maskCodes(cv){
+  try{await loadJsQR();}catch{return 0;}
+  const sc=Math.min(1,1600/Math.max(cv.width,cv.height)),w=Math.max(1,Math.round(cv.width*sc)),h=Math.max(1,Math.round(cv.height*sc));
+  const sm=document.createElement("canvas");sm.width=w;sm.height=h;const sx=sm.getContext("2d",{willReadFrequently:true});sx.drawImage(cv,0,0,w,h);
+  const cx=cv.getContext("2d");let n=0;
+  for(let k=0;k<8;k++){
+    const id=sx.getImageData(0,0,w,h),r=window.jsQR(id.data,w,h,{inversionAttempts:"attemptBoth"});
+    if(!r)break;
+    const L=r.location,xs=[L.topLeftCorner.x,L.topRightCorner.x,L.bottomLeftCorner.x,L.bottomRightCorner.x],ys=[L.topLeftCorner.y,L.topRightCorner.y,L.bottomLeftCorner.y,L.bottomRightCorner.y];
+    const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pad=0.1*Math.max(x1-x0,y1-y0)+3;
+    sx.fillStyle="#fff";sx.fillRect(x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad);
+    cx.fillStyle="#fff";cx.fillRect((x0-pad)/sc,(y0-pad)/sc,(x1-x0+2*pad)/sc,(y1-y0+2*pad)/sc);n++;
+  }
+  return n;
+}
 async function doOcrBody(x,y,w,h){
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
@@ -2002,6 +2065,7 @@ async function doOcrBody(x,y,w,h){
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
   const cv=await renderRegion(x,y,w,h,S);
+  const nCode=await maskCodes(cv);   // 二次元コードは、文字として読まない
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
   status("文字の塊を探しています…");job.step("文字のまとまりを探しています…",8);
   await new Promise(r=>setTimeout(r,20));
@@ -2048,7 +2112,7 @@ async function doOcrBody(x,y,w,h){
   job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
   const nref=await refineRuns(runs,cv,S,x,y);
   // 元の画像と重ねて合わない行(二次元コード・模様などをごみとして読んだもの)は、文字にしない
-  const keep=runs.filter(r=>!(r.ocr&&r.refScore!=null&&r.refScore<OCR_MIN_MATCH)),dropped=runs.length-keep.length;
+  const keep=runs.filter(r=>!(r.ocr&&r.refScore!=null&&r.refScore<(/^[\s0-9.,:;\-+*#$%¥￥()（）\[\]{}|/\\_~=<>!?'"]+$/.test(r.str)?OCR_MIN_MATCH_NUM:OCR_MIN_MATCH))),dropped=runs.length-keep.length;
   if(dropped){runs.length=0;runs.push(...keep);nl-=dropped;}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
   lastRefine=nref;lastOcrRuns=runs;
@@ -2072,7 +2136,7 @@ async function doOcrBody(x,y,w,h){
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   lastOcrFirst=made[0]||null;
   select(made[0],false);
-  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
@@ -2201,7 +2265,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
