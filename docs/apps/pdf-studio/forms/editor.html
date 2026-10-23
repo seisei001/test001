@@ -1015,7 +1015,8 @@ function panDbg(t){let d=document.getElementById("panDbg");
   const A=pvv||{x:0,y:0};
   d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-width:${Math.round(A.w*0.8)}px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
 // 拡大中、ドラッグした指が見えている範囲の端に来たら、そこでいったん止める(画面を動かしてから、続きをドラッグしてもらう)
-function atEdge(ev){const s=zoomFromParent||1;if(s<=1.05||!pvv)return false;const M=28/s;
+const EDGE_STOP=false;   // 封印中(2.25): iPhoneで、長押ししても小さい枠しかできなくなったため。直せたらtrueに戻す
+function atEdge(ev){if(!EDGE_STOP)return false;const s=zoomFromParent||1;if(s<=1.05||!pvv)return false;const M=28/s;
   return ev.clientX<pvv.x+M||ev.clientX>pvv.x+pvv.w-M||ev.clientY<pvv.y+M||ev.clientY>pvv.y+pvv.h-M;}
 function edgeToast(t){let d=document.getElementById("edgeToast");if(!d){d=document.createElement("div");d.id="edgeToast";document.body.appendChild(d);}
   const A=pvv||{x:0,y:0,w:innerWidth};
