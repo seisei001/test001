@@ -150,6 +150,52 @@ const {launch,WORK}=require('./harness');
   await f.evaluate(()=>{const t=document.getElementById('edgeToast');if(t)t.remove();});
   const n2=itz.length;await edgeRun(1,120);const toast1=await f.evaluate(()=>!!document.getElementById('edgeToast'));const itN=(await items());const wNo=itN.length&&itN[itN.length-1].id!==itz[itz.length-1].id?itN[itN.length-1].vw:-1;
   ok(`端で止める機能は封印中: 拡大中でも最後まで広がり、案内も出ない(幅 ${wz.toFixed?wz.toFixed(0):wz}・案内 ${toast})`,!toast&&wz>100);
+  // --- 枠のコピー・消去 ---
+  await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);
+  const ovc=await fr.locator('#ov').boundingBox();
+  await fr.locator('[data-m=text]').click();
+  await page.mouse.move(ovc.x+15*k,ovc.y+195*k);await page.mouse.down();await page.mouse.move(ovc.x+160*k,ovc.y+232*k,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
+  await page.keyboard.type('COPYME');await page.waitForTimeout(500);
+  const base=(await items()).filter(i=>i.txt==='COPYME');const orig=base[0];
+  ok('コピー用の枠を作った',!!orig);
+  // ② ✥のダブルクリック → コピー
+  let mvc=await fr.locator('.hdl.mv').boundingBox();
+  await page.mouse.dblclick(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.waitForTimeout(300);
+  ok('✥のダブルクリックで、コピー・消去が出る',await f.evaluate(()=>!!document.getElementById('spCopy')&&!!document.getElementById('spDel')));
+  await fr.locator('#spCopy').click();await page.waitForTimeout(400);
+  let cps=(await items()).filter(i=>i.txt==='COPYME');
+  const selId=await f.evaluate(()=>window.pdfEditorDebug.sel&&window.pdfEditorDebug.sel());
+  ok(`コピー: 同じ内容の枠が、同じ位置にできる(${cps.length}個)`,cps.length===2&&cps[1].id!==orig.id&&Math.abs(cps[1].vx-orig.vx)<0.5&&Math.abs(cps[1].vy-orig.vy)<0.5&&cps[1].size===orig.size);
+  // コピーを動かしても、元の枠は動かない
+  mvc=await fr.locator('.hdl.mv').boundingBox();
+  await page.mouse.move(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.mouse.down();await page.mouse.move(mvc.x+mvc.width/2+90,mvc.y+mvc.height/2-40,{steps:5});await page.mouse.up();await page.waitForTimeout(300);
+  cps=(await items()).filter(i=>i.txt==='COPYME');
+  ok(`コピーを動かすと、元の枠は動かず、コピーだけ動く(元 ${cps[0].vx.toFixed(0)},${cps[0].vy.toFixed(0)} / コピー ${cps[1].vx.toFixed(0)},${cps[1].vy.toFixed(0)})`,Math.abs(cps[0].vx-orig.vx)<0.5&&cps[1].vx>orig.vx+30);
+  // ① Ctrl+ドラッグ
+  const o2=cps[1];
+  await page.mouse.move(0,0);await page.keyboard.down('Control');
+  mvc=await fr.locator('.hdl.mv').boundingBox();
+  await page.mouse.move(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.waitForTimeout(200);
+  const plus=await f.evaluate(()=>{const h=document.querySelector('.hdl.mv');return {cls:document.body.classList.contains('ctrl'),c:getComputedStyle(h,'::after').content,cur:getComputedStyle(h).cursor};});
+  ok(`Ctrlを押すと、✥の右上に＋が出る(${JSON.stringify(plus)})`,plus.cls&&/＋/.test(plus.c));
+  await page.mouse.down();await page.mouse.move(mvc.x+mvc.width/2-60,mvc.y+mvc.height/2+50,{steps:5});await page.mouse.up();await page.keyboard.up('Control');await page.waitForTimeout(300);
+  cps=(await items()).filter(i=>i.txt==='COPYME');
+  const o2now=cps.find(i=>i.id===o2.id);
+  ok(`Ctrl+ドラッグで、コピーした枠を動かす(${cps.length}個・元の位置 ${o2now.vx.toFixed(0)}=${o2.vx.toFixed(0)})`,cps.length===3&&Math.abs(o2now.vx-o2.vx)<0.5&&cps.some(i=>i.vx<o2.vx-30));
+  // ① Deleteキー → 確認 → 消去
+  let asked=0;page.on('dialog',async d=>{asked++;await d.accept();});
+  mvc=await fr.locator('.hdl.mv').boundingBox();
+  await page.mouse.click(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.waitForTimeout(200);
+  await page.keyboard.press('Delete');await page.waitForTimeout(400);
+  cps=(await items()).filter(i=>i.txt==='COPYME');
+  ok(`選んだ枠でDeleteキーを押すと、確認が出てOKで消える(確認${asked}回・残り${cps.length}個)`,asked===1&&cps.length===2);
+  // ② ✥のダブルクリック → 消去
+  mvc=await fr.locator('.hdl.mv').boundingBox().catch(()=>null);
+  if(!mvc){await page.mouse.click(ovc.x+20*k,ovc.y+200*k);await page.waitForTimeout(300);mvc=await fr.locator('.hdl.mv').boundingBox();}
+  await page.mouse.dblclick(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.waitForTimeout(300);
+  await fr.locator('#spDel').click();await page.waitForTimeout(400);
+  cps=(await items()).filter(i=>i.txt==='COPYME');
+  ok(`✥のダブルクリック→消去でも、確認のあと消える(確認${asked}回・残り${cps.length}個)`,asked===2&&cps.length===1);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();
