@@ -643,6 +643,16 @@ function tightCovers(list){
     else out.push({x:r.x,y:r.y,w:r.w,h:r.h,s:r.s});});
   return out.map(({x,y,w,h})=>({x,y,w,h}));
 }
+// 文字だけで決まる、いちばん長い行の幅(折り返さないとき)。自動で作る枠を、文字から最小にするために使う
+function naturalWidth(it){
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");
+  const fam=famOf(it.fmt||"text",it.font),ls=it.ls||0;let best=0,cur=0,n=0;
+  Array.from(it.txt||"").forEach((c,i)=>{
+    if(c==="\n"){best=Math.max(best,cur-(n?ls:0));cur=0;n=0;return;}
+    const sv=(it.sz&&it.sz[i])||it.size;mctx.font=`${sv}px ${fam}`;cur+=mctx.measureText(c).width+ls;n++;});
+  return Math.max(best,cur-(n?ls:0));
+}
+const tightW=(it,inkW)=>Math.ceil((Math.max(naturalWidth(it),inkW)+it.size*0.1)*10)/10;   // 文字の幅(と、元の見えている幅の大きい方)+ほんの少し
 function newFix(list){
   const boxes=list.map(runBox);
   const x0=Math.min(...boxes.map(b=>b.x)),y0=Math.min(...boxes.map(b=>b.y));
@@ -663,7 +673,8 @@ function newFix(list){
     if(li){txt+="\n";sz.push(null);}
     l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
   });
-  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:Math.max(size*lh*lines.length,size*1.3),txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
+  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:size*lh*lines.length,txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
+  fx.vw=tightW(fx,x1-x0);   // 自動で作る枠は、文字から最小(余白を足さない)
   growToFit(fx);clampToPage(fx);fx.sig0=list.some(r=>r.ocr)?null:fixSig(fx);return fx;
 }
 function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
@@ -1527,6 +1538,7 @@ async function renderRegion(x,y,w,h,scale){
 }
 // 高精度エンジン(中国語と共通のモデル)が出しがちな、中国語の字形・小数点の誤りを直す(お金の「1,800」が「1.800」になる等)
 const SC2JP={"书":"書","户":"戸","场":"場","镇":"鎮","壳":"売","买":"買","单":"単","发":"発","级":"級","类":"類","门":"門","问":"問","间":"間","时":"時","线":"線","设":"設","计":"計","认":"認","识":"識","读":"読","写":"写","仅":"僅","东":"東","车":"車","长":"長","马":"馬","鸟":"鳥","关":"関","开":"開","应":"応","业":"業","务":"務","报":"報","处":"処","预":"預","钱":"銭","银":"銀","税":"税","总":"総","点":"点","机":"機","电":"電","话":"話","号":"号","区":"区","页":"頁","图":"図","圆":"円","额":"額","费":"費","货":"貨","纸":"紙","印":"印","销":"販"};
+Object.entries({"說":"説","錄":"録","總":"総","稅":"税","證":"証","學":"学","辦":"弁","額":"額","查":"査","说":"説","绿":"録","财":"財","经":"経","济":"済","资":"資","费":"費","银":"銀","钱":"銭","记":"記","录":"録","总":"総","议":"議","报":"報","请":"請","证":"証","纳":"納","约":"約","结":"結","构":"構","种":"種","无":"無","为":"為","对":"対","现":"現","实":"実","项":"項","须":"須","调":"調","个":"個","该":"該","过":"過","还":"還","进":"進","运":"運","选":"選","邮":"郵","达":"達","连":"連","适":"適","产":"産","区":"区","国":"国","学":"学","会":"会","员":"員","电":"電","话":"話","号":"号","码":"碼","号码":"番号","领":"領","収":"収","审":"審","专":"専","权":"権","属":"属","构":"構","确":"確","认":"認","处":"処","办":"弁","题":"題","别":"別","师":"師","简":"簡","绍":"紹","预":"預","备":"備","术":"術","样":"様","档":"档","级":"級","额":"額","须":"須"}).forEach(([k,v])=>{if(k.length===1&&!(k in SC2JP))SC2JP[k]=v;});   // 簡体字を日本語の字に(足りない分)
 const fixPaddle=t=>t.replace(/[\u4e00-\u9fff]/g,c=>SC2JP[c]||c).replace(/(\d)\.(\d{3})(?!\d)/g,"$1,$2").replace(/￥/g,"¥");
 const cleanOcr=t=>t.replace(/\\(?=[0-9])/g,"¥").replace(/\s*\n\s*/g,"").replace(/([^\x00-\x7F]) +(?=[^\x00-\x7F])/g,"$1").trim(); // 日本語の文字間の余分な空白を除く
 // 背景の模様・ムラを消す: 周りの平均より十分に暗い画素だけを「文字」として白黒にする
@@ -1704,8 +1716,8 @@ async function tessShort(cv,est){
   const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
-const OCR_SPLIT_GAP=2;
-let lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+const OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.25;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる
+let lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
@@ -1864,7 +1876,7 @@ function refineRun(r,ink,ox,oy,fam){
   const hgt=(r.gh||r.size)*1.0,wy0=Math.max(0,Math.floor((r.base-oy-r.size*1.05-3)*R)),wy1=Math.min(ink.h,Math.ceil((r.base-oy+r.size*0.4+3)*R));
   const ww=wx1-wx0,wh=wy1-wy0;if(ww<4||wh<4||ww*wh>200000)return -1;
   const Iw=new Float32Array(ww*wh);let sumI=0;for(let y=0;y<wh;y++)for(let x=0;x<ww;x++){const v=ink.I[(wy0+y)*ink.w+wx0+x];Iw[y*ww+x]=v;sumI+=v;}
-  if(sumI<1)return -1;
+  if(sumI<1){r.refScore=0;return -1;}   // そこに何も写っていない(読み間違いのごみ)
   refCv.width=ww;refCv.height=wh;
   const measure=(str,size)=>{refCx.font=size+"px "+fam;const m=refCx.measureText(str);return{l:m.actualBoundingBoxLeft,w:m.actualBoundingBoxLeft+m.actualBoundingBoxRight};};
   // 候補を描いて、(dx,dy)だけずらしたときの重なり。ぼかして比べる
@@ -1879,7 +1891,9 @@ function refineRun(r,ink,ox,oy,fam){
   const best=(T,shifts)=>{let b={s:-1,dx:0,dy:0};for(const [sx,sy] of shifts){const sc=dice(T,sx,sy);if(sc>b.s)b={s:sc,dx:sx,dy:sy};}return b;};
   const coarse=[[0,0],[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]];
   const variants=[r.str];const fw=toFull(r.str);if(fw!==r.str&&/[!-~]/.test(r.str))variants.push(fw);
-  const size0=r.size;let baseSc=null,top=null;
+  const size0=r.size;let top=null;
+  const baseSc=best(render(r.str,size0,0).T,coarse).s;   // いまの結果(サイズそのまま・字間なし)の一致度。候補が1つもなくても、ごみの判定に使う
+  r.refScore=baseSc;
   const sg=/[\u3040-\u30ff\u3400-\u9fff]/.test(r.str)&&r.gh>0&&n>=3?r.gh/0.9:0;
   variants.forEach((str,vi)=>{
     const nn=Array.from(str).length;
@@ -1895,11 +1909,10 @@ function refineRun(r,ink,ox,oy,fam){
       const rd=render(str,size,Math.abs(ls)<0.2?0:ls),b=best(rd.T,coarse);
       const prior=sg?0.5*Math.abs(Math.log(size/sg)):0;   // 日本語の行は、文字の高さ(≒サイズ)も手がかりにする(弱く)
       const cand={sc:b.s-prior,raw:b.s,str,size,ls:Math.abs(ls)<0.2?0:Math.round(ls*10)/10,dx:b.dx,dy:b.dy,vi,k};
-      if(vi===0&&k===0&&baseSc===null){const rb=render(str,size0,0),bb=best(rb.T,coarse);baseSc=bb.s;}   // いまの結果(サイズそのまま・字間なし)
       if(!top||cand.sc>top.sc)top=cand;
     }
   });
-  if(!top||baseSc===null)return -1;
+  if(!top)return -1;
   r.refScore=Math.max(top.raw,baseSc);
   if(top.raw<baseSc+0.015)return 0;   // 良くならなければ、そのまま
   // 位置の微調整(0.5pt刻み)
@@ -1908,9 +1921,52 @@ function refineRun(r,ink,ox,oy,fam){
   r.str=top.str;r.size=top.size;r.ls=top.ls;r.x+=fb.dx/R;r.base+=fb.dy/R;r.refined=true;r.refScore=fb.s;r.refBase=baseSc;
   return 1;
 }
+// 見た目が似ていて、読み間違えやすい文字の組(エンジンは「士」を「土」と読むなど)。元の画像と重ねて、どちらが合うかを1文字ずつ選ぶ
+const CONF_GROUPS=["士土","己已巳","未末","日曰","大太犬","千干","人入","午牛","戸戶","矢失","由田甲申","白自百","間閒","右石","云去","贈增"];   // 漢字どうしだけ(カタカナと漢字の「ト・卜」「ロ・口」などは、形だけでは決められない)
+const CONF=(()=>{const m={};CONF_GROUPS.forEach(g=>{const a=Array.from(g);a.forEach(c=>{(m[c]=m[c]||new Set());a.forEach(d=>{if(d!==c)m[c].add(d);});});});Object.keys(m).forEach(k=>{m[k]=[...m[k]];});return m;})();
+function makeInkHi(cv,S){   // 1文字ずつの照合用: 縮小しない(元の解像度のまま)
+  const w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data,n=w*h,g=new Float32Array(n),hist=new Uint32Array(256);
+  for(let i=0;i<n;i++){const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)|0;g[i]=v;hist[v]++;}
+  const pct=q=>{let a=0;const t=n*q;for(let v=0;v<256;v++){a+=hist[v];if(a>=t)return v;}return 255;};
+  const fg=pct(0.01),bg=pct(0.85),den=Math.max(60,bg-fg),I=new Float32Array(n);
+  for(let i=0;i<n;i++)I[i]=Math.max(0,Math.min(1,(bg-g[i])/den));
+  return{w,h,R:S,I};
+}
+function verifyChars(r,ink,ox,oy,fam){
+  const chars=Array.from(r.str);if(!chars.some(c=>CONF[c]))return 0;
+  if(!refCv){refCv=document.createElement("canvas");refCx=refCv.getContext("2d",{willReadFrequently:true});}
+  const R=ink.R,size=r.size,ls=r.ls||0,base=(r.base-oy)*R;let changed=0;
+  refCx.font=(size*R)+"px "+fam;const mL=refCx.measureText(r.str).actualBoundingBoxLeft||0;
+  let cx=(r.x-ox)*R+mL;
+  for(let i=0;i<chars.length;i++){
+    refCx.font=(size*R)+"px "+fam;const adv=refCx.measureText(chars[i]).width;
+    if(CONF[chars[i]]){
+      const x0=Math.max(0,Math.floor(cx-2*R)),x1=Math.min(ink.w,Math.ceil(cx+adv+2*R)),y0=Math.max(0,Math.floor(base-size*1.05*R)),y1=Math.min(ink.h,Math.ceil(base+size*0.3*R)),w=x1-x0,h=y1-y0;
+      if(w>=4&&h>=4&&w*h<90000){
+        const Iw=new Float32Array(w*h);let sumI=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=ink.I[(y0+y)*ink.w+x0+x];Iw[y*w+x]=v;sumI+=v;}
+        if(sumI>=1){
+          const IB=boxBlur(Iw,w,h);let sB=0;for(let k=0;k<w*h;k++)sB+=IB[k];
+          refCv.width=w;refCv.height=h;
+          const score=c=>{
+            refCx.clearRect(0,0,w,h);refCx.fillStyle="#000";refCx.font=(size*R)+"px "+fam;refCx.textBaseline="alphabetic";refCx.fillText(c,cx-x0,base-y0);
+            const d=refCx.getImageData(0,0,w,h).data,T=new Float32Array(w*h);let sT=0;for(let k=0;k<w*h;k++){T[k]=d[k*4+3]/255;sT+=T[k];}
+            const B=boxBlur(T,w,h);let best=0;
+            for(let sy=-3;sy<=3;sy++)for(let sx=-3;sx<=3;sx++){let ov=0,st=0;for(let y=0;y<h;y++){const yy=y-sy;for(let x=0;x<w;x++){const xx=x-sx;const t=(yy>=0&&yy<h&&xx>=0&&xx<w)?B[yy*w+xx]:0;const q=IB[y*w+x];ov+=t<q?t:q;st+=t;}}const sc=2*ov/(sB+st+1e-6);if(sc>best)best=sc;}   // 少しずらして、いちばん合うところ
+            return best;};
+          const cur=score(chars[i]);let bc=chars[i],bs=cur;
+          CONF[chars[i]].forEach(c=>{const sc=score(c);if(sc>bs+0.025&&sc>cur+0.025){bs=sc;bc=c;}});
+          if(bc!==chars[i]){chars[i]=bc;changed++;}
+        }
+      }
+    }
+    cx+=adv+ls*R;
+  }
+  if(changed){r.str=chars.join("");r.verified=changed;}
+  return changed;
+}
 async function refineRuns(runs,cv,S,ox,oy){
-  const ink=makeInk(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
-  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;}catch(e){st.skip++;console.warn("照合に失敗",e);}
+  const ink=makeInk(cv,S),inkHi=makeInkHi(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
+  for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;if(r.refScore==null||r.refScore>=OCR_MIN_MATCH)st.chars=(st.chars||0)+verifyChars(r,inkHi,ox,oy,fam);}catch(e){st.skip++;console.warn("照合に失敗",e);}
     if(i%6===5)await new Promise(res=>setTimeout(res,0));}   // 画面が固まらないよう、ときどき息継ぎ
   return st;
 }
@@ -1991,16 +2047,21 @@ async function doOcrBody(x,y,w,h){
   // 画像の文字は、文字サイズの2倍以上離れていたら別の部品にする(離れた文字を空白で埋めて1つにすると、位置がずれる。ラベルと値などは別々の枠が正しい)
   job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
   const nref=await refineRuns(runs,cv,S,x,y);
-  lastRefine=nref;
+  // 元の画像と重ねて合わない行(二次元コード・模様などをごみとして読んだもの)は、文字にしない
+  const keep=runs.filter(r=>!(r.ocr&&r.refScore!=null&&r.refScore<OCR_MIN_MATCH)),dropped=runs.length-keep.length;
+  if(dropped){runs.length=0;runs.push(...keep);nl-=dropped;}
+  if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
+  lastRefine=nref;lastOcrRuns=runs;
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
     if(g.some(r=>r.refined)){const ls=g.filter(r=>r.refined).map(r=>r.ls||0).sort((a,b)=>a-b);it.ls=ls[ls.length>>1];if(!(it.ls>0.2))it.ls=0;}
-    const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size,slack=fs*2;
+    const ux0=Math.min(...g.map(r=>r.x)),ux1=Math.max(...g.map(r=>r.x+r.w)),fs=it.size;
+    it.vw=tightW(it,ux1-ux0);   // 字間・サイズを決めたあとで、枠を文字から最小に
     if(chs.length===1){ // 1つの塊だけなら、その塊の行間・揃いを使う
       const c=res[chs[0]];it.lh=c.lh;it.align=c.align;
-      if(c.align==="center"){it.vw=(ux1-ux0)+slack;it.vx=(ux0+ux1)/2-it.vw/2;}
-      else if(c.align==="right"){it.vw=(ux1-ux0)+slack;it.vx=ux1-it.vw+fs*0.2;}
+      if(c.align==="center"){it.vx=(ux0+ux1)/2-it.vw/2;}
+      else if(c.align==="right"){it.vx=ux1-it.vw+fs*0.2;}
     }
     it.ocrMade=true;growToFit(it);clampToPage(it);
     if(!ocrRange.whole)keepInRange(it,x,y,w,h);
@@ -2011,7 +2072,7 @@ async function doOcrBody(x,y,w,h){
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   lastOcrFirst=made[0]||null;
   select(made[0],false);
-  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。誤認識は、枠をタップして直してください。`);
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
@@ -2140,7 +2201,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

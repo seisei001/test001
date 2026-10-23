@@ -262,3 +262,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 
 ### ページ編集 2.29(拾い上げたら、すぐ元の文字を隠す・赤い点線なし)
 - 訂正の部品(`fix`)を拾い上げた時点で、画面では元の文字を隠す四角(`.cover`、背景色)をすぐ出す(`renderCovers` は `coverRects(it,true)`)。赤い点線(`.cvo`)は出さない。変えていない部品は、PDFには何も書かない(`coverRects(it)` の既定。保存した見た目は元のまま)。`.same`(元の文字をそのまま見せる)の切り替えはやめた。デバッグ用に `pdfEditorDebug.selId()`。
+
+### ページ編集 2.30(OCR: 重ね合わせで文字・ごみを確かめる・枠は文字から最小)
+- 順番: 文字の高さ・照合でポ数を先に決め(`ocrChunk`→`refineRun`)、枠はそのポ数と文字から決める(`tightW` = 文字の幅(`naturalWidth`)と元の見えている幅の大きい方 + サイズの0.1倍)。自動で作る枠(`newFix`・OCR)は、余白(以前はサイズの2倍)を足さず、高さも `size*lh*行数`。
+- ごみの除外: `refineRun` が、いまの結果を元画像と重ねたDice(`r.refScore`)を必ず出す(候補がなくても)。`OCR_MIN_MATCH`=0.25 未満の行(二次元コード・模様を文字と読んだもの)、そこに何も写っていない行(`sumI<1`)は文字にしない(状態に件数を出す)。
+- 1文字ずつの照合: `verifyChars`(`refineRuns` から、等倍の画像 `makeInkHi` で)。漢字どうしの読み間違えやすい組(`CONF_GROUPS`: 士土・己已巳・日曰・戸戶…)を、その文字の場所に各候補を描いて、元画像との一致度が0.025以上高い方に直す(「税理土」→「税理士」)。カタカナと漢字の似た組(ト・卜、ロ・口)は形では決められないので対象外。簡体字・繁体字(`SC2JP`)も足した(査・説・録・財…)。
+- テスト: `make-dense-scan.js`(細かい表・二次元コード・小さい文字、正解つき)→ `test-studio-ocr-dense.js`(`OCR_TAG=dense|layout|form`、`OCR_ENGINE=paddle|tess`)。実際の書類(税務代理権限証書)は手元に無いので、実物での確認はユーザー。デバッグ用 `pdfEditorDebug.ocrRuns()`。
