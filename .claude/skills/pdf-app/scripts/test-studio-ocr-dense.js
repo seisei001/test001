@@ -2,6 +2,7 @@
 process.env.PDFAPP_TARGET='pdf-studio';
 const fs=require('fs');
 const {launch,WORK}=require('./harness');
+const lcs=(a,b)=>{const m=a.length,n=b.length,d=Array.from({length:m+1},()=>new Array(n+1).fill(0));for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]+1:Math.max(d[i-1][j],d[i][j-1]);return d[m][n];};
 const truth=JSON.parse(fs.readFileSync(WORK+'/samples/'+(process.env.OCR_TAG||'dense')+'_truth.json','utf8'));
 (async()=>{
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
@@ -14,7 +15,7 @@ const truth=JSON.parse(fs.readFileSync(WORK+'/samples/'+(process.env.OCR_TAG||'d
   await f.waitForFunction(()=>/個のまとまり|認識できません|読み込めません/.test(document.querySelector('#status').textContent),null,{timeout:400000});
   console.log('状態:',await f.evaluate(()=>document.getElementById('status').textContent));
   const items=await f.evaluate(()=>window.pdfEditorDebug.items());
-  const mis=[],used=new Set();let ok=0;
+  const mis=[],used=new Set(),rs=[];let ok=0;
   truth.forEach(t=>{
     const cx=(t.x0+t.x1)/2,cy=(t.top+t.bottom)/2;
     const hit=items.filter(it=>cx>=it.vx-6&&cx<=it.vx+it.vw+6&&cy>=it.vy-6&&cy<=it.vy+it.vh+6);
@@ -23,8 +24,10 @@ const truth=JSON.parse(fs.readFileSync(WORK+'/samples/'+(process.env.OCR_TAG||'d
     const err=(it.size-t.size)/t.size*100;
     console.log(t.name.padEnd(7),String(t.size).padStart(5),'→',String(it.size).padStart(5),`(${err>=0?'+':''}${err.toFixed(0)}%)`.padEnd(8),'枠',it.vw.toFixed(0)+'x'+it.vh.toFixed(0),'「'+it.txt.replace(/\s+/g,' ').slice(0,28)+'」');
     if(Math.abs(err)<=15)ok++;
+    const ex=t.lines.join('').replace(/\s+/g,''),tx=it.txt.replace(/\s+/g,'');const r=lcs(tx,ex)/Math.max(1,Math.max(tx.length,ex.length));rs.push(r);if(r<0.85)console.log('   文字が違う:',t.name,'「'+ex+'」→「'+tx.slice(0,40)+'」',(r*100).toFixed(0)+'%');
   });
   console.log('照合の点数(Dice):',JSON.stringify((await f.evaluate(()=>window.pdfEditorDebug.ocrRuns())).map(r=>[r.s.slice(0,6),r.sc&&+r.sc.toFixed(2),r.size,r.gh&&+r.gh.toFixed(1),r.ref?1:0])));
+  console.log('文字の一致率(平均):',(rs.reduce((a,b)=>a+b,0)/Math.max(1,rs.length)*100).toFixed(1)+'%');
   const junk=items.filter(it=>!used.has(it));
   console.log(`\nサイズ±15%以内 ${ok}/${truth.length}・見つからない ${mis.length}・正解に当たらない部品(ごみ候補) ${junk.length}`);
   junk.slice(0,25).forEach(it=>console.log('  ごみ?','「'+it.txt.replace(/\s+/g,' ').slice(0,20)+'」',it.size+'pt','位置',Math.round(it.vx)+','+Math.round(it.vy),'枠',Math.round(it.vw)+'x'+Math.round(it.vh)));
