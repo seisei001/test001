@@ -127,18 +127,21 @@ const {launch,WORK}=require('./harness');
   const fsz=await f.evaluate(()=>({w:innerWidth,h:innerHeight}));
   await page.evaluate(()=>{window._pan=[];window.scrollTo=(x,y)=>{window._pan.push([x,y]);};});
   const setVV=(sc,vv)=>page.evaluate(([sc,vv])=>{const d=(n,v)=>Object.defineProperty(window.visualViewport,n,{configurable:true,get:()=>v});d('scale',sc);d('offsetLeft',vv.l);d('offsetTop',vv.t);d('width',vv.w);d('height',vv.h);sendZoom();},[sc,vv]);
-  const edgeRun=async(sc)=>{
+  const edgeRun=async(sc,dy=0)=>{
     await setVV(sc,{l:fb.l,t:fb.t,w:fsz.w/sc,h:fsz.h/sc});await page.waitForTimeout(400);
     await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(150);
-    const ovb=await fr.locator('#ov').boundingBox();const sx=ovb.x+20,sy=Math.max(ovb.y+30,fb.t+60);
+    const ovb=await fr.locator('#ov').boundingBox();const sx=ovb.x+20,sy=Math.max(ovb.y+30,fb.t+60)+dy;
     await page.evaluate(()=>{window._pan=[];});
     await T('touchStart',sx,sy);await page.waitForTimeout(700);
     const ex=fb.l+fsz.w/sc-10;for(let i=1;i<=6;i++){await T('touchMove',sx+(ex-sx)*i/6,sy+3*i);await page.waitForTimeout(30);}
     await page.waitForTimeout(800);await T('touchEnd');await page.waitForTimeout(300);
     return page.evaluate(()=>window._pan.slice());};
-  const pz=await edgeRun(2.5);const p1x=await edgeRun(1);
-  ok(`端の自動スクロールは封印中: 拡大して端で止めても、画面を動かす依頼をしない(${pz.length}回)`,pz.length===0);
-  ok(`拡大していないときは、動かさない(${p1x.length}回)`,p1x.length===0);
+  const nBefore=(await items()).length;
+  await edgeRun(2.5);const toast=await f.evaluate(()=>!!document.getElementById('edgeToast'));const itz=(await items());const wz=itz.length>nBefore?itz[itz.length-1].vw:-1;
+  await f.evaluate(()=>{const t=document.getElementById('edgeToast');if(t)t.remove();});
+  const n2=itz.length;await edgeRun(1,120);const toast1=await f.evaluate(()=>!!document.getElementById('edgeToast'));const itN=(await items());const wNo=itN.length&&itN[itN.length-1].id!==itz[itz.length-1].id?itN[itN.length-1].vw:-1;
+  ok(`拡大中は、ドラッグが見えている範囲の端に来たらそこで止め、案内が出る(止まった枠の幅 ${wz.toFixed?wz.toFixed(0):wz})`,toast&&wz>0);
+  ok(`拡大していないときは、止めずに最後まで広がり、案内も出ない(幅 ${wNo.toFixed?wNo.toFixed(0):wNo})`,!toast1&&wNo>wz);
   await page.screenshot({path:WORK+'/shot_edit_ui.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
 })();
