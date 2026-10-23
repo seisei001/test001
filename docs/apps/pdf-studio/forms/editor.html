@@ -575,21 +575,20 @@ function lineRectsOf(it){   // 入力した文字の、行ごとの四角(文字
   return L.lines.map(ln=>{let tw=0,k=ln.ch.length;while(k>0&&ln.ch[k-1].c===" ")k--;for(let q=0;q<k;q++)tw+=ln.ch[q].w;return{x:it.vx+(ln.off||0)-0.5,y:it.vy+ln.base-ln.size*0.9,w:tw+1,h:ln.size*1.15};}).filter(r=>r.w>1);
 }
 function bgOf(it){if(it.bg)return it.bg;try{it.bg=sampleColors({x:it.vx,y:it.vy,w:it.vw,h:it.vh}).bg;}catch{it.bg="#ffffff";}return it.bg||"#ffffff";}
-function coverRects(it){   // 隠す(白抜きする)四角。文字があれば必ず白抜き・文字のないところは、選んだ背景に従う
+function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字があれば必ず白抜き・文字のないところは、選んだ背景に従う
   if(it.type==="img")return[];const m=bgModeOf(it);if(m==="none")return[];
-  if(it.type==="fix"&&!fixChanged(it))return[];   // 変えていない訂正の部品は、何もしない
+  if(it.type==="fix"&&!forScreen&&!fixChanged(it))return[];   // 変えていない訂正の部品は、PDFには何もしない(画面では、拾い上げた時点で元の文字を隠す)
   if(m==="all")return[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}];
   return[...(it.type==="fix"?(it.covers||[it.cover]):[]),...lineRectsOf(it)];
 }
-function renderCovers(it){   // 画面の、隠す四角(と、選択中の赤い点線)を作り直す
+function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
-  const rs=coverRects(it);if(!rs.length)return;const k=K(),bg=bgOf(it);
-  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover";c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);
-    if(it===cs){const o=document.createElement("div");o.className="cvo";o.dataset.for=it.id;o.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px`;ov.appendChild(o);}});
+  const rs=coverRects(it,true);if(!rs.length)return;const k=K(),bg=bgOf(it);
+  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover";c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   if(it.type==="img")return;
-  renderCovers(it);if(it.type==="fix"&&el)el.classList.toggle("same",!fixChanged(it));
+  renderCovers(it);
 }
 // すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
 const taken=q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return items.some(it=>it.page===cur&&it.type==="fix"&&(it.covers||[it.cover]).some(c=>cx>=c.x-1&&cx<=c.x+c.w+1&&cy>=c.y-1&&cy<=c.y+c.h+1));};
@@ -2141,7 +2140,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S)=>ocrSegment(cv,S)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

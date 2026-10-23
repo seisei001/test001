@@ -20,13 +20,13 @@ const {launch,WORK}=require('./harness');
   ok(`隠す範囲は、全体を囲む四角(${union})より狭い(${total})`,items.length>=1&&total<union*0.95);
   const vis=()=>f.evaluate(()=>({cover:[...document.querySelectorAll('.cover')].filter(e=>e.style.display!=='none').length,cvo:[...document.querySelectorAll('.cvo')].filter(e=>e.style.display!=='none').length,same:document.querySelectorAll('.ibox.same').length}));
   const v0=await vis();
-  ok('文字を変えていない訂正の部品は、背景を白抜きしない(隠す四角・赤い点線が出ない)・元の文字のまま: '+JSON.stringify(v0),v0.cover===0&&v0.cvo===0&&v0.same>=1);
+  ok('拾い上げた時点で、元の文字を隠す四角が出て、赤い点線は出ない: '+JSON.stringify(v0),v0.cover>=1&&v0.cvo===0);
   // 変えていない部品は、PDFに何も書かない(フォントが増えない)
   // 文字を変える(1文字足す)と、元の文字を隠す範囲が出る
   const t0=await fr.locator('.ibox.on .t').boundingBox();
   await page.mouse.click(t0.x+t0.width-6,t0.y+t0.height/2);await page.waitForTimeout(200);await page.keyboard.press('End');await page.keyboard.type('X');await page.waitForTimeout(400);
   const v1=await vis();
-  ok('文字を変えると、元の文字を隠す範囲(赤い点線・背景)が出る: '+JSON.stringify(v1),v1.cover>=1&&v1.cvo>=1);
+  ok('文字を変えても、元の文字を隠す四角のまま・赤い点線は出ない: '+JSON.stringify(v1),v1.cover>=1&&v1.cvo===0);
   await page.screenshot({path:WORK+'/shot_erase_on.png'});
   // 背景の三つの選び方(✥の設定): 完全透明・余白透明・白抜き
   const covs=()=>f.evaluate(()=>{const o=window.pdfEditorDebug.items();return[...document.querySelectorAll('.cover')].map(e=>[e.dataset.for,Math.round(parseFloat(e.style.width)),Math.round(parseFloat(e.style.height))]);});
@@ -36,14 +36,14 @@ const {launch,WORK}=require('./harness');
 const bgc=()=>f.evaluate(()=>getComputedStyle(document.querySelector('.ibox.on')).backgroundColor);
   await setBg('none');
   const bNone=await bgc();
-  ok('完全透明: 隠す四角も赤い点線も出ず、枠の中も透明: '+bNone,await f.evaluate(()=>document.querySelectorAll('.cvo').length===0&&window.pdfEditorDebug.items().some(i=>i.erase===false))&&/rgba\(0, 0, 0, 0\)|transparent/.test(bNone));
+  ok('完全透明: 隠す四角も赤い点線も出ず、枠の中も透明: '+bNone,await f.evaluate(()=>document.querySelectorAll(`.cover[data-for="${window.pdfEditorDebug.selId()}"]`).length===0&&document.querySelectorAll('.cvo').length===0&&window.pdfEditorDebug.items().some(i=>i.erase===false))&&/rgba\(0, 0, 0, 0\)|transparent/.test(bNone));
   await setBg('all');
   const bAll=await bgc();
-  const boxAll=await f.evaluate(()=>{const o=document.querySelector('.ibox.on'),r=o.getBoundingClientRect();const cv=[...document.querySelectorAll('.cvo')].map(e=>e.getBoundingClientRect());return{n:cv.length,w:Math.round(cv[0]?.width),h:Math.round(cv[0]?.height),ow:Math.round(r.width),oh:Math.round(r.height)};});
+  const boxAll=await f.evaluate(()=>{const o=document.querySelector('.ibox.on'),r=o.getBoundingClientRect();const cv=[...document.querySelectorAll(`.cover[data-for="${window.pdfEditorDebug.selId()}"]`)].map(e=>e.getBoundingClientRect());return{n:cv.length,w:Math.round(cv[0]?.width),h:Math.round(cv[0]?.height),ow:Math.round(r.width),oh:Math.round(r.height)};});
   ok('白抜き: 枠の全体を白抜きする(四角1つ・枠と同じ大きさ): '+JSON.stringify(boxAll),boxAll.n===1&&Math.abs(boxAll.w-boxAll.ow)<=2&&Math.abs(boxAll.h-boxAll.oh)<=2);
   await setBg('text');
   const bText=await bgc();
-  const nText=await f.evaluate(()=>document.querySelectorAll('.cvo').length);
+  const nText=await f.evaluate(()=>document.querySelectorAll(`.cover[data-for="${window.pdfEditorDebug.selId()}"]`).length);
   ok('余白透明: 文字のあるところだけ(文字の行ごと)白抜きし、枠の中は透明(四角'+nText+'個・'+bText+')',nText>=1&&/rgba\(0, 0, 0, 0\)|transparent/.test(bText));
   await page.screenshot({path:WORK+'/shot_erase_off.png'});
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();
