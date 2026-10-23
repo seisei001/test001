@@ -150,6 +150,13 @@ const {launch,WORK}=require('./harness');
   await f.evaluate(()=>{const t=document.getElementById('edgeToast');if(t)t.remove();});
   const n2=itz.length;await edgeRun(1,120);const toast1=await f.evaluate(()=>!!document.getElementById('edgeToast'));const itN=(await items());const wNo=itN.length&&itN[itN.length-1].id!==itz[itz.length-1].id?itN[itN.length-1].vw:-1;
   ok(`端で止める機能は封印中: 拡大中でも最後まで広がり、案内も出ない(幅 ${wz.toFixed?wz.toFixed(0):wz}・案内 ${toast})`,!toast&&wz>100);
+  // 指: ✥の長押し(動かさない)で、文字の設定の吹き出しが出る
+  await f.evaluate(()=>{const o=document.getElementById('sizePop');if(o)o.remove();window.scrollTo(0,0);});await page.waitForTimeout(200);
+  {const hb=await fr.locator('.hdl.mv').boundingBox();
+   await T('touchStart',hb.x+hb.width/2,hb.y+hb.height/2);await page.waitForTimeout(800);
+   const shown=await f.evaluate(()=>!!document.getElementById('sizePop'));await T('touchEnd');await page.waitForTimeout(300);
+   ok('指で✥を長押しすると、文字の設定の吹き出しが出る',shown);
+   await f.evaluate(()=>{const o=document.getElementById('sizePop');if(o)o.remove();});}
   // --- 枠のコピー・消去 ---
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);
   const ovc=await fr.locator('#ov').boundingBox();
