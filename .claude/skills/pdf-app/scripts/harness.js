@@ -13,6 +13,7 @@ const FIXED={
   '@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js':'@pdf-lib/fontkit/dist/fontkit.umd.min.js',
   'pdfjs-dist@3.11.174/build/pdf.min.js':'pdfjs-dist/build/pdf.min.js',
   'pdfjs-dist@3.11.174/build/pdf.worker.min.js':'pdfjs-dist/build/pdf.worker.min.js',
+  'jsqr@1.4.0/dist/jsQR.js':'jsqr/dist/jsQR.js',
   '@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf':'@expo-google-fonts/m-plus-1p/400Regular/MPLUS1p_400Regular.ttf',
   '@expo-google-fonts/sawarabi-mincho@0.4.1/400Regular/SawarabiMincho_400Regular.ttf':'@expo-google-fonts/sawarabi-mincho/400Regular/SawarabiMincho_400Regular.ttf',
   '@expo-google-fonts/m-plus-rounded-1c@0.4.1/400Regular/MPLUSRounded1c_400Regular.ttf':'@expo-google-fonts/m-plus-rounded-1c/400Regular/MPLUSRounded1c_400Regular.ttf',
