@@ -156,6 +156,24 @@ function loadFontkit(){
   if(window.fontkit)return Promise.resolve();
   return new Promise((ok,ng)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js";s.onload=ok;s.onerror=()=>ng(new Error("fontkit"));document.head.appendChild(s);});
 }
+// 鍵つきPDFの取り込み方を選ぶダイアログ
+function askLockedText(name,total){return new Promise(res=>{
+  const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+  o.innerHTML=`<div style="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4)">
+   <p class="lk-name" style="margin:0 0 10px;font-weight:700"></p>
+   <p style="margin:0 0 8px;font-size:.92rem">このPDFには<b>鍵(暗号化)</b>が掛かっています。文字データが${total}個あります。</p>
+   <ul style="margin:0 0 12px;padding-left:1.2em;font-size:.88rem;line-height:1.6;opacity:.9">
+    <li>文字データを使うと、文字を部品として拾って編集できます。文字のOCRも要りません。</li>
+    <li>鍵つきのため、取り込むと各ページは画像になります。編集した部分は、背景を隠して、アプリのフォントで描き直します(字の形や幅が変わります。背景が写真などのときは、隠した跡が見えることがあります)。</li>
+    <li>PDFによっては、文字データが元の文章と違う場合があります(一部の文字が別の文字になる、縦書きは読めない)。拾った文字は確認してください。</li>
+    <li>鍵つきの文書です。編集・使用の許可や、取り扱いに注意してください。</li>
+   </ul>
+   <label style="display:flex;gap:8px;align-items:flex-start;margin:0 0 14px;font-size:.95rem"><input type="checkbox" id="lkChk" style="width:22px;height:22px;flex:none"><span><b>文字データを使って、編集できるようにする</b><br><span style="font-size:.82rem;opacity:.8">チェックなし: 画像として取り込みます(元の文章は変わりません)</span></span></label>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"></div></div>`;
+  o.querySelector(".lk-name").textContent="「"+name+"」";
+  const box=o.querySelector("div div:last-child"),chk=o.querySelector("#lkChk"),done=v=>{o.remove();res(v);};
+  [["取り込む",()=>done(chk.checked?"use":"image")],["やめる",()=>done("cancel")]].forEach(([t,f],i)=>{const x=document.createElement("button");x.textContent=t;x.style.minHeight="44px";if(i)x.className="sub";x.onclick=f;box.appendChild(x);});
+  document.body.appendChild(o);});}
 async function addInvisibleText(out,pages,textRuns,name){
   const total=textRuns.reduce((a,r)=>a+r.length,0);if(!total)return 0;
   status(`「${name}」の文字データ(${total}個)を残しています…`);
@@ -200,9 +218,13 @@ async function rasterize(bytes,name){
     cv.width=cv.height=0;pg.cleanup();
   }
   const n=doc.numPages;try{doc.destroy();}catch{}
-  let nText=0;
-  try{nText=await addInvisibleText(out,pagesOut,textRuns,name);}catch(e){console.warn("文字データを残せませんでした",e);}
-  return{bytes:new Uint8Array(await out.save()),n,nText};
+  let nText=0;const total=textRuns.reduce((a,r)=>a+r.length,0);let asked=0;
+  if(total){   // 文字データがあるときだけ、使うかどうかを聞く(元の文章と違ってしまう可能性があるため)
+    asked=total;const a=await askLockedText(name,total);
+    if(a==="cancel")throw new Error("取り込みをやめました");
+    if(a==="use"){try{nText=await addInvisibleText(out,pagesOut,textRuns,name);}catch(e){console.warn("文字データを残せませんでした",e);}}
+  }
+  return{bytes:new Uint8Array(await out.save()),n,nText,asked};
 }
 async function addFiles(files){
   let added=0,lastNote="";
@@ -215,7 +237,7 @@ async function addFiles(files){
       try{n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();}
       catch(e){   // 暗号化などで編集用に開けないPDFは、各ページを画像にして、新しいPDFとして読み込む
         status(`「${f.name}」は編集用に開けないため、各ページを画像にして読み込みます…`);
-        const r=await rasterize(bytes,f.name);bytes=r.bytes;n=r.n;note=r.nText?`(暗号化されていたため、各ページを画像にして読み込みました。PDFの文字データ${r.nText}個は、見えない文字として残してあります)`:"(暗号化されていたため、各ページを画像にして読み込みました。文字は画像になっています)";
+        const r=await rasterize(bytes,f.name);bytes=r.bytes;n=r.n;note=r.nText?`(暗号化されていたため、各ページを画像にして読み込みました。PDFの文字データ${r.nText}個は、見えない文字として残してあります)`:r.asked?"(暗号化されていたため、画像として取り込みました。元の文章は変わりません)":"(暗号化されていたため、各ページを画像にして読み込みました。文字は画像になっています)";
       }
       if(!added)snap();bundles.push(mk(f.name,bytes,n,0,null,note?null:fh,!!note));added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
     }catch(e){status(`「${f.name}」を開けませんでした(${e&&e.message?e.message:"読み込みに失敗"})。`);}
