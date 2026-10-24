@@ -1804,8 +1804,8 @@ async function ocrLines(worker,ch,x,y,S,flat){
   const ghPt=ch.gh/S,Sb=Math.min(6,Math.max(1,40/Math.max(4,ghPt)));   // 文字の高さが約40pxになる倍率(大きすぎても読めなくなる)
   const pad=Math.max(1.5,ghPt*0.35);
   const R=ocrRange,bx0=Math.max(R.x,x+ch.x0/S-pad),by0=Math.max(R.y,y+ch.y0/S-pad),bx1=Math.min(R.x+R.w,x+ch.x1/S+pad),by1=Math.min(R.y+R.h,y+ch.y1/S+pad);
-  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb,flat);if(o)return o;}
-  else if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o)return o;}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
+  if(ndlMode){const o=await ndlLine(ch,x,y,S,Sb,flat);if(o){o.forEach(l=>l.eng="ndl");return o;}}
+  else if(ppMode){const o=await paddleLine(ch,x,y,S,Sb,flat);if(o){o.forEach(l=>l.eng="pp");return o;}}   // 高精度エンジンで読めなければ、下の標準エンジン(Tesseract)で読む
   if(!worker)worker=await getOcr($("ocrLang").value);
   const raw=await renderRegion(bx0,by0,bx1-bx0,by1-by0,Sb);
   const single=ch.lines.length===1&&(ch.x1-ch.x0)<1.8*ch.gh;          // 1文字だけの塊
@@ -1831,7 +1831,7 @@ async function ocrLines(worker,ch,x,y,S,flat){
     if(cur&&(!best||cur.avg>best.avg+10))best=cur;
     if(best&&best.avg>=70)break;
   }
-  out=best?best.out:[];
+  out=best?best.out:[];out.forEach(l=>l.eng="tess");
   function collectLines(ls){
   ls.forEach(ln=>{
     if(ln.confidence!=null&&ln.confidence<25)return;
@@ -2069,6 +2069,15 @@ async function maskCodes(cv){
   }
   return n;
 }
+// どのエンジンで読んだか(最高精度・高精度・標準)を、最後の表示に出す。読み込めなかったとき・標準で読んだ行が多いときは、そのことと対処を示す
+function engReport(res,note){
+  const c={ndl:0,pp:0,tess:0};res.forEach(r=>r.lines.forEach(l=>{c[l.eng||"tess"]++;}));
+  const tot=c.ndl+c.pp+c.tess||1,name={ndl:"最高精度",pp:"高精度",tess:"標準"};
+  let t="読んだエンジン: "+Object.keys(c).filter(k=>c[k]).map(k=>`${name[k]}${c[k]}行`).join("・")+"。";
+  if(note)t+=note;
+  if(c.tess/tot>0.3)t+="標準エンジンで読んだ行が多いため、精度が低めです。通信状態を確認して、もう一度、読み取ってください(最高精度・高精度は、初回に大きなデータを読み込みます)。";
+  return t;
+}
 // 2回目の探索(薄い灰色の文字の拾い残しを足す)。1回目(標準のしきい値)で見つけた行は、そのまま。
 // しきい値を上げて探し直した行のうち、1回目の行に覆われていない部分(行の続きの薄い文字・まるごと薄い行)だけを、新しい塊として足す。
 // ごみを足しても、あとの「元の画像と重ねた一致度」の確認で除かれる。しきい値を上げただけで全体を置き換えると、背景が濃いページで壊れるため、足すだけにする
@@ -2092,11 +2101,11 @@ function fillGaps(seg1,seg2){
   return extra;
 }
 async function doOcrBody(x,y,w,h){
-  let nGap=0;
+  let nGap=0,engNote="";
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
-  if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
-  if(ppMode){try{await getPaddle();}catch(e){console.warn(e);ppMode=false;status("高精度エンジンを読み込めなかったので、標準エンジンで認識します("+(e.message||e)+")");job.step("標準エンジンで認識します…");}}
+  if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;engNote="最高精度エンジン(NDLOCR)を読み込めませんでした。";status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
+  if(ppMode){try{await getPaddle();}catch(e){console.warn(e);ppMode=false;engNote+="高精度エンジン(PaddleOCR)を読み込めませんでした。";status("高精度エンジンを読み込めなかったので、標準エンジンで認識します("+(e.message||e)+")");job.step("標準エンジンで認識します…");}}
   if(!ppMode&&!ndlMode)worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
@@ -2156,7 +2165,7 @@ async function doOcrBody(x,y,w,h){
   const junkLatin=r=>jpPage&&/^[A-Za-z][A-Za-z .]{5,}$/.test(r.str)&&(r.size>2.5*szMed||(r.conf!=null&&r.conf<60));
   const keep=runs.filter(r=>!(r.ocr&&(junkLatin(r)||(r.refScore!=null&&r.refScore<ocrMinMatch(r))))),dropped=runs.length-keep.length;
   lastOcrDropped=runs.filter(r=>!keep.includes(r));
-  if(dropped){runs.length=0;runs.push(...keep);nl-=dropped;}
+  if(dropped){runs.length=0;runs.push(...keep);}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
   lastRefine=nref;lastOcrRuns=runs;
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
@@ -2179,7 +2188,7 @@ async function doOcrBody(x,y,w,h){
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   lastOcrFirst=made[0]||null;
   select(made[0],false);
-  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
