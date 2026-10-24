@@ -2103,7 +2103,7 @@ function fillGaps(seg1,seg2){
   }
   return extra;
 }
-let ocrDiag="",ocrTrack=null,ocrStat={reads:0,blank:0,empty:0,low:0};   // ocrTrack: 変換中に作った一時の画像(iPhoneは画像の合計の大きさに上限があるので、塊ごとに解放する)
+let segStat=null,ocrDiag="",ocrTrack=null,ocrStat={reads:0,blank:0,empty:0,low:0};   // ocrTrack: 変換中に作った一時の画像(iPhoneは画像の合計の大きさに上限があるので、塊ごとに解放する)
 async function doOcrBody(x,y,w,h){
   ocrTrack=null;  let nGap=0,engNote="",nSeg0=0;const tOcr0=performance.now();ocrDiag="";
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
@@ -2132,7 +2132,7 @@ async function doOcrBody(x,y,w,h){
     const mh=[...l.hs].sort((a,b)=>a-b)[l.hs.length>>1];
     if(l.n>=2&&l.n<=12&&H<0.8*ghMed&&W<14*H&&(l.ar<(l.n<=3?0.4:0.3)*W*H||mh<0.5*H))return false;
     return true;});
-  nSeg0=seg.chunks.length;ocrStat={reads:0,blank:0,empty:0,low:0};ocrTrack=[];
+  nSeg0=seg.chunks.length;{const hs=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b);segStat={n:hs.length,med:hs[hs.length>>1]||0,max:hs[hs.length-1]||0,tall:hs.filter(v=>v>2.2*(hs[hs.length>>1]||1)).length,multi:seg.chunks.filter(c=>c.lines.length>1).length};}ocrStat={reads:0,blank:0,empty:0,low:0};ocrTrack=[];
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
     status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
@@ -2196,7 +2196,7 @@ async function doOcrBody(x,y,w,h){
   lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
-  ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
+  ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒・行${segStat.n}本(高さの中央${segStat.med}・最大${segStat.max}・中央の2.2倍超${segStat.tall}本・複数行の塊${segStat.multi})・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
