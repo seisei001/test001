@@ -1761,8 +1761,18 @@ async function tessShort(cv,est){
   const w=await getOcr($("ocrLang").value);await w.setParameters({tessedit_pageseg_mode:est<1.6?"10":"7"});
   const {data}=await w.recognize(cv);return{str:cleanOcr(data.text||""),conf:data.confidence||0};
 }
-const OCR_GAP_THR=210,OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
-let lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
+// 元の画像と重ねた一致度の、捨てるしきい値。数字・記号だけの行は、ごみ(二次元コードなど)になりやすいので厳しめ。
+// 漢字・かなを3字以上含む行は、実際の文字のことが多いので、「何も写っていない所を読んだ」ほど低いときだけ捨てる(画面用の書体と、元の書体(明朝体など)が違うと、一致度が低めに出るため。以前は0.37で捨てていて、小さい文字の段落がほとんど消えた)
+function ocrMinMatch(r){
+  if(/^[\s0-9.,:;\-+*#$%¥￥()（）\[\]{}|/\\_~=<>!?'"]+$/.test(r.str))return OCR_MIN_MATCH_NUM;
+  const cjk=(r.str.match(/[\u3040-\u30ff\u3400-\u9fff]/g)||[]).length;
+  if(/^[ー―—－−_＿‐\-~〜.．・\s]{2,}$/.test(r.str))return 9;   // 罫線・点線の切れ端を読んだもの(ーー、－－－など)は、必ず捨てる
+  if(cjk>=3)return OCR_MIN_MATCH_TEXT;   // 2字以下の短い行は、ごみ(細かい飾り・罫線の断片)も多いので、通常の厳しさ
+  if(Array.from(r.str).length>=6)return OCR_MIN_MATCH_LATIN;
+  return OCR_MIN_MATCH;
+}
+const OCR_MIN_MATCH_TEXT=0.08,OCR_MIN_MATCH_LATIN=0.2,OCR_GAP_THR=210,OCR_SPLIT_GAP=2,OCR_MIN_MATCH=0.37,OCR_MIN_MATCH_NUM=0.5;   // 重ね合わせの一致度(Dice)がこれ未満の行は捨てる(実際の文字は0.4〜0.85、二次元コードを数字と読んだものは0.2〜0.33)。数字・記号だけの行は、ごみになりやすいので厳しめ
+let lastOcrDropped=[],lastOcrRuns=[],lastRefine=null,lastOcrFirst=null,ppMode=false,ndlMode=false,ocrRange={x:0,y:0,w:1e9,h:1e9,whole:true};   // いま変換している範囲(切り出しも結果も、この中に収める)
 // 高精度エンジンで1行を読む(読めなければ null)
 async function paddleLine(ch,x,y,S,Sb,flat){
   const l=ch.lines[0],ghPt=l.h/S,pad=Math.max(1,ghPt*0.12);
@@ -2140,7 +2150,12 @@ async function doOcrBody(x,y,w,h){
   job.step("元の画像と照合して、サイズ・字間・位置を整えています…",97);
   const nref=await refineRuns(runs,cv,S,x,y);
   // 元の画像と重ねて合わない行(二次元コード・模様などをごみとして読んだもの)は、文字にしない
-  const keep=runs.filter(r=>!(r.ocr&&r.refScore!=null&&r.refScore<(/^[\s0-9.,:;\-+*#$%¥￥()（）\[\]{}|/\\_~=<>!?'"]+$/.test(r.str)?OCR_MIN_MATCH_NUM:OCR_MIN_MATCH))),dropped=runs.length-keep.length;
+  // 日本語のページ(漢字・かなが多い)で、英字だけの長い行が、周りよりずっと大きいか確かさが低いときは、読み間違い(ごみ)なので除く
+  const allc=runs.reduce((a,r)=>a+Array.from(r.str).length,0)||1,cjkc=runs.reduce((a,r)=>a+(r.str.match(/[\u3040-\u30ff\u3400-\u9fff]/g)||[]).length,0),jpPage=cjkc/allc>=0.5,
+    szMed=[...runs.map(r=>r.size)].sort((a,b)=>a-b)[runs.length>>1]||10;
+  const junkLatin=r=>jpPage&&/^[A-Za-z][A-Za-z .]{5,}$/.test(r.str)&&(r.size>2.5*szMed||(r.conf!=null&&r.conf<60));
+  const keep=runs.filter(r=>!(r.ocr&&(junkLatin(r)||(r.refScore!=null&&r.refScore<ocrMinMatch(r))))),dropped=runs.length-keep.length;
+  lastOcrDropped=runs.filter(r=>!keep.includes(r));
   if(dropped){runs.length=0;runs.push(...keep);nl-=dropped;}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
   lastRefine=nref;lastOcrRuns=runs;
@@ -2293,7 +2308,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t)=>ocrSegment(cv,S,r,t),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t)=>ocrSegment(cv,S,r,t),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
