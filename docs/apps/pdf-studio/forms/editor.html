@@ -1122,7 +1122,7 @@ function dragHandle(h,it,el,resize){
       const c=dupItem(it),el2=itemEls.get(c.id),h2=el2&&el2.querySelector(".hdl.mv");
       if(h2){begin(h2,c,el2,e);return;}
     }
-    if(!resize){const a=document.activeElement;if(a&&a.isContentEditable)a.blur();}   // ✥を押したら、枠を選んだだけの状態に(Deleteキーで枠を消せる)
+    if(!resize&&e.pointerType==="mouse"){const a=document.activeElement;if(a&&a.isContentEditable)a.blur();}   // マウス: ✥を押したら、枠を選んだだけの状態に(Deleteキーで枠を消せる)。指ではしない(キーボードが閉じて画面がずれ、長押しが途切れるため)
     begin(h,it,el,e);
   });
   if(!resize){h.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});h.addEventListener("dblclick",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});}   // マウス: 右クリック・ダブルクリックで、文字の設定
@@ -1882,7 +1882,7 @@ async function doOcr(x,y,w,h){
   try{
     const n=await doOcrBody(x,y,w,h);
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。");}
+    if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。"+(ocrDiag?" "+ocrDiag:""));}
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrRunning=false;$("bOcrPage").disabled=false;}
@@ -2100,8 +2100,9 @@ function fillGaps(seg1,seg2){
   }
   return extra;
 }
+let ocrDiag="";
 async function doOcrBody(x,y,w,h){
-  let nGap=0,engNote="";
+  let nGap=0,engNote="",nSeg0=0;const tOcr0=performance.now();ocrDiag="";
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
   if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;engNote="最高精度エンジン(NDLOCR)を読み込めませんでした。";status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
@@ -2128,6 +2129,7 @@ async function doOcrBody(x,y,w,h){
     const mh=[...l.hs].sort((a,b)=>a-b)[l.hs.length>>1];
     if(l.n>=2&&l.n<=12&&H<0.8*ghMed&&W<14*H&&(l.ar<(l.n<=3?0.4:0.3)*W*H||mh<0.5*H))return false;
     return true;});
+  nSeg0=seg.chunks.length;
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
     status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
@@ -2189,6 +2191,7 @@ async function doOcrBody(x,y,w,h){
   lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
+  ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
