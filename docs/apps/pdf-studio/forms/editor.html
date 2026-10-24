@@ -1537,11 +1537,18 @@ async function getOcr(lang){
   ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status){const t=`認識エンジンの準備中(初回のみ): ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`;status(t);job.step(t);}}});
   ocrLang=lang;return ocrWorker;
 }
+let ocrTextBoxes=null;
+// このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
+async function textLayerBoxes(x,y,w,h){
+  await loadRuns().catch(()=>{});
+  return runs.map(r=>({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.3})).filter(b=>b.x<x+w&&b.x+b.w>x&&b.y<y+h&&b.y+b.h>y);
+}
 async function renderRegion(x,y,w,h,scale){
   const pg=await pdfView.getPage(cur+1),vp=pg.getViewport({scale});
   const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));if(ocrTrack)ocrTrack.push(cv);
   const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
+  if(ocrTextBoxes&&ocrTextBoxes.length){cx.fillStyle="#fff";for(const b of ocrTextBoxes){const bx=(b.x-x)*scale,by=(b.y-y)*scale,bw=b.w*scale,bh=b.h*scale;if(bx<cv.width&&by<cv.height&&bx+bw>0&&by+bh>0)cx.fillRect(bx,by,bw,bh);}}   // OCR中: PDFの文字データがある所は、読まない(元のデータが最優先)
   if(window.OCR_SMEAR){const c2=document.createElement("canvas");c2.width=cv.width;c2.height=cv.height;const x2=c2.getContext("2d");x2.fillStyle="#fff";x2.fillRect(0,0,c2.width,c2.height);x2.globalCompositeOperation="darken";const d=window.OCR_SMEAR*scale/3.09;for(const o of [-d,0,d])x2.drawImage(cv,0,o);cx.drawImage(c2,0,0);}   // テスト用: 文字を縦に太らせて、iPhoneの「行がつながる」状態をまねる
   return cv;
 }
@@ -1913,7 +1920,7 @@ async function doOcr(x,y,w,h){
     if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。"+(ocrDiag?" "+ocrDiag:""),diagThumbEl?45000:0);const jt=$("jobT");jt.parentNode.querySelectorAll("canvas.dg").forEach(e=>e.remove());if(diagThumbEl){diagThumbEl.className="dg";jt.parentNode.appendChild(diagThumbEl);}}
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
-  finally{ocrRunning=false;$("bOcrPage").disabled=false;}
+  finally{ocrTextBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
 }
 // 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
 function keepInRange(it,x,y,w,h){
@@ -2166,6 +2173,7 @@ async function doOcrBody(x,y,w,h){
   if(!ppMode&&!ndlMode)worker=await getOcr(lang);
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
+  ocrTextBoxes=await textLayerBoxes(x,y,w,h);const nText=ocrTextBoxes.length;
   const cv=await renderRegion(x,y,w,h,S);
   const nCode=await maskCodes(cv);   // 二次元コードは、文字として読まない
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
@@ -2174,7 +2182,7 @@ async function doOcrBody(x,y,w,h){
   let seg=ocrSegment(cv,S);seg=resegThin(cv,S,seg);
   try{const extra=fillGaps(seg,ocrSegment(cv,S,false,OCR_GAP_THR));seg.chunks.push(...extra);nGap=extra.length;}catch(e){console.warn('2回目の探索に失敗',e);}   // 範囲指定でも、大きな空白(ラベルと値のような離れた文字)は別の行に分ける
   seps.v.push(...seg.vrules.map(r=>({x:x+r.x/S,y0:y+r.y0/S,y1:y+r.y1/S})));seps.h.push(...seg.hrules.map(r=>({y:y+r.y/S,x0:x+r.x0/S,x1:x+r.x1/S})));
-  if(!seg.chunks.length){const msg="文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
+  if(!seg.chunks.length){const msg=nText?`この範囲の文字は、PDFの文字データ(${nText}個)です。OCRは要りません。「選択・訂正」で文字をタップすると、そのまま枠にできます。`:"文字を認識できませんでした(文字のまとまりが見つかりません。画質を確認するか、範囲を変えてみてください)。";status(msg);return{ok:false,msg};}
   // 点線・「* . . .」などの区切り: 周りの文字よりずっと小さい、1〜2個の断片だけの塊は読まずに飛ばす(ごみの文字を作らない)
   const gha0=seg.chunks.flatMap(c=>c.lines.map(l=>l.h)).sort((a,b)=>a-b),p80=gha0[Math.floor(gha0.length*0.8)]||0,gha=gha0.filter(v=>v>=0.5*p80),ghMed=gha[gha.length>>1]||0;   // 点の行(ごみ)が多くても、文字の行の高さの目安がぶれないように
   seg.chunks=seg.chunks.filter(c=>{
@@ -2248,7 +2256,7 @@ async function doOcrBody(x,y,w,h){
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   lastOcrFirst=made[0]||null;
   select(made[0],false);
-  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nText?`PDFの文字データ${nText}個の所は、OCRせず、そのまま使えます(「選択・訂正」でタップ)。`:"")+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
   diagThumbEl=diagThumb(seg);
   ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒${segThin?"・しきい値を"+segThin+"にして文字を細くした":""}・つながった行を分けた${ocrSplitCount}回・行${segStat.n}本(高さの中央${segStat.med}・最大${segStat.max}・中央の2.2倍超${segStat.tall}本・複数行の塊${segStat.multi})・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
@@ -2379,7 +2387,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
