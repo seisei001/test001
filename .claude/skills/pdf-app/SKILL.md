@@ -312,3 +312,5 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 
 - ページ編集2.42: 方針「元のPDFの文字データが最優先。OCRは、文字データのない所だけ」。ページOCR・範囲OCRの前に、PDFの文字データ(横書き、loadRuns)の位置を白く塗って(renderRegion が ocrTextBoxes を塗る。1行ずつの読み直しの切り抜きも同じ)、そこは読まない。画像だけのページは変化なし(dense 83.4%)。確認: /tmp/mk-mixed.js(文字データ+画像の混在PDF)で、文字データの所は0枠・画像の所だけ読む。文字データだけのページ(koseki)は、残りの図形由来の4枠のみ。
 - 評価の注意: ベクターPDFの本当のサイズを正解にして、画像化したPDFのOCRサイズを比べる評価(/tmp/size-eval.js)は、あくまで開発用の物差し。製品の動作は「文字データがあればそれを使う」。
+
+- 起動画面2.02: 鍵の掛かった(暗号化)PDFは、これまで各ページを画像にして文字データが消えていた。今は、画像にするとき pdf.js の getTextContent で文字データ(横書き)を取り、PDFに「見えない文字」(描画モード3・サブセット埋め込みの M PLUS 1p・字間で元の幅に合わせる)として入れ直す(index.html の rasterize / addInvisibleText)。これでページ編集の文字の部品・ページOCRの除外(2.42)が、鍵つきでも効く。復号(qpdf等)はしない。確認: test-studio-locked.js(pypdf で暗号化。位置・大きさ・幅が元と一致)。
