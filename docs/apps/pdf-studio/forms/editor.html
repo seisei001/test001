@@ -1122,7 +1122,7 @@ function dragHandle(h,it,el,resize){
       const c=dupItem(it),el2=itemEls.get(c.id),h2=el2&&el2.querySelector(".hdl.mv");
       if(h2){begin(h2,c,el2,e);return;}
     }
-    if(!resize){const a=document.activeElement;if(a&&a.isContentEditable)a.blur();}   // ✥を押したら、枠を選んだだけの状態に(Deleteキーで枠を消せる)
+    if(!resize&&e.pointerType==="mouse"){const a=document.activeElement;if(a&&a.isContentEditable)a.blur();}   // マウス: ✥を押したら、枠を選んだだけの状態に(Deleteキーで枠を消せる)。指ではしない(キーボードが閉じて画面がずれ、長押しが途切れるため)
     begin(h,it,el,e);
   });
   if(!resize){h.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});h.addEventListener("dblclick",e=>{e.preventDefault();e.stopPropagation();showSizePop(it,h);});}   // マウス: 右クリック・ダブルクリックで、文字の設定
