@@ -114,7 +114,7 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.0"},
+  splash:{name:"PDFスタジオ",ver:"2.01"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.38",src:"forms/editor.html?form=edit"},
@@ -398,7 +398,7 @@ let formB=null,panPos=null;
 function openForm(kind,b){
   const F=FORMS[kind];formB=b;
   $("formName").textContent=F.name;$("formVer").textContent=F.ver;
-  const fr=$("formFrame");fr.src=F.src+"&embed=1";$("formHost").classList.remove("hidden");fr._kind=kind;
+  const fr=$("formFrame");/* 版を付けて、古い画面(キャッシュ)を使い続けないようにする */fr.src=F.src+"&embed=1&v="+encodeURIComponent(FORMS.edit.ver+"-"+FORMS.warp.ver);$("formHost").classList.remove("hidden");fr._kind=kind;
 }
 function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
 $("formClose").onclick=closeForm;
