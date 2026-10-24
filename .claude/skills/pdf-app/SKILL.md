@@ -314,3 +314,5 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 評価の注意: ベクターPDFの本当のサイズを正解にして、画像化したPDFのOCRサイズを比べる評価(/tmp/size-eval.js)は、あくまで開発用の物差し。製品の動作は「文字データがあればそれを使う」。
 
 - 起動画面2.02: 鍵の掛かった(暗号化)PDFは、これまで各ページを画像にして文字データが消えていた。今は、画像にするとき pdf.js の getTextContent で文字データ(横書き)を取り、PDFに「見えない文字」(描画モード3・サブセット埋め込みの M PLUS 1p・字間で元の幅に合わせる)として入れ直す(index.html の rasterize / addInvisibleText)。これでページ編集の文字の部品・ページOCRの除外(2.42)が、鍵つきでも効く。復号(qpdf等)はしない。確認: test-studio-locked.js(pypdf で暗号化。位置・大きさ・幅が元と一致)。
+
+- 起動画面2.02(最終): 鍵つき(編集用に開けない)PDFは、閲覧(pdf.js)でできるのにアプリでできないのはアプリ側の限界、として直した。確認ダイアログ(askLocked)で「鍵を外して、元のPDFのまま編集できるようにする」にチェック → qpdf(WebAssembly, Apache-2.0, @neslinesli93/qpdf-wasm@0.3.0 を jsdelivr から読む)で、メモリ上で復号(`--decrypt`)し、普通のPDFとして開く(文字・フォント・図は元のまま。保存したファイルには鍵が掛からない)。パスワードが要るもの(終了コード2)は prompt で聞く。チェックなし=画像として取り込む(元の文章は変わらない)。鍵を外せなかったときは、画像+見えない文字(addInvisibleText)に落とす。復号後の確認: pdffonts でフォント(IPAGothic サブセット)が元と同じ、pdftotext で文字が同じ。harness.js・setup.sh に qpdf-wasm を追加。

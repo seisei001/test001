@@ -14,6 +14,8 @@ const FIXED={
   'pdfjs-dist@3.11.174/build/pdf.min.js':'pdfjs-dist/build/pdf.min.js',
   'pdfjs-dist@3.11.174/build/pdf.worker.min.js':'pdfjs-dist/build/pdf.worker.min.js',
   'jsqr@1.4.0/dist/jsQR.js':'jsqr/dist/jsQR.js',
+  '@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.js':'@neslinesli93/qpdf-wasm/dist/qpdf.js',
+  '@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.wasm':'@neslinesli93/qpdf-wasm/dist/qpdf.wasm',
   '@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf':'@expo-google-fonts/m-plus-1p/400Regular/MPLUS1p_400Regular.ttf',
   '@expo-google-fonts/sawarabi-mincho@0.4.1/400Regular/SawarabiMincho_400Regular.ttf':'@expo-google-fonts/sawarabi-mincho/400Regular/SawarabiMincho_400Regular.ttf',
   '@expo-google-fonts/m-plus-rounded-1c@0.4.1/400Regular/MPLUSRounded1c_400Regular.ttf':'@expo-google-fonts/m-plus-rounded-1c/400Regular/MPLUSRounded1c_400Regular.ttf',
