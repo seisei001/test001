@@ -1539,7 +1539,7 @@ async function getOcr(lang){
 }
 async function renderRegion(x,y,w,h,scale){
   const pg=await pdfView.getPage(cur+1),vp=pg.getViewport({scale});
-  const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));
+  const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));if(ocrTrack)ocrTrack.push(cv);
   const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
   return cv;
@@ -1717,6 +1717,8 @@ async function ndlRead(cv,wd){
   const H=24,c2=document.createElement("canvas");c2.width=wd;c2.height=H;const cx=c2.getContext("2d",{willReadFrequently:true});
   cx.fillStyle="#fff";cx.fillRect(0,0,wd,H);cx.imageSmoothingQuality="high";cx.drawImage(src,0,0,wd,H);
   const d=cx.getImageData(0,0,wd,H).data,HW=H*wd,f=new Float32Array(3*HW);
+  {let dk=0;for(let i=0;i<HW;i++)if(d[i*4]<140)dk++;ocrStat.reads++;if(dk<3)ocrStat.blank++;}   // 診断: 白紙の画像を読ませていないか
+  c2.width=c2.height=0;if(src!==cv)src.width=src.height=0;
   for(let i=0;i<HW;i++){f[i]=d[i*4]/127.5-1;f[HW+i]=d[i*4+1]/127.5-1;f[2*HW+i]=d[i*4+2]/127.5-1;}
   const sess=await getNdl(wd),res=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",f,[1,3,H,wd])});
   const o=res[sess.outputNames[0]],T=o.dims[1],C=o.dims[2],a=o.data;
@@ -1748,7 +1750,8 @@ async function ndlLine(ch,x,y,S,Sb,flat){
     const best=[...g.values()].sort((a,b)=>b.n-a.n||((b.cjk&&est<1.6&&b.k.length===1)-(a.cjk&&est<1.6&&a.k.length===1))||b.conf-a.conf)[0];
     if(best){r={str:best.k,conf:Math.max(60,best.conf)};}
   }
-  if(!r.str.trim()||r.conf<35)return null;
+  if(!r.str.trim()){ocrStat.empty++;return null;}
+  if(r.conf<35){ocrStat.low++;return null;}
   if(r.items&&r.items.length&&r.items.length===Array.from(r.str).length){const nc=lmRerank(r.items);r.str=nc.join("");}   // 単語として自然な組み合わせに選び直す
   const X0=x+l.x0/S,X1=x+l.x1/S,Y0=y+l.y0/S,Y1=y+l.y1/S;
   const txt=cleanOcr(fixPaddle(r.str));
@@ -2100,9 +2103,9 @@ function fillGaps(seg1,seg2){
   }
   return extra;
 }
-let ocrDiag="";
+let ocrDiag="",ocrTrack=null,ocrStat={reads:0,blank:0,empty:0,low:0};   // ocrTrack: 変換中に作った一時の画像(iPhoneは画像の合計の大きさに上限があるので、塊ごとに解放する)
 async function doOcrBody(x,y,w,h){
-  let nGap=0,engNote="",nSeg0=0;const tOcr0=performance.now();ocrDiag="";
+  ocrTrack=null;  let nGap=0,engNote="",nSeg0=0;const tOcr0=performance.now();ocrDiag="";
   const lang=$("ocrLang").value;job.step("認識エンジンを準備しています…(初回のみ時間がかかります)");
   const eng=$("ocrEngine").value;ppMode=eng==="paddle";ndlMode=eng==="ndl";let worker=null;
   if(ndlMode){try{await getNdl(256);}catch(e){console.warn(e);ndlMode=false;ppMode=true;engNote="最高精度エンジン(NDLOCR)を読み込めませんでした。";status("最高精度エンジンを読み込めなかったので、高精度エンジン(PaddleOCR)で認識します("+(e.message||e)+")");job.step("高精度エンジンで認識します…");}}
@@ -2129,13 +2132,15 @@ async function doOcrBody(x,y,w,h){
     const mh=[...l.hs].sort((a,b)=>a-b)[l.hs.length>>1];
     if(l.n>=2&&l.n<=12&&H<0.8*ghMed&&W<14*H&&(l.ar<(l.n<=3?0.4:0.3)*W*H||mh<0.5*H))return false;
     return true;});
-  nSeg0=seg.chunks.length;
+  nSeg0=seg.chunks.length;ocrStat={reads:0,blank:0,empty:0,low:0};ocrTrack=[];
   const res=[];
   for(let i=0;i<seg.chunks.length;i++){
     status(`文字認識中… ${i+1}/${seg.chunks.length}(塊ごとに、ちょうどよい大きさで読み取っています)`);job.step(`文字を読み取っています… ${i+1}/${seg.chunks.length}`,10+85*i/seg.chunks.length);
     const r=await ocrChunk(worker,seg.chunks[i],x,y,S,flat);
+    if(ocrTrack){ocrTrack.forEach(c=>{c.width=c.height=0;});ocrTrack.length=0;}
     if(r.lines.length)res.push(r);
   }
+  ocrTrack=null;
   // 1行だけの塊は、同じ高さに別の塊が並んでいたら、中央・右揃えとは言えない(ラベルの右の値が、たまたまページ中央にあるだけ)→ 左揃え
   res.forEach((c,i)=>{if(c.lines.length!==1||c.align==="left")return;const l=c.lines[0],cy=(l.y0+l.y1)/2;
     if(res.some((o,j)=>j!==i&&o.lines.some(m=>Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(c.size,o.size))))c.align="left";});
@@ -2191,7 +2196,7 @@ async function doOcrBody(x,y,w,h){
   lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
-  ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒。`+engReport(res,engNote);
+  ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
 $("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
