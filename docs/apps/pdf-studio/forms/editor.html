@@ -91,6 +91,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 /* 枠の動かす・大きさのつまみ: パソコンは、角に置いたカーソルの形(十字・斜め矢印)で。見えない小さな範囲。iPhoneなどの指は、角の外に印を出して点滅 */
+body.pt-touch.has-sel .ibox:not(.on){pointer-events:none;}   /* 指: 枠を選んでいるとき、ほかの枠の上でも、ふつうの操作(スクロール・拡大・何もない所のタップで選択を外す・長押しで範囲)にする */
 .hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}   /* 指で長押ししたとき、iPhoneの文字選択・メニューに奪われない */
 .hdl.mv{left:-8px;top:-8px;cursor:move;}body.ctrl .hdl.mv:hover{cursor:copy;}body.ctrl .hdl.mv:hover::after{content:"＋";position:absolute;left:12px;top:-14px;width:18px;height:18px;border-radius:50%;background:#16a34a;color:#fff;font:bold 14px/18px sans-serif;text-align:center;pointer-events:none;}   /* Ctrlを押すと、✥の右上に＋(コピー) */.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
 body.pt-touch .hdl{width:36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;font-size:18px;line-height:36px;text-align:center;opacity:.55;animation:hblink .5s 3;}
@@ -873,7 +874,7 @@ function applyZoom(sc){document.documentElement.style.setProperty("--zs",String(
 if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,()=>{if(zoomFromParent==null)applyZoom(visualViewport.scale);}));   // 最後に触れたのが指かマウスか
 let ptHold=null;
 document.addEventListener("pointermove",e=>{if(ptHold&&e.pointerId===ptHold.id&&Math.hypot(e.clientX-ptHold.x,e.clientY-ptHold.y)>10){clearTimeout(ptHold.tm);ptHold=null;}},true);
-document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);const h=ptHold;ptHold=null;if(h.ready&&h.it&&items.includes(h.it))armEdit(h.it,h.x,h.y);}},true);
+document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);const h=ptHold;ptHold=null;if((h.ready||h.tapEdit)&&h.it&&items.includes(h.it))armEdit(h.it,h.x,h.y);}},true);
 // 入力を始める(キーボードを出す)。指を離した直後の操作の中で呼ぶ。あとから届く touchend/click でも、もう一度やり直す(iPhoneは、どちらかでないと出ないことがある)
 let pendingEdit=null;
 function armEdit(it,x,y){pendingEdit={it,x,y,t:performance.now()};startEdit(it,x,y);}
@@ -904,7 +905,7 @@ function startEdit(it,x,y){   // iPhone: 長押し・「✎ 入力」で入力�
 }
 function renderOverlay(){
   if(!pdfView)return;
-  const k=K();ov.innerHTML="";itemEls.clear();
+  const k=K();ov.innerHTML="";itemEls.clear();document.body.classList.toggle("has-sel",!!cs);
   if(mode==="sel"&&runsFor===cur){
     const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
     blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);if(g.every(taken))return;   // 訂正の部品にした文字には、点線の枠を出さない
@@ -971,12 +972,13 @@ function renderOverlay(){
     }
     el.addEventListener("pointerdown",e=>{
       e.stopPropagation();
-      if(cs!==it){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
+      const wasSel=cs===it;
+      if(!wasSel){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
       if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip")){   // 枠の中の長押しで、入力を始める
         const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
         const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid){ptHold.ready=true;ringAt(x0,y0);}},500);   // 500ms: 長押しになった印(輪)。キーボードは、指を離したときに出す(iPhoneは、指を離す操作の中でしか出せない)
-        ptHold={id:pid,tm,x:x0,y:y0,it};
-        try{ov.setPointerCapture(pid);}catch{}   // 選んだ直後に枠が描き直されても、指を離したことを受け取れるように(長押しが誤って始まらない)
+        ptHold={id:pid,tm,x:x0,y:y0,it,tapEdit:wasSel};   // すでに選んでいる枠の中は、タップ(動かさずに離す)だけで、その位置から入力できる
+        if(!wasSel)try{ov.setPointerCapture(pid);}catch{}   // 選んだ直後に枠が描き直されても、指を離したことを受け取れるように(長押しが誤って始まらない)
       }
     });
     if(it===cs){

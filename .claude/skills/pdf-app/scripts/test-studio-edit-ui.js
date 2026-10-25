@@ -95,6 +95,17 @@ const {launch,WORK}=require('./harness');
   const tb=await fr.locator('.ibox.on .t').boundingBox();
   await T('touchStart',tb.x+tb.width/2,tb.y+tb.height/2);await page.waitForTimeout(700);await T('touchEnd');await page.waitForTimeout(400);
   const s2=await st();ok('枠の中を長押しすると、入力モードになる: '+JSON.stringify(s2),s2.edit==='true'&&s2.active==='t'&&s2.mode===true);
+  // 選んでいる枠の中をタップ→その位置で入力モード / 選んでいる間、ほかの枠の上は「ふつうの操作」(枠が選ばれない)
+  await tap(ov.x+395*k,ov.y+10*k);   // 何もない所をタップ→選択を外す
+  const tbX=await fr.locator('.ibox').first().boundingBox();
+  await tap(tbX.x+tbX.width/2,tbX.y+tbX.height/2);   // 1回目のタップ: 選ぶだけ
+  const sT1=await st();ok('1回目のタップは、選ぶだけ(入力モードではない)',sT1.edit!=='true');
+  await tap(tbX.x+tbX.width/2,tbX.y+tbX.height/2);   // 2回目のタップ: その位置で入力モード
+  const sT2=await st();ok('選んでいる枠の中をタップすると、入力モードになる: '+JSON.stringify(sT2),sT2.edit==='true'&&sT2.active==='t');
+  await f.evaluate(()=>{const o=document.getElementById('ov');const b=document.querySelector('.ibox.on');const c=b.cloneNode(true);c.classList.remove('on');c.style.left=(parseFloat(b.style.left)+200)+'px';c.id='';o.appendChild(c);window.__dummy=c;});
+  const pe=await f.evaluate(()=>({sel:getComputedStyle(document.querySelector('.ibox.on')).pointerEvents,other:getComputedStyle(window.__dummy).pointerEvents}));
+  ok('枠を選んでいる間、ほかの枠はタッチを受けない(ふつうの操作になる): '+JSON.stringify(pe),pe.sel!=='none'&&pe.other==='none');
+  await f.evaluate(()=>window.__dummy.remove());
   // 1本指のスクロール / 長押し→ドラッグの範囲指定 / 2本指ドラッグの範囲指定
   await fr.locator('[data-m=text]').click();
   const nA=(await items()).length,sy0=await f.evaluate(()=>scrollY);
