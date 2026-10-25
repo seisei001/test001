@@ -91,14 +91,14 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
 /* 枠の動かす・大きさのつまみ: パソコンは、角に置いたカーソルの形(十字・斜め矢印)で。見えない小さな範囲。iPhoneなどの指は、角の外に印を出して点滅 */
-.hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;}
+.hdl{position:absolute;touch-action:none;z-index:6;background:transparent;width:12px;height:12px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}   /* 指で長押ししたとき、iPhoneの文字選択・メニューに奪われない */
 .hdl.mv{left:-8px;top:-8px;cursor:move;}body.ctrl .hdl.mv:hover{cursor:copy;}body.ctrl .hdl.mv:hover::after{content:"＋";position:absolute;left:12px;top:-14px;width:18px;height:18px;border-radius:50%;background:#16a34a;color:#fff;font:bold 14px/18px sans-serif;text-align:center;pointer-events:none;}   /* Ctrlを押すと、✥の右上に＋(コピー) */.hdl.rs{right:-8px;bottom:-8px;cursor:nwse-resize;}
 body.pt-touch .hdl{width:36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;font-size:18px;line-height:36px;text-align:center;opacity:.55;animation:hblink .5s 3;}
 body.pt-touch .hdl.mv{left:-38px;top:-38px;transform:scale(var(--zs,1));transform-origin:100% 100%;}body.pt-touch .hdl.rs{right:-38px;bottom:-38px;transform:scale(var(--zs,1));transform-origin:0 0;}   /* 画面を拡大したときは、印を小さくして、見た目の大きさを一定に */
 body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{content:"⇲";}
 @keyframes hblink{50%{opacity:1;}}
 .sample{position:absolute;left:0;top:0;color:rgba(0,0,0,.28);pointer-events:none;white-space:nowrap;}   /* 空の枠の、1文字の見本 */
-.grip{position:absolute;width:11px;height:11px;border-radius:50%;background:#f9a8d4;border:1px solid #ec4899;color:#9d174d;font-size:8px;line-height:9px;text-align:center;touch-action:none;cursor:ns-resize;z-index:6;}   /* 文字の大きさを変える矢印(うすいピンク) */
+.grip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:absolute;width:11px;height:11px;border-radius:50%;background:#f9a8d4;border:1px solid #ec4899;color:#9d174d;font-size:8px;line-height:9px;text-align:center;touch-action:none;cursor:ns-resize;z-index:6;}   /* 文字の大きさを変える矢印(うすいピンク) */
 .grip::after{content:"";position:absolute;inset:-7px;}
 body.pt-touch .grip{width:18px;height:18px;line-height:16px;font-size:12px;transform:scale(var(--zs,1));}
 body.pt-touch .grip::after{inset:-12px;}
@@ -873,7 +873,12 @@ function applyZoom(sc){document.documentElement.style.setProperty("--zs",String(
 if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,()=>{if(zoomFromParent==null)applyZoom(visualViewport.scale);}));   // 最後に触れたのが指かマウスか
 let ptHold=null;
 document.addEventListener("pointermove",e=>{if(ptHold&&e.pointerId===ptHold.id&&Math.hypot(e.clientX-ptHold.x,e.clientY-ptHold.y)>10){clearTimeout(ptHold.tm);ptHold=null;}},true);
-document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
+document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);const h=ptHold;ptHold=null;if(h.ready&&h.it&&items.includes(h.it))armEdit(h.it,h.x,h.y);}},true);
+// 入力を始める(キーボードを出す)。指を離した直後の操作の中で呼ぶ。あとから届く touchend/click でも、もう一度やり直す(iPhoneは、どちらかでないと出ないことがある)
+let pendingEdit=null;
+function armEdit(it,x,y){pendingEdit={it,x,y,t:performance.now()};startEdit(it,x,y);}
+["touchend","click"].forEach(n=>document.addEventListener(n,()=>{const p=pendingEdit;if(!p)return;if(performance.now()-p.t>900){pendingEdit=null;return;}
+  const t=itemEls.get(p.it.id)?.querySelector(".t");if(t&&document.activeElement!==t)startEdit(p.it,p.x,p.y);},true));
 document.addEventListener("pointercancel",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
 const isTouch=()=>document.body.classList.contains("pt-touch");
 function caretAt(t,x,y){   // 指を置いた位置に、入力のカーソルを置く
@@ -969,8 +974,8 @@ function renderOverlay(){
       if(cs!==it){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
       if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip")){   // 枠の中の長押しで、入力を始める
         const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
-        const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid)startEdit(it,x0,y0);},500);
-        ptHold={id:pid,tm,x:x0,y:y0};
+        const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid){ptHold.ready=true;ringAt(x0,y0);}},500);   // 500ms: 長押しになった印(輪)。キーボードは、指を離したときに出す(iPhoneは、指を離す操作の中でしか出せない)
+        ptHold={id:pid,tm,x:x0,y:y0,it};
         try{ov.setPointerCapture(pid);}catch{}   // 選んだ直後に枠が描き直されても、指を離したことを受け取れるように(長押しが誤って始まらない)
       }
     });
@@ -1119,7 +1124,7 @@ function dragHandle(h,it,el,resize){
     e.stopPropagation();e.preventDefault();h.setPointerCapture(e.pointerId);
     const k=K(),sx=e.clientX,sy=e.clientY,ox=it.vx,oy=it.vy,ow=it.vw,oh=it.vh,sX0=scrollX,sY0=scrollY;
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
-    let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
+    let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;ringAt(sx,sy);showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
     const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
     const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
       if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
@@ -1193,8 +1198,9 @@ function beginRange(e){
   const fin=busy(async ev=>{
     if(ep)ep.stop();ov.removeEventListener("pointermove",mv);ov.removeEventListener("pointerup",fin);ov.removeEventListener("pointercancel",fin);
     const r=rub;rub=null;if(!r)return;r.d.remove();
-    if(mode==="sel")await loadRuns();
-    await ensureWebFont().catch(()=>{});
+    // iPhoneは、指を離した操作の流れの中でしか、キーボードを出せない。準備が済んでいれば、待たずに(awaitせずに)進む
+    if(mode==="sel"&&!(runsFor===cur&&curBase===bytes))await loadRuns();
+    if(!webFontOK)await ensureWebFont().catch(()=>{});
     const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
     const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
     const tap=w<6&&h<6;let it=null;
@@ -1239,7 +1245,7 @@ function beginRange(e){
     }
     if(it.type==="text"&&!tap){const e=estimate(it.vw,it.vh,it.size);status(`枠の大きさから、1行およそ${e.per}文字×${e.lines}行(約${e.chars}文字)として、${it.size}ptにしました。サイズ欄で変えられます。`);}
     select(it,true);
-    if(isTouch()&&it&&it.type!=="img"&&tap){const rc3=ov.getBoundingClientRect(),k3=K();startEdit(it,rc3.left+r.sx*k3,rc3.top+r.sy*k3);}   // 指で長押しして枠ができたら、そのまま入力モードへ
+    if(isTouch()&&it&&it.type!=="img"&&tap){const rc3=ov.getBoundingClientRect(),k3=K();armEdit(it,rc3.left+r.sx*k3,rc3.top+r.sy*k3);}   // 指で長押しして枠ができたら、そのまま入力モードへ
   });
   const mv=ev=>{if(!rub||two)return;if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-rub0.x,ev.clientY-rub0.y)>12&&atEdge(ev)){fin(ev);edgeToast(EDGE_MSG);return;}const rc2=ov.getBoundingClientRect(),k2=K();
     rub.x=Math.max(0,Math.min(VW,(ev.clientX-rc2.left)/k2));rub.y=Math.max(0,Math.min(VH,(ev.clientY-rc2.top)/k2));
@@ -2474,6 +2480,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
+setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
 window.pdfEditorDebug={jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
