@@ -1037,24 +1037,17 @@ function fitSize(it,o){
 const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
 let sizePop=null,sizePopRect=null;
 // 設定の吹き出し: 画面を拡大しても同じ大きさで、いま見えている範囲の中に(枠の近くに)出す
+// 文字の設定の窓: 出すときに1回だけ、枠の下(入らなければ上)に置く。そのあとは、ページの上に置いたまま(画面に固定して追いかけない)ので、チラつかず、
+// 窓の外では、ふつうにドラッグでの移動・2本指での拡大縮小ができる。最初の表示が、多少、画面の外に出ていてもよい(ページを動かせば見える)。
+const POP_RATIO=0.9;   // 窓の縮尺比率(大きさの出方の調整用)。1.0=そのままの大きさ
 function placeSizePop(){
-  // 文字の設定の窓は、必ず「いま見えている範囲(SHOWN)」に入る大きさにして、枠の下か上に出す。出したあとは、見えている範囲が少し揺れても動かさない(上下に飛ばない)
-  const d=sizePop;if(!d||!sizePopRect)return;
-  const z=GEO.inv(),m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown(),st=d._st;
-  if(st&&st.z===z&&st.l>=A.x+m-2&&st.t>=A.y+m-2&&st.l+st.w<=A.x+A.w-m+2&&st.t+st.h<=A.y+A.h-m+2)return;   // 倍率が同じで、いまも収まっているなら、そのまま
-  d.style.maxHeight="";d.style.overflowY="";d.style.transform=`scale(${z})`;
-  const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の、ふだんの大きさ
-  const roomAbove=R.top-gap-(A.y+m),roomBelow=(A.y+A.h-m)-(R.bottom+gap);
-  const fOf=room=>Math.max(0.3,Math.min(1,room/h0,(A.w-2*m)/w0));   // 入りきらないぶんだけ、縮める
-  const fB=fOf(roomBelow),fA=fOf(roomAbove);
-  let side=st?st.side:(fB>=0.8||fB>=fA?"below":"above");   // 最初は、下に十分入れば下。そうでなければ、広いほう
-  if(st){const cur=side==="below"?fB:fA,oth=side==="below"?fA:fB;if(cur<0.6&&oth>cur+0.15)side=side==="below"?"above":"below";}   // 入らなくなって、反対側がはっきり広いときだけ、反対側に移す(ヒステリシス)
-  const f=side==="below"?fB:fA;
-  d.style.transform=`scale(${z*f})`;
-  const pw=w0*f,ph=h0*f;let top=side==="below"?R.bottom+gap:R.top-gap-ph;
-  top=Math.max(A.y+m,Math.min(A.y+A.h-ph-m,top));   // 念のため、必ず収める
-  const left=Math.max(A.x+m,Math.min(A.x+A.w-pw-m,R.left));
-  d.style.left=left+"px";d.style.top=top+"px";d._st={z,side,l:left,t:top,w:pw,h:ph};
+  const d=sizePop;if(!d||!sizePopRect||d._placed)return;d._placed=true;
+  const z=GEO.inv()*POP_RATIO,m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown();
+  d.style.transform=`scale(${z})`;
+  const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の大きさ
+  const roomAbove=R.top-gap-A.y,roomBelow=A.y+A.h-(R.bottom+gap),below=roomBelow>=h0||roomBelow>=roomAbove;   // 下に入れば下。入らなければ、広いほう
+  const top=below?R.bottom+gap:R.top-gap-h0,left=Math.max(A.x+m,Math.min(A.x+A.w-w0-m,R.left));   // 横は、見えている範囲に収める
+  d.style.left=(left+scrollX)+"px";d.style.top=(top+scrollY)+"px";   // ページの座標(スクロールと一緒に動く)
 }
 function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 // 窓を出す基準の位置: 枠(入力する文字)を隠さないよう、枠の下か上に出す。枠が大きすぎるときだけ、✥の位置
@@ -1065,14 +1058,14 @@ function showSizePop(it,anchor){
   hideSizePop();
   const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
   if(it.type==="img"){   // 画像の枠: コピー・消去だけ
-    d.style.cssText="position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:flex;gap:6px;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0";
+    d.style.cssText="position:absolute;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:flex;gap:6px;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0";
     d.innerHTML='<button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button>';
     document.body.appendChild(d);sizePop=d;sizePopRect=popAnchorRect(it,r);placeSizePop();
     d.querySelector("#spCopy").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDel").onclick=()=>{hideSizePop();deleteItem(it);};d.querySelector("#spX").onclick=hideSizePop;
     d.addEventListener("pointerdown",e=>e.stopPropagation());return;
   }
 
-  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 8px;display:grid;grid-template-columns:auto 1fr;gap:4px 6px;align-items:center;font-size:.76rem;line-height:1.2;width:max-content;max-width:calc(100vw - 16px);transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
+  d.style.cssText=`position:absolute;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 8px;display:grid;grid-template-columns:auto 1fr;gap:4px 6px;align-items:center;font-size:.76rem;line-height:1.2;width:max-content;max-width:calc(100vw - 16px);transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
   d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:30px;font-size:16px;max-width:8.5em;text-overflow:ellipsis"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="4" autocomplete="off" style="min-height:30px;font-size:16px;width:4.2em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:30px;width:3em;padding:0">
@@ -1098,7 +1091,11 @@ function showSizePop(it,anchor){
   d.addEventListener("pointerdown",e=>e.stopPropagation());
   if(!isTouch())setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);   // 指では、キーボードを勝手に出さない(出ると、見えている範囲が狭くなって、窓が入らなくなる)
 }
-document.addEventListener("pointerdown",e=>{if(sizePop&&!sizePop.contains(e.target))hideSizePop();},true);
+{let dn=null;   // 窓の外は、軽くタップしたときだけ閉じる(ドラッグでの移動・2本指の拡大縮小の開始では、閉じない)
+ document.addEventListener("pointerdown",e=>{if(dn&&e.pointerId!==dn.id){dn=null;return;}dn=(sizePop&&!sizePop.contains(e.target))?{id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now()}:null;},true);
+ document.addEventListener("pointermove",e=>{if(dn&&e.pointerId===dn.id&&Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>10)dn=null;},true);
+ document.addEventListener("pointercancel",()=>{dn=null;},true);
+ document.addEventListener("pointerup",e=>{if(dn&&e.pointerId===dn.id&&sizePop&&performance.now()-dn.t<600)hideSizePop();dn=null;},true);}
 // 画面を拡大しているとき、ドラッグ中の指が見えている範囲の端に来たら、その向きへゆっくり画面を動かす(指は止まっていても動かし続ける)
 //  まず、このフォーム自身をスクロール。動かせなかった分は、親に頼む(親が画面を動かす)。apply(x,y)で、動いたぶんを含めた指の位置を渡す
 let panRes="";   // 親が画面を動かせたかの報告(原因調べ用の表示に出す)
@@ -2508,7 +2505,7 @@ if(EMBED){
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
-    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeSizePop();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
+    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
