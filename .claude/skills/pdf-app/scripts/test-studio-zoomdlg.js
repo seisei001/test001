@@ -17,6 +17,19 @@ const {launch,WORK}=require('./harness');
   ok(`確認の窓が、見えている範囲の中心に出る(中心 ${z&&(z.x+z.w/2).toFixed(0)},${z&&(z.y+z.h/2).toFixed(0)} / 範囲の中心 325,550)`,z&&Math.abs(z.x+z.w/2-325)<12&&Math.abs(z.y+z.h/2-550)<12);
   await page.evaluate(()=>{document.querySelectorAll('body > div').forEach(e=>{if(e.style.zIndex==='3000')e.remove();});});
   await stub(1,0,0,900,1400);await page.waitForTimeout(200);
+  // 0. 領域の管理: アプリ(APP)・フォーム(FORM)・見えている範囲(SCREEN)・フォームの中で見えている所(SHOWN)が、名前を分けて、正しく求まる
+  await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
+  const fG=page.frames().find(x=>x!==page.mainFrame());
+  const fbG=await page.evaluate(()=>{const r=document.getElementById('formFrame').getBoundingClientRect();return{l:r.left,t:r.top,w:r.width,h:r.height};});
+  await stub(2,fbG.l+60,fbG.t+150,450,700);await page.waitForTimeout(400);
+  const g1=await fG.evaluate(()=>window.pdfEditorDebug.geo());
+  ok(`SCREEN は、フォームの座標で、見えている範囲(60,150,450×700)になる: ${JSON.stringify(g1.screen)}`,Math.abs(g1.screen.x-60)<1&&Math.abs(g1.screen.y-150)<1&&g1.screen.w===450&&g1.screen.h===700&&g1.scale===2);
+  ok(`SHOWN は SCREEN と同じ(フォームの中に収まっているとき)・縮小率は 1/拡大率(${g1.inv})`,Math.abs(g1.shown.x-60)<1&&g1.shown.w===450&&Math.abs(g1.inv-0.5)<0.001);
+  await stub(1,0,0,900,1400);await page.waitForTimeout(400);
+  const g2=await fG.evaluate(()=>window.pdfEditorDebug.geo());
+  ok(`SCREEN は、フォームの外(束デスクの見出し)にはみ出す(y=${g2.screen.y.toFixed(0)})が、SHOWN は、フォームの中に収まる(y=${g2.shown.y}, 高さ ${g2.shown.h.toFixed(0)} ≦ フォーム ${g2.form.h})`,g2.screen.y<0&&g2.shown.y>=0&&g2.shown.y+g2.shown.h<=g2.form.h+1&&g2.shown.x>=0);
+  ok(`FORM はフォーム(iframe)自身の大きさ(${g2.form.w}×${g2.form.h})`,Math.abs(g2.form.w-fbG.w)<2&&Math.abs(g2.form.h-fbG.h)<2);
+  await page.evaluate(()=>{document.getElementById('formClose').click();});await page.waitForTimeout(500);
   // 2. ページ編集の処理の表示(緑の枠)
   await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
   const f=page.frames().find(x=>x!==page.mainFrame());

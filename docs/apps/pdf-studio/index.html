@@ -114,10 +114,10 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.04"},
+  splash:{name:"PDFスタジオ",ver:"2.05"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.49",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.50",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -489,23 +489,31 @@ $("formClose").onclick=closeForm;
 // 画面の拡大率(ピンチ)を、フォームに伝える(フォームの印・ボタンの見た目の大きさを一定にするため)
 // 画面を拡大(ピンチ)しているとき、確認・メニューの窓が巨大にならないよう、見えている範囲に、ふだんの大きさで出す
 const fitted=new Set();
+// ===== 画面の領域の管理(領域ごとに、名前を分けて持つ。座標の基準は、すべて「束デスク(親)のページの座標」) =====
+//   APP    … アプリ全体の表示領域(束デスクのページ。拡大前の大きさ)
+//   SCREEN … いま画面に見えている範囲(ピンチ拡大・キーボード・スクロールを反映。visualViewport)と、その拡大率
+//   FORM   … 編集フォーム(iframe)の領域
+// 確認の窓・メニューは SCREEN に、フォームの中の窓・表示は(SCREEN と FORM を渡されて)重なる範囲に、ふだんの大きさで出す
+function geoApp(){return{w:window.innerWidth,h:window.innerHeight};}
+function geoScreen(){const v=window.visualViewport;return v?{x:v.offsetLeft,y:v.offsetTop,w:v.width,h:v.height,scale:v.scale||1}:{x:0,y:0,w:window.innerWidth,h:window.innerHeight,scale:1};}
+function geoForm(){const r=$("formFrame").getBoundingClientRect();return{x:r.left,y:r.top,w:r.width,h:r.height};}
 function fitModal(o){
-  const v=window.visualViewport;
-  if(!v||v.scale<=1.02){o.style.inset="0";o.style.width=o.style.height=o.style.transform=o.style.transformOrigin="";return;}
-  const s=v.scale;o.style.inset="auto";o.style.left=v.offsetLeft+"px";o.style.top=v.offsetTop+"px";o.style.width=(v.width*s)+"px";o.style.height=(v.height*s)+"px";o.style.transformOrigin="0 0";o.style.transform=`scale(${1/s})`;
+  const S=geoScreen();
+  if(S.scale<=1.02){o.style.inset="0";o.style.width=o.style.height=o.style.transform=o.style.transformOrigin="";return;}
+  const s=S.scale;o.style.inset="auto";o.style.left=S.x+"px";o.style.top=S.y+"px";o.style.width=(S.w*s)+"px";o.style.height=(S.h*s)+"px";o.style.transformOrigin="0 0";o.style.transform=`scale(${1/s})`;
 }
 function fitAll(){fitted.forEach(o=>{if(o.isConnected)fitModal(o);else fitted.delete(o);});}
 function addFit(o){fitted.add(o);fitModal(o);}
 addFit($("menu"));
-function sendZoom(){fitAll();try{const fr=$("formFrame"),w=fr.contentWindow,v=window.visualViewport;if(!w)return;
-  let vv=null;if(v){const r=fr.getBoundingClientRect();vv={x:v.offsetLeft-r.left,y:v.offsetTop-r.top,w:v.width,h:v.height};}   // いま見えている範囲(フォームの中の座標)。設定の吹き出しを、見えている所に出すため
-  w.postMessage({type:"zoom",scale:(v&&v.scale)||1,vv},"*");}catch{}}
+function sendZoom(){fitAll();try{const w=$("formFrame").contentWindow;if(!w)return;
+  const geo={app:geoApp(),screen:geoScreen(),form:geoForm()};   // 3つの領域を、名前を分けて、そのまま渡す(フォーム側で、自分の座標に直す)
+  w.postMessage({type:"zoom",geo,scale:geo.screen.scale},"*");}catch{}}
 // iPhone: 入力・キーボードなどで、画面の拡大や位置が勝手に変わったら(指の操作中・直後ではないとき)、元に戻そうとする。拡大率の戻しは、iPhoneの仕様で効かないこともある
 let vvKeep=null,vvTouching=0,vvLastEnd=0,vvTimer=null;
-const vvNow=()=>({s:visualViewport.scale,l:visualViewport.pageLeft,t:visualViewport.pageTop});
+const vvNow=()=>({s:geoScreen().scale,l:visualViewport.pageLeft,t:visualViewport.pageTop});   // 拡大率は、SCREEN(geoScreen)の値を使う
 const formOpen=()=>!$("formHost").classList.contains("hidden");
 function vvTryZoom(sc){const m=document.querySelector('meta[name=viewport]');if(!m)return;const orig=m.content;m.content=`width=device-width, initial-scale=${sc}, minimum-scale=${Math.min(sc,1)}, maximum-scale=${sc}`;setTimeout(()=>{m.content=orig;},300);}
-function vvRestore(){clearTimeout(vvTimer);vvTimer=setTimeout(()=>{if(!vvKeep||vvTouching>0)return;try{window.scrollTo(vvKeep.l,vvKeep.t);}catch{}if(Math.abs(visualViewport.scale-vvKeep.s)>0.02)vvTryZoom(vvKeep.s);status("画面の拡大・位置が勝手に変わったため、元に戻しました。");},150);}
+function vvRestore(){clearTimeout(vvTimer);vvTimer=setTimeout(()=>{if(!vvKeep||vvTouching>0)return;try{window.scrollTo(vvKeep.l,vvKeep.t);}catch{}if(Math.abs(geoScreen().scale-vvKeep.s)>0.02)vvTryZoom(vvKeep.s);status("画面の拡大・位置が勝手に変わったため、元に戻しました。");},150);}
 function vvChange(){
   sendZoom();if(!formOpen()||!("ontouchstart" in window))return;
   const cur=vvNow();
