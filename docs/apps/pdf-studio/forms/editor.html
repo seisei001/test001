@@ -229,7 +229,7 @@ const job={
   fail(t){const j=$("job");j.className="fail";$("jobT").textContent="⚠ "+t;}
 };
 let ocrRunning=false;
-function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+"(暗号化PDFなどは非対応の場合があります)");}};}
+function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+(e&&e.noHint?"":"(暗号化PDFなどは非対応の場合があります)"));}};}
 
 async function setBytes(nb,keepCur){
   if(bytes)hist.push(bytes);
@@ -515,11 +515,12 @@ async function loadRuns(){
     const tx=pdfjsLib.Util.transform(vp.transform,it.transform);
     const size=Math.hypot(tx[2],tx[3]);
     if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue; // 横書きのみ対応
-    runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size});
+    runs.push({str:it.str,x:tx[4],base:tx[5],w:it.width*vp.scale,size,fn:it.fontName});
   }
   // 同じ文字が、ほぼ同じ場所に2回書かれているPDF(太字風・影・二重の文字)は、1つにする(つなげて、文字が二つになるのを防ぐ)
   {const kept=[];runs.forEach(r=>{if(!kept.some(q=>q.str===r.str&&Math.abs(q.x-r.x)<Math.max(q.size,r.size)*0.35&&Math.abs(q.base-r.base)<Math.max(q.size,r.size)*0.35))kept.push(r);});runs=kept;}
   seps=await loadSeps(p,vp);
+  runs.forEach(r=>{try{const f=p.commonObjs.get(r.fn);r.fname=f&&f.name;}catch{}});   // 元のフォントの名前(PDFの BaseFont)
   recomputeBlocks();
 }
 // まとまりの判定:
@@ -563,7 +564,7 @@ function buildBlocks(list,gapOverride){
   return [...groups.values()];
 }
 // 訂正の部品を、文字・大きさ・色・位置・フォントのどれかを変えたかどうか。変えていない部品は、元の文字のまま残す(背景を白抜きしない・PDFにも書かない)
-const fixSig=it=>JSON.stringify([it.txt,it.size,it.color,Math.round(it.vx*10),Math.round(it.vy*10),Math.round(it.vw*10),Math.round(it.vh*10),it.ls||0,it.align||"left",it.fmt,it.font||"gothic",it.sz||[]]);
+const fixSig=it=>JSON.stringify([it.txt,it.size,it.color,Math.round(it.vx*10),Math.round(it.vy*10),Math.round(it.vw*10),Math.round(it.vh*10),it.ls||0,it.align||"left",it.fmt,it.font||"orig",it.sz||[]]);
 const fixChanged=it=>it.type!=="fix"||it.ocrMade||!it.sig0||fixSig(it)!==it.sig0;
 // 背景の選び方(✥の設定): none=完全透明(何も隠さない)/ text=余白透明(文字のあるところだけ白抜き。標準)/ all=白抜き(枠の全体)
 const bgModeOf=it=>it.bgMode||(it.erase===false?"none":"text");
@@ -679,6 +680,7 @@ function newFix(list){
     l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
   });
   const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:size*lh*lines.length,txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
+  {const cnt={};list.forEach(r=>{if(r.fname)cnt[r.fname]=(cnt[r.fname]||0)+Array.from(r.str).length;});const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(top)fx.ofName=top[0];}   // 拾った文字の、元のフォント
   fx.vw=tightW(fx,x1-x0);   // 自動で作る枠は、文字から最小(余白を足さない)
   growToFit(fx);clampToPage(fx);fx.sig0=list.some(r=>r.ocr)?null:fixSig(fx);return fx;
 }
@@ -1019,7 +1021,7 @@ function showSizePop(it,anchor){
   }
 
   d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
-  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px">${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
+  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
 <span>背景</span><select id="spBg" style="min-height:36px;font-size:16px"><option value="none">完全透明(何も隠さない)</option><option value="text">余白透明(文字のところだけ白抜き)</option><option value="all">白抜き(枠の全体)</option></select>
@@ -1027,10 +1029,11 @@ function showSizePop(it,anchor){
 <span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
   document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
-  inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"gothic";d.querySelector("#spBg").value=bgModeOf(it);col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
+  inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"orig";d.querySelector("#spBg").value=bgModeOf(it);col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
   const ok=async()=>{
     const v=parseFloat(String(inp.value).replace(",",".")),fk=fsel.value,cl=col.value,bgm=d.querySelector("#spBg").value;hideSizePop();
-    try{await ensureWebFontKey(fk);}catch(e){status("フォントを読み込めませんでした: "+e.message);return;}
+    if(fk!=="orig"&&fk!==(it.font||"orig")&&!confirm("元のフォントとは別のフォントを使うと、フォントのデータがPDFに入り、ファイルが約2〜4MB大きくなります。\nよろしいですか？")){status("フォントは変えませんでした。");return;}
+    try{await ensureWebFontKey(fk==="orig"?"gothic":fk);}catch(e){status("フォントを読み込めませんでした: "+e.message);return;}
     it.font=fk;it.color=cl;it.bgMode=bgm;it.erase=bgm!=="none";if(v>0)applySize(it,v,null);
     const el=itemEls.get(it.id);if(el){const t=el.querySelector(".t");if(t)buildText(it,t,K());growToFit(it);boxStyle(it,el);placeGrip(it,el);}
     syncPanel();
@@ -2298,13 +2301,80 @@ function layoutText(it,wfn){
   return{lines,height:y};
 }
 function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
+// ===== 元のフォントで書く(PDFに入っているフォントを、そのまま使う。フォントのデータは増えない) =====
+const isOrigFont=it=>!it.font||it.font==="orig";
+const u16s=h=>{let t="";for(let i=0;i+3<h.length;i+=4)t+=String.fromCharCode(parseInt(h.slice(i,i+4),16));return t;};
+function parseToUnicode(txt){   // 文字コード→文字 の対応表(ToUnicode)を、文字→文字コードにひっくり返す
+  const inv=new Map(),add=(code,uni,nb)=>{const a=Array.from(uni);if(a.length===1&&!inv.has(a[0]))inv.set(a[0],{code,nb});};
+  for(const m of txt.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))for(const e of m[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g))add(parseInt(e[1],16),u16s(e[2]),e[1].length/2);
+  for(const m of txt.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))for(const e of m[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(\[[^\]]*\]|<[0-9A-Fa-f]+>)/g)){
+    const lo=parseInt(e[1],16),hi=parseInt(e[2],16),nb=e[1].length/2;
+    if(e[3][0]==="["){[...e[3].matchAll(/<([0-9A-Fa-f]+)>/g)].forEach((x,i)=>{if(lo+i<=hi)add(lo+i,u16s(x[1]),nb);});}
+    else{const f=u16s(e[3].slice(1,-1));for(let c=lo;c<=hi&&c-lo<65536;c++)add(c,f.slice(0,-1)+String.fromCharCode(f.charCodeAt(f.length-1)+(c-lo)),nb);}
+  }
+  return inv;
+}
+function pdfNum(x){return x&&x.asNumber?x.asNumber():undefined;}
+function resolveOrigFont(doc,page,baseName){   // このページにある、その名前のフォントを探して、書くのに必要な情報を返す(使えなければ null)
+  try{
+    const res=page.node.Resources(),fonts=res&&res.lookup(PDFLib.PDFName.of("Font"));if(!(fonts instanceof PDFLib.PDFDict))return null;
+    for(const [k,ref] of fonts.entries()){
+      const d=doc.context.lookup(ref);if(!(d instanceof PDFLib.PDFDict))continue;
+      const bf=d.lookup(PDFLib.PDFName.of("BaseFont"));if(!bf||!bf.decodeText||bf.decodeText()!==baseName)continue;
+      const tu=d.lookup(PDFLib.PDFName.of("ToUnicode"));if(!(tu instanceof PDFLib.PDFRawStream))return null;
+      const inv=parseToUnicode(new TextDecoder("latin1").decode(PDFLib.decodePDFRawStream(tu).decode()));if(!inv.size)return null;
+      const sub=d.lookup(PDFLib.PDFName.of("Subtype")),comp=sub&&sub.toString()==="/Type0",wm=new Map();let dw=1000;
+      if(comp){
+        const enc=d.lookup(PDFLib.PDFName.of("Encoding"));if(!enc||!/^\/Identity-[HV]$/.test(enc.toString()))return null;   // 文字コード=CID のものだけ
+        const df=d.lookup(PDFLib.PDFName.of("DescendantFonts"),PDFLib.PDFArray).lookup(0,PDFLib.PDFDict);
+        const dwv=pdfNum(df.lookup(PDFLib.PDFName.of("DW")));if(dwv!==undefined)dw=dwv;
+        const W=df.lookup(PDFLib.PDFName.of("W"));
+        if(W instanceof PDFLib.PDFArray){let i=0;const n=W.size();while(i<n){const a=W.lookup(i),b=i+1<n?W.lookup(i+1):null;
+          if(b instanceof PDFLib.PDFArray){const c0=pdfNum(a);for(let q=0;q<b.size();q++)wm.set(c0+q,pdfNum(b.lookup(q)));i+=2;}
+          else{const c0=pdfNum(a),c1=pdfNum(b),w=pdfNum(W.lookup(i+2));for(let c=c0;c<=c1&&c-c0<70000;c++)wm.set(c,w);i+=3;}}}
+      }else{
+        const fc=pdfNum(d.lookup(PDFLib.PDFName.of("FirstChar")))||0,Wd=d.lookup(PDFLib.PDFName.of("Widths"));
+        if(!(Wd instanceof PDFLib.PDFArray))return null;
+        for(let q=0;q<Wd.size();q++)wm.set(fc+q,pdfNum(Wd.lookup(q)));dw=500;
+      }
+      return{key:k,inv,width:ch=>{const e=inv.get(ch);if(!e)return null;const w=wm.get(e.code);return(w===undefined?dw:w)/1000;}};
+    }
+  }catch(e){console.warn("元のフォントを調べられませんでした",e);}
+  return null;
+}
+const domFontCache={};
+async function pageDominantFont(pi){   // そのページで、いちばん多くの文字に使われているフォントの名前(新しい枠・OCRの枠の、元のフォント)
+  const key=pi+"|"+(bytes&&bytes.length);if(key in domFontCache)return domFontCache[key];
+  let best=null;
+  try{const p=await pdfView.getPage(pi+1),tc=await p.getTextContent();await p.getOperatorList();const cnt={};
+    for(const t of tc.items){if(!t.str||!t.str.trim())continue;let n=null;try{n=p.commonObjs.get(t.fontName).name;}catch{}if(n)cnt[n]=(cnt[n]||0)+t.str.length;}
+    best=(Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]||[])[0]||null;}catch{}
+  return domFontCache[key]=best;
+}
+// 元のフォントで、1行(または1文字)を書く
+function drawOrigText(page,of,str,x,y,size,color,rotDeg){
+  let hex="";for(const ch of Array.from(str)){const e=of.inv.get(ch);if(!e)continue;hex+=e.code.toString(16).padStart(e.nb*2,"0").toUpperCase();}
+  if(!hex)return;
+  const L=PDFLib;page.pushOperators(L.pushGraphicsState(),L.beginText(),L.setFillingColor(color),L.setFontAndSize(of.key,size),L.rotateAndSkewTextRadiansAndTranslate(L.degreesToRadians(rotDeg||0),0,0,x,y),L.showText(L.PDFHexString.of(hex)),L.endText(),L.popGraphicsState());
+}
 async function commit(){
   const todo=items.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
-  items=[];cs=null;
-  if(!todo.length||!bytes){renderOverlay();syncPanel();return;}
-  status("PDFに反映中…");
-  for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img").map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
+  if(!todo.length||!bytes){items=[];cs=null;renderOverlay();syncPanel();return;}
   const doc=await PDFDocument.load(bytes);
+  // 元のフォントで書けるかを、先に調べる(書けない文字があるときは、別のフォントを足すので、ファイルが大きくなる→確認する)
+  const needFallback=[];
+  for(const it of todo){
+    it._of=null;
+    if(it.type==="img"||it.fmt!=="text"||!it.txt.trim()||!isOrigFont(it))continue;
+    const page=doc.getPage(it.page),nm=it.ofName||await pageDominantFont(it.page),of=nm?resolveOrigFont(doc,page,nm):null;
+    const ok=of&&Array.from(it.txt).every(ch=>/\s/.test(ch)||of.inv.has(ch));
+    if(ok)it._of=of;else needFallback.push(it);
+  }
+  if(needFallback.length&&!confirm(`元のフォントで書けない文字があります(${needFallback.length}個の枠)。\n別のフォント(ゴシック)を追加して書くと、ファイルが約2MB大きくなります。\nよろしいですか？(いいえ: 取りやめて、フォントや文字を直します)`)){
+    status("取りやめました。枠の✥を長押しして、フォントや文字を直してください。");{const er=new Error("フォントの追加を取りやめました");er.noHint=true;throw er;}}
+  items=[];cs=null;
+  status("PDFに反映中…");
+  for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img"&&!it._of).map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
   const pfCache={};
   // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
   for(const it of todo){
@@ -2324,7 +2394,15 @@ async function commit(){
     }
     if(!it.txt.trim())continue;
     growToFit(it);
-    if(it.fmt==="text"){
+    if(it.fmt==="text"&&it._of){   // 元のフォントで書く(フォントのデータは増えない)
+      const of=it._of,rot=r;
+      const L=layoutText(it,(c,sv)=>(of.width(c)??0.25)*sv);
+      L.lines.forEach(ln=>{
+        let off=ln.off||0;
+        if(it.ls){ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,chr.c,ax,ay,chr.s,hex2rgb(it.color),rot);}off+=chr.w;});return;}
+        runsOf(ln).forEach(rn=>{const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,rn.str,ax,ay,rn.s,hex2rgb(it.color),rot);off+=rn.w;});
+      });
+    }else if(it.fmt==="text"){
       const fkey=FONTS[it.font]?it.font:"gothic";
       if(!pfCache[fkey]){
         doc.registerFontkit(fontkit);
