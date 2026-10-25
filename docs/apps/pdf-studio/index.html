@@ -114,10 +114,10 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.03"},
+  splash:{name:"PDFスタジオ",ver:"2.04"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.43",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.44",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -167,7 +167,7 @@ function askLocked(name){return new Promise(res=>{
   o.querySelector(".lk-name").textContent="「"+name+"」";
   const box=o.querySelector("div div:last-child"),chk=o.querySelector("#lkChk"),done=v=>{o.remove();res(v);};
   [["取り込む",()=>done(chk.checked?"edit":"image")],["やめる",()=>done("cancel")]].forEach(([t,f],i)=>{const x=document.createElement("button");x.textContent=t;x.style.minHeight="44px";if(i)x.className="sub";x.onclick=f;box.appendChild(x);});
-  document.body.appendChild(o);});}
+  document.body.appendChild(o);addFit(o);});}
 // 鍵を外す(qpdf を WebAssembly にしたもの。Apache-2.0)。閲覧ソフトと同じく、空のパスワードで開けるものは、そのまま外せる。パスワードが要るものは、聞く
 const QPDF_BASE="https://cdn.jsdelivr.net/npm/@neslinesli93/qpdf-wasm@0.3.0/dist/";let qpdfP=null;
 function loadQpdf(){
@@ -451,7 +451,7 @@ function askSave(b){return new Promise(res=>{
   o.querySelector("p").textContent="「"+b.name+"」";
   const box=o.querySelector("div div"),done=v=>{o.remove();res(v);};
   [[b.handle?"上書き保存(元のファイル)":null,"over"],["名前を付けて保存","as"],["保存しない","no"],["やめる(閉じない)","cancel"]].forEach(([t,v])=>{if(!t)return;const x=document.createElement("button");x.textContent=t;x.style.minHeight="44px";if(v==="no")x.className="sub-btn";x.onclick=()=>done(v);box.appendChild(x);});
-  document.body.appendChild(o);});}
+  document.body.appendChild(o);addFit(o);});}
 async function removeBundle(b){
   if(b.dirty){const a=await askSave(b);if(a==="cancel")return;if(a==="over"){if(!await overwriteBundle(b))return;}else if(a==="as"){if(!await saveBundle(b))return;}}
   snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);}
@@ -487,7 +487,17 @@ function openForm(kind,b){
 function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
 $("formClose").onclick=closeForm;
 // 画面の拡大率(ピンチ)を、フォームに伝える(フォームの印・ボタンの見た目の大きさを一定にするため)
-function sendZoom(){try{const fr=$("formFrame"),w=fr.contentWindow,v=window.visualViewport;if(!w)return;
+// 画面を拡大(ピンチ)しているとき、確認・メニューの窓が巨大にならないよう、見えている範囲に、ふだんの大きさで出す
+const fitted=new Set();
+function fitModal(o){
+  const v=window.visualViewport;
+  if(!v||v.scale<=1.02){o.style.inset="0";o.style.width=o.style.height=o.style.transform=o.style.transformOrigin="";return;}
+  const s=v.scale;o.style.inset="auto";o.style.left=v.offsetLeft+"px";o.style.top=v.offsetTop+"px";o.style.width=(v.width*s)+"px";o.style.height=(v.height*s)+"px";o.style.transformOrigin="0 0";o.style.transform=`scale(${1/s})`;
+}
+function fitAll(){fitted.forEach(o=>{if(o.isConnected)fitModal(o);else fitted.delete(o);});}
+function addFit(o){fitted.add(o);fitModal(o);}
+addFit($("menu"));
+function sendZoom(){fitAll();try{const fr=$("formFrame"),w=fr.contentWindow,v=window.visualViewport;if(!w)return;
   let vv=null;if(v){const r=fr.getBoundingClientRect();vv={x:v.offsetLeft-r.left,y:v.offsetTop-r.top,w:v.width,h:v.height};}   // いま見えている範囲(フォームの中の座標)。設定の吹き出しを、見えている所に出すため
   w.postMessage({type:"zoom",scale:(v&&v.scale)||1,vv},"*");}catch{}}
 // iPhone: 入力・キーボードなどで、画面の拡大や位置が勝手に変わったら(指の操作中・直後ではないとき)、元に戻そうとする。拡大率の戻しは、iPhoneの仕様で効かないこともある
