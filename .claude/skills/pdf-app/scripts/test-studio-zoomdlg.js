@@ -41,22 +41,27 @@ const {launch,WORK}=require('./harness');
   const j2=await rj();
   ok(`処理の表示の見た目の大きさが同じ(幅 ${j1.w.toFixed(0)} → ${(j2.w*2).toFixed(0)})`,Math.abs(j1.w-j2.w*2)<6);
   ok(`処理の表示が、見えている範囲の下に出る(下端 ${j2.b.toFixed(0)} / 範囲の下端 ${150+700})`,j2.b<=150+700+2&&j2.b>=150+700-40&&j2.x>=60-2&&j2.x+j2.w<=60+450+2);
-  // 3. 文字の設定の窓は、いつでも、見えている範囲に全部入る(✥が真ん中あたりでも。キーボードで見える範囲が狭くても。拡大していても)
-  await stub(1,0,0,900,1400);await page.waitForTimeout(300);
-  const fr=page.frameLocator('#formFrame');await fr.locator('[data-m=text]').click();
-  const ovb=await fr.locator('#ov').boundingBox();await page.mouse.click(ovb.x+ovb.width*0.4,ovb.y+ovb.height*0.75);await page.waitForTimeout(500);await page.keyboard.type('A');await page.waitForTimeout(300);
-  const cases=[['等倍・見出しも含む範囲(iPhoneの実際)',1,0,-fb.t,900,1400],['等倍・広い',1,0,0,900,1400],['等倍・キーボードで狭い',1,0,0,900,430],['2倍・中ほど',2,120,300,450,700],['3倍・狭い',3,100,200,300,466],['3倍・キーボードで狭い',3,100,200,300,200]];
-  for(const [nm,sc,l,t,w,h] of cases){
-    await stub(sc,fb.l+l,fb.t+t,w,h);await page.waitForTimeout(400);
-    const r=await f.evaluate(async()=>{const hd=document.querySelector('.hdl.mv');if(!hd)return null;hd.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await new Promise(x=>setTimeout(x,300));const d=document.getElementById('sizePop');if(!d)return null;const b=d.getBoundingClientRect();return{x:b.left,y:b.top,r:b.right,b:b.bottom,ih:innerHeight,iw:innerWidth};});
-    ok(`文字の設定の窓が、見えている範囲に全部入る(${nm}) ${r?JSON.stringify(r):'窓なし'} / 範囲 x${l}-${l+w} y${t}-${t+h}`,r&&r.x>=l-1&&r.r<=l+w+1&&r.y>=t-1&&r.b<=t+h+1&&r.y>=-1&&r.b<=r.ih+1&&r.x>=-1&&r.r<=r.iw+1);   // 見えている範囲の中、かつ、フォーム(iframe)の中(外は切れて見えない)
-    await f.evaluate(()=>{const x=document.getElementById('spX');x&&x.click();});
-  }
-  // 4. 見えている範囲が少し揺れても、窓は、上下に飛ばない(動かない)
+  // 3. 文字の設定の窓: 出したときの大きさ・位置のまま、ページの上に置く(追いかけない=チラつかない)。拡大しても見た目の大きさが同じ。窓の外のドラッグ・ピンチでは閉じない。軽いタップで閉じる
   await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(300);
-  const popTop=()=>f.evaluate(async()=>{let d=document.getElementById('sizePop');if(!d){const hd=document.querySelector('.hdl.mv');hd.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await new Promise(x=>setTimeout(x,300));d=document.getElementById('sizePop');}const b=d.getBoundingClientRect();return{t:b.top,l:b.left};});
-  const p0=await popTop();const tops=[p0.t];
-  for(const [dl,dt,dh] of [[0,3,0],[0,-4,0],[0,8,-6],[2,-9,10],[0,12,-12],[0,0,20],[0,-15,0]]){await stub(1,fb.l+dl,fb.t+dt,900,1339+dh);await page.waitForTimeout(250);tops.push((await popTop()).t);}
-  ok(`見えている範囲が少し揺れても、窓の位置が変わらない(${tops.map(v=>v.toFixed(0)).join(',')})`,tops.every(v=>Math.abs(v-tops[0])<0.5));
+  const fr=page.frameLocator('#formFrame');await fr.locator('[data-m=text]').click();
+  const ovb=await fr.locator('#ov').boundingBox();await page.mouse.click(ovb.x+ovb.width*0.4,ovb.y+ovb.height*0.3);await page.waitForTimeout(500);await page.keyboard.type('A');await page.waitForTimeout(300);
+  const openPop=()=>f.evaluate(async()=>{const o=document.getElementById('sizePop');if(o)o.remove();const hd=document.querySelector('.hdl.mv');hd.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await new Promise(x=>setTimeout(x,300));const d=document.getElementById('sizePop');if(!d)return null;const b=d.getBoundingClientRect();return{x:b.left,y:b.top,w:b.width,h:b.height,r:b.right};});
+  const base=await openPop();
+  for(const [nm,sc,l,t,w,h] of [['2倍',2,120,300,450,700],['3倍',3,100,200,300,466],['キーボードで狭い',1,0,0,900,430]]){
+    await stub(sc,fb.l+l,fb.t+t,w,h);await page.waitForTimeout(400);
+    const r=await openPop();
+    ok(`窓の見た目の大きさが同じ(${nm}: 幅 ${base.w.toFixed(0)} → ${r&&(r.w*sc).toFixed(0)})`,r&&Math.abs(base.w-r.w*sc)<6);
+    ok(`窓の横は、見えている範囲に入る(${nm}: ${r&&r.x.toFixed(0)}〜${r&&r.r.toFixed(0)} / 範囲 ${l}〜${l+w})`,r&&r.x>=l-1&&r.r<=l+w+1);
+  }
+  await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(300);
+  const q0=await openPop();const pos=[q0.y];
+  for(const [dl,dt,dh] of [[0,3,0],[0,-4,0],[0,8,-6],[2,-9,10],[0,12,-12],[0,0,20],[0,-15,0]]){await stub(1,fb.l+dl,fb.t+dt,900,1339+dh);await page.waitForTimeout(200);pos.push((await f.evaluate(()=>{const d=document.getElementById('sizePop');return d?d.getBoundingClientRect().top:-1;})));}
+  ok(`見えている範囲が少し揺れても、窓の位置は変わらない(${pos.map(v=>v.toFixed(0)).join(',')})`,pos.every(v=>Math.abs(v-pos[0])<0.5));
+  const cdp=await page.context().newCDPSession(page);const T=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y}]});
+  const out={x:fb.l+20,y:fb.t+40};
+  await T('touchStart',out.x,out.y);for(let i=1;i<=5;i++){await T('touchMove',out.x,out.y+i*25);await page.waitForTimeout(30);}await T('touchEnd');await page.waitForTimeout(300);
+  ok('窓の外をドラッグしても、窓は閉じない(ドラッグ・拡大縮小ができる)',await f.evaluate(()=>!!document.getElementById('sizePop')));
+  await T('touchStart',out.x,out.y);await page.waitForTimeout(60);await T('touchEnd');await page.waitForTimeout(300);
+  ok('窓の外を軽くタップすると、窓が閉じる',await f.evaluate(()=>!document.getElementById('sizePop')));
   console.log('JSエラー:',errs.length,errs);await browser.close();
 })();
