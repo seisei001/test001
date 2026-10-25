@@ -1038,18 +1038,23 @@ const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
 let sizePop=null,sizePopRect=null;
 // 設定の吹き出し: 画面を拡大しても同じ大きさで、いま見えている範囲の中に(枠の近くに)出す
 function placeSizePop(){
-  // 文字の設定の窓は、必ず「いま見えている範囲」に入る大きさにして、✥の下か上の、広いほうに出す(✥が画面の真ん中あたりでも、どちらでも入る)
+  // 文字の設定の窓は、必ず「いま見えている範囲(SHOWN)」に入る大きさにして、枠の下か上に出す。出したあとは、見えている範囲が少し揺れても動かさない(上下に飛ばない)
   const d=sizePop;if(!d||!sizePopRect)return;
-  const z=GEO.inv(),m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown();   // 窓は、SHOWN(フォームの中で、いま見えている所)に収める
-  const sig=[A.x|0,A.y|0,A.w|0,A.h|0,z.toFixed(3),R.left|0,R.top|0,R.bottom|0].join(",");if(d._sig===sig)return;d._sig=sig;   // 同じ条件なら、置き直さない(チラつき防止)
+  const z=GEO.inv(),m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown(),st=d._st;
+  if(st&&st.z===z&&st.l>=A.x+m-2&&st.t>=A.y+m-2&&st.l+st.w<=A.x+A.w-m+2&&st.t+st.h<=A.y+A.h-m+2)return;   // 倍率が同じで、いまも収まっているなら、そのまま
   d.style.maxHeight="";d.style.overflowY="";d.style.transform=`scale(${z})`;
   const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の、ふだんの大きさ
-  const roomAbove=R.top-gap-(A.y+m),roomBelow=(A.y+A.h-m)-(R.bottom+gap),below=roomBelow>=roomAbove,room=Math.max(roomAbove,roomBelow);
-  const f=Math.max(0.3,Math.min(1,room/h0,(A.w-2*m)/w0));   // 入りきらないぶんだけ、縮める
+  const roomAbove=R.top-gap-(A.y+m),roomBelow=(A.y+A.h-m)-(R.bottom+gap);
+  const fOf=room=>Math.max(0.3,Math.min(1,room/h0,(A.w-2*m)/w0));   // 入りきらないぶんだけ、縮める
+  const fB=fOf(roomBelow),fA=fOf(roomAbove);
+  let side=st?st.side:(fB>=0.8||fB>=fA?"below":"above");   // 最初は、下に十分入れば下。そうでなければ、広いほう
+  if(st){const cur=side==="below"?fB:fA,oth=side==="below"?fA:fB;if(cur<0.6&&oth>cur+0.15)side=side==="below"?"above":"below";}   // 入らなくなって、反対側がはっきり広いときだけ、反対側に移す(ヒステリシス)
+  const f=side==="below"?fB:fA;
   d.style.transform=`scale(${z*f})`;
-  const pw=w0*f,ph=h0*f;let top=below?R.bottom+gap:R.top-gap-ph;
+  const pw=w0*f,ph=h0*f;let top=side==="below"?R.bottom+gap:R.top-gap-ph;
   top=Math.max(A.y+m,Math.min(A.y+A.h-ph-m,top));   // 念のため、必ず収める
-  d.style.left=Math.max(A.x+m,Math.min(A.x+A.w-pw-m,R.left))+"px";d.style.top=top+"px";
+  const left=Math.max(A.x+m,Math.min(A.x+A.w-pw-m,R.left));
+  d.style.left=left+"px";d.style.top=top+"px";d._st={z,side,l:left,t:top,w:pw,h:ph};
 }
 function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 // 窓を出す基準の位置: 枠(入力する文字)を隠さないよう、枠の下か上に出す。枠が大きすぎるときだけ、✥の位置
