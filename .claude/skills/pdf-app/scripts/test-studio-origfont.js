@@ -22,12 +22,15 @@ const fontCount=f=>execSync(`pdffonts ${f}`).toString().trim().split('\n').slice
     await page.mouse.click(ov.x+(b.x+Math.min(b.w/2,20))*sc,ov.y+(b.y+b.h/2)*sc);await page.waitForTimeout(700);
     const txt=(await f.evaluate(()=>window.pdfEditorDebug.items()))[0].txt;
     await page.keyboard.press('Control+a');const nt=newTxtOf(txt);await page.keyboard.type(nt);await page.waitForTimeout(400);
+    if(label==='a'){await f.evaluate(()=>{const h=document.querySelector('.hdl.mv');h&&h.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));});await page.waitForTimeout(600);global.optLabel=await f.evaluate(()=>{const o=document.querySelector('#spFont option[value=orig]');return o&&o.textContent;});await f.evaluate(()=>{const x=document.getElementById('spX');x&&x.click();});await page.waitForTimeout(300);}
+
     await fr.locator('#embSave').click();await page.waitForTimeout(5000);
     const bytes=await page.evaluate(()=>window.pdfStudioDebug.bytes(0));const out=`/tmp/origfont_${label}.pdf`;fs.writeFileSync(out,Buffer.from(bytes));
     await browser.close();return{out,dlg,errs,nt};
   }
   const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);
   const a=await run(t=>[...t].reverse().join(''),'a');
+  ok('✥の設定の「元のフォント」に、フォント名が出る: '+global.optLabel,/元のフォント\(.*MPLUS/.test(global.optLabel||''));
   ok('元にある文字だけで直すと、確認は出ない',a.dlg.length===0&&!a.errs.length);
   if(hasFonts){ok(`フォントの数が増えない(${fontCount(src)}→${fontCount(a.out)})`,fontCount(a.out)===fontCount(src));
     ok('直した文字が、PDFの文字として入っている',execSync(`pdftotext ${a.out} -`).toString().includes(a.nt.replace(/\s/g,'')));}

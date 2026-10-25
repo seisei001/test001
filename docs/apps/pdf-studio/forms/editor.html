@@ -222,11 +222,18 @@ let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0
 function status(m){$("status").textContent=m;}
 // 時間のかかる作業の表示(動いている印+進み具合+終わったらはっきり「完了」)
 let jobTimer=null;
+// 画面を拡大(ピンチ)しているとき、処理の表示(緑の枠など)が巨大にならないよう、見えている範囲の下に、ふだんの大きさで出す
+function placeJob(){
+  const j=$("job");if(!j)return;const s=typeof zoomFromParent==="number"?zoomFromParent:1,vv=typeof pvv!=="undefined"?pvv:null;
+  if(s<=1.02||!vv){j.style.left=j.style.bottom=j.style.width=j.style.transform=j.style.transformOrigin="";return;}
+  const z=1/s,Wl=Math.min(560,vv.w*s-32);
+  j.style.width=Wl+"px";j.style.left=(vv.x+(vv.w-Wl*z)/2)+"px";j.style.bottom=(innerHeight-(vv.y+vv.h)+16*z)+"px";j.style.transformOrigin="0 100%";j.style.transform=`scale(${z})`;
+}
 const job={
-  start(t){clearTimeout(jobTimer);const j=$("job");j.className="";$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
+  start(t){clearTimeout(jobTimer);const j=$("job");j.className="";placeJob();$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
   step(t,pct){$("jobT").textContent=t;if(pct!=null)$("jobP").value=pct;},
-  done(t,ms){const j=$("job");j.className="done";$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),ms||15000);},
-  fail(t){const j=$("job");j.className="fail";$("jobT").textContent="⚠ "+t;}
+  done(t,ms){const j=$("job");j.className="done";placeJob();$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),ms||15000);},
+  fail(t){const j=$("job");j.className="fail";placeJob();$("jobT").textContent="⚠ "+t;}
 };
 let ocrRunning=false;
 function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+(e&&e.noHint?"":"(暗号化PDFなどは非対応の場合があります)"));}};}
@@ -1021,7 +1028,7 @@ function showSizePop(it,anchor){
   }
 
   d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
-  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
+  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px;max-width:9.5em;text-overflow:ellipsis"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
 <span>背景</span><select id="spBg" style="min-height:36px;font-size:16px"><option value="none">完全透明(何も隠さない)</option><option value="text">余白透明(文字のところだけ白抜き)</option><option value="all">白抜き(枠の全体)</option></select>
@@ -1029,6 +1036,8 @@ function showSizePop(it,anchor){
 <span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
   document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
+  {const oo=fsel.querySelector('option[value="orig"]'),nice=n=>n.replace(/^[A-Z]{6}\+/,"");   // 元のフォントの名前(サブセットの印「ABCDEF+」は除く)
+   if(oo){if(it.type==="fix"&&it.ofName)oo.textContent="元のフォント("+nice(it.ofName)+")";else if(it.type!=="img")pageDominantFont(it.page).then(n=>{if(n&&oo.isConnected)oo.textContent="元のフォント("+nice(n)+")";});}}
   inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"orig";d.querySelector("#spBg").value=bgModeOf(it);col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
   const ok=async()=>{
     const v=parseFloat(String(inp.value).replace(",",".")),fk=fsel.value,cl=col.value,bgm=d.querySelector("#spBg").value;hideSizePop();
@@ -2451,7 +2460,7 @@ if(EMBED){
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
-    if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();}});   // 拡大率は、処理中でも必ず受け取る
+    if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
@@ -2465,7 +2474,7 @@ if(EMBED){
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
-window.pdfEditorDebug={textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
