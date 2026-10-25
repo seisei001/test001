@@ -52,5 +52,11 @@ const {launch,WORK}=require('./harness');
     ok(`文字の設定の窓が、見えている範囲に全部入る(${nm}) ${r?JSON.stringify(r):'窓なし'} / 範囲 x${l}-${l+w} y${t}-${t+h}`,r&&r.x>=l-1&&r.r<=l+w+1&&r.y>=t-1&&r.b<=t+h+1&&r.y>=-1&&r.b<=r.ih+1&&r.x>=-1&&r.r<=r.iw+1);   // 見えている範囲の中、かつ、フォーム(iframe)の中(外は切れて見えない)
     await f.evaluate(()=>{const x=document.getElementById('spX');x&&x.click();});
   }
+  // 4. 見えている範囲が少し揺れても、窓は、上下に飛ばない(動かない)
+  await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(300);
+  const popTop=()=>f.evaluate(async()=>{let d=document.getElementById('sizePop');if(!d){const hd=document.querySelector('.hdl.mv');hd.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await new Promise(x=>setTimeout(x,300));d=document.getElementById('sizePop');}const b=d.getBoundingClientRect();return{t:b.top,l:b.left};});
+  const p0=await popTop();const tops=[p0.t];
+  for(const [dl,dt,dh] of [[0,3,0],[0,-4,0],[0,8,-6],[2,-9,10],[0,12,-12],[0,0,20],[0,-15,0]]){await stub(1,fb.l+dl,fb.t+dt,900,1339+dh);await page.waitForTimeout(250);tops.push((await popTop()).t);}
+  ok(`見えている範囲が少し揺れても、窓の位置が変わらない(${tops.map(v=>v.toFixed(0)).join(',')})`,tops.every(v=>Math.abs(v-tops[0])<0.5));
   console.log('JSエラー:',errs.length,errs);await browser.close();
 })();
