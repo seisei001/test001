@@ -223,12 +223,35 @@ let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0
 function status(m){$("status").textContent=m;}
 // 時間のかかる作業の表示(動いている印+進み具合+終わったらはっきり「完了」)
 let jobTimer=null;
-// 画面を拡大(ピンチ)しているとき、処理の表示(緑の枠など)が巨大にならないよう、見えている範囲の下に、ふだんの大きさで出す
+// ===== 画面の領域の管理(領域ごとに、名前を分けて持つ) =====
+// 今後、画面の構成(束デスクの見出し・余白・フォームの位置)が変わっても、ここだけを見れば、どこに何を置けるかが分かるようにする。
+//   APP    … アプリ全体の表示領域(親=束デスクのページ。単独で開いたときは、この画面自身)。拡大前の大きさ
+//   FORM   … このフォーム(iframe)の全体。枠・窓・ボタンの座標(client座標)は、すべてこの中の座標
+//   SCREEN … いま画面に見えている範囲(ピンチ拡大・キーボード・スクロールを反映)を、FORMの座標で表したもの。FORMの外(束デスクの見出しなど)にはみ出すことがある
+//   SHOWN  … SCREEN ∩ FORM。窓・ボタン・表示を置いてよい範囲(フォームの中で、いま見えている所)。窓などは、必ずここに収める
+// 拡大率(scale)は、SCREENを表示している倍率。見た目の大きさを一定にする縮小率が inv()(= --zs)
+const GEO={
+  _g:null,   // 親から届いた最新の知らせ({scale,app,screen})。親が無い(単独)ときは null
+  set(m){   // 親(束デスク)からの知らせを受け取る。geo:{app,screen,form}(親の座標)→ SCREEN をFORMの座標に直す
+    const g=m&&m.geo;
+    if(g&&g.screen&&g.form)this._g={scale:g.screen.scale||m.scale||1,app:g.app||null,screen:{x:g.screen.x-g.form.x,y:g.screen.y-g.form.y,w:g.screen.w,h:g.screen.h}};
+    else if(m)this._g={scale:m.scale||1,app:null,screen:m.vv||null};   // 古い形式
+  },
+  known(){return !!(this._g&&this._g.screen);},
+  app(){return this._g&&this._g.app?this._g.app:{w:innerWidth,h:innerHeight};},
+  form(){return{x:0,y:0,w:innerWidth,h:innerHeight};},
+  scale(){return this._g?this._g.scale:(window.visualViewport?visualViewport.scale:1)||1;},
+  inv(){return Math.max(0.2,Math.min(1,1/(this.scale()||1)));},
+  screen(){return this.known()?this._g.screen:this.form();},
+  shown(){const F=this.form(),V=this.screen(),x=Math.max(F.x,V.x),y=Math.max(F.y,V.y),x2=Math.min(F.x+F.w,V.x+V.w),y2=Math.min(F.y+F.h,V.y+V.h);
+    return(x2-x>40&&y2-y>40)?{x,y,w:x2-x,h:y2-y}:F;}
+};
+// 画面を拡大(ピンチ)しているとき、処理の表示(緑の枠など)が巨大にならないよう、見えている範囲(SHOWN)の下に、ふだんの大きさで出す
 function placeJob(){
-  const j=$("job");if(!j)return;const s=typeof zoomFromParent==="number"?zoomFromParent:1,vv=typeof pvv!=="undefined"?pvv:null;
-  if(s<=1.02||!vv){j.style.left=j.style.bottom=j.style.width=j.style.transform=j.style.transformOrigin="";return;}
-  const z=1/s,Wl=Math.min(560,vv.w*s-32);
-  j.style.width=Wl+"px";j.style.left=(vv.x+(vv.w-Wl*z)/2)+"px";j.style.bottom=(innerHeight-(vv.y+vv.h)+16*z)+"px";j.style.transformOrigin="0 100%";j.style.transform=`scale(${z})`;
+  const j=$("job");if(!j)return;const s=GEO.scale();
+  if(s<=1.02||!GEO.known()){j.style.left=j.style.bottom=j.style.width=j.style.transform=j.style.transformOrigin="";return;}
+  const S=GEO.shown(),z=1/s,Wl=Math.min(560,S.w*s-32);
+  j.style.width=Wl+"px";j.style.left=(S.x+(S.w-Wl*z)/2)+"px";j.style.bottom=(GEO.form().h-(S.y+S.h)+16*z)+"px";j.style.transformOrigin="0 100%";j.style.transform=`scale(${z})`;
 }
 const job={
   start(t){clearTimeout(jobTimer);const j=$("job");j.className="";placeJob();$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
@@ -869,9 +892,8 @@ function boxStyle(it,el){
 }
 document.addEventListener("pointerdown",e=>{document.body.classList.toggle("pt-touch",e.pointerType!=="mouse");},true);
 // 画面を拡大(ピンチ)したときも、印・矢印・ボタンの見た目の大きさを一定にする。拡大率は、親(束デスク)から受け取る(単独で開いたときは、自分の拡大率)
-let zoomFromParent=null;
-function applyZoom(sc){document.documentElement.style.setProperty("--zs",String(Math.max(0.2,Math.min(1,1/(sc||1)))));}
-if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,()=>{if(zoomFromParent==null)applyZoom(visualViewport.scale);}));   // 最後に触れたのが指かマウスか
+function applyZoom(){document.documentElement.style.setProperty("--zs",String(GEO.inv()));}
+if(window.visualViewport)["resize","scroll"].forEach(n=>visualViewport.addEventListener(n,()=>{if(!GEO._g)applyZoom();}));   // 最後に触れたのが指かマウスか
 let ptHold=null;
 document.addEventListener("pointermove",e=>{if(ptHold&&e.pointerId===ptHold.id&&Math.hypot(e.clientX-ptHold.x,e.clientY-ptHold.y)>10){clearTimeout(ptHold.tm);ptHold=null;}},true);
 document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);const h=ptHold;ptHold=null;if((h.ready||h.tapEdit)&&h.it&&items.includes(h.it))armEdit(h.it,h.x,h.y);}},true);
@@ -1013,12 +1035,13 @@ function fitSize(it,o){
 }
 // 文字の設定(ドキュワークの文字の設定と同じく、フォント・サイズ(pt)・文字色)。✥の上で、右クリック・ダブルクリック・(指は)長押しで出る
 const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
-let sizePop=null,sizePopRect=null,pvv=null;
+let sizePop=null,sizePopRect=null;
 // 設定の吹き出し: 画面を拡大しても同じ大きさで、いま見えている範囲の中に(枠の近くに)出す
 function placeSizePop(){
   // 文字の設定の窓は、必ず「いま見えている範囲」に入る大きさにして、✥の下か上の、広いほうに出す(✥が画面の真ん中あたりでも、どちらでも入る)
   const d=sizePop;if(!d||!sizePopRect)return;
-  const z=parseFloat(document.documentElement.style.getPropertyValue("--zs"))||1,A=pvv||{x:0,y:0,w:innerWidth,h:innerHeight},m=6*z,R=sizePopRect,gap=4*z;
+  const z=GEO.inv(),m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown();   // 窓は、SHOWN(フォームの中で、いま見えている所)に収める
+  const sig=[A.x|0,A.y|0,A.w|0,A.h|0,z.toFixed(3),R.left|0,R.top|0,R.bottom|0].join(",");if(d._sig===sig)return;d._sig=sig;   // 同じ条件なら、置き直さない(チラつき防止)
   d.style.maxHeight="";d.style.overflowY="";d.style.transform=`scale(${z})`;
   const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の、ふだんの大きさ
   const roomAbove=R.top-gap-(A.y+m),roomBelow=(A.y+A.h-m)-(R.bottom+gap),below=roomBelow>=roomAbove,room=Math.max(roomAbove,roomBelow);
@@ -1029,25 +1052,29 @@ function placeSizePop(){
   d.style.left=Math.max(A.x+m,Math.min(A.x+A.w-pw-m,R.left))+"px";d.style.top=top+"px";
 }
 function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
+// 窓を出す基準の位置: 枠(入力する文字)を隠さないよう、枠の下か上に出す。枠が大きすぎるときだけ、✥の位置
+function popAnchorRect(it,r){const el=itemEls.get(it.id),b=el&&el.getBoundingClientRect();
+  if(b&&b.height>0&&b.height<0.45*innerHeight)return{left:Math.min(b.left,r.left),top:b.top,bottom:b.bottom};
+  return{left:r.left,top:r.top,bottom:r.bottom};}
 function showSizePop(it,anchor){
   hideSizePop();
   const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
   if(it.type==="img"){   // 画像の枠: コピー・消去だけ
     d.style.cssText="position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:flex;gap:6px;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0";
-    d.innerHTML='<button id="spCopy" class="sub-btn" style="min-height:36px;margin:0">コピー</button><button id="spDel" class="sub-btn" style="min-height:36px;margin:0;color:#dc2626">消去</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button>';
-    document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
+    d.innerHTML='<button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button>';
+    document.body.appendChild(d);sizePop=d;sizePopRect=popAnchorRect(it,r);placeSizePop();
     d.querySelector("#spCopy").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDel").onclick=()=>{hideSizePop();deleteItem(it);};d.querySelector("#spX").onclick=hideSizePop;
     d.addEventListener("pointerdown",e=>e.stopPropagation());return;
   }
 
-  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.9rem;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
-  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:36px;font-size:16px;max-width:9.5em;text-overflow:ellipsis"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
-<span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="5" autocomplete="off" style="min-height:36px;font-size:16px;width:5.5em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
-<span>文字色</span><input id="spColor" type="color" style="min-height:36px;width:4em;padding:0">
-<span>背景</span><select id="spBg" style="min-height:36px;font-size:16px"><option value="none">完全透明(何も隠さない)</option><option value="text">余白透明(文字のところだけ白抜き)</option><option value="all">白抜き(枠の全体)</option></select>
-<span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:36px;margin:0">コピー</button><button id="spDel" class="sub-btn" style="min-height:36px;margin:0;color:#dc2626">消去</button></span>
-<span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:36px;margin:0">決定</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button></span>`;
-  document.body.appendChild(d);sizePop=d;sizePopRect={left:r.left,top:r.top,bottom:r.bottom};placeSizePop();
+  d.style.cssText=`position:fixed;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 8px;display:grid;grid-template-columns:auto 1fr;gap:4px 6px;align-items:center;font-size:.76rem;line-height:1.2;width:max-content;max-width:calc(100vw - 16px);transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0`;
+  d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:30px;font-size:16px;max-width:8.5em;text-overflow:ellipsis"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
+<span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="4" autocomplete="off" style="min-height:30px;font-size:16px;width:4.2em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
+<span>文字色</span><input id="spColor" type="color" style="min-height:30px;width:3em;padding:0">
+<span>背景</span><select id="spBg" style="min-height:30px;font-size:16px;max-width:8.5em"><option value="none">透明</option><option value="text">文字だけ白抜き</option><option value="all">全体白抜き</option></select>
+<span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button></span>
+<span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">決定</button><button id="spX" class="sub-btn" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">戻る</button></span>`;
+  document.body.appendChild(d);sizePop=d;sizePopRect=popAnchorRect(it,r);placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
   {const oo=fsel.querySelector('option[value="orig"]'),nice=n=>n.replace(/^[A-Z]{6}\+/,"");   // 元のフォントの名前(サブセットの印「ABCDEF+」は除く)
    if(oo){if(it.type==="fix"&&it.ofName)oo.textContent="元のフォント("+nice(it.ofName)+")";else if(it.type!=="img")pageDominantFont(it.page).then(n=>{if(n&&oo.isConnected)oo.textContent="元のフォント("+nice(n)+")";});}}
@@ -1073,14 +1100,14 @@ let panRes="";   // 親が画面を動かせたかの報告(原因調べ用の�
 function panDbg(t){let d=document.getElementById("panDbg");
   if(t==null){if(d)d.remove();return;}
   if(!d){d=document.createElement("div");d.id="panDbg";document.body.appendChild(d);}
-  const A=pvv||{x:0,y:0};
+  const A=GEO.shown();
   d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;font:11px/1.35 monospace;padding:4px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-all;max-width:${Math.round(A.w*0.8)}px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+4}px;top:${A.y+4}px`;d.textContent=t;}
 // 拡大中、ドラッグした指が見えている範囲の端に来たら、そこでいったん止める(画面を動かしてから、続きをドラッグしてもらう)
 const EDGE_STOP=false;   // 封印中(2.25): iPhoneで、長押ししても小さい枠しかできなくなったため。直せたらtrueに戻す
-function atEdge(ev){if(!EDGE_STOP)return false;const s=zoomFromParent||1;if(s<=1.05||!pvv)return false;const M=28/s;
-  return ev.clientX<pvv.x+M||ev.clientX>pvv.x+pvv.w-M||ev.clientY<pvv.y+M||ev.clientY>pvv.y+pvv.h-M;}
+function atEdge(ev){if(!EDGE_STOP)return false;const s=GEO.scale();if(s<=1.05||!GEO.known())return false;const M=28/s,V=GEO.screen();
+  return ev.clientX<V.x+M||ev.clientX>V.x+V.w-M||ev.clientY<V.y+M||ev.clientY>V.y+V.h-M;}
 function edgeToast(t){let d=document.getElementById("edgeToast");if(!d){d=document.createElement("div");d.id="edgeToast";document.body.appendChild(d);}
-  const A=pvv||{x:0,y:0,w:innerWidth};
+  const A=GEO.shown();
   d.style.cssText=`position:fixed;z-index:3000;pointer-events:none;background:rgba(37,99,235,.95);color:#fff;font:14px/1.4 sans-serif;padding:8px 12px;border-radius:8px;transform:scale(var(--zs,1));transform-origin:0 0;left:${A.x+8}px;top:${A.y+8}px;max-width:${Math.round(A.w*0.9)}px`;d.textContent=t;
   clearTimeout(edgeToast.t);edgeToast.t=setTimeout(()=>d.remove(),3500);}
 const EDGE_MSG="画面の端に来たので、ここで止めました。画面を動かして、枠の右下の角(⇲)から続きをドラッグしてください。";
@@ -1089,9 +1116,9 @@ function edgePan(apply){
   if(!EDGE_PAN)return{move(){},stop(){}};
   let x=0,y=0,p0=null,raf=0,on=true,n=0,accX=0,accY=0;
   const tick=()=>{raf=0;if(!on)return;
-    const s=zoomFromParent||1;
-    if(s>1.05&&pvv&&p0){
-      const cx=x+(pvv.x-p0.x),cy=y+(pvv.y-p0.y),M=64/s,A=pvv;   // 画面の端から64px以内(指の太さがあるので、端ぎりぎりでなくても動かす)
+    const s=GEO.scale();
+    if(s>1.05&&GEO.known()&&p0){
+      const V=GEO.screen(),cx=x+(V.x-p0.x),cy=y+(V.y-p0.y),M=64/s,A=V;   // 画面の端から64px以内(指の太さがあるので、端ぎりぎりでなくても動かす)
       const f=(c,a,w)=>c>a+w-M?(c-(a+w-M))/M:c<a+M?-(a+M-c)/M:0;
       const ax=Math.max(-1,Math.min(1,f(cx,A.x,A.w)))*3/s,ay=Math.max(-1,Math.min(1,f(cy,A.y,A.h)))*3/s;   // 1コマ最大3px(ゆっくり)
       panDbg(`拡大 ${s.toFixed(2)}倍\n指 ${cx.toFixed(0)},${cy.toFixed(0)}\n見える範囲 x ${A.x.toFixed(0)}〜${(A.x+A.w).toFixed(0)} y ${A.y.toFixed(0)}〜${(A.y+A.h).toFixed(0)}\n端の近さ ${ax.toFixed(1)},${ay.toFixed(1)}  依頼${n}回\n${panRes}`);
@@ -1102,7 +1129,7 @@ function edgePan(apply){
         apply(cx,cy);}
     }
     raf=requestAnimationFrame(tick);};
-  return{move(ev){x=ev.clientX;y=ev.clientY;p0=pvv?{x:pvv.x,y:pvv.y}:{x:0,y:0};if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;setTimeout(()=>panDbg(null),2500);}};
+  return{move(ev){x=ev.clientX;y=ev.clientY;{const V=GEO.screen();p0=GEO.known()?{x:V.x,y:V.y}:{x:0,y:0};}if(!raf&&on)raf=requestAnimationFrame(tick);},stop(){on=false;if(raf)cancelAnimationFrame(raf);raf=0;setTimeout(()=>panDbg(null),2500);}};
 }
 // ---- 枠のコピー・消去 ----
 function dupItem(it){   // 同じ内容の枠を、同じ位置に作って選ぶ(PDFの文字の訂正の枠は、ふつうの文字の枠としてコピーする。元の文字は隠さない)
@@ -2476,7 +2503,7 @@ if(EMBED){
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
-    if(m&&m.type==="zoom"){zoomFromParent=m.scale;pvv=m.vv||null;applyZoom(m.scale);placeSizePop();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
+    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeSizePop();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
@@ -2491,7 +2518,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
