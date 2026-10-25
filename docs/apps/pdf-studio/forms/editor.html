@@ -1015,6 +1015,7 @@ let sizePop=null,sizePopRect=null,pvv=null;
 function placeSizePop(){
   const d=sizePop;if(!d||!sizePopRect)return;
   const z=parseFloat(document.documentElement.style.getPropertyValue("--zs"))||1,A=pvv||{x:0,y:0,w:innerWidth,h:innerHeight};
+  d.style.maxHeight=Math.max(120,(A.h-12*z)/z)+"px";d.style.overflowY="auto";   // 見えている範囲に入らないときは、窓の中でスクロールできるようにする
   const pw=d.offsetWidth*z,ph=d.offsetHeight*z,m=6*z,R=sizePopRect;
   const x0=A.x+m,x1=A.x+A.w-pw-m,y0=A.y+m,y1=A.y+A.h-ph-m;
   let top=R.bottom+4*z;if(top>y1)top=R.top-ph-4*z;   // 下に入らなければ、枠の上に
@@ -1056,7 +1057,7 @@ function showSizePop(it,anchor){
   d.querySelector("#spOk").onclick=ok;d.querySelector("#spX").onclick=hideSizePop;
   inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();ok();}else if(e.key==="Escape")hideSizePop();});
   d.addEventListener("pointerdown",e=>e.stopPropagation());
-  setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);
+  if(!isTouch())setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);   // 指では、キーボードを勝手に出さない(出ると、見えている範囲が狭くなって、窓が入らなくなる)
 }
 document.addEventListener("pointerdown",e=>{if(sizePop&&!sizePop.contains(e.target))hideSizePop();},true);
 // 画面を拡大しているとき、ドラッグ中の指が見えている範囲の端に来たら、その向きへゆっくり画面を動かす(指は止まっていても動かし続ける)
@@ -1126,12 +1127,14 @@ function dragHandle(h,it,el,resize){
     const o={size:it.size,sz:it.sz?it.sz.slice():null};
     let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;ringAt(sx,sy);showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
     const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
-    const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>8){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
+    const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>14){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
       if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
-    const up=()=>{if(lpTm)clearTimeout(lpTm);if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);};
-    h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
+    const cleanup=()=>{if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",cx);};
+    const up=()=>{if(lpTm)clearTimeout(lpTm);cleanup();};
+    const cx=()=>{cleanup();};   // iPhoneは、長押しの途中で、キーボードや画面の動きで、押し込みが取り消される(pointercancel)ことがある。取り消されても、長押しのタイマーは止めない(指を離したときだけ止める)
+    h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",cx);
   };
   h.addEventListener("pointerdown",e=>{
     if(!resize&&e.pointerType==="mouse"&&(e.ctrlKey||e.metaKey)){   // Ctrl+ドラッグ: コピーした枠を動かす(元の枠はそのまま)
