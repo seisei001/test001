@@ -878,7 +878,8 @@ document.addEventListener("pointerup",e=>{if(ptHold&&e.pointerId===ptHold.id){cl
 // 入力を始める(キーボードを出す)。指を離した直後の操作の中で呼ぶ。あとから届く touchend/click でも、もう一度やり直す(iPhoneは、どちらかでないと出ないことがある)
 let pendingEdit=null;
 function armEdit(it,x,y){pendingEdit={it,x,y,t:performance.now()};startEdit(it,x,y);}
-["touchend","click"].forEach(n=>document.addEventListener(n,()=>{const p=pendingEdit;if(!p)return;if(performance.now()-p.t>900){pendingEdit=null;return;}
+document.addEventListener("pointerdown",()=>{pendingEdit=null;},true);   // 次の操作が始まったら、やり直さない(別の所をタップして選択を外したのに、元の枠に戻るのを防ぐ)
+["touchend","click"].forEach(n=>document.addEventListener(n,()=>{const p=pendingEdit;if(!p)return;if(performance.now()-p.t>900||cs!==p.it||!items.includes(p.it)){pendingEdit=null;return;}
   const t=itemEls.get(p.it.id)?.querySelector(".t");if(t&&document.activeElement!==t)startEdit(p.it,p.x,p.y);},true));
 document.addEventListener("pointercancel",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
 const isTouch=()=>document.body.classList.contains("pt-touch");
