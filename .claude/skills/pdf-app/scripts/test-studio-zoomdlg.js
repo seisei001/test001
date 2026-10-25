@@ -28,5 +28,16 @@ const {launch,WORK}=require('./harness');
   const j2=await rj();
   ok(`処理の表示の見た目の大きさが同じ(幅 ${j1.w.toFixed(0)} → ${(j2.w*2).toFixed(0)})`,Math.abs(j1.w-j2.w*2)<6);
   ok(`処理の表示が、見えている範囲の下に出る(下端 ${j2.b.toFixed(0)} / 範囲の下端 ${150+700})`,j2.b<=150+700+2&&j2.b>=150+700-40&&j2.x>=60-2&&j2.x+j2.w<=60+450+2);
+  // 3. 文字の設定の窓は、いつでも、見えている範囲に全部入る(✥が真ん中あたりでも。キーボードで見える範囲が狭くても。拡大していても)
+  await stub(1,0,0,900,1400);await page.waitForTimeout(300);
+  const fr=page.frameLocator('#formFrame');await fr.locator('[data-m=text]').click();
+  const ovb=await fr.locator('#ov').boundingBox();await page.mouse.click(ovb.x+ovb.width*0.4,ovb.y+ovb.height*0.15);await page.waitForTimeout(500);await page.keyboard.type('A');await page.waitForTimeout(300);
+  const cases=[['等倍・広い',1,0,0,900,1400],['等倍・キーボードで狭い',1,0,0,900,430],['2倍・中ほど',2,120,300,450,700],['3倍・狭い',3,100,200,300,466],['3倍・キーボードで狭い',3,100,200,300,200]];
+  for(const [nm,sc,l,t,w,h] of cases){
+    await stub(sc,fb.l+l,fb.t+t,w,h);await page.waitForTimeout(400);
+    const r=await f.evaluate(async()=>{const hd=document.querySelector('.hdl.mv');if(!hd)return null;hd.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await new Promise(x=>setTimeout(x,300));const d=document.getElementById('sizePop');if(!d)return null;const b=d.getBoundingClientRect();return{x:b.left,y:b.top,r:b.right,b:b.bottom};});
+    ok(`文字の設定の窓が、見えている範囲に全部入る(${nm}) ${r?JSON.stringify(r):'窓なし'} / 範囲 x${l}-${l+w} y${t}-${t+h}`,r&&r.x>=l-1&&r.r<=l+w+1&&r.y>=t-1&&r.b<=t+h+1);
+    await f.evaluate(()=>{const x=document.getElementById('spX');x&&x.click();});
+  }
   console.log('JSエラー:',errs.length,errs);await browser.close();
 })();

@@ -1013,13 +1013,17 @@ const SIZE_LIST=[6,7,8,9,10,10.5,11,12,14,16,18,20,24,28,32,36,48,72];
 let sizePop=null,sizePopRect=null,pvv=null;
 // 設定の吹き出し: 画面を拡大しても同じ大きさで、いま見えている範囲の中に(枠の近くに)出す
 function placeSizePop(){
+  // 文字の設定の窓は、必ず「いま見えている範囲」に入る大きさにして、✥の下か上の、広いほうに出す(✥が画面の真ん中あたりでも、どちらでも入る)
   const d=sizePop;if(!d||!sizePopRect)return;
-  const z=parseFloat(document.documentElement.style.getPropertyValue("--zs"))||1,A=pvv||{x:0,y:0,w:innerWidth,h:innerHeight};
-  d.style.maxHeight=Math.max(120,(A.h-12*z)/z)+"px";d.style.overflowY="auto";   // 見えている範囲に入らないときは、窓の中でスクロールできるようにする
-  const pw=d.offsetWidth*z,ph=d.offsetHeight*z,m=6*z,R=sizePopRect;
-  const x0=A.x+m,x1=A.x+A.w-pw-m,y0=A.y+m,y1=A.y+A.h-ph-m;
-  let top=R.bottom+4*z;if(top>y1)top=R.top-ph-4*z;   // 下に入らなければ、枠の上に
-  d.style.left=Math.max(x0,Math.min(x1,R.left))+"px";d.style.top=Math.max(y0,Math.min(y1,top))+"px";
+  const z=parseFloat(document.documentElement.style.getPropertyValue("--zs"))||1,A=pvv||{x:0,y:0,w:innerWidth,h:innerHeight},m=6*z,R=sizePopRect,gap=4*z;
+  d.style.maxHeight="";d.style.overflowY="";d.style.transform=`scale(${z})`;
+  const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の、ふだんの大きさ
+  const roomAbove=R.top-gap-(A.y+m),roomBelow=(A.y+A.h-m)-(R.bottom+gap),below=roomBelow>=roomAbove,room=Math.max(roomAbove,roomBelow);
+  const f=Math.max(0.3,Math.min(1,room/h0,(A.w-2*m)/w0));   // 入りきらないぶんだけ、縮める
+  d.style.transform=`scale(${z*f})`;
+  const pw=w0*f,ph=h0*f;let top=below?R.bottom+gap:R.top-gap-ph;
+  top=Math.max(A.y+m,Math.min(A.y+A.h-ph-m,top));   // 念のため、必ず収める
+  d.style.left=Math.max(A.x+m,Math.min(A.x+A.w-pw-m,R.left))+"px";d.style.top=top+"px";
 }
 function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 function showSizePop(it,anchor){
