@@ -324,3 +324,5 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ページ編集2.44・起動画面2.04: (1) ✥の設定の「元のフォント」に、フォント名(BaseFont。サブセットの印 ABCDEF+ は除く)を出す。拾った枠は it.ofName、そのほかは pageDominantFont。(2) 画面を拡大(ピンチ)したとき、処理の表示(緑の枠 #job)が巨大になる・見えない所に出る問題: placeJob(見えている範囲 pvv の下に、1/拡大率で縮めて置く)。ホスト側の確認の窓(askSave/askLocked)と機能メニュー(#menu)も、fitModal(見えている範囲に合わせた大きさにして 1/拡大率 で縮める)。ブラウザ標準の confirm/prompt はiPhone側が出すので対象外。test-studio-zoomdlg.js(visualViewport を差し替えて、見た目の大きさと位置を確かめる)。ネイティブの窓以外は、position:fixed をピンチで拡大すると、レイアウト領域(拡大前の画面)に固定されて、見えている範囲とずれる、が根本。
 
 - ページ編集2.47: 文字の設定の窓(sizePop)が、拡大・キーボードで見える範囲が狭いと入りきらない問題。placeSizePop を作り直し: ✥の上と下の空きを測り、広いほうに出す。入りきらないぶんだけ縮める(最小0.3倍)。必ず見えている範囲(pvv)に収める。スクロールではなく縮小。test-studio-zoomdlg.js に、5つの条件(等倍・キーボードで狭い・2倍・3倍…)で、窓が全部入ることの確認を追加。
+
+- ページ編集2.48: 指で枠を選んでいる間の操作を整理。(1) 選んでいる枠の外(ほかの枠の上も)は「ふつうの操作」(1本指スクロール・2本指拡大・何もない所のタップで選択を外す・長押しで範囲): `body.pt-touch.has-sel .ibox:not(.on){pointer-events:none}`(renderOverlay で has-sel を切り替え)。(2) すでに選んでいる枠の中は、タップ(10px以内で離す)だけで、その位置から入力モード(ptHold.tapEdit → 指を離したとき armEdit)。選んでいない枠は、これまでどおり、タップ=選ぶだけ・長押し=入力。(3) ✥・矢印・鉛筆は、それぞれの機能(子要素が stopPropagation)。test-studio-edit-ui.js に確認を追加。
