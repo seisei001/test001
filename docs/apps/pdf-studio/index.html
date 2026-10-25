@@ -114,10 +114,10 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.02"},
+  splash:{name:"PDFスタジオ",ver:"2.03"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.42",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.43",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -161,14 +161,8 @@ function askLocked(name){return new Promise(res=>{
   const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
   o.innerHTML=`<div style="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4)">
    <p class="lk-name" style="margin:0 0 10px;font-weight:700"></p>
-   <p style="margin:0 0 8px;font-size:.92rem">このPDFは、<b>鍵(暗号化)</b>が掛かっているなどのため、そのままでは編集用に開けません。</p>
-   <ul style="margin:0 0 12px;padding-left:1.2em;font-size:.88rem;line-height:1.6;opacity:.9">
-    <li><b>編集できるようにする</b>: 鍵を外した状態で扱います。文字・フォント・図は元のまま使え、文字を拾って直せます。保存したファイルには、鍵が掛かりません。</li>
-    <li><b>画像として取り込む</b>: 各ページを画像にします。元の文章は変わりませんが、文字は画像になり、画質も少し下がります。</li>
-    <li>PDFによっては、文字データが元の文章と違う場合があります(一部の文字が別の文字になる、縦書きは読めない)。拾った文字は確認してください。</li>
-    <li>鍵つきの文書です。編集・使用の許可や、取り扱いに注意してください。</li>
-   </ul>
-   <label style="display:flex;gap:8px;align-items:flex-start;margin:0 0 14px;font-size:.95rem"><input type="checkbox" id="lkChk" style="width:22px;height:22px;flex:none"><span><b>鍵を外して、元のPDFのまま編集できるようにする</b><br><span style="font-size:.82rem;opacity:.8">チェックなし: 画像として取り込みます(元の文章は変わりません)</span></span></label>
+   <p style="margin:0 0 10px;font-size:.92rem">このPDFには鍵が掛かっています。鍵つきの文書なので、取り扱いに注意してください。</p>
+   <label style="display:flex;gap:8px;align-items:flex-start;margin:0 0 14px;font-size:.95rem"><input type="checkbox" id="lkChk" style="width:22px;height:22px;flex:none"><span><b>鍵を外して編集できるようにする</b><br><span style="font-size:.82rem;opacity:.8">文字・フォントは元のまま。保存したファイルには鍵が掛かりません。<br>チェックなし: 画像として取り込みます(文字は編集できません)。</span></span></label>
    <div style="display:flex;gap:8px;flex-wrap:wrap"></div></div>`;
   o.querySelector(".lk-name").textContent="「"+name+"」";
   const box=o.querySelector("div div:last-child"),chk=o.querySelector("#lkChk"),done=v=>{o.remove();res(v);};

@@ -3,7 +3,7 @@ process.env.PDFAPP_TARGET='pdf-studio';
 const {launch,WORK}=require('./harness');
 (async()=>{
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));await page.context().grantPermissions(['clipboard-read','clipboard-write']).catch(()=>{});
-  const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);
+  const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);page.on('dialog',d=>d.accept());   // 別のフォントを選ぶときの確認
   await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/form.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
@@ -183,7 +183,7 @@ const {launch,WORK}=require('./harness');
   const o2now=cps.find(i=>i.id===o2.id);
   ok(`Ctrl+ドラッグで、コピーした枠を動かす(${cps.length}個・元の位置 ${o2now.vx.toFixed(0)}=${o2.vx.toFixed(0)})`,cps.length===3&&Math.abs(o2now.vx-o2.vx)<0.5&&cps.some(i=>i.vx<o2.vx-30));
   // ① Deleteキー → 確認 → 消去
-  let asked=0;page.on('dialog',async d=>{asked++;await d.accept();});
+  let asked=0;page.on('dialog',async d=>{asked++;});   // 受け入れは、先頭の共通の処理
   mvc=await fr.locator('.hdl.mv').boundingBox();
   await page.mouse.click(mvc.x+mvc.width/2,mvc.y+mvc.height/2);await page.waitForTimeout(200);
   await page.keyboard.press('Delete');await page.waitForTimeout(400);
