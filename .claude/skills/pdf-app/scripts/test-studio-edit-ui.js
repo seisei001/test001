@@ -164,8 +164,8 @@ const {launch,WORK}=require('./harness');
   ok(`端で止める機能は封印中: 拡大中でも最後まで広がり、案内も出ない(幅 ${wz.toFixed?wz.toFixed(0):wz}・案内 ${toast})`,!toast&&wz>100);
   // --- 枠のコピー・消去 ---
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);
-  const ovc=await fr.locator('#ov').boundingBox();
   await fr.locator('[data-m=text]').click();
+  const ovc=await fr.locator('#ov').boundingBox();   // (見出しは画面に付いているので、先に操作してから、枠の位置を測る)
   await page.mouse.move(ovc.x+15*k,ovc.y+195*k);await page.mouse.down();await page.mouse.move(ovc.x+160*k,ovc.y+232*k,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   await page.keyboard.type('COPYME');await page.waitForTimeout(500);
   const base=(await items()).filter(i=>i.txt==='COPYME');const orig=base[0];
