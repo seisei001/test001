@@ -1388,6 +1388,7 @@ ov.addEventListener("pointerdown",e=>{
   if(!rangeOk())return;
   if(e.pointerType==="mouse"){beginRange(e);return;}
   tpts.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now()});
+  if(tpts.size>1)two=true;   // 2本指(拡大・縮小)の操作では、選択を外さない・範囲も作らない
   if(tpts.size===1){
     if(tlp)clearTimeout(tlp.tm);
     const id=e.pointerId;
