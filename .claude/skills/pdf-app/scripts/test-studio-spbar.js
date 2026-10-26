@@ -16,6 +16,7 @@ const {launch,WORK}=require('./harness');
   const bar=fr.locator('.spbar');const bb=await bar.boundingBox(),eb=await fr.locator('.ibox.on').boundingBox(),gb=await fr.locator('.grip').boundingBox(),hb=await fr.locator('.hdl.mv').boundingBox();
   chk('バーが枠の真上にある',await bar.count()===1&&bb.y+bb.height<=eb.y+1);
   chk('バーは✥の右から出る(重ならない)',bb.x>=hb.x+hb.width-1);
+  chk('バーは枠から離れない(すき間が2px以内)',eb.y-(bb.y+bb.height)<=2&&eb.y-(bb.y+bb.height)>=-2);
   chk('右下の矢印と重ならない',gb.y>bb.y+bb.height||gb.x>bb.x+bb.width||gb.x+gb.width<bb.x);
   const set=(sel,v)=>f.evaluate(([s,v])=>{const e=document.querySelector(s);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},[sel,v]);
   await set('.spbar .r1','2');await set('.spbar .r2','5');
