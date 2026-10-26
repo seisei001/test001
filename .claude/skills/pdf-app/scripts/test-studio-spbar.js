@@ -1,0 +1,23 @@
+// ページ編集: 枠の真下の「行間・字間」バーで、行間と字間が変わる/バーの位置がぶれない
+process.env.PDFAPP_TARGET='pdf-studio';
+const {launch,WORK}=require('./harness');
+(async()=>{
+  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+  await page.waitForTimeout(2300);
+  await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
+  await page.locator('.card').first().locator('.mnb').click();
+  await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3000);
+  const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
+  let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
+  await fr.locator('[data-m=sel]').click();await page.waitForTimeout(500);
+  const rb=await fr.locator('#ov .run').first().boundingBox();await page.mouse.click(rb.x+rb.width/2,rb.y+rb.height/2);await page.waitForTimeout(600);
+  const it=()=>f.evaluate(()=>{const i=window.pdfEditorDebug.items().filter(x=>x.type==='fix').pop();return {lh:i.lh,ls:i.ls||0,vw:i.vw};});
+  const a=await it();
+  const bar=fr.locator('.spbar');chk('バーが枠の真下にある',await bar.count()===1&&(await bar.boundingBox()).y>(await fr.locator('.ibox.on').boundingBox()).y);
+  const set=(sel,v)=>f.evaluate(([s,v])=>{const e=document.querySelector(s);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},[sel,v]);
+  await set('.spbar .r1','2');await set('.spbar .r2','5');
+  const b=await it();chk(`行間・字間が変わる(${a.lh}→${b.lh}, ${a.ls}→${b.ls})`,b.lh===2&&b.ls===5);
+  chk('幅は変わらない',a.vw===b.vw);
+  chk('バーは残っている',await bar.count()===1);
+  console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
+})();
