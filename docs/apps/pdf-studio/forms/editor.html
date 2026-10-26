@@ -1050,7 +1050,7 @@ function placeSizePop(){
   d.style.left=(left+scrollX)+"px";d.style.top=(top+scrollY)+"px";   // ページの座標(スクロールと一緒に動く)
 }
 // 画面の拡大が変わったときは、動いている間は窓を隠し、「手を離したとき」または「動きが0.3秒止まったとき」の、早いほうで、1回だけ、置き直して表示する(イベントごとに動かさない)
-const SETTLE_MS=300,LIFT_MS=100;   // 止まってから待つ時間 / 手を離してから待つ時間(離した直後に届く最後のイベントを待つ)
+const SETTLE_MS=300,LIFT_MS=300;   // 動きが止まってから待つ時間 / 手を離してから待つ時間(どちらも0.3秒)
 let settleTm=null,settleFn=null,settleSig="";
 const geoSigE=()=>{const A=GEO.shown();return[GEO.inv().toFixed(2),(A.x/6)|0,(A.y/6)|0,(A.w/6)|0,(A.h/6)|0].join(",");};
 function onGeoChange(){

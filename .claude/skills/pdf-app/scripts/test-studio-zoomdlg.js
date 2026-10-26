@@ -67,7 +67,7 @@ const {launch,WORK}=require('./harness');
   await page.waitForTimeout(500);
   const rr=await f.evaluate(()=>{const d=document.getElementById('sizePop');const b=d.getBoundingClientRect();return{v:d.style.visibility,w:b.width};});
   ok(`拡大を変えている間は窓が隠れ(${vis1},${vis2})、止まって0.3秒後に表示される(${rr.v||'表示'}・見た目の幅 ${w1.toFixed(0)} → ${(rr.w*2).toFixed(0)})`,vis1==='hidden'&&vis2==='hidden'&&rr.v===''&&Math.abs(w1-rr.w*2)<6);
-  // 手を離したら、0.3秒を待たずに表示する(指を置いたまま止まったときは、0.3秒で表示)
+  // 手を離して0.3秒後、または、指を置いたまま止まって0.3秒後に表示する
   {const cdp0=await page.context().newCDPSession(page);const T0=(type,x,y)=>cdp0.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y}]});
    await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(500);await openPop();
    await T0('touchStart',fb.l+300,fb.t+40);await T0('touchMove',fb.l+300,fb.t+70);await stub(2,fb.l,fb.t,450,670);await page.waitForTimeout(120);
@@ -79,9 +79,9 @@ const {launch,WORK}=require('./harness');
    await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(60);   // 拡大を戻す(まだ指は離れていない扱いではなく、離したあと)
    await openPop();await T0('touchStart',fb.l+300,fb.t+40);await T0('touchMove',fb.l+300,fb.t+70);await stub(2,fb.l,fb.t,450,670);await page.waitForTimeout(60);
    const h3=await f.evaluate(()=>document.getElementById('sizePop')?.style.visibility);
-   await T0('touchEnd');await page.waitForTimeout(220);
+   await T0('touchEnd');await page.waitForTimeout(450);
    const h4=await f.evaluate(()=>document.getElementById('sizePop')?.style.visibility);
-   ok(`手を離すと、0.3秒を待たずに表示される(${h3}→離して0.22秒後 ${h4===''?'表示':h4})`,h3==='hidden'&&h4==='');
+   ok(`手を離して0.3秒後に表示される(${h3}→離して0.45秒後 ${h4===''?'表示':h4})`,h3==='hidden'&&h4==='');
    await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(600);}
   // 親の窓(確認・メニュー)も、同じ
   await stub(1,0,0,900,1400);await page.waitForTimeout(500);

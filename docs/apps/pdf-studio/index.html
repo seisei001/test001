@@ -503,7 +503,7 @@ function fitModal(o){
   const s=S.scale;o.style.inset="auto";o.style.left=S.x+"px";o.style.top=S.y+"px";o.style.width=(S.w*s)+"px";o.style.height=(S.h*s)+"px";o.style.transformOrigin="0 0";o.style.transform=`scale(${1/s})`;
 }
 // 窓・メニューは、動いている間は隠し、「手を離したとき」または「動きが0.3秒止まったとき」の、早いほうで、1回だけ置き直して表示する(イベントごとに動かさない=チラつかない)
-const SETTLE_MS=300,LIFT_MS=100;
+const SETTLE_MS=300,LIFT_MS=300;   // 動きが止まってから待つ時間 / 手を離してから待つ時間(どちらも0.3秒)
 function geoSig(){const S=geoScreen();return[S.scale.toFixed(2),(S.x/6)|0,(S.y/6)|0,(S.w/6)|0,(S.h/6)|0].join(",");}
 function fitAll(){fitted.forEach(o=>{
   if(!o.isConnected){fitted.delete(o);return;}
