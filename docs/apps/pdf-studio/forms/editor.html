@@ -69,7 +69,12 @@ body.embed #filePanel{display:none!important;}
 body.embed #editPanel{border:0;box-shadow:none;background:none;padding:6px 0;}
 body.embed #editPanel > h2{display:none;}
 #embHead #selPanel label{display:flex;gap:4px;align-items:center;font-size:.85rem;}
-#embHead #selPanel input[type=number]{width:4.6em;}
+#embHead #selPanel input[type=number]{width:4.4em;}
+#embHead #selPanel .lbl{display:none;}   /* 1行に収めるため、文字は出さない(押すと分かる・説明はヘルプ) */
+#embHead #selPanel input[type=color]{width:38px;height:34px;padding:0;}
+#embHead #selPanel .seg button{padding:4px 7px;}
+/* 文字のモードで、枠を選んでいないときも、道具の場所は空けておく(枠を選ぶたびに、ページが下にずれない) */
+body.embed.m-sel #embHead #selPanel.hidden,body.embed.m-text #embHead #selPanel.hidden{display:contents!important;visibility:hidden;}
 #embHead .seg button{min-height:34px;padding:4px 9px;font-size:.85rem;}
 .sub-btn.on{background:var(--accent);color:#fff;}
 .xhide{display:none!important;}
@@ -223,9 +228,9 @@ body.pt-touch .grip::after{inset:-12px;}
 <h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
 <div id="selTextBox">
 <div class="row">
-<label><span id="sSizeLbl">サイズ</span> <input type="number" id="sSize" min="4" max="400" step="0.5" title="文字の大きさ(選んだ範囲があればその範囲だけ)"></label>
+<label><span id="sSizeLbl" class="lbl">サイズ</span> <input type="number" id="sSize" min="4" max="400" step="0.5" title="文字の大きさ(選んだ範囲があればその範囲だけ)"></label>
 <label id="sLsLbl">字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
-<label>色 <input type="color" id="sColor"></label>
+<label title="文字の色"><span class="lbl">色</span> <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT" title="文字として(選択・コピー・検索ができる)">文字</button><button id="sFmtP" title="画像として(見た目のまま固定)">画像</button></div>
 <div class="seg"><button id="sAL" title="左揃え">左</button><button id="sAC" title="中央揃え">中</button><button id="sAR" title="右揃え">右</button></div>
 </div>
@@ -511,7 +516,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
-  mode=m;
+  mode=m;document.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("modeHint").textContent=HINTS[m];
@@ -2579,6 +2584,7 @@ const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&windo
 if(EMBED){
   document.body.classList.add("embed","emb-"+FORMKIND);
   {   // 見出しに集約: 元に戻す・状況・モード・モードごとの操作・選んでいる枠の道具を、見出しの中に移す(IDはそのまま)
+    document.body.appendChild($("job"));   // 処理の表示(緑の枠)は、「① ファイル」の窓と一緒に消えないよう、外に出す
     $("embRow1").querySelector(".embL").prepend($("bUndo"));
     $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
     $("embRow3").appendChild($("modeSeg"));

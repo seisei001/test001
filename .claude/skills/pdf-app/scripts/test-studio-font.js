@@ -4,7 +4,7 @@ const {launch,WORK}=require('./harness');
 const {execSync}=require('child_process');const fs=require('fs');
 (async()=>{
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
-  const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);
+  const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);page.on('dialog',d=>d.accept());
   await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/form.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
