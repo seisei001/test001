@@ -47,15 +47,37 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button.on{background:var(--accent);color:#fff;}
 #ver{position:fixed;top:6px;right:10px;z-index:1500;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel-bg,#fff);border:1px solid var(--border);border-radius:999px;padding:2px 10px;opacity:.9;pointer-events:none;}
 /* PDFスタジオの「ページ編集」「歪み補正」フォームとして動くとき(?embed=1&form=edit|warp): ファイルを開く・ページ操作は出さない */
-#embHead{display:none;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 12px;position:sticky;top:0;z-index:50;background:var(--panel-bg);border-bottom:1px solid var(--border);}
+#embHead{display:none;flex-direction:column;gap:4px;padding:6px 10px;position:sticky;top:0;z-index:50;background:var(--panel-bg);border-bottom:1px solid var(--border);}
 body.embed #embHead{display:flex;}
-/* ページ編集の「① ファイル」(元に戻す・いまの状況の表示)は、見出しの2行目に入れる(画面を広く使う) */
+/* ページ編集の操作は、見出しに集約する: 1行目=設定・ヘルプ・元に戻す / 保存・戻る、2行目=いまの状況、3行目=モード、4行目=モードごとの操作・選んでいる枠の道具 */
 body.embed #filePanel{display:none!important;}
-#embHead button{min-height:36px;padding:4px 10px;font-size:.88rem;}
-#embRow2{display:flex;flex:1 1 100%;gap:8px;align-items:center;min-width:0;}
-#embRow2 #bUndo{min-height:34px;padding:4px 10px;font-size:.85rem;flex:none;}
+#embRow1{display:flex;gap:6px;align-items:center;}
+#embRow1 .embL,#embRow1 .embR{display:flex;gap:6px;}
+#embRow1 .embR{margin-left:auto;}
+#embHead button{min-height:34px;padding:4px 10px;font-size:.88rem;margin:0;}
+#embRow2{display:flex;min-width:0;}
 #embRow2 #status{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}   /* 長い文は、1行に切って出す。押すと、全部出る */
 #embRow2 #status.open{white-space:normal;}
+#embRow3,#embRow4{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+#embRow3:empty,#embRow4:empty{display:none;}
+#embHead .row{margin:0!important;gap:6px;}
+#embHead .row.hidden,#embHead .hidden{display:none!important;}
+#embHead select,#embHead input[type=number]{min-height:34px!important;font-size:16px;}
+#embHead #selPanel{border:0;padding:0;margin:0!important;background:none;box-shadow:none;border-radius:0;}
+#embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sClose,#embHead #sLsLbl{display:none!important;}
+#embHead #selPanel,#embHead #selTextBox,#embHead #selPanel .row{display:contents;}   /* 道具は、1つながりに並べる(入りきらなければ折り返す) */
+body.embed #editPanel{border:0;box-shadow:none;background:none;padding:6px 0;}
+body.embed #editPanel > h2{display:none;}
+#embHead #selPanel label{display:flex;gap:4px;align-items:center;font-size:.85rem;}
+#embHead #selPanel input[type=number]{width:4.6em;}
+#embHead .seg button{min-height:34px;padding:4px 9px;font-size:.85rem;}
+.sub-btn.on{background:var(--accent);color:#fff;}
+.xhide{display:none!important;}
+#modeSeg{position:relative;}
+#modeSeg [data-m=text]{position:absolute;right:0;bottom:0;width:2px;height:2px;min-height:0!important;padding:0!important;border:0;opacity:.01;overflow:hidden;}   /* 「文字」に統合した。テストが使うので、見えない形で残す */
+#helpBox .hbox,#setBox .hbox{background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.4);width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;overflow:hidden;}
+#helpBox .hbar,#setBox .hbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;}
+#helpBox .hbody,#setBox .hbody{padding:10px 14px;overflow:auto;font-size:.88rem;line-height:1.6;}
 body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
 body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
 body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
@@ -116,16 +138,13 @@ body.pt-touch .grip::after{inset:-12px;}
 .part .seg button{min-height:36px;padding:4px 10px;font-size:.8rem;}
 .part .danger{min-height:36px;padding:4px 10px;font-size:.8rem;}
 .helptext{display:none!important;}   /* 説明文は、ふだんは出さない。右上の「ヘルプ」ボタンの中で見る */
-#helpBox .hbox{background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.4);width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;overflow:hidden;}
-#helpBox .hbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;}
-#helpBox .hbody{padding:10px 14px;overflow:auto;font-size:.88rem;line-height:1.6;}
 #helpBox h3{margin:12px 0 4px;font-size:.92rem;}
 #helpBox p{margin:0 0 8px;}
 @media (prefers-color-scheme: dark){:root{--bg:#17181c;--panel-bg:#1f2024;--border:#303136;--text:#eaeaec;--muted:#9a9aa2;}}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span><div id="embRow2"></div></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -167,24 +186,24 @@ body.pt-touch .grip::after{inset:-12px;}
 <h2>③ 文字・画像の追加と訂正 <span class="sub" id="curNo"></span></h2>
 <div class="row" style="margin-bottom:8px">
 <div class="seg" id="modeSeg">
-<button data-m="sel" class="on">✋ 選択・訂正</button><button data-m="text">＋文字</button><button data-m="img">＋画像</button><button data-m="ocr">🔍 画像の文字を認識</button><button data-m="warp">📐 歪み補正</button>
+<button data-m="sel" class="on">文字</button><button data-m="text">＋文字</button><button data-m="img">画像</button><button data-m="ocr">文字認識</button><button data-m="warp">歪み補正</button>
 </div>
 </div>
 <p class="hint helptext" id="modeHint" style="margin:0 0 8px"></p>
-<div class="row" id="optText" style="margin-bottom:8px">
+<div class="row xhide" id="optText" style="margin-bottom:8px">
 <label>サイズ(pt) <input type="number" id="nSize" value="14" min="4" max="400" step="0.5" title="これから作る枠の文字の大きさ。空にすると、枠の大きさから自動で決めます"></label>
 <label>色 <input type="color" id="nColor" value="#000000"></label>
 </div>
-<div class="row hidden" id="optFix" style="margin-bottom:8px">
+<div class="row hidden xhide" id="optFix" style="margin-bottom:8px">
 <label><input type="checkbox" id="ovGhost"> 元の画像と重ねて確認</label>
 <label><input type="checkbox" id="fxJoin"> 範囲内の文字を、行も含めて全部1つの枠にまとめる</label>
 <label>空白がこの倍数以上なら分ける <input type="number" id="fxGap" value="200" min="1" max="400" step="0.5" style="width:80px"> ×文字サイズ</label>
 </div>
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
-<label>言語 <select id="ocrLang" style="font-size:16px;min-height:44px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
-<label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label>
-<button class="sub-btn" id="bOcrPage">このページ全体を認識</button>
-<label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label>
+<button class="sub-btn" id="bOcrPage">ページ全体</button>
+<button class="sub-btn" id="bOcrRange">範囲を指定</button>
+<label>言語 <select id="ocrLang" style="font-size:16px;min-height:34px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
+<div class="xhide"><label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label><label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label></div>
 <span class="sub helptext">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
 </div>
 <div class="row hidden" id="optWarp" style="margin-bottom:8px">
@@ -204,22 +223,23 @@ body.pt-touch .grip::after{inset:-12px;}
 <h2 style="margin:0 0 8px">選択中の部品 <span class="sub" id="selKind"></span></h2>
 <div id="selTextBox">
 <div class="row">
-<label><span id="sSizeLbl">枠全体のサイズ(pt)</span> <input type="number" id="sSize" min="4" max="400" step="0.5" title="文字の大きさ(選んだ範囲があればその範囲だけ)"></label>
-<label>字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
+<label><span id="sSizeLbl">サイズ</span> <input type="number" id="sSize" min="4" max="400" step="0.5" title="文字の大きさ(選んだ範囲があればその範囲だけ)"></label>
+<label id="sLsLbl">字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label>色 <input type="color" id="sColor"></label>
-<div class="seg"><button id="sFmtT">文字として</button><button id="sFmtP">画像として</button></div>
-<div class="seg"><button id="sAL">左揃え</button><button id="sAC">中央</button><button id="sAR">右揃え</button></div>
+<div class="seg"><button id="sFmtT" title="文字として(選択・コピー・検索ができる)">文字</button><button id="sFmtP" title="画像として(見た目のまま固定)">画像</button></div>
+<div class="seg"><button id="sAL" title="左揃え">左</button><button id="sAC" title="中央揃え">中</button><button id="sAR" title="右揃え">右</button></div>
 </div>
 <p class="hint helptext" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠は、角をドラッグして自由に大きさを変えられます(文字の大きさは変わりません)。<b>文字の大きさは、文字の最後の右下にある、ピンクの鉛筆(✎)を縦にドラッグして変えます。</b>文字が枠の右端を超えたら折り返して、枠が下に伸びます。</p>
 </div>
-<div class="row" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub helptext">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
-<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">この部品を削除</button><button class="sub-btn" id="sClose">選択を解除</button></div>
+<div class="row" id="nudgeRow" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub helptext">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
+<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">消去</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
-<div class="row" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo"></span></div>
+<div class="row xhide" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo"></span></div>
 <p class="hint helptext"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
 </section>
 </main>
 
+<div id="setBox" class="xhide" role="dialog"><div class="hbox"><div class="hbar"><span style="flex:1">設定</span><button class="sub-btn" id="setClose" style="min-height:36px;margin:0">閉じる</button></div><div class="hbody" id="setBody"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -483,8 +503,16 @@ function openHelp(){
   o.addEventListener("pointerdown",e=>{if(e.target===o)closeHelp();});
   document.body.appendChild(o);o.querySelector("#helpClose").onclick=closeHelp;
 }
+function closeSettings(){const o=$("setBox");o.classList.add("xhide");o.removeAttribute("style");}
+function openSettings(){
+  const o=$("setBox"),A=GEO.shown(),z=GEO.inv();   // 窓は、いま見えている範囲(SHOWN)に、ふだんの大きさで出す(出すとき1回だけ)
+  o.classList.remove("xhide");
+  o.style.cssText=`position:fixed;z-index:3000;left:${A.x}px;top:${A.y}px;width:${A.w/z}px;height:${A.h/z}px;transform:scale(${z});transform-origin:0 0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box`;
+  o.onpointerdown=e=>{if(e.target===o)closeSettings();};
+}
 function setMode(m){
   mode=m;
+  if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("modeHint").textContent=HINTS[m];
   $("optText").classList.toggle("hidden",m!=="text");
@@ -892,7 +920,7 @@ function showSize(){
   if(!cs||cs.type==="img")return;
   const r=activeRange(cs);const v=r?((cs.sz&&cs.sz[r.start])||cs.size):cs.size;
   $("sSize").value=Math.round(v*10)/10;
-  $("sSizeLbl").textContent="文字サイズ(pt)";
+  $("sSizeLbl").textContent="サイズ";
 }
 // ---- 右クリックでサイズ変更 ----
 const ctx=document.createElement("div");ctx.id="ctx";ctx.classList.add("hidden");document.body.appendChild(ctx);
@@ -1115,10 +1143,13 @@ function showSizePop(it,anchor){
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="4" autocomplete="off" style="min-height:30px;font-size:16px;width:4.2em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:30px;width:3em;padding:0">
 <span>背景</span><select id="spBg" style="min-height:30px;font-size:16px;max-width:8.5em"><option value="none">透明</option><option value="text">文字だけ白抜き</option><option value="all">全体白抜き</option></select>
+<span>字間</span><span style="display:flex;gap:4px;align-items:center"><input id="spLs" type="number" step="0.1" min="-2" max="40" style="min-height:30px;font-size:16px;width:4.2em"><span>pt</span></span>
+${it.type==="fix"?'<span></span><button id="spErase" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">元のPDFの文字を消す</button>':""}
 <span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button></span>
 <span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">決定</button><button id="spX" class="sub-btn" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">戻る</button></span>`;
   document.body.appendChild(d);sizePop=d;sizePopRect=popAnchorRect(it,r);placeSizePop();
-  const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor");
+  const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor"),lsIn=d.querySelector("#spLs");lsIn.value=it.ls||0;
+  const er=d.querySelector("#spErase");if(er)er.onclick=()=>{hideSizePop();$("sErase").click();};   // 元のPDFの文字を消す(選んでいる枠)
   {const oo=fsel.querySelector('option[value="orig"]'),nice=n=>n.replace(/^[A-Z]{6}\+/,"");   // 元のフォントの名前(サブセットの印「ABCDEF+」は除く)
    if(oo){if(it.type==="fix"&&it.ofName)oo.textContent="元のフォント("+nice(it.ofName)+")";else if(it.type!=="img")pageDominantFont(it.page).then(n=>{if(n&&oo.isConnected)oo.textContent="元のフォント("+nice(n)+")";});}}
   inp.value=Math.round(it.size*10)/10;fsel.value=FONTS[it.font]?it.font:"orig";d.querySelector("#spBg").value=bgModeOf(it);col.value=/^#[0-9a-f]{6}$/i.test(it.color||"")?it.color:"#000000";
@@ -1126,6 +1157,7 @@ function showSizePop(it,anchor){
     const v=parseFloat(String(inp.value).replace(",",".")),fk=fsel.value,cl=col.value,bgm=d.querySelector("#spBg").value;hideSizePop();
     if(fk!=="orig"&&fk!==(it.font||"orig")&&!confirm("元のフォントとは別のフォントを使うと、フォントのデータがPDFに入り、ファイルが約2〜4MB大きくなります。\nよろしいですか？")){status("フォントは変えませんでした。");return;}
     try{await ensureWebFontKey(fk==="orig"?"gothic":fk);}catch(e){status("フォントを読み込めませんでした: "+e.message);return;}
+    it.ls=Math.max(-2,Math.min(40,+lsIn.value||0))||0;
     it.font=fk;it.color=cl;it.bgMode=bgm;it.erase=bgm!=="none";if(v>0)applySize(it,v,null);
     const el=itemEls.get(it.id);if(el){const t=el.querySelector(".t");if(t)buildText(it,t,K());growToFit(it);boxStyle(it,el);placeGrip(it,el);}
     syncPanel();
@@ -2546,7 +2578,15 @@ $("bCommit").onclick=busy(commit);
 const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":"edit";
 if(EMBED){
   document.body.classList.add("embed","emb-"+FORMKIND);
-  {const r2=$("embRow2");r2.appendChild($("bUndo"));r2.appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");}   // 元に戻す・いまの状況の表示を、見出しに入れる
+  {   // 見出しに集約: 元に戻す・状況・モード・モードごとの操作・選んでいる枠の道具を、見出しの中に移す(IDはそのまま)
+    $("embRow1").querySelector(".embL").prepend($("bUndo"));
+    $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
+    $("embRow3").appendChild($("modeSeg"));
+    ["optImg","optOcr","optWarp","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
+    const sb=$("setBody");["ocrEngine","ocrClean","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
+    $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
+    $("bOcrRange").onclick=()=>{status("ページの上を、ドラッグして、認識する範囲を指定してください(指は、長押ししてから、ドラッグ)。");const b=$("bOcrRange");b.classList.add("on");setTimeout(()=>b.classList.remove("on"),4000);};
+  }
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";

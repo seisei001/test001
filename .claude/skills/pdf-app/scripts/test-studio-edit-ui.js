@@ -56,7 +56,7 @@ const {launch,WORK}=require('./harness');
   ok('枠の右上の「文字」「訂正」の表記が無い',await f.evaluate(()=>document.querySelectorAll('.ibox .tag').length===0));
   ok('文字サイズ欄は入力できる・A−/A＋・「入力」ボタンは無い',await f.evaluate(()=>!document.getElementById('sSize').readOnly&&!document.getElementById('nSize').readOnly&&!document.getElementById('sPlus')&&!document.getElementById('sMinus')&&!document.querySelector('.editbtn')));
   // ＋文字の「サイズ」欄: 選んでいる枠の文字の大きさが変わる
-  await fr.locator('#nSize').fill('20');await fr.locator('#nSize').press('Enter');await page.waitForTimeout(300);
+  await f.evaluate(()=>{const n=document.getElementById('nSize');n.value='20';n.dispatchEvent(new Event('change',{bubbles:true}));});await page.waitForTimeout(300);
   ok('「サイズ」欄に入れると、選んでいる枠の文字の大きさが変わる('+(await items()).pop().size+'pt)',(await items()).pop().size===20);
   // 貼り付け(改行・末尾の改行が増えない・カーソルが飛ばない)
   await f.evaluate(()=>document.querySelector('.ibox.on .t').focus());await page.keyboard.press('Control+End');

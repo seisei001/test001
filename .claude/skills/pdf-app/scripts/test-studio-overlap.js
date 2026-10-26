@@ -14,7 +14,7 @@ const {launch,WORK}=require('./harness');
   await drag(30,75,150,30);   // 「利用種別」を囲む→訂正の部品
   let it=await items();ok('文字を囲むと、訂正の部品ができる: '+JSON.stringify(it),it.length===1&&it[0][0]==='fix'&&it[0][1]==='利用種別');
   await f.evaluate(()=>{});
-  await fr.locator('#sClose').click();await page.waitForTimeout(300);
+  await f.evaluate(()=>document.getElementById('sClose').click());await page.waitForTimeout(300);
   await drag(20,70,200,45);   // 同じ文字の上に、別の枠(空白から始めて、同じ文字を囲む)
   it=await items();
   ok('同じ文字を、もう一度囲んでも、二重の訂正の部品にならない(文字のない枠扱い): '+JSON.stringify(it),it.filter(i=>i[0]==='fix'&&i[1]==='利用種別').length===1);

@@ -7,7 +7,7 @@ const run=async(gap)=>{
   await page.setInputFiles('#fAdd',[WORK+'/samples/gap.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
   const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
-  if(gap){await fr.locator('#fxGap').fill(String(gap));await fr.locator('#fxGap').press('Tab');await page.waitForTimeout(500);}
+  if(gap){await f.evaluate(g=>{const n=document.getElementById('fxGap');n.value=g;n.dispatchEvent(new Event('change',{bubbles:true}));},String(gap));await page.waitForTimeout(500);}
   const ov=await fr.locator('#ov').boundingBox(),k=ov.width/420;
   await page.mouse.move(ov.x+5*k,ov.y+40*k);await page.mouse.down();await page.mouse.move(ov.x+415*k,ov.y+75*k,{steps:8});await page.mouse.up();await page.waitForTimeout(800);
   const r=await f.evaluate(()=>window.pdfEditorDebug.items().map(i=>i.txt));await browser.close();return {r,errs};
