@@ -346,3 +346,5 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 起動画面2.07: 束デスクの、フォームの上の「✕ 閉じる(保存しない)」(#formClose)を、画面から外した(「戻る」(embCancel。編集があれば確認)と同じ役目のため)。要素は display:none で残し、テスト・内部の呼び出しは、JSで click する。
 
 - ページ編集2.57: 文字認識が終わったときの緑の枠(診断・縮小画像つき。調査用だった)を出さない。終わりは job.hide() で消し、結果は状況の表示(status)に出す。診断の文は pdfEditorDebug.ocrDiag() で見られる(画面には出さない)。処理中の表示(動いている印・進み具合)と、失敗の表示(赤い枠)は、そのまま。
+
+- ページ編集2.58: (1) 文字認識が終わったあとの結果の文は、画面に出さない: status(m,true) = 文字は入れるが、#status[data-quiet]{visibility:hidden}(テストは textContent を読める)。(2) 文字認識に「元画像を消す」ボタン(#bImgToggle): 押すと body.noimg(#stage を visibility:hidden)、ラベルは「元画像を出す」に変わり、もう一度押すと戻る。文字認識のモードを出たら、元の画像を戻す。(3) 見出しのボタンを、全体に少し小さく(高さ30・文字.8rem)。
