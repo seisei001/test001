@@ -1041,7 +1041,7 @@ let sizePop=null,sizePopRect=null;
 // 窓の外では、ふつうにドラッグでの移動・2本指での拡大縮小ができる。最初の表示が、多少、画面の外に出ていてもよい(ページを動かせば見える)。
 const POP_RATIO=0.9;   // 窓の縮尺比率(大きさの出方の調整用)。1.0=そのままの大きさ
 function placeSizePop(){
-  const d=sizePop;if(!d||!sizePopRect||d._placed)return;d._placed=true;
+  const d=sizePop;if(!d||!sizePopRect||d._placed)return;d._placed=true;d._scale=GEO.inv().toFixed(2);
   const z=GEO.inv()*POP_RATIO,m=6*z,R=sizePopRect,gap=4*z,A=GEO.shown();
   d.style.transform=`scale(${z})`;
   const w0=d.offsetWidth*z,h0=d.offsetHeight*z;   // 画面上の大きさ
@@ -1049,14 +1049,29 @@ function placeSizePop(){
   const top=below?R.bottom+gap:R.top-gap-h0,left=Math.max(A.x+m,Math.min(A.x+A.w-w0-m,R.left));   // 横は、見えている範囲に収める
   d.style.left=(left+scrollX)+"px";d.style.top=(top+scrollY)+"px";   // ページの座標(スクロールと一緒に動く)
 }
-function hideSizePop(){if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
+// 画面の拡大が変わったときは、動いている間は窓を隠し、「手を離したとき」または「動きが0.3秒止まったとき」の、早いほうで、1回だけ、置き直して表示する(イベントごとに動かさない)
+const SETTLE_MS=300,LIFT_MS=300;   // 動きが止まってから待つ時間 / 手を離してから待つ時間(どちらも0.3秒)
+let settleTm=null,settleFn=null,settleSig="";
+const geoSigE=()=>{const A=GEO.shown();return[GEO.inv().toFixed(2),(A.x/6)|0,(A.y/6)|0,(A.w/6)|0,(A.h/6)|0].join(",");};
+function onGeoChange(){
+  const d=sizePop;if(!d||!d._placed||d._scale===GEO.inv().toFixed(2))return;   // 拡大が変わっていなければ、何もしない
+  const sg=geoSigE();if(settleFn&&sg===settleSig)return;settleSig=sg;   // 同じ内容の知らせが続いても、待ち時間を延ばさない(手を離した直後の、確認の知らせなど)
+  d.style.visibility="hidden";clearTimeout(settleTm);
+  settleFn=()=>{settleFn=null;if(sizePop!==d)return;
+    const it=d._it,el=it&&itemEls.get(it.id),h=el&&el.querySelector(".hdl.mv");
+    if(it&&h){const r=h.getBoundingClientRect();sizePopRect=popAnchorRect(it,r);}
+    d._placed=false;placeSizePop();d.style.visibility="";};
+  settleTm=setTimeout(settleFn,SETTLE_MS);   // 動きが続くあいだは、イベントのたびに、ここから数え直す
+}
+["touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>{if(settleFn&&(!e.touches||e.touches.length===0)){clearTimeout(settleTm);settleTm=setTimeout(settleFn,LIFT_MS);}},{capture:true,passive:true}));   // 手を離したら、すぐ(少しだけ待って)表示
+function hideSizePop(){clearTimeout(settleTm);settleFn=null;if(sizePop){sizePop.remove();sizePop=null;sizePopRect=null;}}
 // 窓を出す基準の位置: 枠(入力する文字)を隠さないよう、枠の下か上に出す。枠が大きすぎるときだけ、✥の位置
 function popAnchorRect(it,r){const el=itemEls.get(it.id),b=el&&el.getBoundingClientRect();
   if(b&&b.height>0&&b.height<0.45*innerHeight)return{left:Math.min(b.left,r.left),top:b.top,bottom:b.bottom};
   return{left:r.left,top:r.top,bottom:r.bottom};}
 function showSizePop(it,anchor){
   hideSizePop();
-  const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";
+  const r=anchor.getBoundingClientRect(),d=document.createElement("div");d.id="sizePop";d._it=it;
   if(it.type==="img"){   // 画像の枠: コピー・消去だけ
     d.style.cssText="position:absolute;z-index:1200;background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:10px;display:flex;gap:6px;transform:scale(var(--zs,1));transform-origin:0 0;left:0;top:0";
     d.innerHTML='<button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button><button id="spX" class="sub-btn" style="min-height:36px;margin:0">戻る</button>';
@@ -2505,7 +2520,7 @@ if(EMBED){
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
-    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeJob();}});   // 拡大率は、処理中でも必ず受け取る
+    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeJob();onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);

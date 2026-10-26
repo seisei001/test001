@@ -114,10 +114,10 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.05"},
+  splash:{name:"PDFスタジオ",ver:"2.06"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
-  edit:{name:"ページ編集",ver:"2.52",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"2.53",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
 };
 const $=id=>document.getElementById(id);
@@ -502,8 +502,19 @@ function fitModal(o){
   if(S.scale<=1.02){o.style.inset="0";o.style.width=o.style.height=o.style.transform=o.style.transformOrigin="";return;}
   const s=S.scale;o.style.inset="auto";o.style.left=S.x+"px";o.style.top=S.y+"px";o.style.width=(S.w*s)+"px";o.style.height=(S.h*s)+"px";o.style.transformOrigin="0 0";o.style.transform=`scale(${1/s})`;
 }
-function fitAll(){fitted.forEach(o=>{if(o.isConnected)fitModal(o);else fitted.delete(o);});}
-function addFit(o){fitted.add(o);fitModal(o);}
+// 窓・メニューは、動いている間は隠し、「手を離したとき」または「動きが0.3秒止まったとき」の、早いほうで、1回だけ置き直して表示する(イベントごとに動かさない=チラつかない)
+const SETTLE_MS=300,LIFT_MS=300;   // 動きが止まってから待つ時間 / 手を離してから待つ時間(どちらも0.3秒)
+function geoSig(){const S=geoScreen();return[S.scale.toFixed(2),(S.x/6)|0,(S.y/6)|0,(S.w/6)|0,(S.h/6)|0].join(",");}
+function fitAll(){fitted.forEach(o=>{
+  if(!o.isConnected){fitted.delete(o);return;}
+  const sg=geoSig();if(o._sig===sg)return;   // 見えている範囲が変わっていなければ、何もしない
+  if(o._again&&o._pend===sg)return;o._pend=sg;   // 同じ内容の知らせが続いても、待ち時間を延ばさない
+  if(o.classList.contains("hidden")){o._sig=sg;fitModal(o);return;}   // 出ていないものは、すぐ整える
+  o.style.visibility="hidden";clearTimeout(o._tm);
+  o._again=()=>{o._again=null;if(!o.isConnected)return;o._sig=geoSig();fitModal(o);o.style.visibility="";};
+  o._tm=setTimeout(o._again,SETTLE_MS);});}   // 動きが続くあいだは、イベントのたびに、ここから数え直す
+function liftFit(){fitted.forEach(o=>{if(o._again){clearTimeout(o._tm);o._tm=setTimeout(o._again,LIFT_MS);}});}   // 手を離したら、すぐ(少しだけ待って)表示
+function addFit(o){fitted.add(o);o._sig=geoSig();fitModal(o);}
 addFit($("menu"));
 function sendZoom(){fitAll();try{const w=$("formFrame").contentWindow;if(!w)return;
   const geo={app:geoApp(),screen:geoScreen(),form:geoForm()};   // 3つの領域を、名前を分けて、そのまま渡す(フォーム側で、自分の座標に直す)
@@ -539,7 +550,7 @@ window.addEventListener("message",async e=>{
     try{window.scrollTo(panPos.x,panPos.y);}catch{}
     setTimeout(()=>{sendZoom();try{src.postMessage({type:"panres",t:`親の画面を動かす依頼: ${(+m.dx).toFixed(1)},${(+m.dy).toFixed(1)}\n親のスクロール位置 ${sx0.toFixed(0)},${sy0.toFixed(0)} → ${scrollX.toFixed(0)},${scrollY.toFixed(0)}\n見える左上 ${b0?`${b0.l.toFixed(0)},${b0.t.toFixed(0)} → ${v.pageLeft.toFixed(0)},${v.pageTop.toFixed(0)}`:"不明"}\n${document.scrollingElement.scrollWidth}x${document.scrollingElement.scrollHeight} (内容の大きさ)`},"*");}catch{}},60);   // 拡大中のドラッグが画面の端に来たとき、ゆっくり画面を動かす
   }else if(m.type==="needzoom"){sendZoom();
-  }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
+  }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();liftFit();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
      // フォームの中の指の数(親は、フォームの中の指の操作を直接見られない)
   }else if(m.type==="close")closeForm();
 });
