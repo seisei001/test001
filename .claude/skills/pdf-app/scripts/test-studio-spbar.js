@@ -1,4 +1,4 @@
-// ページ編集: 枠の真下の「行間・字間」バーで、行間と字間が変わる/バーの位置がぶれない
+// ページ編集: 枠の真上の「行間・字間」バーで、行間と字間が変わる/バーの位置がぶれない
 process.env.PDFAPP_TARGET='pdf-studio';
 const {launch,WORK}=require('./harness');
 (async()=>{
@@ -13,7 +13,10 @@ const {launch,WORK}=require('./harness');
   const rb=await fr.locator('#ov .run').first().boundingBox();await page.mouse.click(rb.x+rb.width/2,rb.y+rb.height/2);await page.waitForTimeout(600);
   const it=()=>f.evaluate(()=>{const i=window.pdfEditorDebug.items().filter(x=>x.type==='fix').pop();return {lh:i.lh,ls:i.ls||0,vw:i.vw};});
   const a=await it();
-  const bar=fr.locator('.spbar');chk('バーが枠の真下にある',await bar.count()===1&&(await bar.boundingBox()).y>(await fr.locator('.ibox.on').boundingBox()).y);
+  const bar=fr.locator('.spbar');const bb=await bar.boundingBox(),eb=await fr.locator('.ibox.on').boundingBox(),gb=await fr.locator('.grip').boundingBox(),hb=await fr.locator('.hdl.mv').boundingBox();
+  chk('バーが枠の真上にある',await bar.count()===1&&bb.y+bb.height<=eb.y+1);
+  chk('バーは✥の右から出る(重ならない)',bb.x>=hb.x+hb.width-1);
+  chk('右下の矢印と重ならない',gb.y>bb.y+bb.height||gb.x>bb.x+bb.width||gb.x+gb.width<bb.x);
   const set=(sel,v)=>f.evaluate(([s,v])=>{const e=document.querySelector(s);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},[sel,v]);
   await set('.spbar .r1','2');await set('.spbar .r2','5');
   const b=await it();chk(`行間・字間が変わる(${a.lh}→${b.lh}, ${a.ls}→${b.ls})`,b.lh===2&&b.ls===5);
