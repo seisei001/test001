@@ -51,18 +51,19 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 body.embed #embHead{display:flex;}
 /* ページ編集の操作は、見出しに集約する: 1行目=設定・ヘルプ・元に戻す / 保存・戻る、2行目=いまの状況、3行目=モード、4行目=モードごとの操作・選んでいる枠の道具 */
 body.embed #filePanel{display:none!important;}
-#embRow1{display:flex;gap:6px;align-items:center;}
+#embRow1{display:flex;gap:5px;align-items:center;}
 #embRow1 .embL,#embRow1 .embR{display:flex;gap:6px;}
 #embRow1 .embR{margin-left:auto;}
-#embHead button{min-height:34px;padding:4px 10px;font-size:.88rem;margin:0;}
+#embHead button{min-height:30px;padding:3px 8px;font-size:.8rem;margin:0;}
 #embRow2{display:flex;min-width:0;}
 #embRow2 #status{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}   /* 長い文は、1行に切って出す。押すと、全部出る */
 #embRow2 #status.open{white-space:normal;}
+#status[data-quiet]{visibility:hidden;}
 #embRow3,#embRow4{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
 #embRow3:empty,#embRow4:empty{display:none;}
 #embHead .row{margin:0!important;gap:6px;}
 #embHead .row.hidden,#embHead .hidden{display:none!important;}
-#embHead select,#embHead input[type=number]{min-height:34px!important;font-size:16px;}
+#embHead select,#embHead input[type=number]{min-height:30px!important;font-size:16px;}
 #embHead #selPanel{border:0;padding:0;margin:0!important;background:none;box-shadow:none;border-radius:0;}
 #embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sClose,#embHead #sLsLbl{display:none!important;}
 #embHead #selPanel,#embHead #selTextBox,#embHead #selPanel .row{display:contents;}   /* 道具は、1つながりに並べる(入りきらなければ折り返す) */
@@ -71,13 +72,15 @@ body.embed #editPanel > h2{display:none;}
 #embHead #selPanel label{display:flex;gap:4px;align-items:center;font-size:.85rem;}
 #embHead #selPanel input[type=number]{width:4.4em;}
 #embHead #selPanel .lbl{display:none;}   /* 1行に収めるため、文字は出さない(押すと分かる・説明はヘルプ) */
-#embHead #selPanel input[type=color]{width:38px;height:34px;padding:0;}
-#embHead #selPanel .seg button{padding:4px 7px;}
+#embHead #selPanel input[type=color]{width:34px;height:30px;padding:0;}
+#embHead #selPanel .seg button{padding:3px 6px;}
 /* 文字のモードで、枠を選んでいないときも、道具の場所は空けておく(枠を選ぶたびに、ページが下にずれない) */
 body.embed.m-sel #embHead #selPanel.hidden,body.embed.m-text #embHead #selPanel.hidden{display:contents!important;visibility:hidden;}
-#embHead .seg button{min-height:34px;padding:4px 9px;font-size:.85rem;}
+#embHead .seg button{min-height:30px;padding:3px 8px;font-size:.8rem;}
 .sub-btn.on{background:var(--accent);color:#fff;}
 .xhide{display:none!important;}
+body.noimg #stage{visibility:hidden;}   /* 「元画像を消す」: 元のページの画像を隠して、認識した文字だけを見る */
+body.noimg #pagewrap{background:#fff;}
 #modeSeg{position:relative;}
 #modeSeg [data-m=text]{position:absolute;right:0;bottom:0;width:2px;height:2px;min-height:0!important;padding:0!important;border:0;opacity:.01;overflow:hidden;}   /* 「文字」に統合した。テストが使うので、見えない形で残す */
 #helpBox .hbox,#setBox .hbox{background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.4);width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;overflow:hidden;}
@@ -207,6 +210,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <div class="row hidden" id="optOcr" style="margin-bottom:8px">
 <button class="sub-btn" id="bOcrPage">ページ全体</button>
 <button class="sub-btn" id="bOcrRange">範囲を指定</button>
+<button class="sub-btn" id="bImgToggle" title="元の画像を消して、認識した文字だけを見る(もう一度押すと、元の画像を出す)">元画像を消す</button>
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:34px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
 <div class="xhide"><label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label><label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label></div>
 <span class="sub helptext">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
@@ -258,7 +262,7 @@ const $=id=>document.getElementById(id);
 const FONT_URL="https://cdn.jsdelivr.net/npm/@expo-google-fonts/m-plus-1p@0.4.2/400Regular/MPLUS1p_400Regular.ttf";
 let fontBytes=null, items=[], nextId=1, bytes=null, hist=[], pdfView=null, cur=0, sel=new Set(), fileName="edited.pdf";
 
-function status(m){$("status").textContent=m;}
+function status(m,quiet){const e=$("status");e.textContent=m;if(quiet)e.dataset.quiet="1";else delete e.dataset.quiet;}   // quiet=true: 文字は入れるが、画面には出さない(文字認識の結果など、見せなくてよいもの。テストは読める)
 // 時間のかかる作業の表示(動いている印+進み具合+終わったらはっきり「完了」)
 let jobTimer=null;
 // ===== 画面の領域の管理(領域ごとに、名前を分けて持つ) =====
@@ -517,7 +521,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
-  mode=m;document.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp");document.body.classList.add("m-"+m);
+  mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("modeHint").textContent=HINTS[m];
@@ -2058,7 +2062,7 @@ async function doOcr(x,y,w,h){
   try{
     const n=await doOcrBody(x,y,w,h);
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。");}   // 終わりの緑の枠は出さない(状況の表示に出す)。診断は、pdfEditorDebug.ocrDiag() で見る
+    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrTextBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
@@ -2397,7 +2401,7 @@ async function doOcrBody(x,y,w,h){
   made.sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy)).forEach(m=>items.push(m));
   lastOcrFirst=made[0]||null;
   select(made[0],false);
-  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nText?`PDFの文字データ${nText}個の所は、OCRせず、そのまま使えます(「選択・訂正」でタップ)。`:"")+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
+  status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nText?`PDFの文字データ${nText}個の所は、OCRせず、そのまま使えます(「選択・訂正」でタップ)。`:"")+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。",true);
   diagThumbEl=null;   // 診断の縮小画像は、出さない(関数は、調査用に残す)
   ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒${segThin?"・しきい値を"+segThin+"にして文字を細くした":""}・つながった行を分けた${ocrSplitCount}回・行${segStat.n}本(高さの中央${segStat.med}・最大${segStat.max}・中央の2.2倍超${segStat.tall}本・複数行の塊${segStat.multi})・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
@@ -2592,6 +2596,7 @@ if(EMBED){
     $("embRow3").appendChild($("modeSeg"));
     ["optImg","optOcr","optWarp","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
     const sb=$("setBody");["ocrEngine","ocrClean","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
+    $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
     $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
     $("bOcrRange").onclick=()=>{status("ページの上を、ドラッグして、認識する範囲を指定してください(指は、長押ししてから、ドラッグ)。");const b=$("bOcrRange");b.classList.add("on");setTimeout(()=>b.classList.remove("on"),4000);};
   }
