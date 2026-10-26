@@ -108,7 +108,7 @@ body.pt-touch .grip::after{inset:-12px;}
 .part .lbl{flex:1;min-width:120px;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .part .seg button{min-height:36px;padding:4px 10px;font-size:.8rem;}
 .part .danger{min-height:36px;padding:4px 10px;font-size:.8rem;}
-.helptext{display:none!important;}   /* 説明文は、ふだんは出さない。右上の「❓」のヘルプの中で見る */
+.helptext{display:none!important;}   /* 説明文は、ふだんは出さない。右上の「ヘルプ」ボタンの中で見る */
 #helpBox .hbox{background:var(--panel-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.4);width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;overflow:hidden;}
 #helpBox .hbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;}
 #helpBox .hbody{padding:10px 14px;overflow:auto;font-size:.88rem;line-height:1.6;}
@@ -118,7 +118,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button class="sub-btn" id="embHelp" aria-label="ヘルプ" title="ヘルプ">❓</button><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -459,7 +459,7 @@ const HINTS={
   ocr:"画像として入っている文字(スキャンなど)を、範囲をドラッグして文字にします。認識した文字は、元の文字を背景色で隠して、編集できる部品になります。誤認識は枠の中で直してください。ページ全体は右のボタンで認識できます。",
   img:"先に画像を選び、ページ上をドラッグして画像を置く範囲を指定します(縦横比はそのまま)。"
 };
-// ===== ヘルプ(説明文は、ふだんは隠し、見たいときだけ「❓」で出す) =====
+// ===== ヘルプ(説明文は、ふだんは隠し、見たいときだけ「ヘルプ」ボタンで出す) =====
 function closeHelp(){const o=document.getElementById("helpBox");if(o)o.remove();}
 function openHelp(){
   closeHelp();
@@ -2552,6 +2552,7 @@ if(EMBED){
     status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":"このページを編集できます。");
   }));
   $("embHelp").onclick=openHelp;
+  document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
   $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
   $("embCancel").onclick=()=>{const changed=hist.length>0||items.some(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す

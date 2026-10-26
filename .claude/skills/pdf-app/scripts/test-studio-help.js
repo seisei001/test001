@@ -14,7 +14,7 @@ const {launch,WORK}=require('./harness');
   ok(`見出しの「保存して束に戻す」が、横に1行で出る(高さ ${hb.saveH.toFixed(0)}・幅 ${hb.saveW.toFixed(0)})`,hb.saveH<60&&hb.saveW>110);
   await f.evaluate(()=>document.getElementById('embHelp').click());await page.waitForTimeout(300);
   const t=await f.evaluate(()=>{const o=document.getElementById('helpBox');return o?o.innerText:null;});
-  ok('❓を押すと、ヘルプが出る(モードの説明・そのほかの説明)',t&&/いまのモード/.test(t)&&/ほかのモード/.test(t)&&/文字として/.test(t)&&/初回だけ/.test(t));
+  ok('ヘルプを押すと、ヘルプが出る(モードの説明・そのほかの説明)',t&&/いまのモード/.test(t)&&/ほかのモード/.test(t)&&/文字として/.test(t)&&/初回だけ/.test(t));
   await f.evaluate(()=>document.getElementById('helpClose').click());await page.waitForTimeout(200);
   ok('「閉じる」で、ヘルプが閉じる',await f.evaluate(()=>!document.getElementById('helpBox')));
   console.log('JSエラー:',errs.length,errs);await browser.close();
