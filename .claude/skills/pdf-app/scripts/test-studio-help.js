@@ -12,6 +12,8 @@ const {launch,WORK}=require('./harness');
   ok(`説明文(${vis.length}か所)は、ふだんは出ていない`,vis.length>=6&&vis.every(d=>d==='none'));
   const hb=await f.evaluate(()=>{const b=document.getElementById('embSave').getBoundingClientRect(),h=document.getElementById('embHelp').getBoundingClientRect();return{saveH:b.height,saveW:b.width,helpW:h.width};});
   ok(`見出しの「保存して束に戻す」が、横に1行で出る(高さ ${hb.saveH.toFixed(0)}・幅 ${hb.saveW.toFixed(0)})`,hb.saveH<60&&hb.saveW>110);
+  const hd=await f.evaluate(()=>{const h=document.getElementById('embHead').getBoundingClientRect(),u=document.getElementById('bUndo').getBoundingClientRect(),st=document.getElementById('status').getBoundingClientRect(),fp=getComputedStyle(document.getElementById('filePanel')).display;return{hb:h.bottom,ub:u.bottom,ut:u.top,sb:st.bottom,fp,h:h.height,inHead:document.getElementById('embHead').contains(document.getElementById('bUndo'))&&document.getElementById('embHead').contains(document.getElementById('status'))};});
+  ok(`「① ファイル」は消え、元に戻す・状況の表示が、見出しの中に入る(見出しの高さ ${hd.h.toFixed(0)})`,hd.fp==='none'&&hd.inHead&&hd.sb<=hd.hb+1&&hd.ub<=hd.hb+1);
   await f.evaluate(()=>document.getElementById('embHelp').click());await page.waitForTimeout(300);
   const t=await f.evaluate(()=>{const o=document.getElementById('helpBox');return o?o.innerText:null;});
   ok('ヘルプを押すと、ヘルプが出る(モードの説明・そのほかの説明)',t&&/いまのモード/.test(t)&&/ほかのモード/.test(t)&&/文字として/.test(t)&&/初回だけ/.test(t));

@@ -47,8 +47,15 @@ label{font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:6p
 .seg button.on{background:var(--accent);color:#fff;}
 #ver{position:fixed;top:6px;right:10px;z-index:1500;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel-bg,#fff);border:1px solid var(--border);border-radius:999px;padding:2px 10px;opacity:.9;pointer-events:none;}
 /* PDFスタジオの「ページ編集」「歪み補正」フォームとして動くとき(?embed=1&form=edit|warp): ファイルを開く・ページ操作は出さない */
-#embHead{display:none;gap:8px;align-items:center;padding:10px 16px;position:sticky;top:0;z-index:50;background:var(--panel-bg);border-bottom:1px solid var(--border);}
+#embHead{display:none;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 12px;position:sticky;top:0;z-index:50;background:var(--panel-bg);border-bottom:1px solid var(--border);}
 body.embed #embHead{display:flex;}
+/* ページ編集の「① ファイル」(元に戻す・いまの状況の表示)は、見出しの2行目に入れる(画面を広く使う) */
+body.embed #filePanel{display:none!important;}
+#embHead button{min-height:36px;padding:4px 10px;font-size:.88rem;}
+#embRow2{display:flex;flex:1 1 100%;gap:8px;align-items:center;min-width:0;}
+#embRow2 #bUndo{min-height:34px;padding:4px 10px;font-size:.85rem;flex:none;}
+#embRow2 #status{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}   /* 長い文は、1行に切って出す。押すと、全部出る */
+#embRow2 #status.open{white-space:normal;}
 body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
 body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
 body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
@@ -118,7 +125,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><span style="margin-left:auto;display:flex;gap:8px"><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><button id="embSave">💾 保存して束に戻す</button><button class="sub-btn" id="embCancel">キャンセル</button></span><div id="embRow2"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -126,7 +133,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <p class="sub">PDFの作成・結合・分割・並べ替え・回転・文字や画像の追加。すべて端末内で処理され、ファイルは外部に送信されません。</p>
 </header>
 <main>
-<section class="panel">
+<section class="panel" id="filePanel">
 <h2>① ファイル</h2>
 <div class="row">
 <label class="btn" for="fOpen">PDFを開く</label>
@@ -2539,6 +2546,7 @@ $("bCommit").onclick=busy(commit);
 const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":"edit";
 if(EMBED){
   document.body.classList.add("embed","emb-"+FORMKIND);
+  {const r2=$("embRow2");r2.appendChild($("bUndo"));r2.appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");}   // 元に戻す・いまの状況の表示を、見出しに入れる
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
