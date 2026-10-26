@@ -118,6 +118,7 @@ const {launch,WORK}=require('./harness');
   ok('何もない所を長押し→ドラッグで、範囲(文字の枠)ができる',/枠の大きさから/.test(await f.evaluate(()=>document.getElementById('status').textContent))&&(await items()).pop().vw>30);
   // 2本指(拡大・縮小)では、範囲指定にならない
   await fr.locator('[data-m=text]').click();
+  await tap(ov.x+395*k,ov.y+10*k);   // 先に、指で何もない所をタップ(指の操作に切り替わる=ほかの枠が、タッチを受けなくなる)
   const T2=(type,a,b)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:a[0],y:a[1],id:0},{x:b[0],y:b[1],id:1}]});
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);const ov3=await fr.locator('#ov').boundingBox();
   const nB=(await items()).length;
