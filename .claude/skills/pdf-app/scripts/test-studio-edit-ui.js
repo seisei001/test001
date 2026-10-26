@@ -56,7 +56,7 @@ const {launch,WORK}=require('./harness');
   ok('枠の右上の「文字」「訂正」の表記が無い',await f.evaluate(()=>document.querySelectorAll('.ibox .tag').length===0));
   ok('文字サイズ欄は入力できる・A−/A＋・「入力」ボタンは無い',await f.evaluate(()=>!document.getElementById('sSize').readOnly&&!document.getElementById('nSize').readOnly&&!document.getElementById('sPlus')&&!document.getElementById('sMinus')&&!document.querySelector('.editbtn')));
   // ＋文字の「サイズ」欄: 選んでいる枠の文字の大きさが変わる
-  await fr.locator('#nSize').fill('20');await fr.locator('#nSize').press('Enter');await page.waitForTimeout(300);
+  await f.evaluate(()=>{const n=document.getElementById('nSize');n.value='20';n.dispatchEvent(new Event('change',{bubbles:true}));});await page.waitForTimeout(300);
   ok('「サイズ」欄に入れると、選んでいる枠の文字の大きさが変わる('+(await items()).pop().size+'pt)',(await items()).pop().size===20);
   // 貼り付け(改行・末尾の改行が増えない・カーソルが飛ばない)
   await f.evaluate(()=>document.querySelector('.ibox.on .t').focus());await page.keyboard.press('Control+End');
@@ -118,6 +118,7 @@ const {launch,WORK}=require('./harness');
   ok('何もない所を長押し→ドラッグで、範囲(文字の枠)ができる',/枠の大きさから/.test(await f.evaluate(()=>document.getElementById('status').textContent))&&(await items()).pop().vw>30);
   // 2本指(拡大・縮小)では、範囲指定にならない
   await fr.locator('[data-m=text]').click();
+  await tap(ov.x+395*k,ov.y+10*k);   // 先に、指で何もない所をタップ(指の操作に切り替わる=ほかの枠が、タッチを受けなくなる)
   const T2=(type,a,b)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x:a[0],y:a[1],id:0},{x:b[0],y:b[1],id:1}]});
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);const ov3=await fr.locator('#ov').boundingBox();
   const nB=(await items()).length;
@@ -163,8 +164,8 @@ const {launch,WORK}=require('./harness');
   ok(`端で止める機能は封印中: 拡大中でも最後まで広がり、案内も出ない(幅 ${wz.toFixed?wz.toFixed(0):wz}・案内 ${toast})`,!toast&&wz>100);
   // --- 枠のコピー・消去 ---
   await f.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);
-  const ovc=await fr.locator('#ov').boundingBox();
   await fr.locator('[data-m=text]').click();
+  const ovc=await fr.locator('#ov').boundingBox();   // (見出しは画面に付いているので、先に操作してから、枠の位置を測る)
   await page.mouse.move(ovc.x+15*k,ovc.y+195*k);await page.mouse.down();await page.mouse.move(ovc.x+160*k,ovc.y+232*k,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   await page.keyboard.type('COPYME');await page.waitForTimeout(500);
   const base=(await items()).filter(i=>i.txt==='COPYME');const orig=base[0];
