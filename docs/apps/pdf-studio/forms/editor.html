@@ -1050,11 +1050,11 @@ function renderOverlay(){
         const gr=document.createElement("div");gr.className="grip";gr.textContent="✎";gr.title="文字の大きさ(ドラッグ)";
         gr.addEventListener("pointerdown",e=>{
           e.stopPropagation();e.preventDefault();gr.setPointerCapture(e.pointerId);
-          const y0=e.clientY,s0=it.size,sz0=it.sz?it.sz.slice():[];
+          const y0=e.clientY,s0=it.size,sz0=it.sz?it.sz.slice():[],b0={vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh};   // 枠は、ドラッグを始めた時の大きさが基準(大きくして戻すと、枠も元に戻る)
           const mvf=ev=>{const f=1+(ev.clientY-y0)/(s0*it.lh*k),ns=Math.max(4,Math.min(400,Math.round(s0*f*2)/2));   // 縦の動きの比率で、大きさを変える
             it.size=ns;it.sz=sz0.map(v=>v?Math.max(4,Math.round(v*(ns/s0)*10)/10):null);$("nSize").value=ns;
             const tt=el.querySelector(".t"),sm2=el.querySelector(".sample");if(sm2)sm2.style.fontSize=ns*k+"px";
-            it.vh=Math.max(it.vh,ns*it.lh);if(tt&&it.txt)buildText(it,tt,k);growToFit(it);boxStyle(it,el);placeGrip(it,el);showSize();};
+            it.vx=b0.vx;it.vy=b0.vy;it.vw=b0.vw;it.vh=Math.max(b0.vh,ns*it.lh);if(tt&&it.txt)buildText(it,tt,k);growToFit(it);boxStyle(it,el);placeGrip(it,el);showSize();};
           const up=()=>{gr.removeEventListener("pointermove",mvf);gr.removeEventListener("pointerup",up);gr.removeEventListener("pointercancel",up);};
           gr.addEventListener("pointermove",mvf);gr.addEventListener("pointerup",up);gr.addEventListener("pointercancel",up);
         });
