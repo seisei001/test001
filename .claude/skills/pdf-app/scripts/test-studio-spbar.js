@@ -23,6 +23,8 @@ const {launch,WORK}=require('./harness');
   const b=await it();chk(`行間・字間が変わる(${a.lh}→${b.lh}, ${a.ls}→${b.ls})`,b.lh===2&&b.ls===5);
   chk('幅は変わらない',a.vw===b.vw);
   chk('バーは残っている',await bar.count()===1);
+  const lb=await bar.locator('label').evaluateAll(l=>l.map(e=>e.getBoundingClientRect()).map(r=>[r.x,r.y]));
+  chk('行間と字間は縦に並ぶ(上:行間 下:字間)',lb.length===2&&lb[1][1]>lb[0][1]&&Math.abs(lb[1][0]-lb[0][0])<2);
   const w1=(await bar.boundingBox()).width;
   await f.evaluate(()=>document.documentElement.style.setProperty('--zs','0.25'));
   const w2=(await bar.boundingBox()).width;
