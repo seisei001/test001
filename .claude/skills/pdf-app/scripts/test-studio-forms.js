@@ -48,7 +48,7 @@ const S=WORK+'/samples/';
   ok(`サムネイル更新 ${w0}→${w1}`,w0!==w1);
   // キャンセル
   await page.locator('.card').nth(0).locator('.chk').click();await page.locator('.card').nth(1).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(0).locator('canvas').dblclick();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(2500);
-  await page.click('#formClose');await page.waitForTimeout(500);
+  await page.evaluate(()=>document.getElementById('formClose').click());await page.waitForTimeout(500);
   ok('閉じる(保存しない)で戻る',await page.evaluate(()=>document.getElementById('formHost').classList.contains('hidden')));
   console.log('JSエラー:',errs.length,errs.slice(0,2));
   await browser.close();

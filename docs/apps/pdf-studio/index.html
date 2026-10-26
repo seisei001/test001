@@ -104,7 +104,7 @@ button:disabled{opacity:.4;cursor:default;}
 </div></div>
 
 <div id="formHost" class="modal hidden">
-  <div class="formhead"><h1 id="formName"></h1><span class="ver" id="formVer"></span><button class="sub" id="formClose" style="margin-left:auto">✕ 閉じる(保存しない)</button></div>
+  <div class="formhead"><h1 id="formName"></h1><span class="ver" id="formVer"></span><button class="sub" id="formClose" style="display:none">✕ 閉じる(保存しない)</button>   <!-- 見出しの「戻る」と同じ役目なので、画面には出さない(中身は、内部の呼び出し用に残す) --></div>
   <iframe id="formFrame" title="フォーム"></iframe>
 </div>
 
@@ -114,7 +114,7 @@ button:disabled{opacity:.4;cursor:default;}
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
-  splash:{name:"PDFスタジオ",ver:"2.06"},
+  splash:{name:"PDFスタジオ",ver:"2.07"},
   desk:{name:"束デスク",ver:"2.06"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.56",src:"forms/editor.html?form=edit"},
