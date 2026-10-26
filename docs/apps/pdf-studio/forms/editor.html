@@ -295,6 +295,7 @@ const job={
   start(t){clearTimeout(jobTimer);const j=$("job");j.className="";placeJob();$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
   step(t,pct){$("jobT").textContent=t;if(pct!=null)$("jobP").value=pct;},
   done(t,ms){const j=$("job");j.className="done";placeJob();$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),ms||15000);},
+  hide(){clearTimeout(jobTimer);const j=$("job");if(j)j.classList.add("hidden");},
   fail(t){const j=$("job");j.className="fail";placeJob();$("jobT").textContent="⚠ "+t;}
 };
 let ocrRunning=false;
@@ -2057,7 +2058,7 @@ async function doOcr(x,y,w,h){
   try{
     const n=await doOcrBody(x,y,w,h);
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok){const r=n.ref;job.done(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。"+(ocrDiag?" "+ocrDiag:""),diagThumbEl?45000:0);const jt=$("jobT");jt.parentNode.querySelectorAll("canvas.dg").forEach(e=>e.remove());if(diagThumbEl){diagThumbEl.className="dg";jt.parentNode.appendChild(diagThumbEl);}}
+    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。");}   // 終わりの緑の枠は出さない(状況の表示に出す)。診断は、pdfEditorDebug.ocrDiag() で見る
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
   finally{ocrTextBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
@@ -2275,7 +2276,7 @@ function fillGaps(seg1,seg2){
   }
   return extra;
 }
-let segThin=0,ocrSplitCount=0,segStat=null,ocrDiag="",ocrTrack=null,ocrStat={reads:0,blank:0,empty:0,low:0};   // ocrTrack: 変換中に作った一時の画像(iPhoneは画像の合計の大きさに上限があるので、塊ごとに解放する)
+let segThin=0,ocrSplitCount=0,lastOcrDiagText="",segStat=null,ocrDiag="",ocrTrack=null,ocrStat={reads:0,blank:0,empty:0,low:0};   // ocrTrack: 変換中に作った一時の画像(iPhoneは画像の合計の大きさに上限があるので、塊ごとに解放する)
 // 文字が太く描かれて、上下の行がつながり、巨大な行ができているとき(iPhone)は、しきい値を下げて文字を細くして、分け直す。
 // 通常のページ(つながった行が無い)では、何もしない。細くしすぎて文字が砕けたもの(行の高さの中央が小さくなる)は採用しない
 function lineStats(sg){const hs=sg.chunks.flatMap(k=>k.lines.map(l=>l.h)).sort((a,b)=>a-b),m=hs[hs.length>>1]||1;return{n:hs.length,med:m,max:hs[hs.length-1]||0,tall:hs.filter(v=>v>2.2*m).length};}
@@ -2397,7 +2398,7 @@ async function doOcrBody(x,y,w,h){
   lastOcrFirst=made[0]||null;
   select(made[0],false);
   status(`${nl}行(${made.length}個のまとまり)を文字にしました。まとまりごとに、文字サイズ・行間・揃いを推定してあります。`+engReport(res,engNote)+(nText?`PDFの文字データ${nText}個の所は、OCRせず、そのまま使えます(「選択・訂正」でタップ)。`:"")+(nCode?`二次元コード${nCode}個は除きました。`:"")+(dropped?`元の画像と重ならない${dropped}行は、ごみとして除きました。`:"")+"誤認識は、枠をタップして直してください。");
-  diagThumbEl=diagThumb(seg);
+  diagThumbEl=null;   // 診断の縮小画像は、出さない(関数は、調査用に残す)
   ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒${segThin?"・しきい値を"+segThin+"にして文字を細くした":""}・つながった行を分けた${ocrSplitCount}回・行${segStat.n}本(高さの中央${segStat.med}・最大${segStat.max}・中央の2.2倍超${segStat.tall}本・複数行の塊${segStat.multi})・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
@@ -2615,7 +2616,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
