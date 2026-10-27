@@ -354,3 +354,4 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ページ編集2.62: 行間・字間バーを小さく(11px、スライダー60px、さらに×0.62)。--zsは作るときにも更新。拡大した画面から始めても大きくならない。
 - ページ編集2.63: 行間・字間バーを縦並び(flex-direction:column)。
 - ページ編集2.64: 行間・字間バーの大きさは『文字10ptの大きさ』(scale=10*k/11、kはページ表示倍率)。--zs(画面の拡大率)には依存しない。
+- 束デスク2.07: 機能メニューに「束ぜんぶを回転」「このページだけ回転」(右に90度ずつ。pdf-libのsetRotation、文字データは残る)。test-studio-rotate.js
