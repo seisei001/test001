@@ -38,6 +38,7 @@ button:disabled{opacity:.4;cursor:default;}
 .back-link{color:var(--muted);text-decoration:none;font-size:.85rem;margin-left:auto;}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 16px 8px;border-bottom:1px solid var(--border);}
 .toolbar .grp{display:flex;gap:6px;align-items:center;}
+.toolbar .grp{flex-wrap:wrap;}.toolbar button{white-space:nowrap;}   /* ボタンの文字が途中で折れないように(入りきらないときは、ボタンごと次の行へ) */
 .toolbar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
 .toolbar input[type=range]{width:110px;min-height:44px;}
 #cnt{font-size:.85rem;color:var(--muted);}
@@ -118,7 +119,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.09"},
+  desk:{name:"束デスク",ver:"2.10"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.66",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"}
@@ -148,9 +149,9 @@ function defaultSel(){if(bundles.length&&!bundles.some(b=>b.sel))bundles[0].sel=
 function mk(name,bytes,n,cur,id,handle,dirty){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:"",handle:handle||null,dirty:!!dirty};}   // handle=読み込んだ元のファイル(上書き保存用) dirty=変更フラグ
 
 // ===== 元に戻す =====
-function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur,handle:b.handle,dirty:b.dirty})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
-function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
-  bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id,r.handle,r.dirty));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
+function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur,handle:b.handle,dirty:b.dirty,sel:b.sel})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
+function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}if(b.card){io.unobserve(b.card);b.card.remove();}});   // 古い束の表示(カード)も外す(外さないと、同じ束が二重に並んで、サムネイルが出ない・ずれる)
+  bundles=s.map(r=>{const b=mk(r.name,r.bytes,r.n,r.cur,r.id,r.handle,r.dirty);b.sel=!!r.sel;return b;});$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
 
 // ===== PDFの読み込み =====
 // 画像にしたページに、元のPDFの文字データを「見えない文字」として入れ直す(ページ編集で文字の部品として扱え、OCRしなくてよくなる)
