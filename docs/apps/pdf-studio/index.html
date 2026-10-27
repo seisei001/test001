@@ -90,6 +90,7 @@ button:disabled{opacity:.4;cursor:default;}
     <div class="grp"><button id="bAdd">＋ PDFを開く</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden"></div>
     <div class="grp"><button class="sub" id="bAll">全選択</button><button class="sub" id="bNone">全選択解除</button><button id="bMerge" disabled>選択を結合</button><span id="cnt"></span></div>
     <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
+    <div class="grp"><button class="sub" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">束を回転</button><button class="sub" id="bRotCur" disabled title="選んでいる束の、いま表示しているページだけを、右に90度">表示ページを回転</button></div>
     <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
@@ -115,7 +116,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.07"},
+  desk:{name:"束デスク",ver:"2.08"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.66",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
@@ -309,7 +310,7 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=c<1;$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
   el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
@@ -457,12 +458,19 @@ async function removeBundle(b){
   snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);}
 
 // ===== 回転(右に90度ずつ): 束ぜんぶ / いま表示しているページだけ =====
-async function rotateBundle(b,onlyCur){
-  const d=await PDFDocument.load(b.bytes),pages=d.getPages();
-  (onlyCur?[pages[b.cur]]:pages).forEach(p=>p.setRotation(PDFLib.degrees((p.getRotation().angle+90)%360)));
-  snap();b.bytes=new Uint8Array(await d.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
-  render();thumb(b);persist();status(onlyCur?`${b.cur+1}ページ目だけを、右に90度回しました。「元に戻す」で戻せます。`:`束の全${b.n}ページを、右に90度回しました。「元に戻す」で戻せます。`);
+async function rotateBundles(onlyCur){
+  const sel=bundles.filter(b=>b.sel);if(!sel.length)return;
+  snap();
+  for(const b of sel){
+    const d=await PDFDocument.load(b.bytes),pages=d.getPages();
+    (onlyCur?[pages[b.cur]]:pages).forEach(p=>p.setRotation(PDFLib.degrees((p.getRotation().angle+90)%360)));
+    b.bytes=new Uint8Array(await d.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
+  }
+  render();sel.forEach(thumb);persist();
+  status(onlyCur?`${sel.length}個の束の、表示しているページを、右に90度回しました。「元に戻す」で戻せます。`:`${sel.length}個の束の全ページを、右に90度回しました。「元に戻す」で戻せます。`);
 }
+$("bRotAll").onclick=()=>rotateBundles(false).catch(e=>status("失敗: "+e.message));
+$("bRotCur").onclick=()=>rotateBundles(true).catch(e=>status("失敗: "+e.message));
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
 function openMenu(b){
@@ -472,8 +480,6 @@ function openMenu(b){
   const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
   add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
   add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
-  add("🔄 束ぜんぶを回転",`全${b.n}ページを、右に90度`,()=>rotateBundle(b,false).catch(e=>status("失敗: "+e.message)));
-  if(b.n>1)add("🔄 このページだけ回転",`${b.cur+1}ページ目だけを、右に90度`,()=>rotateBundle(b,true).catch(e=>status("失敗: "+e.message)));
   add("🗂 全ページをばらす","1枚ずつのPDFにする",()=>burst(b).catch(e=>status("失敗: "+e.message)),b.n<2);
   add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
   add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
