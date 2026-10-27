@@ -11,7 +11,7 @@ const S=WORK+'/samples/';
   ok('起動画面が出ている',await page.evaluate(()=>!!document.getElementById('splash')&&!document.getElementById('splash').classList.contains('out')));
   await page.waitForTimeout(2300);
   ok('約1.5秒で消える',await page.evaluate(()=>!document.getElementById('splash')));
-  ok('画面の名前とバージョン(束デスク 2.10)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.10'));
+  ok('画面の名前とバージョン(束デスク 2.11)',await page.evaluate(()=>document.getElementById('fnDesk').textContent==='束デスク'&&document.getElementById('verDesk').textContent==='2.11'));
   // 読み込み
   await page.setInputFiles('#fAdd',[S+'studio_A4.pdf',S+'studio_B1.pdf',S+'studio_C7.pdf',S+'studio_D2.pdf']);await page.waitForTimeout(2500);
   let b=await st();ok('4つの束が並ぶ: '+b.map(x=>x.name+'('+x.n+')').join(' '),b.length===4);
@@ -47,7 +47,7 @@ const S=WORK+'/samples/';
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.waitForTimeout(300);
   const items=await page.evaluate(()=>[...document.querySelectorAll('#menuBtns button')].map(x=>x.textContent.replace(/\s+/g,' ').trim().slice(0,14)));
   console.log('    メニュー:',items.join(' / '));
-  ok('機能メニューが開く(名前と版つき)',items.length>=6&&await page.evaluate(()=>!document.getElementById('menu').classList.contains('hidden')&&document.getElementById('verMenu').textContent==='2.01'));
+  ok('機能メニューが開く(名前と版つき)',items.length>=5&&await page.evaluate(()=>!document.getElementById('menu').classList.contains('hidden')&&document.getElementById('verMenu').textContent==='2.01'));
   // 戻る(上の「← 戻る」と、下の「← 戻る」と、Esc)
   await page.click('#menuBack');ok('上の「戻る」でメニューが閉じ、束デスクに戻る',await page.evaluate(()=>document.getElementById('menu').classList.contains('hidden')));
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.click('#menuClose');ok('下の「戻る」でもメニューが閉じる',await page.evaluate(()=>document.getElementById('menu').classList.contains('hidden')));

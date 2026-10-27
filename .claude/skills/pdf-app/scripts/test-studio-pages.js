@@ -33,5 +33,8 @@ const {launch,WORK}=require('./harness');
   chk('元に戻したあと、カードが二重にならない(束1つ=カード'+cards+'枚)',cards===1);
   await page.locator('#bRotAll').click();await page.waitForTimeout(800);await page.locator('#bUndo').click();await page.waitForTimeout(800);
   chk('回転→元に戻すでも、カードは1枚・サムネイルに絵がある',await page.evaluate(()=>{const c=document.querySelectorAll('#desk .card canvas');if(c.length!==1)return false;const x=c[0].getContext('2d').getImageData(0,0,c[0].width,c[0].height).data;let n=0;for(let i=0;i<x.length;i+=4)if(x[i]<200)n++;return n>200;}));
+  chk('機能メニューには、閉じるが無い・見出しに「閉じる」がある',await (async()=>{await page.locator('.card').first().locator('.mnb').click();const t=await page.locator('#menuBtns').innerText();await page.locator('#menuBack').click();return !/✕ 閉じる/.test(t)&&await page.locator('#bClose').isVisible();})());
+  await page.evaluate(()=>{bundles.forEach(b=>{b.dirty=false;});});await page.locator('#bClose').click();await page.waitForTimeout(600);
+  chk('「閉じる」で、選んでいる束が閉じる',(await bs()).length===0);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
 })();
