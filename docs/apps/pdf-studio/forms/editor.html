@@ -90,7 +90,7 @@ body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeL
 body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
 body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
-#job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(560px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.9rem;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
+#job{display:flex;align-items:center;gap:10px;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;width:min(420px,calc(100vw - 32px));padding:8px 12px;border-radius:10px;border:1px solid #2563eb;background:var(--panel-bg,#fff);box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:.78rem;line-height:1.4;color:var(--text);}   /* 画面に固定して、ページの位置がずれないようにする */
 #job.done{border-color:#16a34a;border-width:2px;}
 #job.fail{border-color:#dc2626;border-width:2px;}
 #job .spin{width:20px;height:20px;border:3px solid rgba(37,99,235,.3);border-top-color:#2563eb;border-radius:50%;animation:sp .8s linear infinite;flex:none;}
@@ -294,16 +294,18 @@ const GEO={
 function placeJob(){
   const j=$("job");if(!j)return;const s=GEO.scale();
   if(s<=1.02||!GEO.known()){j.style.left=j.style.bottom=j.style.width=j.style.transform=j.style.transformOrigin="";return;}
-  const S=GEO.shown(),z=1/s,Wl=Math.min(560,S.w*s-32);
+  const S=GEO.shown(),z=0.8/s,Wl=Math.min(420,S.w/z-32);
   j.style.width=Wl+"px";j.style.left=(S.x+(S.w-Wl*z)/2)+"px";j.style.bottom=(GEO.form().h-(S.y+S.h)+16*z)+"px";j.style.transformOrigin="0 100%";j.style.transform=`scale(${z})`;
 }
+let jobPlT=0;   // 拡大・縮小のたびに動かさず、止まってから(0.3秒後)置き直す(ちらつき防止)
 const job={
   start(t){clearTimeout(jobTimer);const j=$("job");j.className="";placeJob();$("jobT").textContent=t;$("jobP").value=0;$("jobP").removeAttribute("value");},
   step(t,pct){$("jobT").textContent=t;if(pct!=null)$("jobP").value=pct;},
   done(t,ms){const j=$("job");j.className="done";placeJob();$("jobT").textContent="✅ "+t;clearTimeout(jobTimer);jobTimer=setTimeout(()=>j.classList.add("hidden"),ms||15000);},
   hide(){clearTimeout(jobTimer);const j=$("job");if(j)j.classList.add("hidden");},
-  fail(t){const j=$("job");j.className="fail";placeJob();$("jobT").textContent="⚠ "+t;}
+  fail(t){const j=$("job");clearTimeout(jobTimer);j.className="fail";placeJob();$("jobT").textContent="⚠ "+t;jobTimer=setTimeout(()=>j.classList.add("hidden"),7000);}   // 失敗の表示も、7秒で消える(タップでもすぐ消える)
 };
+$("job").addEventListener("click",()=>{if($("job").classList.contains("fail"))job.hide();});   // 失敗の表示は、タップで消せる
 let ocrRunning=false;
 function busy(f){return async(...a)=>{try{await f(...a);}catch(e){console.error(e);status("エラー: "+(e.message||e)+(e&&e.noHint?"":"(暗号化PDFなどは非対応の場合があります)"));}};}
 
@@ -2616,7 +2618,7 @@ if(EMBED){
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
-    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();placeJob();onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
+    if(m&&m.type==="zoom"){GEO.set(m);applyZoom();clearTimeout(jobPlT);jobPlT=setTimeout(placeJob,300);onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
@@ -2633,7 +2635,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

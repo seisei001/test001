@@ -39,7 +39,7 @@ const {launch,WORK}=require('./harness');
   const fb=await page.evaluate(()=>{const r=document.getElementById('formFrame').getBoundingClientRect();return{l:r.left,t:r.top};});
   await stub(2,fb.l+60,fb.t+150,450,700);await page.waitForTimeout(500);
   const j2=await rj();
-  ok(`処理の表示の見た目の大きさが同じ(幅 ${j1.w.toFixed(0)} → ${(j2.w*2).toFixed(0)})`,Math.abs(j1.w-j2.w*2)<6);
+  ok(`拡大した画面でも処理の表示は小さめ(ふだんの0.8倍: 幅 ${j1.w.toFixed(0)} → ${(j2.w*2).toFixed(0)})`,Math.abs(j1.w*0.8-j2.w*2)<6);
   ok(`処理の表示が、見えている範囲の下に出る(下端 ${j2.b.toFixed(0)} / 範囲の下端 ${150+700})`,j2.b<=150+700+2&&j2.b>=150+700-40&&j2.x>=60-2&&j2.x+j2.w<=60+450+2);
   // 3. 文字の設定の窓: 出したときの大きさ・位置のまま、ページの上に置く(追いかけない=チラつかない)。拡大しても見た目の大きさが同じ。窓の外のドラッグ・ピンチでは閉じない。軽いタップで閉じる
   await stub(1,fb.l,fb.t,900,1339);await page.waitForTimeout(300);
