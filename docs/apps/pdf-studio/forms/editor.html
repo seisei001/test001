@@ -125,6 +125,10 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox.on{outline:1px dashed rgba(37,99,235,.75);z-index:5;}
 #ov .ibox.same .t,#ov.ghost .ibox.cmp.same .t{color:transparent!important;caret-color:#2563eb;}   /* 変えていない訂正の部品は、元の文字をそのまま見せる */
 #ov .ibox.same{background:transparent!important;}
+.ibox.faith .t{visibility:hidden;}   /* PDFに近い枠: 元の行の位置・大きさ・字の間隔のとおりに表示する(入力を始めると、入力用の枠に変わる) */
+.ibox .fl{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;overflow:visible;}
+.ibox .fl .ln{position:absolute;white-space:pre;line-height:1;}
+#ov.ghost .ibox.cmp .fl{color:rgba(220,38,38,.8)!important;}
 .ibox.edit{outline:2px solid #2563eb;box-shadow:inset 0 0 0 9999px rgba(37,99,235,.07);}   /* 入力モードの枠 */
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
@@ -676,7 +680,7 @@ let mctx=null;
 function lineRectsOf(it){   // 入力した文字の、行ごとの四角(文字のあるところ)
   if(it.type==="img"||!it.txt||!it.txt.trim())return[];
   if(!mctx)mctx=document.createElement("canvas").getContext("2d");
-  const L=layoutText(it,(c,sv)=>{mctx.font=`${sv}px ${famOf(it.fmt,it.font)}`;return mctx.measureText(c).width;});
+  const L=layoutOf(it,(c,sv)=>{mctx.font=`${sv}px ${famOf(it.fmt,it.font)}`;return mctx.measureText(c).width;});
   return L.lines.map(ln=>{let tw=0,k=ln.ch.length;while(k>0&&ln.ch[k-1].c===" ")k--;for(let q=0;q<k;q++)tw+=ln.ch[q].w;return{x:it.vx+(ln.off||0)-0.5,y:it.vy+ln.base-ln.size*0.9,w:tw+1,h:ln.size*1.15};}).filter(r=>r.w>1);
 }
 function bgOf(it){if(it.bg)return it.bg;try{it.bg=sampleColors({x:it.vx,y:it.vy,w:it.vw,h:it.vh}).bg;}catch{it.bg="#ffffff";}return it.bg||"#ffffff";}
@@ -786,7 +790,9 @@ function newFix(list){
   const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:size*lh*lines.length,txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
   {const cnt={};list.forEach(r=>{if(r.fname)cnt[r.fname]=(cnt[r.fname]||0)+Array.from(r.str).length;});const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(top)fx.ofName=top[0];}   // 拾った文字の、元のフォント
   fx.vw=tightW(fx,x1-x0);   // 自動で作る枠は、文字から最小(余白を足さない)
-  growToFit(fx);clampToPage(fx);fx.sig0=list.some(r=>r.ocr)?null:fixSig(fx);return fx;
+  growToFit(fx);clampToPage(fx);fx.sig0=list.some(r=>r.ocr)?null:fixSig(fx);
+  if(!list.some(r=>r.ocr)){fx.ol=lines.map(l=>{const sz0=[];l.parts.forEach(pt=>{for(const ch of Array.from(pt.s))sz0.push(pt.size||size);});return{dx:l.x-fx.vx,db:l.base-fx.vy,ow:l.w,txt0:l.parts.map(pt=>pt.s).join(""),sz0};});fx.fsig=faithSig(fx);}   // 元の行の位置・長さを覚える(PDFに近い枠で表示するため)
+  return fx;
 }
 function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
   if(it)it._editing=false;   // 選択を外したら、入力モードも終わり
@@ -796,7 +802,8 @@ function select(it,focus){
   if(cs&&cs!==it)pruneEmpty(cs);
   if(it!==cs)lastSel=null;
   cs=it;renderOverlay();syncPanel();
-  if(it&&focus&&it.type!=="img"){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus({preventScroll:true});const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
+  if(it&&focus&&faithOn(it))try{window.focus();}catch{}   // PDFに近い枠は入力欄にしないが、キーを受け取れるよう、この画面にフォーカスは置く
+  if(it&&focus&&it.type!=="img"&&!faithOn(it)){const t=itemEls.get(it.id)?.querySelector(".t");if(t){t.focus({preventScroll:true});const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(r);}}
 }
 // ---- 範囲ごとにサイズを持つ文字の編集 ----
 let lastSel=null;
@@ -988,7 +995,9 @@ function caretAt(t,x,y){   // 指を置いた位置に、入力のカーソル�
 function placeGrip(it,el){   // 矢印を、文字の最後(空の枠は見本の「あ」)の右下に付ける
   const gr=el.querySelector(".grip"),t=el.querySelector(".t");if(!gr||!t)return;
   const er=el.getBoundingClientRect();let rr=null;const sm=el.querySelector(".sample");
-  if(sm)rr=sm.getBoundingClientRect();
+  const fls=el.querySelectorAll(".fl .ln");
+  if(el.classList.contains("faith")&&fls.length)rr=fls[fls.length-1].getBoundingClientRect();
+  else if(sm)rr=sm.getBoundingClientRect();
   else{const w=document.createTreeWalker(t,NodeFilter.SHOW_TEXT);let last=null,n;while((n=w.nextNode()))if(n.nodeValue&&n.nodeValue.length&&n.nodeValue!=="\n")last=n;
     if(last){const r=document.createRange();r.setStart(last,last.nodeValue.length-1);r.setEnd(last,last.nodeValue.length);const q=r.getClientRects();if(q.length)rr=q[q.length-1];}}
   if(!rr||(!rr.width&&!rr.height))rr=t.getBoundingClientRect();
@@ -999,6 +1008,13 @@ function startEdit(it,x,y){   // iPhone: 長押し・「✎ 入力」で入力�
   const t=itemEls.get(it.id)?.querySelector(".t");if(!t)return;
   t.contentEditable="true";t.focus({preventScroll:true});if(x!=null)caretAt(t,x,y);else{const q=document.createRange();q.selectNodeContents(t);q.collapse(false);const g=getSelection();g.removeAllRanges();g.addRange(q);}
 }
+// PDFに近い枠を選んでいるとき、文字キー(打つ・消す・貼る・全選択)を押したら、入力用の枠に変えてから、その入力を受け付ける
+document.addEventListener("keydown",e=>{
+  if(!cs||!faithOn(cs)||e.isComposing||e.altKey)return;const a=document.activeElement;if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return;
+  const mod=e.ctrlKey||e.metaKey,k=e.key;
+  const typing=(!mod&&(k.length===1||k==="Backspace"||k==="Delete"||k==="Enter"))||(mod&&/^[avx]$/i.test(k));
+  if(typing)startEdit(cs,null,null);
+},true);
 function renderOverlay(){
   if(!pdfView)return;
   const k=K();ov.innerHTML="";itemEls.clear();document.body.classList.toggle("has-sel",!!cs);
@@ -1019,7 +1035,8 @@ function renderOverlay(){
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
       buildText(it,t,k);
-      if(it===cs&&(!isTouch()||it._editing))t.contentEditable="true";
+      const faith=faithOn(it);
+      if(it===cs&&(!isTouch()||it._editing)&&!faith)t.contentEditable="true";
       t.addEventListener("input",e=>{
         readEditor(it,t);
         fixSync(it,el);   // 文字を変えたら、元の文字を隠す範囲を出す
@@ -1048,6 +1065,7 @@ function renderOverlay(){
         }else if(e.inputType.startsWith("format"))e.preventDefault();
       });
       el.appendChild(t);
+      if(faith){el.classList.add("faith");const fl=document.createElement("div");fl.className="fl";buildFaith(it,fl,k);el.appendChild(fl);}
       if(it.type==="text"&&!it.txt){   // 空の枠: 1文字の見本
         const sm=document.createElement("div");sm.className="sample";sm.textContent="あ";sm.style.cssText=`font-size:${it.size*k}px;line-height:${it.lh};font-family:${famOf(it.fmt,it.font)}`;el.appendChild(sm);
       }
@@ -1080,6 +1098,7 @@ function renderOverlay(){
       e.stopPropagation();
       const wasSel=cs===it;
       if(!wasSel){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
+      else if(!isTouch()&&faithOn(it)&&!e.target.closest(".hdl,.grip,.spbar")){e.preventDefault();startEdit(it,e.clientX,e.clientY);return;}   // PDFに近い枠は、選んだあとの クリックで、入力用の枠に変わる
       if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip")){   // 枠の中の長押しで、入力を始める
         const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
         const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid){ptHold.ready=true;ringAt(x0,y0);}},500);   // 500ms: 長押しになった印(輪)。キーボードは、指を離したときに出す(iPhoneは、指を離す操作の中でしか出せない)
@@ -2463,6 +2482,32 @@ function layoutText(it,wfn){
   });
   return{lines,height:y};
 }
+// ===== PDFに近い枠: 元の行(位置・大きさ・字の間隔)のとおりに置く =====
+const faithSig=it=>[it.size,it.lh,it.font||"",it.ls||0,it.align||"",Math.round(it.vw*10),it.fmt].join("|");
+const faithOk=it=>!!(it.ol&&it.ol.length&&it.fmt==="text"&&it.type==="fix"&&!it.align&&!it.ls&&it.fsig===faithSig(it)&&it.txt&&it.txt.trim());   // 元の行の位置で置ける(保存・元の文字を隠す範囲は、これで決める)
+const faithOn=it=>faithOk(it)&&!it._editing;   // 画面でPDFに近い枠として見せる(入力中は、入力用の枠)
+function layoutFaithful(it,wfn){   // layoutText と同じ形(lines/height)。折り返さず、元の行の位置に1行ずつ。字の間隔は、元の行の長さに合うように決め、直した文字にも同じ間隔を使う
+  const ol=it.ol,lsOf=ol.map(o=>{const ch=Array.from(o.txt0);if(ch.length<2)return 0;let nat=0;ch.forEach((c,i)=>{nat+=wfn(c,o.sz0[i]||it.size);});const v=(o.ow-nat)/(ch.length-1);return Math.abs(v)>it.size*0.6?0:v;});
+  const lines=[];let gi=0;
+  it.txt.split("\n").forEach((ln,i)=>{
+    const oi=Math.min(i,ol.length-1),o=ol[oi],extra=Math.max(0,i-oi),ls=lsOf[oi],ch=[];let w=0;
+    Array.from(ln).forEach(c=>{const sv=(it.sz&&it.sz[gi])||it.size;gi++;const cw=wfn(c,sv)+ls;ch.push({c,s:sv,w:cw});w+=cw;});gi++;
+    const size=Math.max(it.size,...ch.map(x=>x.s));
+    lines.push({ch,w,size,ls,off:o.dx,base:o.db+extra*it.size*it.lh});
+  });
+  const last=lines[lines.length-1];
+  return{lines,height:last.base-baseOff(it.fmt,last.size,it.lh)+last.size*it.lh};
+}
+const layoutOf=(it,wfn)=>faithOk(it)?layoutFaithful(it,wfn):layoutText(it,wfn);
+function buildFaith(it,fl,k){
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");
+  const fam=famOf(it.fmt,it.font),L=layoutFaithful(it,(c,sv)=>{mctx.font=`${sv}px ${fam}`;return mctx.measureText(c).width;});
+  fl.textContent="";fl.style.color=it.color;
+  L.lines.forEach(ln=>{
+    const d=document.createElement("div");d.className="ln";d.style.cssText=`left:${ln.off*k}px;top:${(ln.base-baseOff(it.fmt,ln.size,1))*k}px;font-size:${ln.size*k}px;letter-spacing:${ln.ls*k}px;font-family:${fam}`;
+    runsOf(ln).forEach(rn=>{const sp=document.createElement("span");sp.style.fontSize=rn.s*k+"px";sp.textContent=rn.str;d.appendChild(sp);});
+    fl.appendChild(d);});
+}
 function runsOf(ln){const rs=[];let i=0;while(i<ln.ch.length){let j=i,str="",w=0;const sv=ln.ch[i].s;while(j<ln.ch.length&&ln.ch[j].s===sv){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}rs.push({str,s:sv,w});i=j;}return rs;}
 // ===== 元のフォントで書く(PDFに入っているフォントを、そのまま使う。フォントのデータは増えない) =====
 const isOrigFont=it=>!it.font||it.font==="orig";
@@ -2559,10 +2604,10 @@ async function commit(){
     growToFit(it);
     if(it.fmt==="text"&&it._of){   // 元のフォントで書く(フォントのデータは増えない)
       const of=it._of,rot=r;
-      const L=layoutText(it,(c,sv)=>(of.width(c)??0.25)*sv);
+      const L=layoutOf(it,(c,sv)=>(of.width(c)??0.25)*sv);
       L.lines.forEach(ln=>{
         let off=ln.off||0;
-        if(it.ls){ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,chr.c,ax,ay,chr.s,hex2rgb(it.color),rot);}off+=chr.w;});return;}
+        if(it.ls||ln.ls){ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,chr.c,ax,ay,chr.s,hex2rgb(it.color),rot);}off+=chr.w;});return;}
         runsOf(ln).forEach(rn=>{const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,rn.str,ax,ay,rn.s,hex2rgb(it.color),rot);off+=rn.w;});
       });
     }else if(it.fmt==="text"){
@@ -2574,10 +2619,10 @@ async function commit(){
         pfCache[fkey]=await doc.embedFont(fb,{subset:false});   // 使う文字だけにする(subset)と、先頭の文字が欠けることがあるため、全部を入れる
       }
       const jp=pfCache[fkey];
-      const L=layoutText(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
+      const L=layoutOf(it,(c,sv)=>jp.widthOfTextAtSize(c,sv));
       L.lines.forEach(ln=>{
         let off=ln.off||0;
-        if(it.ls){   // 字間がある文字は、1文字ずつ置く(PDFの文字間隔を指定する命令を使わずに、位置で表す)
+        if(it.ls||ln.ls){   // 字間がある文字は、1文字ずつ置く(PDFの文字間隔を指定する命令を使わずに、位置で表す)
           ln.ch.forEach(chr=>{if(chr.c!==" "){const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);page.drawText(chr.c,{x:ax,y:ay,size:chr.s,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});}off+=chr.w;});
           return;}
         runsOf(ln).forEach(rn=>{
