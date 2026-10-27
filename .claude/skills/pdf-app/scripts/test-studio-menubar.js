@@ -1,0 +1,35 @@
+// 束デスク: 上のメニュー(ファイル・編集・製本・ヘルプ)
+process.env.PDFAPP_TARGET='pdf-studio';
+const {launch,WORK}=require('./harness');
+(async()=>{
+  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+  await page.waitForTimeout(2300);
+  let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
+  const tops=await page.locator('.mtop').allInnerTexts();
+  chk('上のメニューは「ファイル・編集・製本・ヘルプ」の4つ: '+tops.join('/'),JSON.stringify(tops)===JSON.stringify(['ファイル','編集','製本','ヘルプ']));
+  chk('「選択 ○/○」の表示は無い',!(await page.evaluate(()=>/選択 \d+ \/ \d+/.test(document.body.innerText))));
+  const items=async id=>(await page.locator('#'+id+' button').allInnerTexts()).map(t=>t.trim());
+  await page.locator('.mtop',{hasText:'ファイル'}).click();
+  chk('ファイル: '+(await items('mdFile')).join('/'),JSON.stringify(await items('mdFile'))===JSON.stringify(['PDFを開く','閉じる','保存','元に戻す']));
+  await page.locator('.mtop',{hasText:'編集'}).click();
+  chk('ファイルが閉じ、編集が開く',await page.locator('#mdFile').isHidden()&&await page.locator('#mdEdit').isVisible());
+  chk('編集: '+(await items('mdEdit')).join('/'),JSON.stringify(await items('mdEdit'))===JSON.stringify(['回転','前に移動','後に移動','切り離し']));
+  await page.locator('.mtop',{hasText:'製本'}).click();
+  chk('製本: '+(await items('mdBind')).join('/'),JSON.stringify(await items('mdBind'))===JSON.stringify(['全部選択','選択解除','回転','全部バラす','分割','結合']));
+  await page.mouse.click(600,500);chk('外を押すと閉じる',await page.locator('#mdBind').isHidden());
+  await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf',WORK+'/samples/studio_C7.pdf']);await page.waitForTimeout(2200);
+  const n=()=>page.evaluate(()=>window.pdfStudioDebug.bundles());
+  const pick=async(top,txt)=>{await page.locator('.mtop',{hasText:top}).click();await page.locator('.mdrop:not(.hidden) button',{hasText:new RegExp('^\\s*'+txt+'\\s*$')}).click();await page.waitForTimeout(900);};
+  await pick('製本','全部選択');chk('製本>全部選択',(await n()).every(b=>b.sel));
+  await pick('製本','結合');let b=await n();chk('製本>結合で、1つの束(11ページ)になる',b.length===1&&b[0].n===11);
+  await page.locator('.card').first().locator('input[type=checkbox]').check();await page.locator('.card').first().locator('.next').click();await page.locator('.card').first().locator('.next').click();await page.waitForTimeout(300);
+  await pick('製本','分割');b=await n();chk('製本>分割で、2つの束(2ページ+9ページ)',b.length===2&&b[0].n===2&&b[1].n===9);
+  await pick('ファイル','元に戻す');b=await n();chk('ファイル>元に戻す',b.length===1&&b[0].n===11);
+  await pick('製本','全部選択');await pick('製本','全部バラす');b=await n();chk('製本>全部バラす(11枚)',b.length===11);
+  await pick('ファイル','元に戻す');await pick('製本','選択解除');chk('製本>選択解除',(await n()).every(x=>!x.sel));
+  await page.locator('.card').first().locator('input[type=checkbox]').check();await page.waitForTimeout(300);
+  await pick('編集','回転');await pick('編集','切り離し');b=await n();chk('編集>切り離しで、1ページ外に出る',b.length===2&&b[0].n===10&&b[1].n===1);
+  await page.locator('.mtop',{hasText:'ヘルプ'}).click();chk('ヘルプが開く',await page.locator('#deskHelp').isVisible());
+  await page.locator('#deskHelpClose').click();chk('ヘルプが閉じる',await page.locator('#deskHelp').isHidden());
+  console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
+})();
