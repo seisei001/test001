@@ -15,8 +15,8 @@ const run=async(gap)=>{
 (async()=>{
   const ok=(l,c)=>console.log((c?'OK  ':'NG  ')+l);
   const a=await run(0);
-  ok('標準では、離れた文字も1つの枠にまとまる: '+JSON.stringify(a.r.map(t=>t.replace(/ +/g,' '))),a.r.length===1&&/Left/.test(a.r[0])&&/Right/.test(a.r[0]));
-  const b=await run(10);
-  ok('設定の倍数を10にすると、離れた文字は別々の枠になる: '+JSON.stringify(b.r),b.r.length===2);
+  ok('標準(1.5倍)では、離れた文字は別々の枠になる: '+JSON.stringify(a.r),a.r.length===2);
+  const b=await run(200);
+  ok('設定の倍数を200にすると、離れた文字も1つの枠にまとまる: '+JSON.stringify(b.r.map(t=>t.replace(/ +/g,' '))),b.r.length===1&&/Left/.test(b.r[0])&&/Right/.test(b.r[0]));
   console.log('JSエラー:',a.errs.length+b.errs.length);
 })();

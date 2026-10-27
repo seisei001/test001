@@ -3,7 +3,7 @@ process.env.PDFAPP_TARGET='pdf-studio';
 const fs=require('fs'),path=require('path');
 const {launch,WORK}=require('./harness');
 const LIB=path.join(WORK,'lib/node_modules')+'/';
-const {PDFDocument,setCharacterSpacing,StandardFonts}=require(LIB+'pdf-lib'),fontkit=require(LIB+'@pdf-lib/fontkit');
+const {PDFDocument,setCharacterSpacing,StandardFonts,rgb}=require(LIB+'pdf-lib'),fontkit=require(LIB+'@pdf-lib/fontkit');
 (async()=>{
   const src='/tmp/blocks_src.pdf';
   {const d=await PDFDocument.create();d.registerFontkit(fontkit);
@@ -21,6 +21,12 @@ const {PDFDocument,setCharacterSpacing,StandardFonts}=require(LIB+'pdf-lib'),fon
    T('字間が広い行です',60,570,12,f,4);T('字間が普通の行です',60,554,12);
    // E: フォント(太字)が違う(別の枠)
    T('太字の行です',60,500,12,b);T('細字の行です',60,484,12);
+   // F: 同じ行の離れた2つの文字(表の列のような空き)は、別の枠
+   T('項目名',60,440,12);T('値です',300,440,12);
+   // G: 1行目だけ字下げした段落は、1つの枠
+   T('　字下げの段落の一行目です',72,400,12);T('字下げの段落の二行目です',60,384,12);T('字下げの段落の三行目です',60,368,12);
+   // H: 色が違う行は、別の枠
+   p.drawText('黒い文字の行です',{x:60,y:320,size:12,font:f,color:rgb(0,0,0)});p.drawText('赤い文字の行です',{x:60,y:304,size:12,font:f,color:rgb(0.85,0,0)});
    fs.writeFileSync(src,await d.save());}
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
   await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(2000);
@@ -35,5 +41,8 @@ const {PDFDocument,setCharacterSpacing,StandardFonts}=require(LIB+'pdf-lib'),fon
   chk('文字の大きさが違う行は、別の枠',g('大きな文字')!==g('行間が広い段落の二行目'));
   chk('字間が広い行は、すぐ下の字間が普通の行と別の枠',g('字間が広い')!==g('字間が普通'));
   chk('太字と細字は、別の枠',g('太字の行')!==g('細字の行'));
+  chk('同じ行の離れた文字(表の列)は、別の枠',g('項目名')!==g('値です'));
+  chk('1行目だけ字下げした段落は、1つの枠',g('字下げの段落の一行目')&&g('字下げの段落の一行目')===g('字下げの段落の三行目'));
+  chk('色が違う行は、別の枠',g('黒い文字')!==g('赤い文字'));
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
 })();
