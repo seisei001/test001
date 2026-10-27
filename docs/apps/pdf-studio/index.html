@@ -36,12 +36,17 @@ button:disabled{opacity:.4;cursor:default;}
 .formhead{display:flex;align-items:center;gap:8px;padding:10px 16px 4px;}
 .formhead h1{margin:0;font-size:1.25rem;}
 .back-link{color:var(--muted);text-decoration:none;font-size:.85rem;margin-left:auto;}
-.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 16px 8px;border-bottom:1px solid var(--border);}
-.toolbar .grp{display:flex;gap:6px;align-items:center;}
-.toolbar .grp{flex-wrap:wrap;}.toolbar button{white-space:nowrap;}   /* ボタンの文字が途中で折れないように(入りきらないときは、ボタンごと次の行へ) */
-.toolbar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
-.toolbar input[type=range]{width:110px;min-height:44px;}
-#cnt{font-size:.85rem;color:var(--muted);}
+.menubar{display:flex;align-items:center;gap:2px;padding:4px 12px;border-bottom:1px solid var(--border);position:relative;z-index:40;}
+.menubar .mg{position:relative;}
+.menubar .mtop{background:transparent;color:var(--text);border:0;min-height:38px;padding:4px 10px;white-space:nowrap;border-radius:6px;font-size:.95rem;}
+.menubar .mtop.on,.menubar .mtop:hover{background:var(--hover,rgba(37,99,235,.12));}
+.mdrop{position:absolute;left:0;top:100%;min-width:160px;display:flex;flex-direction:column;background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:4px;z-index:50;}
+.mdrop.hidden{display:none;}
+.mdrop button{background:transparent;color:var(--text);border:0;text-align:left;justify-content:flex-start;min-height:40px;padding:6px 14px;border-radius:6px;font-size:.92rem;white-space:nowrap;}
+.mdrop button:hover:not(:disabled){background:var(--hover,rgba(37,99,235,.12));}
+.mdrop button:disabled{opacity:.4;}
+.menubar .msz{margin-left:auto;white-space:nowrap;font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.menubar input[type=range]{width:64px;min-height:36px;}
 #deskWrap{flex:1;overflow-y:scroll;overflow-x:hidden;padding:14px 12px 40px;position:relative;scrollbar-gutter:stable;}
 #deskWrap::-webkit-scrollbar{width:16px;}
 #deskWrap::-webkit-scrollbar-track{background:var(--bg);border-left:1px solid var(--border);}
@@ -87,18 +92,34 @@ button:disabled{opacity:.4;cursor:default;}
 
 <div id="app">
   <div class="formhead"><h1 id="fnDesk">束デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
-  <div class="toolbar">
-    <div class="grp"><button id="bAdd">＋ PDFを開く</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden"></div>
-    <div class="grp"><button class="sub" id="bAll">全選択</button><button class="sub" id="bNone">全選択解除</button><button id="bMerge" disabled>選択を結合</button><span id="cnt"></span></div>
-    <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
-    <div class="grp"><button class="sub" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">束を回転</button><button class="sub" id="bRotCur" disabled title="選んでいる束の、いま表示しているページだけを、右に90度">表示ページを回転</button></div>
-    <div class="grp"><button class="sub" id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">ページを前へ</button><button class="sub" id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">ページを後ろへ</button><button class="sub" id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">ページを外に出す</button></div>
-    <div class="grp"><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">PDFを保存</button><button class="sub" id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button></div>
-    <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
+  <div class="menubar" id="menubar">
+    <div class="mg"><button class="mtop" data-d="mdFile">ファイル</button><div class="mdrop hidden" id="mdFile">
+      <button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
+    </div></div>
+    <div class="mg"><button class="mtop" data-d="mdEdit">編集</button><div class="mdrop hidden" id="mdEdit">
+      <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button>
+    </div></div>
+    <div class="mg"><button class="mtop" data-d="mdBind">製本</button><div class="mdrop hidden" id="mdBind">
+      <button id="bAll">全部選択</button><button id="bNone">選択解除</button><button id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button id="bMerge" disabled>結合</button>
+    </div></div>
+    <div class="mg"><button class="mtop" id="bHelp">ヘルプ</button></div>
+    <label class="msz">大きさ <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
   <div id="status"></div>
 </div>
+
+<div id="deskHelp" class="modal hidden"><div class="panel">
+  <div class="formhead"><h1>ヘルプ</h1></div>
+  <div style="font-size:.9rem;line-height:1.7;max-height:70vh;overflow:auto">
+  <p><b>束</b>: 開いたPDF1つが1つの束です。複数ページの束は重なって見え、下の「＜ ＞」でページをめくれます。ドラッグで並べ替えられます。</p>
+  <p><b>ファイル</b>: PDFを開く / 閉じる / 保存 / 元に戻す</p>
+  <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)</p>
+  <p><b>製本</b>(束の操作): 全部選択 / 選択解除 / 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
+  <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「歪み補正」を開けます。</p>
+  </div>
+  <div style="margin-top:10px;text-align:right"><button class="sub" id="deskHelpClose">閉じる</button></div>
+</div></div>
 
 <div id="menu" class="modal hidden"><div class="panel">
   <div class="formhead"><button class="sub" id="menuBack">← 戻る</button><h1>機能メニュー</h1><span class="ver" id="verMenu">2.01</span></div>
@@ -119,7 +140,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.11"},
+  desk:{name:"束デスク",ver:"2.12"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.66",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"}
@@ -313,7 +334,7 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=!bundles.some(b=>b.sel&&b.n>1);$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=$("bBurst").disabled=!bundles.some(b=>b.sel&&b.n>1);$("bSplit").disabled=!(c===1&&bundles.some(b=>b.sel&&b.n>1&&b.cur>=1));$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
   el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
@@ -350,7 +371,7 @@ function render(){
   });
   refreshBar();
 }
-function flip(b,d){const c=Math.max(0,Math.min(b.n-1,b.cur+d));if(c===b.cur)return;b.cur=c;paintCard(b);thumb(b);persist();}
+function flip(b,d){const c=Math.max(0,Math.min(b.n-1,b.cur+d));if(c===b.cur)return;b.cur=c;paintCard(b);thumb(b);refreshBar();persist();}
 
 // ===== 選択 =====
 $("bAll").onclick=()=>{bundles.forEach(b=>b.sel=true);render();};
@@ -499,6 +520,17 @@ async function pageOut(){
 $("bPgPrev").onclick=()=>movePage(-1).catch(e=>status("失敗: "+e.message));
 $("bPgNext").onclick=()=>movePage(1).catch(e=>status("失敗: "+e.message));
 $("bPgOut").onclick=()=>pageOut().catch(e=>status("失敗: "+e.message));
+$("bBurst").onclick=async()=>{for(const b of bundles.filter(x=>x.sel&&x.n>1))await burst(b).catch(e=>status("失敗: "+e.message));};
+$("bSplit").onclick=()=>{const b=bundles.find(x=>x.sel);if(b)splitAt(b).catch(e=>status("失敗: "+e.message));};
+// ===== 上のメニュー(ファイル・編集・製本・ヘルプ) =====
+{const drops=[...document.querySelectorAll(".mdrop")],tops=[...document.querySelectorAll(".mtop[data-d]")];
+  const closeAll=()=>{drops.forEach(d=>d.classList.add("hidden"));tops.forEach(t=>t.classList.remove("on"));};
+  tops.forEach(t=>t.addEventListener("click",e=>{e.stopPropagation();const d=$(t.dataset.d),was=!d.classList.contains("hidden");closeAll();if(!was){d.classList.remove("hidden");t.classList.add("on");}}));
+  drops.forEach(d=>d.addEventListener("click",e=>{if(e.target.closest("button:not(:disabled)"))setTimeout(closeAll,0);}));   // 項目を押したら、メニューを閉じる
+  document.addEventListener("pointerdown",e=>{if(!e.target.closest(".mg"))closeAll();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
+  $("bHelp").onclick=()=>{closeAll();$("deskHelp").classList.remove("hidden");};$("deskHelpClose").onclick=()=>$("deskHelp").classList.add("hidden");$("deskHelp").addEventListener("pointerdown",e=>{if(e.target===$("deskHelp"))$("deskHelp").classList.add("hidden");});
+}
 $("bClose").onclick=async()=>{for(const b of bundles.filter(x=>x.sel))await removeBundle(b);};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
 $("bSave").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){try{await saveBundle(b);}catch(e){status("保存できませんでした: "+e.message);}}};   // 選んでいる束を、PDFとして保存
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
@@ -510,9 +542,6 @@ function openMenu(b){
   const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
   add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
   add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
-  add("🗂 全ページをばらす","1枚ずつのPDFにする",()=>burst(b).catch(e=>status("失敗: "+e.message)),b.n<2);
-  add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
-  add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
   $("menu").classList.remove("hidden");
 }
 function closeMenu(){$("menu").classList.add("hidden");}
@@ -558,7 +587,7 @@ function fitAll(){fitted.forEach(o=>{
   o._tm=setTimeout(o._again,SETTLE_MS);});}   // 動きが続くあいだは、イベントのたびに、ここから数え直す
 function liftFit(){fitted.forEach(o=>{if(o._again){clearTimeout(o._tm);o._tm=setTimeout(o._again,LIFT_MS);}});}   // 手を離したら、すぐ(少しだけ待って)表示
 function addFit(o){fitted.add(o);o._sig=geoSig();fitModal(o);}
-addFit($("menu"));
+addFit($("menu"));addFit($("deskHelp"));
 function sendZoom(){fitAll();try{const w=$("formFrame").contentWindow;if(!w)return;
   const geo={app:geoApp(),screen:geoScreen(),form:geoForm()};   // 3つの領域を、名前を分けて、そのまま渡す(フォーム側で、自分の座標に直す)
   w.postMessage({type:"zoom",geo,scale:geo.screen.scale},"*");}catch{}}

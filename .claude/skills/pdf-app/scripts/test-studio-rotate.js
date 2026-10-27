@@ -7,8 +7,7 @@ const {launch,WORK}=require('./harness');
   await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
   let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
   const rots=()=>page.evaluate(async()=>{const b=await PDFLib.PDFDocument.load(new Uint8Array(window.pdfStudioDebug.bytes(0)));return b.getPages().map(p=>p.getRotation().angle);});
-  const menu=async t=>{await page.locator('#'+(t.includes('だけ')?'bRotCur':'bRotAll')).click();await page.waitForTimeout(1200);};
-  chk('見出しに「束を回転」「表示ページを回転」が出る',await page.locator('#bRotAll').isVisible()&&await page.locator('#bRotCur').isVisible());
+  const menu=async t=>{await page.evaluate(id=>document.getElementById(id).click(),t.includes('だけ')?'bRotCur':'bRotAll');await page.waitForTimeout(1200);};
   const r0=await rots();console.log('最初',r0);
   await page.locator('.card').first().locator('.next').click();await page.waitForTimeout(400);   // 2ページ目を表示
   await menu('だけ');
@@ -18,7 +17,7 @@ const {launch,WORK}=require('./harness');
   const r2=await rots();console.log('束ぜんぶ',r2);
   chk('全ページが、さらに右に90度',r2.every((a,i)=>a===(r1[i]+90)%360));
   chk('ページ数そのまま',r2.length===r0.length);
-  await page.locator('#bUndo').click();await page.waitForTimeout(500);
+  await page.evaluate(()=>document.getElementById('bUndo').click());await page.waitForTimeout(500);
   chk('「元に戻す」で戻る',JSON.stringify(await rots())===JSON.stringify(r1));
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
 })();
