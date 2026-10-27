@@ -629,12 +629,15 @@ async function loadRuns(){
   {const kept=[];runs.forEach(r=>{if(!kept.some(q=>q.str===r.str&&Math.abs(q.x-r.x)<Math.max(q.size,r.size)*0.35&&Math.abs(q.base-r.base)<Math.max(q.size,r.size)*0.35))kept.push(r);});runs=kept;}
   seps=await loadSeps(p,vp);
   runs.forEach(r=>{try{const f=p.commonObjs.get(r.fn);r.fname=f&&f.name;}catch{}});   // 元のフォントの名前(PDFの BaseFont)
+  runs.forEach(r=>{const ch=Array.from(r.str);if(r.ls!==undefined||ch.length<2)return;const wide=ch.filter(c=>c.codePointAt(0)>0x2E80).length;if(wide/ch.length>=0.8)r.ls=Math.round((r.w/ch.length-r.size)*10)/10;});   // 日本語の文字の字間(字の幅=文字の大きさ、との差)。字間の違うところを、別の枠に分けるのに使う
   recomputeBlocks();
 }
 // まとまりの判定:
 //  横: 文字サイズが同じ(±15%)で横に並んでいれば1つ。ただし「明らかに大きな空白」か「間に線・点線がある」ところで分ける
 //  縦: 行間が詰まっていて(1.7倍以内)左揃い/重なりがあり、文字サイズが近ければ同じ段落。間に横線があれば分ける
 const similar=(a,b,t=0.15)=>Math.abs(a-b)<=Math.max(a,b)*t;
+const lsClose=(a,b,size)=>Math.abs((a.ls||0)-(b.ls||0))<=Math.max(0.6,size*0.12);   // 字間が違えば別の枠
+const sameFont=(a,b)=>a.fn===undefined||b.fn===undefined||a.fn===b.fn;   // 元のフォントが違えば別の枠(太字と細字など)
 function buildBlocks(list,gapOverride){
   const gapMul=gapOverride||Math.max(1,+$("fxGap").value||200);
   const vSepBetween=(xa,xb,base,size)=>seps.v.some(v=>v.x>xa-0.5&&v.x<xb+0.5&&v.y0<=base+size*0.3&&v.y1>=base-size*0.8);
@@ -646,7 +649,7 @@ function buildBlocks(list,gapOverride){
     l.rs.sort((a,b)=>a.x-b.x);let cur=null,last=null;
     l.rs.forEach(r=>{
       const gap=cur?r.x-(cur.x+cur.w):0;
-      const join=cur&&last&&similar(last.size,r.size)&&Math.abs((last.ls||0)-(r.ls||0))<0.6&&!isLeader(last)&&!isLeader(r)
+      const join=cur&&last&&similar(last.size,r.size)&&lsClose(last,r,Math.max(last.size,r.size))&&sameFont(last,r)&&!isLeader(last)&&!isLeader(r)
         &&gap<Math.max(last.size,r.size)*gapMul&&!vSepBetween(cur.x+cur.w,r.x,l.base,Math.max(cur.size,r.size));
       if(join){cur.runs.push(r);cur.w=Math.max(cur.w,r.x+r.w-cur.x);cur.size=Math.max(cur.size,r.size);}
       else{cur={runs:[r],x:r.x,w:r.w,base:l.base,size:r.size};segs.push(cur);}
@@ -662,9 +665,9 @@ function buildBlocks(list,gapOverride){
       const b=segs[j],dy=b.base-a.base;
       if(dy>Math.max(a.size,b.size)*1.7)break;
       if(dy<Math.min(a.size,b.size)*0.4)continue; // 同じ行(分けた別のまとまり)
-      if(!similar(a.size,b.size,0.25)||Math.abs((a.runs[0].ls||0)-(b.runs[0].ls||0))>0.6||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
+      if(!similar(a.size,b.size,0.25)||!lsClose(a.runs[0],b.runs[0],Math.max(a.size,b.size))||!sameFont(a.runs[0],b.runs[0])||(a.up!==undefined&&Math.abs(dy-(a.base-segs[a.up].base))>Math.max(1.5,Math.max(a.size,b.size)*0.22))||a.runs.some(isLeader)||b.runs.some(isLeader)||hSepBetween(a,b))continue;
       const tol=Math.max(a.size,b.size)*0.7;   // 左端・右端・中心のどれかがそろっているときだけ縦に同じまとまり(重なっているだけ・字下げの違う行は、つなげない)
-      {const dl=Math.abs(a.x-b.x),sz=Math.max(a.size,b.size);if(dl<tol||Math.abs((a.x+a.w)-(b.x+b.w))<0.3*sz||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<0.3*sz)par[find(j)]=find(i);}
+      {const dl=Math.abs(a.x-b.x),sz=Math.max(a.size,b.size);if(dl<tol||Math.abs((a.x+a.w)-(b.x+b.w))<0.3*sz||Math.abs((a.x+a.w/2)-(b.x+b.w/2))<0.3*sz){par[find(j)]=find(i);if(b.up===undefined)b.up=i;}}   // 行間(上の行との間隔)が違うところは、別の枠
     }
   }
   const groups=new Map();
@@ -2706,7 +2709,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
