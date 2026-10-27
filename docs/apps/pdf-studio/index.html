@@ -115,7 +115,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.06"},
+  desk:{name:"束デスク",ver:"2.07"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.65",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.01",src:"forms/editor.html?form=warp"}
@@ -456,6 +456,13 @@ async function removeBundle(b){
   if(b.dirty){const a=await askSave(b);if(a==="cancel")return;if(a==="over"){if(!await overwriteBundle(b))return;}else if(a==="as"){if(!await saveBundle(b))return;}}
   snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);}
 
+// ===== 回転(右に90度ずつ): 束ぜんぶ / いま表示しているページだけ =====
+async function rotateBundle(b,onlyCur){
+  const d=await PDFDocument.load(b.bytes),pages=d.getPages();
+  (onlyCur?[pages[b.cur]]:pages).forEach(p=>p.setRotation(PDFLib.degrees((p.getRotation().angle+90)%360)));
+  snap();b.bytes=new Uint8Array(await d.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
+  render();thumb(b);persist();status(onlyCur?`${b.cur+1}ページ目だけを、右に90度回しました。「元に戻す」で戻せます。`:`束の全${b.n}ページを、右に90度回しました。「元に戻す」で戻せます。`);
+}
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
 function openMenu(b){
@@ -465,6 +472,8 @@ function openMenu(b){
   const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
   add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
   add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
+  add("🔄 束ぜんぶを回転",`全${b.n}ページを、右に90度`,()=>rotateBundle(b,false).catch(e=>status("失敗: "+e.message)));
+  if(b.n>1)add("🔄 このページだけ回転",`${b.cur+1}ページ目だけを、右に90度`,()=>rotateBundle(b,true).catch(e=>status("失敗: "+e.message)));
   add("🗂 全ページをばらす","1枚ずつのPDFにする",()=>burst(b).catch(e=>status("失敗: "+e.message)),b.n<2);
   add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
   add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
