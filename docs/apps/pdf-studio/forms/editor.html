@@ -790,15 +790,15 @@ function newFix(list){
     if(li){txt+="\n";sz.push(null);}
     l.parts.forEach(pt=>{for(const ch of Array.from(pt.s)){txt+=ch;sz.push(pt.size&&Math.abs(pt.size-size)>0.4?Math.round(pt.size*10)/10:null);}});
   });
-  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:x0,vy:top,vw:x1-x0+size*2,vh:size*lh*lines.length,txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
+  const fx={id:nextId++,type:"fix",fmt:"text",page:cur,vx:list.some(r=>r.ocr)?x0:x0+1,vy:top,vw:x1-x0+size*2,vh:size*lh*lines.length,txt,sz,size,color:col.fg,bg:col.bg,lh,cover:{x:x0,y:y0,w:x1-x0,h:y1-y0},covers:tightCovers(list),erase:true};
   {const cnt={};list.forEach(r=>{if(r.fname)cnt[r.fname]=(cnt[r.fname]||0)+Array.from(r.str).length;});const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(top)fx.ofName=top[0];}   // 拾った文字の、元のフォント
   fx.vw=tightW(fx,x1-x0);   // 自動で作る枠は、文字から最小(余白を足さない)
   growToFit(fx);clampToPage(fx);fx.sig0=list.some(r=>r.ocr)?null:fixSig(fx);
-  if(!list.some(r=>r.ocr)){fx.ol=lines.map(l=>{const sz0=[];l.parts.forEach(pt=>{for(const ch of Array.from(pt.s))sz0.push(pt.size||size);});return{dx:l.x-fx.vx,db:l.base-fx.vy,ow:l.w,txt0:l.parts.map(pt=>pt.s).join(""),sz0};});fx.fsig=faithSig(fx);}   // 元の行の位置・長さを覚える(PDFに近い枠で表示するため)
+  if(!list.some(r=>r.ocr)){fx.ol=lines.map(l=>{const sz0=[];l.parts.forEach(pt=>{for(const ch of Array.from(pt.s))sz0.push(pt.size||size);});return{dx:l.x-fx.vx,db:l.base-fx.vy,ow:l.w,txt0:l.parts.map(pt=>pt.s).join(""),sz0};});fx.fsig=faithSig(fx);fx.t0=fx.txt;}   // 元の行の位置・長さを覚える(PDFに近い枠で表示するため)
   return fx;
 }
 function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
-  if(it)it._editing=false;   // 選択を外したら、入力モードも終わり
+  leaveEdit(it);   // 選択を外したら、入力モードも終わり(入力用の枠の見た目のまま、PDFに近い枠にする)
   if(it&&it.type==="text"&&!(it.txt||"").trim()){const i=items.indexOf(it);if(i>=0)items.splice(i,1);}
 }
 function select(it,focus){
@@ -1049,7 +1049,7 @@ function renderOverlay(){
         clearTimeout(it._rb);if(!e.isComposing)it._rb=setTimeout(()=>softRebuild(it,t),450);
       });
       t.addEventListener("compositionend",()=>{clearTimeout(it._rb);it._rb=setTimeout(()=>softRebuild(it,t),450);});
-      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};if(isTouch()){setTimeout(()=>{if(document.activeElement!==t){it._editing=false;t.contentEditable="false";}},0);}});   // 指: 入力を終えたら、次のタップでキーボードが出ないようにする
+      t.addEventListener("blur",()=>{const r=getSelRange(t);if(r)lastSel={id:it.id,start:r.start,end:r.end};if(isTouch()){setTimeout(()=>{if(document.activeElement!==t){leaveEdit(it);t.contentEditable="false";}},0);}});   // 指: 入力を終えたら、次のタップでキーボードが出ないようにする
       t.addEventListener("paste",e=>{   // 貼り付けは文字だけ。ブラウザ任せにせず、文字のデータを直接書き換える(改行・末尾の改行・サイズ指定のずれを避ける)
         e.preventDefault();
         const tx=((e.clipboardData&&e.clipboardData.getData("text/plain"))||"").replace(/\r\n?/g,"\n");
@@ -2501,6 +2501,16 @@ function layoutFaithful(it,wfn){   // layoutText と同じ形(lines/height)。�
   const last=lines[lines.length-1];
   return{lines,height:last.base-baseOff(it.fmt,last.size,it.lh)+last.size*it.lh};
 }
+// 入力が終わったら、入力用の枠で見えていた配置(折り返した行・各行の位置)を、そのまま「PDFに近い枠」の行として固定する(元の行の位置には戻さない)
+function freezeLayout(it){
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");
+  const fam=famOf(it.fmt,it.font),L=layoutText(it,(c,sv)=>{mctx.font=`${sv}px ${fam}`;return mctx.measureText(c).width;});
+  const txt=L.lines.map(ln=>ln.ch.map(x=>x.c).join("")).join("\n"),sz=[];
+  L.lines.forEach((ln,i)=>{if(i)sz.push(null);ln.ch.forEach(x=>sz.push(x.s===it.size?null:x.s));});
+  it.ol=L.lines.map(ln=>{let k=ln.ch.length;while(k>0&&ln.ch[k-1].c===" ")k--;let w=0;for(let q=0;q<k;q++)w+=ln.ch[q].w;return{dx:ln.off||0,db:ln.base,ow:w,txt0:ln.ch.slice(0,k).map(x=>x.c).join(""),sz0:ln.ch.slice(0,k).map(x=>x.s)};});
+  it.txt=txt;it.sz=sz;it.t0=txt;it.fsig=faithSig(it);
+}
+function leaveEdit(it){if(!it||!it._editing)return;it._editing=false;if(faithOk(it)&&it.txt!==it.t0)freezeLayout(it);}
 const layoutOf=(it,wfn)=>faithOk(it)?layoutFaithful(it,wfn):layoutText(it,wfn);
 function buildFaith(it,fl,k){
   if(!mctx)mctx=document.createElement("canvas").getContext("2d");
@@ -2571,6 +2581,7 @@ function drawOrigText(page,of,str,x,y,size,color,rotDeg){
 async function commit(){
   const todo=items.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=[];cs=null;renderOverlay();syncPanel();return;}
+  todo.forEach(leaveEdit);   // 入力中の枠は、見えている配置のまま固定してから書く
   const doc=await PDFDocument.load(bytes);
   // 元のフォントで書けるかを、先に調べる(書けない文字があるときは、別のフォントを足すので、ファイルが大きくなる→確認する)
   const needFallback=[];
