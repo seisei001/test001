@@ -38,6 +38,7 @@ button:disabled{opacity:.4;cursor:default;}
 .back-link{color:var(--muted);text-decoration:none;font-size:.85rem;margin-left:auto;}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 16px 8px;border-bottom:1px solid var(--border);}
 .toolbar .grp{display:flex;gap:6px;align-items:center;}
+.toolbar .grp{flex-wrap:wrap;}.toolbar button{white-space:nowrap;}   /* ボタンの文字が途中で折れないように(入りきらないときは、ボタンごと次の行へ) */
 .toolbar label{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
 .toolbar input[type=range]{width:110px;min-height:44px;}
 #cnt{font-size:.85rem;color:var(--muted);}
@@ -92,7 +93,7 @@ button:disabled{opacity:.4;cursor:default;}
     <div class="grp"><button class="sub" id="bUndo" disabled>↩ 元に戻す</button></div>
     <div class="grp"><button class="sub" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">束を回転</button><button class="sub" id="bRotCur" disabled title="選んでいる束の、いま表示しているページだけを、右に90度">表示ページを回転</button></div>
     <div class="grp"><button class="sub" id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">ページを前へ</button><button class="sub" id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">ページを後ろへ</button><button class="sub" id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">ページを外に出す</button></div>
-    <div class="grp"><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">PDFを保存</button></div>
+    <div class="grp"><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">PDFを保存</button><button class="sub" id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button></div>
     <div class="grp"><label>サムネイル <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label></div>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
@@ -118,7 +119,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.09"},
+  desk:{name:"束デスク",ver:"2.11"},
   menu:{name:"機能メニュー",ver:"2.01"},
   edit:{name:"ページ編集",ver:"2.66",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"}
@@ -148,9 +149,9 @@ function defaultSel(){if(bundles.length&&!bundles.some(b=>b.sel))bundles[0].sel=
 function mk(name,bytes,n,cur,id,handle,dirty){return{id:id||nextId++,name,bytes,n,cur:Math.max(0,Math.min(n-1,cur||0)),sel:false,doc:null,card:null,key:"",handle:handle||null,dirty:!!dirty};}   // handle=読み込んだ元のファイル(上書き保存用) dirty=変更フラグ
 
 // ===== 元に戻す =====
-function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur,handle:b.handle,dirty:b.dirty})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
-function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}});
-  bundles=s.map(r=>mk(r.name,r.bytes,r.n,r.cur,r.id,r.handle,r.dirty));$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
+function snap(){undoStack.push(bundles.map(b=>({id:b.id,name:b.name,bytes:b.bytes,n:b.n,cur:b.cur,handle:b.handle,dirty:b.dirty,sel:b.sel})));if(undoStack.length>30)undoStack.shift();$("bUndo").disabled=false;}
+function undo(){const s=undoStack.pop();if(!s)return;bundles.forEach(b=>{if(b.doc){try{b.doc.destroy();}catch{}}if(b.card){io.unobserve(b.card);b.card.remove();}});   // 古い束の表示(カード)も外す(外さないと、同じ束が二重に並んで、サムネイルが出ない・ずれる)
+  bundles=s.map(r=>{const b=mk(r.name,r.bytes,r.n,r.cur,r.id,r.handle,r.dirty);b.sel=!!r.sel;return b;});$("bUndo").disabled=!undoStack.length;render();persist();status("元に戻しました。");}
 
 // ===== PDFの読み込み =====
 // 画像にしたページに、元のPDFの文字データを「見えない文字」として入れ直す(ページ編集で文字の部品として扱え、OCRしなくてよくなる)
@@ -312,7 +313,7 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=!bundles.some(b=>b.sel&&b.n>1);$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("cnt").textContent=bundles.length?`選択 ${c} / ${bundles.length}`:"";$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=!bundles.some(b=>b.sel&&b.n>1);$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
   el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
@@ -498,6 +499,7 @@ async function pageOut(){
 $("bPgPrev").onclick=()=>movePage(-1).catch(e=>status("失敗: "+e.message));
 $("bPgNext").onclick=()=>movePage(1).catch(e=>status("失敗: "+e.message));
 $("bPgOut").onclick=()=>pageOut().catch(e=>status("失敗: "+e.message));
+$("bClose").onclick=async()=>{for(const b of bundles.filter(x=>x.sel))await removeBundle(b);};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
 $("bSave").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){try{await saveBundle(b);}catch(e){status("保存できませんでした: "+e.message);}}};   // 選んでいる束を、PDFとして保存
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
@@ -511,7 +513,6 @@ function openMenu(b){
   add("🗂 全ページをばらす","1枚ずつのPDFにする",()=>burst(b).catch(e=>status("失敗: "+e.message)),b.n<2);
   add("✂️ ここで分割",b.n<2?"2ページ以上の束で使えます":b.cur<1?"2ページ目以降を表示してください":`${b.cur+1}ページ目から後ろを別の束に`,()=>splitAt(b).catch(e=>status("失敗: "+e.message)),b.n<2||b.cur<1);
   add("🔗 選択した束を結合",`チェックした束を、並び順に1つの束に(いま ${selCount()}個)`,()=>mergeSelected().catch(e=>status("失敗: "+e.message)),selCount()<2);
-  add("✕ 閉じる","変更があれば、保存するか確認します(元のファイルは消えません)",()=>removeBundle(b),false,"danger");
   $("menu").classList.remove("hidden");
 }
 function closeMenu(){$("menu").classList.add("hidden");}
