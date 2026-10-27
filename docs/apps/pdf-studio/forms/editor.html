@@ -106,6 +106,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #ctx button{background:transparent;color:var(--text);border:none;border-radius:6px;min-height:32px;padding:4px 10px;justify-content:flex-start;font-size:.85rem;}
 #ctx button:hover{background:var(--accent);color:#fff;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
+#pz{display:inline-flex;gap:2px;margin-left:6px;}#pz button{min-width:30px;padding:3px 6px;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:manipulation;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
@@ -154,7 +155,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -2596,6 +2597,25 @@ async function commit(){
   }
   await setBytes(await doc.save(),true);
 }
+
+// ===== ページの画像だけの拡大・縮小(パソコン: Ctrl+ホイール / ヘッダーの「－ 100% ＋」)。ブラウザの拡大にしないので、ヘッダーのボタンは標準の大きさのまま =====
+let PZ=1,PZ0W=0;
+function setPZ(z,cx,cy){
+  z=Math.max(0.5,Math.min(5,Math.round(z*100)/100));if(z===PZ)return;
+  const w=$("pagewrap"),r0=w.getBoundingClientRect(),fx=cx==null?0.5:Math.max(0,Math.min(1,(cx-r0.left)/(r0.width||1))),fy=cy==null?0.5:Math.max(0,Math.min(1,(cy-r0.top)/(r0.height||1)));
+  if(PZ===1)PZ0W=r0.width;   // 標準の大きさ(幅)を覚えて、そこからの倍率で決める
+  PZ=z;
+  if(z===1){w.style.maxWidth="";w.style.width="";$("stage").style.maxWidth="";$("stage").style.width="";}
+  else{w.style.maxWidth="none";w.style.width=(PZ0W*z)+"px";$("stage").style.maxWidth="none";}
+  $("stage").style.width=z===1?"":"100%";   // ページの画像も、枠の幅いっぱいに(重ねている枠とずれないように)
+  const r1=w.getBoundingClientRect(),sg=document.querySelector(".stage");
+  if(sg)sg.scrollLeft+=(r1.left+fx*r1.width)-(cx==null?r1.left+r1.width/2:cx)-0;   // 指・マウスの下のページの場所が、動かないように
+  window.scrollBy(0,(r1.top+fy*r1.height)-(cy==null?r1.top+r1.height/2:cy));
+  $("pzR").textContent=Math.round(z*100)+"%";
+  renderOverlay();
+}
+document.addEventListener("wheel",e=>{if(!e.ctrlKey)return;e.preventDefault();setPZ(PZ*Math.exp(-e.deltaY*0.0015),e.clientX,e.clientY);},{passive:false});   // Ctrl+ホイール(トラックパッドのピンチも)は、ページだけを拡大・縮小する
+$("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
 // ===== PDFスタジオの「ページ編集」「歪み補正」フォームとして動く(?embed=1&form=edit|warp) =====
@@ -2635,7 +2655,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
