@@ -355,3 +355,4 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ページ編集2.63: 行間・字間バーを縦並び(flex-direction:column)。
 - ページ編集2.64: 行間・字間バーの大きさは『文字10ptの大きさ』(scale=10*k/11、kはページ表示倍率)。--zs(画面の拡大率)には依存しない。
 - 束デスク2.07: 機能メニューに「束ぜんぶを回転」「このページだけ回転」(右に90度ずつ。pdf-libのsetRotation、文字データは残る)。test-studio-rotate.js
+- ページ編集2.65: 失敗の表示(#job.fail)が消えないバグ→7秒で自動消去+タップで消える。表示を小さく(.78rem・幅420px)、拡大縮小のたびの置き直しをやめて、止まって0.3秒後に置く(ちらつき防止)。test-studio-jobfail.js
