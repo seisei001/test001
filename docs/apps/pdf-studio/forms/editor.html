@@ -112,9 +112,9 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #ov.draw{cursor:crosshair;touch-action:manipulation;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
 .ring{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:3px solid #2563eb;border-radius:50%;pointer-events:none;animation:ringf .6s forwards;z-index:8;transform:scale(var(--zs,1));}
 @keyframes ringf{to{opacity:0;}}
-#ov.ghost .cover{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
-#ov.ghost .ibox.cmp .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}   /* 赤く重ねるのは、元の文字の訂正・画像から変換した文字だけ(自分で入力した文字は、ふつうの色のまま) */
-#ov.ghost .ibox.cmp{background:transparent!important;}
+#ov.ghost .cover.ocrc{opacity:0!important;}   /* 元の画像を見えるようにして、変換した文字と重ねて確認する */
+#ov.ghost .ibox.cmp.ocrf .t{color:rgba(220,38,38,.8)!important;background:transparent!important;}   /* 赤く重ねるのは、元の文字の訂正・画像から変換した文字だけ(自分で入力した文字は、ふつうの色のまま) */
+#ov.ghost .ibox.cmp.ocrf{background:transparent!important;}
 #ov.noitems .ibox,#ov.noitems .ibox *,#ov.noitems .run{pointer-events:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);pointer-events:none;}   /* 色は付けない(重なると濃くなるため) */
@@ -128,7 +128,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .ibox.faith .t{visibility:hidden;}   /* PDFに近い枠: 元の行の位置・大きさ・字の間隔のとおりに表示する(入力を始めると、入力用の枠に変わる) */
 .ibox .fl{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;overflow:visible;}
 .ibox .fl .ln{position:absolute;white-space:pre;line-height:1;}
-#ov.ghost .ibox.cmp .fl{color:rgba(220,38,38,.8)!important;}
+#ov.ghost .ibox.cmp.ocrf .fl{color:rgba(220,38,38,.8)!important;}
 .ibox.edit{outline:2px solid #2563eb;box-shadow:inset 0 0 0 9999px rgba(37,99,235,.07);}   /* 入力モードの枠 */
 .ibox .t{width:100%;min-height:100%;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;outline:none;cursor:text;}
 .ibox img{display:block;width:100%;height:100%;object-fit:contain;object-position:left top;pointer-events:none;}
@@ -701,7 +701,7 @@ function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字�
 function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
   const rs=coverRects(it,true);if(!rs.length)return;const k=K(),bg=bgOf(it);
-  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover";c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
+  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   if(it.type==="img")return;
@@ -1008,6 +1008,12 @@ document.addEventListener("pointerdown",()=>{pendingEdit=null;},true);   // 次�
   const t=itemEls.get(p.it.id)?.querySelector(".t");if(t&&document.activeElement!==t)startEdit(p.it,p.x,p.y);},true));
 document.addEventListener("pointercancel",e=>{if(ptHold&&e.pointerId===ptHold.id){clearTimeout(ptHold.tm);ptHold=null;}},true);
 const isTouch=()=>document.body.classList.contains("pt-touch");
+function caretRangeAt(t,x,y){   // その位置の、文字の間(なければ null)
+  let r=null;
+  if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(p&&t.contains(p.offsetNode)){r=document.createRange();r.setStart(p.offsetNode,p.offset);r.collapse(true);}}
+  else if(document.caretRangeFromPoint){r=document.caretRangeFromPoint(x,y);if(r&&!t.contains(r.startContainer))r=null;}
+  return r;
+}
 function caretAt(t,x,y){   // 指を置いた位置に、入力のカーソルを置く
   let r=null;
   if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(x,y);if(p&&t.contains(p.offsetNode)){r=document.createRange();r.setStart(p.offsetNode,p.offset);}}
@@ -1053,7 +1059,7 @@ function renderOverlay(){
     renderCovers(it);
   });
   items.filter(it=>it.page===cur).forEach(it=>{
-    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"");
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade?" ocrf":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
@@ -1121,7 +1127,13 @@ function renderOverlay(){
       e.stopPropagation();
       const wasSel=cs===it;
       if(!wasSel){e.preventDefault();select(it,!isTouch());}   // 指のタップは、選ぶだけ(キーボードは出さない)
-      else if(!isTouch()&&faithOn(it)&&!e.target.closest(".hdl,.grip,.spbar")){e.preventDefault();startEdit(it,e.clientX,e.clientY);return;}   // PDFに近い枠は、選んだあとの クリックで、入力用の枠に変わる
+      else if(!isTouch()&&faithOn(it)&&!e.target.closest(".hdl,.grip,.spbar")){
+        e.preventDefault();const x0=e.clientX,y0=e.clientY;
+        const up=ev=>{document.removeEventListener("pointerup",up,true);startEdit(it,x0,y0);   // 指を離したとき、入力用の枠に変える。ドラッグしていたら、その範囲の文字を選ぶ
+          if(Math.hypot(ev.clientX-x0,ev.clientY-y0)>4){const t=itemEls.get(it.id)?.querySelector(".t");if(t){const edge=(atEnd)=>{const q=document.createRange();q.selectNodeContents(t);q.collapse(!atEnd);return q;},tb=t.getBoundingClientRect();   // 文字の外(枠の余白)で押した・離したときは、文字の先頭・末尾とみなす
+            const a=caretRangeAt(t,x0,y0)||edge(x0>tb.left+tb.width/2),b=caretRangeAt(t,ev.clientX,ev.clientY)||edge(ev.clientX>tb.left+tb.width/2);
+            if(a&&b){const fwd=a.compareBoundaryPoints(Range.START_TO_START,b)<=0,r=document.createRange(),[s0,s1]=fwd?[a,b]:[b,a];r.setStart(s0.startContainer,s0.startOffset);r.setEnd(s1.startContainer,s1.startOffset);const g=getSelection();g.removeAllRanges();g.addRange(r);}}}};
+        document.addEventListener("pointerup",up,true);return;}   // PDFに近い枠は、選んだあとの クリックで、入力用の枠に変わる
       if(isTouch()&&it.type!=="img"&&!e.target.closest(".hdl,.grip")){   // 枠の中の長押しで、入力を始める
         const x0=e.clientX,y0=e.clientY,pid=e.pointerId;
         const tm=setTimeout(()=>{if(ptHold&&ptHold.id===pid){ptHold.ready=true;ringAt(x0,y0);}},500);   // 500ms: 長押しになった印(輪)。キーボードは、指を離したときに出す(iPhoneは、指を離す操作の中でしか出せない)
