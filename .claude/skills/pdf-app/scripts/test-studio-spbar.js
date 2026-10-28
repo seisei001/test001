@@ -21,7 +21,7 @@ const {launch,WORK}=require('./harness');
   const set=(sel,v)=>f.evaluate(([s,v])=>{const e=document.querySelector(s);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},[sel,v]);
   await set('.spbar .r1','2');await set('.spbar .r2','5');
   const b=await it();chk(`行間・字間が変わる(${a.lh}→${b.lh}, ${a.ls}→${b.ls})`,b.lh===2&&b.ls===5);
-  chk('幅は変わらない',a.vw===b.vw);
+  chk('幅は、字間を広げたぶん広がる(縮まない)',b.vw>=a.vw);
   chk('バーは残っている',await bar.count()===1);
   const lb=await bar.locator('label').evaluateAll(l=>l.map(e=>e.getBoundingClientRect()).map(r=>[r.x,r.y]));
   chk('行間と字間は縦に並ぶ(上:行間 下:字間)',lb.length===2&&lb[1][1]>lb[0][1]&&Math.abs(lb[1][0]-lb[0][0])<2);

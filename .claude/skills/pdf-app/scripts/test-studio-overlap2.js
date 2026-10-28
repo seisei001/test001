@@ -3,13 +3,14 @@ process.env.PDFAPP_TARGET='pdf-studio';
 const fs=require('fs'),path=require('path'),{execSync}=require('child_process');
 const {launch,WORK}=require('./harness');
 const LIB=path.join(WORK,'lib/node_modules')+'/';
-const {PDFDocument,StandardFonts}=require(LIB+'pdf-lib');
+const {PDFDocument,StandardFonts,rgb}=require(LIB+'pdf-lib');
 (async()=>{
   const src='/tmp/overlap2_src.pdf';
   {const d=await PDFDocument.create();const f=await d.embedFont(StandardFonts.Helvetica);const p=d.addPage([595,842]);
    p.drawText('ABCDEFGHIJKLMNOPQRST',{x:60,y:700,size:14,font:f});   // 一部だけ隠れる
    p.drawText('FULLCOVER',{x:60,y:600,size:14,font:f});               // 完全に隠れる
    p.drawText('KEEPME below',{x:60,y:500,size:14,font:f});            // 重ならない
+   p.drawLine({start:{x:40,y:400},end:{x:400,y:400},thickness:2,color:rgb(0,0,0)});   // 罫線(新しい文字を重ねても、欠けない)
    fs.writeFileSync(src,await d.save());}
   const {browser,page}=await launch();const errs=[],dlg=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>{dlg.push(d.message().slice(0,30));d.accept();});
   await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
@@ -21,6 +22,9 @@ const {PDFDocument,StandardFonts}=require(LIB+'pdf-lib');
   const mk=async(x,y,w,h,txt)=>{await page.mouse.move(ob.x+x*k,ob.y+y*k);await page.mouse.down();await page.mouse.move(ob.x+(x+w)*k,ob.y+(y+h)*k,{steps:5});await page.mouse.up();await page.waitForTimeout(400);await page.keyboard.type(txt);await page.waitForTimeout(300);};
   // 1行目(y=842-700=142付近、文字の上端 ~129)の右半分に重ねる
   await mk(130,126,200,22,'ZZZZZ');
+  await fr.locator('[data-m=sel]').click();await page.waitForTimeout(300);await page.mouse.click(ob.x+15,ob.y+ob.height-12);await page.waitForTimeout(3500);
+  // 罫線(y=842-400=442)に重ねる、小さな文字
+  await fr.locator('[data-m=text]').click();await mk(300,436,12,14,'i');
   await fr.locator('[data-m=sel]').click();await page.waitForTimeout(300);await page.mouse.click(ob.x+15,ob.y+ob.height-12);await page.waitForTimeout(3500);
   // 2行目(FULLCOVER)全体を覆う、大きな文字
   await fr.locator('[data-m=text]').click();await mk(50,228,260,30,'QQQQQQQQQQQQQQ');
@@ -38,9 +42,10 @@ from PIL import Image
 im=Image.open('/tmp/overlap2_out-1.png').convert('L');s=2
 def ink(x0,y0,x1,y1):
     c=im.crop((int(x0*s),int(y0*s),int(x1*s),int(y1*s)));return sum(1 for p in c.getdata() if p<110)
-print(ink(60,126,100,146),ink(60,226,160,246))`;
+print(ink(60,126,100,146),ink(60,226,160,246),ink(296,440,320,444))`;
   const r=execSync(`python3 -c "${py.replace(/"/g,'\\"')}"`).toString().trim().split(' ').map(Number);console.log('インク',r);
   chk('一部だけ隠れた文字の、見えている左側が、画像で残っている(見た目が変わらない)',r[0]>150);
+  chk('文字の下の罫線が、欠けていない(罫線の画素 '+r[2]+')',r[2]>=40);
   console.log('置き換えの確認は出ない',dlg.length===0?'OK':dlg);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
 })();
