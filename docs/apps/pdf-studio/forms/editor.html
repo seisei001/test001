@@ -2765,11 +2765,34 @@ async function stripPageText(doc,pageIndex,viewRects){
   }catch(e){console.warn("文字の命令を取り除けませんでした",e);return none;}
 }
 // 上に重ねて書く文字の下にある、元のPDFの文字を調べる(ページの文字の枠を、PDFの文字から読む)
-async function pageRunBoxes(u8,pageIndex){
-  const d=await pdfjsLib.getDocument({data:u8.slice()}).promise;
-  try{const p=await d.getPage(pageIndex+1),vp=p.getViewport({scale:1}),tc=await p.getTextContent(),out=[];
-    for(const it of tc.items){if(!it.str||!it.str.trim())continue;const tx=pdfjsLib.Util.transform(vp.transform,it.transform),size=Math.hypot(tx[2],tx[3]);if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue;out.push(runBox({x:tx[4],base:tx[5],w:it.width*vp.scale,size}));}
-    return out;}finally{try{d.destroy();}catch{}}
+async function pageRunBoxes(u8,pageIndex){   // 文字のかたまりごとに、{box, str, fname, size, x, base, w}。いま表示しているPDF(描画ずみ=フォントの名前がわかる)から読む
+  const p=await pdfView.getPage(pageIndex+1),vp=p.getViewport({scale:1}),tc=await p.getTextContent(),out=[];
+  for(const it of tc.items){if(!it.str||!it.str.trim())continue;const tx=pdfjsLib.Util.transform(vp.transform,it.transform),size=Math.hypot(tx[2],tx[3]);if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue;
+    let fname;try{const fo=p.commonObjs.get(it.fontName);fname=fo&&fo.name;}catch{}
+    const run={x:tx[4],base:tx[5],w:it.width*vp.scale,size,str:it.str,fname};run.box=runBox(run);out.push(run);}
+  return out;
+}
+// 一部だけ隠れる文字のかたまりを、文字ごとに分ける: 隠れない文字は文字のまま・完全に隠れる文字は消す・一部だけ隠れる文字は、その文字だけ画像にする
+function splitRun(run,of,foot){
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");
+  mctx.font=`${run.size}px ${famOf("text")}`;
+  const chars=Array.from(run.str),mw=chars.map(c=>mctx.measureText(c).width),tot=mw.reduce((a,b)=>a+b,0);if(!tot)return null;
+  const k=run.w/tot,y0=run.base-run.size*0.95,h=run.size*1.25;let x=run.x;
+  const cs=chars.map((c,i)=>{const w=mw[i]*k;let inter=0;foot.forEach(f=>{const iw=Math.min(f.x+f.w,x+w)-Math.max(f.x,x),ih=Math.min(f.y+f.h,y0+h)-Math.max(f.y,y0);if(iw>0&&ih>0)inter+=iw*ih;});const o={c,x,w,ov:w*h>0?Math.min(1,inter/(w*h)):0};x+=w;return o;});
+  const keep=[],img=[];let seg=null,grp=null;
+  const endSeg=()=>{if(seg){keep.push(seg);seg=null;}},endGrp=()=>{if(grp){img.push(grp);grp=null;}};
+  for(const q of cs){
+    if(/\s/.test(q.c)){endSeg();endGrp();continue;}
+    if(q.ov>=0.9){endSeg();endGrp();continue;}   // 完全に隠れる文字: 消える
+    if(q.ov<0.05&&of.inv.has(q.c)){   // 隠れない文字: 文字のまま残す
+      endGrp();if(!seg)seg={str:"",x0:q.x,x1:q.x,nat:0,n:0};seg.str+=q.c;seg.x1=q.x+q.w;seg.nat+=(of.width(q.c)??0.5)*run.size;seg.n++;
+    }else{   // 一部だけ隠れる文字(または元のフォントで書けない文字): その文字だけ、見えている部分を画像にする
+      endSeg();if(!grp)grp={x:q.x,x1:q.x+q.w};grp.x1=q.x+q.w;
+    }
+  }
+  endSeg();endGrp();
+  keep.forEach(sg=>{sg.ls=sg.n>1?((sg.x1-sg.x0)-sg.nat)/(sg.n-1):0;if(Math.abs(sg.ls)>run.size*0.6)sg.ls=0;});
+  return{keep,img:img.map(g=>({x:g.x,y:y0,w:g.x1-g.x,h}))};
 }
 // 一部だけ隠れる文字: 見えている部分だけを、背景の透明な画像にする(上に重ねる文字の下になる部分は、除く)
 async function remainsImage(b,foot){
@@ -2810,11 +2833,14 @@ async function commit(only){
     const U=under.get(it.page)||{ex:new Map(),foot:[]};under.set(it.page,U);U.foot.push(...foot);
     const own=it.type==="fix"?(it.covers||[it.cover]):[];
     let boxes=[];try{boxes=await pageRunBoxes(bytes,it.page);}catch(e){console.warn(e);}
-    for(const b of boxes){
+    for(const rn of boxes){
+      const b=rn.box;
       const cx0=b.x+b.w/2,cy0=b.y+b.h/2;if(own.some(c=>cx0>=c.x-1&&cx0<=c.x+c.w+1&&cy0>=c.y-1&&cy0<=c.y+c.h+1))continue;
       let inter=0;foot.forEach(f=>{const w=Math.min(f.x+f.w,b.x+b.w)-Math.max(f.x,b.x),h=Math.min(f.y+f.h,b.y+b.h)-Math.max(f.y,b.y);if(w>0&&h>0)inter+=w*h;});
-      const fr=Math.min(1,inter/(b.w*b.h));if(fr<0.08)continue;
-      const key=[b.x,b.y,b.w].map(v=>Math.round(v)).join(),ex=U.ex.get(key)||{b,fr:0};ex.fr=Math.max(ex.fr,fr);U.ex.set(key,ex);
+      const fr=Math.min(1,inter/(b.w*b.h));
+      let rel=0;foot.forEach(f=>{const w=Math.min(f.x+f.w,b.x+b.w)-Math.max(f.x,b.x),h=Math.min(f.y+f.h,b.y+b.h)-Math.max(f.y,b.y);if(w>0&&h>0)rel=Math.max(rel,w*h/Math.min(b.w*b.h,f.w*f.h));});   // 小さな文字を、長い行の一部に重ねたとき(行全体に対しては小さい割合)も、重なりとして扱う
+      if(fr<0.08&&rel<0.25)continue;
+      const key=[b.x,b.y,b.w].map(v=>Math.round(v)).join(),ex=U.ex.get(key)||{b,run:rn,fr:0};ex.fr=Math.max(ex.fr,fr);U.ex.set(key,ex);
     }
   }
   // 元のPDFの文字(拾い上げた部品・下になる文字)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
@@ -2825,13 +2851,19 @@ async function commit(only){
      const per=await stripPageText(doc,pg,rl),ok=new Map();its.forEach(it=>ok.set(it,true));const got=new Map();
      per.forEach((n,i)=>{if(own[i]){if(!n)ok.set(own[i],false);else got.set(own[i],true);}else exs[i-(rl.length-exs.length)].done=n>0;});
      its.forEach(it=>{it._stripped=ok.get(it)&&got.get(it);});}}
-  // 一部だけ隠れる下の文字は、見えている部分を画像にして残す
+  // 一部だけ隠れる下の文字: 隠れない文字は文字のまま、一部だけ隠れる文字は、その文字だけ画像にして残す
   for(const [pg,U] of under){
     if(pg!==cur)continue;
+    const page=doc.getPage(pg),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360;
+    const drawImg=async(g)=>{try{const png=await doc.embedPng(await remainsImage(g,U.foot)),[ax,ay]=toUser(g.x,g.y+g.h,W,H,r);page.drawImage(png,{x:ax,y:ay,width:g.w,height:g.h,rotate:degrees(r)});}catch(err){console.warn("見えている部分を画像にできませんでした",err);}};
     for(const e of U.ex.values()){
       if(!e.done||e.fr>=0.9)continue;
-      try{const png=await doc.embedPng(await remainsImage(e.b,U.foot)),page=doc.getPage(pg),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360,[ax,ay]=toUser(e.b.x,e.b.y+e.b.h,W,H,r);
-        page.drawImage(png,{x:ax,y:ay,width:e.b.w,height:e.b.h,rotate:degrees(r)});}catch(err){console.warn("見えている部分を画像にできませんでした",err);}
+      let of=null;try{if(e.run.fname)of=resolveOrigFont(doc,page,e.run.fname);}catch{}
+      const parts=of?splitRun(e.run,of,U.foot):null;
+      if(!parts){await drawImg(e.b);continue;}   // 元のフォントがわからないときは、かたまり全体を画像にする
+      let col="#000000";try{col=sampleColors(e.b).fg||col;}catch{}
+      parts.keep.forEach(sg=>{const [ax,ay]=toUser(sg.x0,e.run.base,W,H,r);drawOrigText(page,of,sg.str,ax,ay,e.run.size,hex2rgb(col),r,sg.ls);});
+      for(const g of parts.img)await drawImg(g);
     }
   }
   // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
