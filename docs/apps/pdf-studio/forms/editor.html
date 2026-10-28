@@ -865,7 +865,7 @@ function buildText(it,t,k){
 // ---- 実際の表示と同じ折り返しで測る(非表示のDOMで計測) ----
 function measureHost(it,g){
   const d=document.createElement("div");
-  d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
+  d.style.cssText="position:fixed;left:-99999px;top:0;visibility:hidden;white-space:"+(it.ol?"pre":"pre-wrap")+";word-break:keep-all;overflow-wrap:"+(it.ol?"normal":"anywhere")+";margin:0;padding:0;border:0;box-sizing:border-box;line-height:"+it.lh+";";
   d.style.width=it.vw+"px";d.style.fontFamily=famOf(it.fmt,it.font);d.style.fontSize=it.size*g+"px";d.style.letterSpacing=(it.ls||0)*g+"px";
   buildText(it,d,g);document.body.appendChild(d);return d;
 }
@@ -886,7 +886,12 @@ function clampToPage(it){
 }
 function growToFit(it){
   if(it.type==="img"||!it.txt)return false;
-  let ch=false,d=measureHost(it,1);
+  let ch=false;
+  if(it.ol){   // PDFの行のとおりの文字(折り返さない): 行が長くなったら、枠を横に広げる
+    const was=it.fsig===faithSig(it),nw=Math.ceil((naturalWidth(it)+it.size*0.15)*10)/10;
+    if(nw>it.vw+0.05){it.vw=Math.min(nw,VW);ch=true;if(was)it.fsig=faithSig(it);}
+  }
+  let d=measureHost(it,1);
   // 横幅は、文字を入れられる境界。はみ出したら折り返して、枠を下に、必要な分だけ足す(幅は変えない)
   if(d.scrollHeight>it.vh+0.5){it.vh=Math.ceil(d.scrollHeight);ch=true;}
   d.remove();
@@ -984,7 +989,7 @@ window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
-  if(t){t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
+  if(t){t.style.whiteSpace=it.ol?"pre":"";t.style.overflowWrap=it.ol?"normal":"";t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
   el.style.background=(it.type!=="img"&&bgModeOf(it)==="all")?bgOf(it):"transparent";   // 枠の中の色は、「白抜き」のときだけ。完全透明・余白透明では、透明のまま(隠すのは、文字のところだけ)
   fixSync(it,el);
 }
@@ -1030,7 +1035,7 @@ function startEdit(it,x,y){   // iPhone: 長押し・「✎ 入力」で入力�
 document.addEventListener("keydown",e=>{
   if(!cs||!faithOn(cs)||e.isComposing||e.altKey)return;const a=document.activeElement;if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return;
   const mod=e.ctrlKey||e.metaKey,k=e.key;
-  const typing=(!mod&&(k.length===1||k==="Backspace"||k==="Delete"||k==="Enter"))||(mod&&/^[avx]$/i.test(k));
+  const typing=(!mod&&(k.length===1||k==="Backspace"||k==="Delete"||k==="Enter"||k==="Home"||k==="End"))||(mod&&/^[avx]$/i.test(k))||(mod&&(k==="Home"||k==="End"));
   if(typing)startEdit(cs,null,null);
 },true);
 function renderOverlay(){
@@ -2525,7 +2530,17 @@ function freezeLayout(it){
   it.ol=L.lines.map(ln=>{let k=ln.ch.length;while(k>0&&ln.ch[k-1].c===" ")k--;let w=0;for(let q=0;q<k;q++)w+=ln.ch[q].w;return{dx:ln.off||0,db:ln.base,ow:w,txt0:ln.ch.slice(0,k).map(x=>x.c).join(""),sz0:ln.ch.slice(0,k).map(x=>x.s)};});
   it.txt=txt;it.sz=sz;it.t0=txt;it.fsig=faithSig(it);
 }
-function leaveEdit(it){if(!it||!it._editing)return;it._editing=false;if(faithOk(it)&&it.txt!==it.t0)freezeLayout(it);}
+function softWrapped(it){   // 入力用の枠で、行が折り返されたか(元の行より、見えている行が多い)
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");const fam=famOf(it.fmt,it.font);
+  return layoutText(it,(c,sv)=>{mctx.font=`${sv}px ${fam}`;return mctx.measureText(c).width;}).lines.length>it.txt.split("\n").length;
+}
+function leaveEdit(it){
+  if(!it||!it._editing)return;it._editing=false;
+  if(faithOk(it)&&it.txt!==it.t0){
+    if(it.txt.split("\n").length===it.ol.length&&!softWrapped(it))it.t0=it.txt;   // 行の数が同じで、折り返しもない: 元の行の位置(字下げ・行頭)のまま、文字だけ入れ替える
+    else freezeLayout(it);   // 行が増えた・折り返した: 入力用の枠で見えていた配置にする
+  }
+}
 const layoutOf=(it,wfn)=>faithOk(it)?layoutFaithful(it,wfn):layoutText(it,wfn);
 function buildFaith(it,fl,k){
   if(!mctx)mctx=document.createElement("canvas").getContext("2d");
@@ -2594,6 +2609,46 @@ function drawOrigText(page,of,str,x,y,size,color,rotDeg,ls){
   const L=PDFLib;page.pushOperators(L.pushGraphicsState(),L.beginText(),L.setFillingColor(color),L.setFontAndSize(of.key,size),...(ls?[L.setCharacterSpacing(ls)]:[]),L.rotateAndSkewTextRadiansAndTranslate(L.degreesToRadians(rotDeg||0),0,0,x,y),L.showText(L.PDFHexString.of(hex)),L.endText(),L.popGraphicsState());
 }
 // ===== 元の文字を、PDFの文字の命令から取り除く(白い四角で隠すのではなく、置き換える) =====
+// ===== 文字を描く命令の送り幅(フォントに入っている字の幅から) =====
+function pdfStrBytes(u,s,e){   // (文字列) または <16進> を、バイト列にする
+  const out=[];
+  if(u[s]===0x3c){let h="";for(let i=s+1;i<e-1;i++){const c=String.fromCharCode(u[i]);if(/[0-9A-Fa-f]/.test(c))h+=c;}if(h.length%2)h+="0";for(let i=0;i<h.length;i+=2)out.push(parseInt(h.slice(i,i+2),16));return out;}
+  for(let i=s+1;i<e-1;i++){let c=u[i];
+    if(c===0x5c){i++;c=u[i];if(c===0x6e)c=10;else if(c===0x72)c=13;else if(c===0x74)c=9;else if(c===0x62)c=8;else if(c===0x66)c=12;
+      else if(c>=0x30&&c<=0x37){let v=c-0x30,n=1;while(n<3&&u[i+1]>=0x30&&u[i+1]<=0x37){v=v*8+u[i+1]-0x30;i++;n++;}c=v&255;}
+      else if(c===10||c===13){if(c===13&&u[i+1]===10)i++;continue;}}
+    out.push(c);}
+  return out;
+}
+function makeFontWidths(doc,page){   // フォント名(/C2_0 など)→ {n:1文字の命令のバイト数, w(code):字の幅(1000分の1)}。わからないフォントは null
+  const cache=new Map(),L=PDFLib,num=o=>{const v=o&&o.asNumber?o.asNumber():(o&&typeof o.numberValue==="number"?o.numberValue:undefined);return v;};
+  let fonts=null;try{const res=page.node.Resources();fonts=res&&res.lookup(L.PDFName.of("Font"));}catch{}
+  return name=>{
+    if(cache.has(name))return cache.get(name);let out=null;
+    try{
+      const fd=fonts&&fonts.lookup(L.PDFName.of(name.replace(/^\//,"")));
+      if(fd){
+        const st=fd.lookup(L.PDFName.of("Subtype")),sub=st&&st.asString?st.asString():String(st);
+        if(/Type0/.test(sub)){
+          const enc=fd.lookup(L.PDFName.of("Encoding")),encs=enc&&enc.asString?enc.asString():String(enc);
+          const df=fd.lookup(L.PDFName.of("DescendantFonts")),d0=df&&df.lookup(0);
+          if(/Identity-H/.test(encs)&&d0){
+            const dw=num(d0.lookup(L.PDFName.of("DW")))??1000,W=d0.lookup(L.PDFName.of("W")),map=new Map();
+            if(W&&W.size){const arr=[];for(let i=0;i<W.size();i++)arr.push(W.lookup(i));
+              for(let i=0;i<arr.length;){const c0=num(arr[i]),nx=arr[i+1];
+                if(nx&&nx.size){for(let q=0;q<nx.size();q++)map.set(c0+q,num(nx.lookup(q)));i+=2;}
+                else{const c1=num(nx),w=num(arr[i+2]);for(let c=c0;c<=c1&&c-c0<70000;c++)map.set(c,w);i+=3;}}}
+            out={n:2,w:c=>map.has(c)?map.get(c):dw};
+          }
+        }else if(/TrueType|Type1|MMType1/.test(sub)){
+          const fc=num(fd.lookup(L.PDFName.of("FirstChar"))),ws=fd.lookup(L.PDFName.of("Widths"));
+          if(fc!==undefined&&ws&&ws.size){const arr=[];for(let i=0;i<ws.size();i++)arr.push(num(ws.lookup(i)));out={n:1,w:c=>{const v=arr[c-fc];return v===undefined?0:v;}};}
+        }
+      }
+    }catch(e){out=null;}
+    cache.set(name,out);return out;
+  };
+}
 function pdfTokens(u){   // ページの命令(コンテンツストリーム)を、値と命令に分ける。位置(s,e)を持つので、あとで切り取れる
   const n=u.length,out=[],ws=c=>c===0||c===9||c===10||c===12||c===13||c===32,dl=c=>c===0x28||c===0x29||c===0x3c||c===0x3e||c===0x5b||c===0x5d||c===0x7b||c===0x7d||c===0x2f||c===0x25;
   const skipStr=i=>{let d=1;i++;while(i<n&&d>0){const x=u[i];if(x===0x5c)i+=2;else{if(x===0x28)d++;else if(x===0x29)d--;i++;}}return i;};
@@ -2621,40 +2676,62 @@ function pdfTokens(u){   // ページの命令(コンテンツストリーム)�
   }
   return out;
 }
-function stripTextOps(u,rects){   // rects: 取り除く範囲(ページの座標=PDFの用紙の座標)。位置が範囲に入る文字の命令(Tj/TJ/'/")を取り除く
+function stripTextOps(u,rects,fw){   // rects: 取り除く範囲(PDFの用紙の座標)。位置が範囲に入る文字の命令(Tj/TJ/'/")を取り除く。フォントの字の幅(fw)から、続きの命令の位置もわかる
   const T=pdfTokens(u),I=[1,0,0,1,0,0],mul=(m,k)=>[m[0]*k[0]+m[1]*k[2],m[0]*k[1]+m[1]*k[3],m[2]*k[0]+m[3]*k[2],m[2]*k[1]+m[3]*k[3],m[4]*k[0]+m[5]*k[2]+k[4],m[4]*k[1]+m[5]*k[3]+k[5]];
-  let ctm=I.slice(),stack=[],tm=I.slice(),tlm=I.slice(),lead=0,after=false,pend=false,lastK=-1,vals=[],cuts=[],unknown=0;const per=rects.map(()=>0);
+  let ctm=I.slice(),stack=[],tm=I.slice(),tlm=I.slice(),lead=0,unk=false,since=false,pend=false,lastK=-1,vals=[],unknown=0,fname=null,fsz=1,tc=0,tw=0,th=1;
+  const ops=[],per=rects.map(()=>0);
   const nums=()=>vals.filter(v=>v.n!==undefined).map(v=>v.n);
-  const td=(x,y)=>{tlm=mul([1,0,0,1,x,y],tlm);tm=tlm.slice();after=false;pend=false;};
+  const pos=()=>{tlm=tlm;};
+  const td=(x,y)=>{tlm=mul([1,0,0,1,x,y],tlm);tm=tlm.slice();unk=false;since=false;pend=false;};
   for(const tk of T){
     if(tk.t==="v"){vals.push(tk);continue;}
     const op=tk.v,nv=nums();
     if(op==="q")stack.push(ctm.slice());
     else if(op==="Q"){if(stack.length)ctm=stack.pop();}
     else if(op==="cm"&&nv.length>=6)ctm=mul(nv.slice(-6),ctm);
-    else if(op==="BT"){tm=I.slice();tlm=I.slice();after=false;pend=false;}
+    else if(op==="BT"){tm=I.slice();tlm=I.slice();unk=false;since=false;pend=false;}
+    else if(op==="Tf"){const nm=vals.find(v=>u[v.s]===0x2f);fname=nm?String.fromCharCode(...u.subarray(nm.s,nm.e)).slice(1):null;if(nv.length)fsz=nv[nv.length-1];}
+    else if(op==="Tc"&&nv.length)tc=nv[nv.length-1];
+    else if(op==="Tw"&&nv.length)tw=nv[nv.length-1];
+    else if(op==="Tz"&&nv.length)th=nv[nv.length-1]/100;
     else if(op==="Td"&&nv.length>=2)td(nv[nv.length-2],nv[nv.length-1]);
     else if(op==="TD"&&nv.length>=2){lead=-nv[nv.length-1];td(nv[nv.length-2],nv[nv.length-1]);}
     else if(op==="TL"&&nv.length)lead=nv[nv.length-1];
     else if(op==="T*")td(0,-lead);
-    else if(op==="Tm"&&nv.length>=6){tm=nv.slice(-6);tlm=tm.slice();after=false;pend=false;}
+    else if(op==="Tm"&&nv.length>=6){tm=nv.slice(-6);tlm=tm.slice();unk=false;since=false;pend=false;}
     else if(op==="Tj"||op==="TJ"||op==="'"||op==='"'){
       if(op==="'"||op==='"')td(0,-lead);
-      const first=vals.length?vals[0].s:tk.s;
-      if(after){   // 前の命令の続き(送り幅がわからない位置の命令): 前の命令を取り除いたときは、続きも一緒に取り除く(あとで、PDFの文字を読み直して、正しく取り除けたか確かめる)
-        if(pend){cuts.push([first,tk.e]);if(lastK>=0)per[lastK]++;}else unknown++;
-      }else{
+      if(op==='"'&&nv.length>=2){tw=nv[nv.length-2];tc=nv[nv.length-1];}
+      const first=vals.length?vals[0].s:tk.s,last=vals[vals.length-1];
+      // この命令の送り幅(文字の幅の合計)。フォントがわからなければ null
+      let adv=null;const F=(fw&&fname&&last)?fw(fname):null;
+      if(F){adv=0;const addStr=(s,e)=>{const b=pdfStrBytes(u,s,e);for(let i=0;i<b.length;i+=F.n){const code=F.n===2?((b[i]<<8)|(b[i+1]||0)):b[i];adv+=(F.w(code)/1000*fsz+tc+((F.n===1&&code===32)?tw:0))*th;}};
+        if(op==="TJ"){const base=last.s+1,toks=pdfTokens(u.subarray(base,last.e-1));for(const q of toks){if(q.t!=="v")continue;if(q.n!==undefined)adv-=q.n/1000*fsz*th;else if(u[base+q.s]===0x28||u[base+q.s]===0x3c)addStr(base+q.s,base+q.e);}}
+        else addStr(last.s,last.e);}
+      const rec={s:first,e:tk.e,op,adv,fsz,th,implicit:since,rm:false};
+      if(!unk){
         const x=tm[4]*ctm[0]+tm[5]*ctm[2]+ctm[4],y=tm[4]*ctm[1]+tm[5]*ctm[3]+ctm[5];
         const k=rects.findIndex(r=>x>=r.x0&&x<=r.x1&&y>=r.y0&&y<=r.y1);
-        if(k>=0){cuts.push([first,tk.e]);per[k]++;pend=true;lastK=k;}
-      }
-      after=true;
+        if(k>=0){rec.rm=true;per[k]++;lastK=k;pend=true;}
+      }else if(pend){rec.rm=true;if(lastK>=0)per[lastK]++;}   // 位置がわからない続きの命令: 前の命令を取り除いたときは、一緒に取り除く(あとで、PDFの文字を読み直して確かめる)
+      else unknown++;
+      ops.push(rec);
+      if(adv===null)unk=true;else if(!unk)tm=mul([1,0,0,1,adv,0],tm);
+      since=true;
     }
     vals=[];
   }
+  const cuts=[];
+  ops.forEach((o,i)=>{
+    if(!o.rm)return;const nx=ops[i+1];
+    if(nx&&nx.implicit&&!nx.rm&&o.adv!==null){   // 取り除く命令の後ろに、位置を指定せずに続く命令が残るとき: 同じ送り幅だけ進めて、続きが動かないようにする
+      if(o.op!=="Tj"&&o.op!=="TJ")return;
+      cuts.push([o.s,o.e,` [${(-o.adv/(o.fsz*o.th)*1000).toFixed(3)}] TJ`]);
+    }else cuts.push([o.s,o.e]);
+  });
   if(!cuts.length)return{out:u,removed:0,unknown,per};
-  const parts=[];let at=0;cuts.forEach(([a,b])=>{parts.push(u.subarray(at,a));at=b;});parts.push(u.subarray(at));
-  const len=parts.reduce((a,b)=>a+b.length,0),out=new Uint8Array(len);let o=0;parts.forEach(q=>{out.set(q,o);o+=q.length;});
+  const parts=[];let at=0;cuts.forEach(([a,b,rp])=>{parts.push(u.subarray(at,a));if(rp)parts.push(new TextEncoder().encode(rp));at=b;});parts.push(u.subarray(at));
+  const len=parts.reduce((a,b)=>a+b.length,0),out=new Uint8Array(len);let o2=0;parts.forEach(q=>{out.set(q,o2);o2+=q.length;});
   return{out,removed:cuts.length,unknown,per};
 }
 function pageContentBytes(doc,page){
@@ -2674,14 +2751,15 @@ async function stripPageText(doc,pageIndex,viewRects){
   try{
     const page=doc.getPage(pageIndex),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360;
     const rects=viewRects.map(c=>{const [a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);return{x0:Math.min(a1,a2)-0.3,x1:Math.max(a1,a2)+0.3,y0:Math.min(b1,b2)-0.3,y1:Math.max(b1,b2)+0.3};});
-    const res=stripTextOps(pageContentBytes(doc,page),rects);
+    const res=stripTextOps(pageContentBytes(doc,page),rects,makeFontWidths(doc,page));
     if(!res||!res.removed)return none;
     const key=PDFLib.PDFName.of("Contents"),old=page.node.get(key);
     page.node.set(key,doc.context.register(doc.context.flateStream(res.out)));
     const before=await pageTextItems(bytes,pageIndex),after=await pageTextItems(await doc.save(),pageIndex);
     const inR=it=>rects.findIndex(q=>it.x>=q.x0&&it.x<=q.x1&&it.y>=q.y0&&it.y<=q.y1),same=(a,b)=>a.s===b.s&&Math.abs(a.x-b.x)<0.6&&Math.abs(a.y-b.y)<0.6;
-    let good=true;const per=viewRects.map(()=>0);
-    for(const it of before){const k=inR(it),there=after.some(q=>same(it,q));if(k>=0){per[k]++;if(there)good=false;}else if(!there)good=false;}
+    let good=true;const per=viewRects.map(()=>0),diag={removed:res.removed,unknown:res.unknown,left:[],lost:[]};
+    for(const it of before){const k=inR(it),there=after.some(q=>same(it,q));if(k>=0){per[k]++;if(there){good=false;diag.left.push(it.s.slice(0,12));}}else if(!there){good=false;diag.lost.push(it.s.slice(0,12));}}
+    window.__stripDiag=diag;
     if(!good){page.node.set(key,old);return none;}
     return per;
   }catch(e){console.warn("文字の命令を取り除けませんでした",e);return none;}
@@ -2716,13 +2794,13 @@ async function commit(only){
     if(it.type==="img"||it.fmt!=="text"||!it.txt.trim()||!isOrigFont(it))continue;
     const page=doc.getPage(it.page),nm=it.ofName||await pageDominantFont(it.page),of=nm?resolveOrigFont(doc,page,nm):null;
     const ok=of&&Array.from(it.txt).every(ch=>/\s/.test(ch)||of.inv.has(ch));
-    if(ok)it._of=of;else needFallback.push(it);
+    it._mix=false;if(ok)it._of=of;else{needFallback.push(it);if(of){it._of=of;it._mix=true;}}   // 元のフォントにない文字だけ、別のフォントで書く(ほかの文字は、元のフォントのまま)
   }
   if(needFallback.length&&!confirm(`元のフォントで書けない文字があります(${needFallback.length}個の枠)。\n別のフォント(ゴシック)を追加して書くと、ファイルが約2MB大きくなります。\nよろしいですか？(いいえ: 取りやめて、フォントや文字を直します)`)){
     status("取りやめました。枠の✥を長押しして、フォントや文字を直してください。");{const er=new Error("フォントの追加を取りやめました");er.noHint=true;throw er;}}
   items=rest;if(!only)cs=null;
   status("PDFに反映中…");
-  for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img"&&!it._of).map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
+  for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img"&&(!it._of||it._mix)).map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
   const pfCache={};
   // 上に重ねて書く文字の下に、ほかの元のPDFの文字があるとき: 完全に隠れるものは取り除く。一部だけ隠れるものは、見えている部分だけを画像にして残す(見た目を、そのままにする)
   const under=new Map();
@@ -2774,13 +2852,26 @@ async function commit(only){
     }
     if(!it.txt.trim())continue;
     growToFit(it);
-    if(it.fmt==="text"&&it._of){   // 元のフォントで書く(フォントのデータは増えない)
-      const of=it._of,rot=r;
-      const L=layoutOf(it,(c,sv)=>(of.width(c)??0.25)*sv);
+    if(it.fmt==="text"&&it._of){   // 元のフォントで書く(フォントのデータは増えない)。元のフォントにない文字があるときだけ、その文字を別のフォントで書く
+      const of=it._of,rot=r;let jp=null;
+      if(it._mix){const fkey=FONTS[it.font]?it.font:"gothic";
+        if(!pfCache[fkey]){doc.registerFontkit(fontkit);status(`日本語フォント(${FONTS[fkey].label})を読み込み中…(初回のみ・数MB)`);pfCache[fkey]=await doc.embedFont(await loadFontKey(fkey),{subset:false});}
+        jp=pfCache[fkey];}
+      const has=c=>!jp||of.inv.has(c)||/\s/.test(c);
+      const L=layoutOf(it,(c,sv)=>has(c)?(of.width(c)??0.25)*sv:jp.widthOfTextAtSize(c,sv));
       L.lines.forEach(ln=>{
         let off=ln.off||0;
         const lsv=ln.ls!==undefined?ln.ls:(it.ls||0);   // 字の間隔は、文字の間隔の命令(Tc)で書く。1文字ずつ置かないので、あとでPDFの文字を読んだとき、1つの文字列になる
-        runsOf(ln).forEach(rn=>{const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);drawOrigText(page,of,rn.str,ax,ay,rn.s,hex2rgb(it.color),rot,lsv);off+=rn.w;});
+        let i=0;
+        while(i<ln.ch.length){   // 同じ大きさ・同じフォントの続きごとに書く。空白は書かずに、その幅だけ進める(空白が詰まらないように)
+          if(/\s/.test(ln.ch[i].c)){off+=ln.ch[i].w;i++;continue;}
+          let j=i;const sv=ln.ch[i].s,orig=has(ln.ch[i].c);let str="",w=0;
+          while(j<ln.ch.length&&ln.ch[j].s===sv&&!/\s/.test(ln.ch[j].c)&&has(ln.ch[j].c)===orig){str+=ln.ch[j].c;w+=ln.ch[j].w;j++;}
+          const [ax,ay]=toUser(it.vx+off,it.vy+ln.base,W,H,r);
+          if(orig)drawOrigText(page,of,str,ax,ay,sv,hex2rgb(it.color),rot,lsv);
+          else{if(lsv)page.pushOperators(PDFLib.pushGraphicsState(),PDFLib.setCharacterSpacing(lsv));page.drawText(str,{x:ax,y:ay,size:sv,font:jp,color:hex2rgb(it.color),rotate:degrees(r)});if(lsv)page.pushOperators(PDFLib.popGraphicsState());}
+          off+=w;i=j;
+        }
       });
     }else if(it.fmt==="text"){
       const fkey=FONTS[it.font]?it.font:"gothic";

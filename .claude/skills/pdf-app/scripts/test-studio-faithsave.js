@@ -20,7 +20,7 @@ async function wrapCase(){
   console.log('保存した行',JSON.stringify(W.map(w=>[w.t,w.x0,w.y1])));
   let ok2=true;const c2=(n,v)=>{console.log((v?'OK  ':'NG  ')+n);if(!v)ok2=false;};
   const ys=[...new Set(W.filter(w=>w.t&&w.y1<232).map(w=>Math.round(w.y1)))];
-  c2('長い文字は折り返して、2行以上になって保存される('+ys.length+'行)',ys.length>=2);
+  c2('PDFの行の枠は、長くしても折り返さず、1行のまま保存される('+ys.length+'行)',ys.length===1);
   c2('行の左端が、元のPDFの左端(80pt)と同じ',W.filter(w=>w.y1<232).every(w=>Math.abs(w.x0-80)<1.2)||W.some(w=>Math.abs(w.x0-80)<1.2));
   if(!ok2)process.exit(1);
 }
