@@ -807,7 +807,6 @@ let applying=false,applyP=null;   // applyP: 反映の最中(保存は、これ�
 async function applyNow(it){
   const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
   if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&it.sig0&&fixChanged(it)))||it._noApply||!(it.txt||"").trim())return;
-  if(!isNew&&!confirm("PDFの元の文字を、直した文字に置き換えます。元の文字はPDFから消えます。\nよろしいですか？\n(いいえ: そのままにして、保存するときに反映します)")){it._noApply=true;return;}
   applying=true;ov.style.pointerEvents="none";
   applyP=(async()=>{try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
   await applyP;applyP=null;
@@ -2687,6 +2686,22 @@ async function stripPageText(doc,pageIndex,viewRects){
     return per;
   }catch(e){console.warn("文字の命令を取り除けませんでした",e);return none;}
 }
+// 上に重ねて書く文字の下にある、元のPDFの文字を調べる(ページの文字の枠を、PDFの文字から読む)
+async function pageRunBoxes(u8,pageIndex){
+  const d=await pdfjsLib.getDocument({data:u8.slice()}).promise;
+  try{const p=await d.getPage(pageIndex+1),vp=p.getViewport({scale:1}),tc=await p.getTextContent(),out=[];
+    for(const it of tc.items){if(!it.str||!it.str.trim())continue;const tx=pdfjsLib.Util.transform(vp.transform,it.transform),size=Math.hypot(tx[2],tx[3]);if(!size||Math.abs(tx[1])>size*0.02||tx[0]<0)continue;out.push(runBox({x:tx[4],base:tx[5],w:it.width*vp.scale,size}));}
+    return out;}finally{try{d.destroy();}catch{}}
+}
+// 一部だけ隠れる文字: 見えている部分だけを、背景の透明な画像にする(上に重ねる文字の下になる部分は、除く)
+async function remainsImage(b,foot){
+  const S=3,cv=await renderRegion(b.x,b.y,b.w,b.h,S),cx=cv.getContext("2d");
+  cx.fillStyle="#fff";foot.forEach(f=>cx.fillRect((f.x-b.x)*S,(f.y-b.y)*S,f.w*S,f.h*S));
+  const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;
+  for(let i=0;i<d.length;i+=4){const a=Math.max(255-d[i],255-d[i+1],255-d[i+2]);if(a>0){for(let q=0;q<3;q++)d[i+q]=Math.max(0,Math.min(255,Math.round((d[i+q]-255+a)*255/a)));}d[i+3]=a;}
+  cx.putImageData(im,0,0);
+  const blob=await new Promise(res=>cv.toBlob(res,"image/png"));return new Uint8Array(await blob.arrayBuffer());
+}
 async function commit(only){
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
@@ -2709,11 +2724,38 @@ async function commit(only){
   status("PDFに反映中…");
   for(const fk of new Set(todo.filter(it=>it.fmt==="text"&&it.type!=="img"&&!it._of).map(it=>FONTS[it.font]?it.font:"gothic")))await ensureWebFontKey(fk).catch(()=>{});
   const pfCache={};
-  // 元のPDFの文字(拾い上げた部品)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
+  // 上に重ねて書く文字の下に、ほかの元のPDFの文字があるとき: 完全に隠れるものは取り除く。一部だけ隠れるものは、見えている部分だけを画像にして残す(見た目を、そのままにする)
+  const under=new Map();
+  for(const it of todo){
+    if(it.type==="img"||!(it.txt||"").trim())continue;
+    const foot=bgModeOf(it)==="all"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:lineRectsOf(it);if(!foot.length)continue;
+    const U=under.get(it.page)||{ex:new Map(),foot:[]};under.set(it.page,U);U.foot.push(...foot);
+    const own=it.type==="fix"?(it.covers||[it.cover]):[];
+    let boxes=[];try{boxes=await pageRunBoxes(bytes,it.page);}catch(e){console.warn(e);}
+    for(const b of boxes){
+      const cx0=b.x+b.w/2,cy0=b.y+b.h/2;if(own.some(c=>cx0>=c.x-1&&cx0<=c.x+c.w+1&&cy0>=c.y-1&&cy0<=c.y+c.h+1))continue;
+      let inter=0;foot.forEach(f=>{const w=Math.min(f.x+f.w,b.x+b.w)-Math.max(f.x,b.x),h=Math.min(f.y+f.h,b.y+b.h)-Math.max(f.y,b.y);if(w>0&&h>0)inter+=w*h;});
+      const fr=Math.min(1,inter/(b.w*b.h));if(fr<0.08)continue;
+      const key=[b.x,b.y,b.w].map(v=>Math.round(v)).join(),ex=U.ex.get(key)||{b,fr:0};ex.fr=Math.max(ex.fr,fr);U.ex.set(key,ex);
+    }
+  }
+  // 元のPDFの文字(拾い上げた部品・下になる文字)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
   {const byPage=new Map();todo.forEach(it=>{if(it.type==="fix"&&it.sig0&&!it.ocrMade){const a=byPage.get(it.page)||[];a.push(it);byPage.set(it.page,a);}});
+   for(const pg of under.keys())if(!byPage.has(pg))byPage.set(pg,[]);
    for(const [pg,its] of byPage){const rl=[],own=[];its.forEach(it=>(it.covers||[it.cover]).forEach(c=>{rl.push(c);own.push(it);}));
-     const per=await stripPageText(doc,pg,rl),ok=new Map();its.forEach(it=>ok.set(it,true));per.forEach((n,i)=>{if(!n)ok.set(own[i],false);});
-     its.forEach(it=>{it._stripped=ok.get(it)&&per.some(n=>n>0);});}}
+     const U=under.get(pg),exs=U?[...U.ex.values()]:[];exs.forEach(e=>{rl.push(e.b);own.push(null);});
+     const per=await stripPageText(doc,pg,rl),ok=new Map();its.forEach(it=>ok.set(it,true));const got=new Map();
+     per.forEach((n,i)=>{if(own[i]){if(!n)ok.set(own[i],false);else got.set(own[i],true);}else exs[i-(rl.length-exs.length)].done=n>0;});
+     its.forEach(it=>{it._stripped=ok.get(it)&&got.get(it);});}}
+  // 一部だけ隠れる下の文字は、見えている部分を画像にして残す
+  for(const [pg,U] of under){
+    if(pg!==cur)continue;
+    for(const e of U.ex.values()){
+      if(!e.done||e.fr>=0.9)continue;
+      try{const png=await doc.embedPng(await remainsImage(e.b,U.foot)),page=doc.getPage(pg),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360,[ax,ay]=toUser(e.b.x,e.b.y+e.b.h,W,H,r);
+        page.drawImage(png,{x:ax,y:ay,width:e.b.w,height:e.b.h,rotate:degrees(r)});}catch(err){console.warn("見えている部分を画像にできませんでした",err);}
+    }
+  }
   // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
   for(const it of todo){
     if(it.type==="img")continue;
