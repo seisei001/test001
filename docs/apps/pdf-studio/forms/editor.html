@@ -2830,9 +2830,10 @@ async function commit(only){
   for(const it of todo){
     if(it.type==="img"||!(it.txt||"").trim())continue;
     const foot=bgModeOf(it)==="all"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:lineRectsOf(it);if(!foot.length)continue;
-    const U=under.get(it.page)||{ex:new Map(),foot:[]};under.set(it.page,U);U.foot.push(...foot);
+    const U=under.get(it.page)||{ex:new Map(),foot:[],hasText:false};under.set(it.page,U);U.foot.push(...foot);
     const own=it.type==="fix"?(it.covers||[it.cover]):[];
     let boxes=[];try{boxes=await pageRunBoxes(bytes,it.page);}catch(e){console.warn(e);}
+    if(boxes.length)U.hasText=true;
     for(const rn of boxes){
       const b=rn.box;
       const cx0=b.x+b.w/2,cy0=b.y+b.h/2;if(own.some(c=>cx0>=c.x-1&&cx0<=c.x+c.w+1&&cy0>=c.y-1&&cy0<=c.y+c.h+1))continue;
@@ -2869,7 +2870,9 @@ async function commit(only){
   // 先に、書き換える文字の元の位置をすべて隠す(隣のセルの新しい文字を上書きしないため)
   for(const it of todo){
     if(it.type==="img")continue;
-    const rs=(it._stripped&&bgModeOf(it)!=="all")?[]:coverRects(it);if(!rs.length)continue;
+    // 文字のあるPDFでは、下の文字を取り除くか画像にしたので、白い四角は要らない(罫線などが、欠けないように)。文字のないページ(スキャンなど)・取り除けなかったときだけ、従来どおり白抜きする
+    const Ux=under.get(it.page),noPatch=it.type==="text"&&bgModeOf(it)!=="all"&&Ux&&Ux.hasText&&[...Ux.ex.values()].every(e=>e.done);
+    const rs=((it._stripped||noPatch)&&bgModeOf(it)!=="all")?[]:coverRects(it);if(!rs.length)continue;
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360,col=hex2rgb(bgOf(it));
     for(const c of rs){const [a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
       page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:col,borderWidth:0});}
