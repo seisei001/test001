@@ -91,7 +91,7 @@ button:disabled{opacity:.4;cursor:default;}
 <div id="splash" title="タップで進む"><div class="sp-box"><div class="sp-icon">📄</div><div class="sp-name">PDFスタジオ<span class="ver" id="spVer">2.0</span></div><div class="sp-sub">PDF編集ソフト</div></div></div>
 
 <div id="app">
-  <div class="formhead"><h1 id="fnDesk">束デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
+  <div class="formhead"><h1 id="fnDesk">製本デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
   <div class="menubar" id="menubar">
     <div class="mg"><button class="mtop" data-d="mdFile">ファイル</button><div class="mdrop hidden" id="mdFile">
       <button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
@@ -140,11 +140,11 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"束デスク",ver:"2.12"},
+  desk:{name:"製本デスク",ver:"2.13"},
   menu:{name:"機能メニュー",ver:"2.02"},
-  edit:{name:"ページ編集",ver:"2.77",src:"forms/editor.html?form=edit"},
-  warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"},
-  rule:{name:"罫線編集",ver:"1.00",src:"forms/editor.html?form=rule"}
+  edit:{name:"ページ編集",ver:"2.78",src:"forms/editor.html?form=edit"},
+  warp:{name:"歪み補正",ver:"2.03",src:"forms/editor.html?form=warp"},
+  rule:{name:"罫線編集",ver:"1.01",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -315,7 +315,15 @@ $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value=
 let tw=170;
 try{tw=+localStorage.getItem("pdfStudioTw")||170;}catch{}
 function applySize(){document.documentElement.style.setProperty("--tw",tw+"px");$("rSize").value=tw;}
-$("rSize").oninput=()=>{tw=+$("rSize").value;applySize();try{localStorage.setItem("pdfStudioTw",tw);}catch{}clearTimeout(applySize.t);applySize.t=setTimeout(()=>bundles.forEach(b=>thumb(b)),180);};
+function setTw(v){tw=Math.max(90,Math.min(320,Math.round(v)));applySize();try{localStorage.setItem("pdfStudioTw",tw);}catch{}clearTimeout(applySize.t);applySize.t=setTimeout(()=>bundles.forEach(b=>thumb(b)),180);}
+$("rSize").oninput=()=>setTw(+$("rSize").value);
+// 束の一覧だけの拡大・縮小(ブラウザの拡大にしない): Ctrl+ホイール(トラックパッドのピンチも)/ 2本指のピンチ。サムネイルの大きさ(見出しの「大きさ」)が変わる
+{const w=$("deskWrap");w.style.touchAction="pan-x pan-y";   // この一覧の上では、ブラウザの拡大は止めて、下の処理で束の大きさを変える
+ w.addEventListener("wheel",e=>{if(!e.ctrlKey)return;e.preventDefault();setTw(tw*Math.exp(-e.deltaY*0.0015));},{passive:false});
+ let p0=null;const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+ w.addEventListener("touchstart",e=>{p0=e.touches.length===2?{d:dist(e.touches)||1,z:tw}:null;},{passive:true});
+ w.addEventListener("touchmove",e=>{if(!p0||e.touches.length!==2)return;e.preventDefault();setTw(p0.z*dist(e.touches)/p0.d);},{passive:false});
+ w.addEventListener("touchend",e=>{if(e.touches.length<2)p0=null;},{passive:true});}
 applySize();
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const b=bundles.find(x=>x.card===e.target);if(b)thumb(b);}}),{root:null,rootMargin:"300px"});
 let rq=Promise.resolve();
