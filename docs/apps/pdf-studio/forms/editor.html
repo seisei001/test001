@@ -802,18 +802,19 @@ function newFix(list){
   if(!list.some(r=>r.ocr)){fx.ol=lines.map(l=>{const sz0=[];l.parts.forEach(pt=>{for(const ch of Array.from(pt.s))sz0.push(pt.size||size);});return{dx:l.x-fx.vx,db:l.base-fx.vy,ow:l.w,txt0:l.parts.map(pt=>pt.s).join(""),sz0};});fx.fsig=faithSig(fx);fx.t0=fx.txt;}   // 元の行の位置・長さを覚える(PDFに近い枠で表示するため)
   return fx;
 }
-let applying=false;
+let applying=false,applyP=null;   // applyP: 反映の最中(保存は、これが終わってから)
 // 直したPDFの部品は、選択を外したとき、PDFの元の文字を取り除いて、新しい文字に置き換える(確認を出す)。そのあと、PDFの文字から枠を作り直す。やめたときは、保存するときに反映する
 async function applyNow(it){
-  if(applying||!items.includes(it)||it.type!=="fix"||!it.sig0||it._noApply||!fixChanged(it)||!it.txt.trim())return;
-  if(!confirm("PDFの元の文字を、直した文字に置き換えます。元の文字はPDFから消えます。\nよろしいですか？\n(いいえ: そのままにして、保存するときに反映します)")){it._noApply=true;return;}
+  const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
+  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&it.sig0&&fixChanged(it)))||it._noApply||!(it.txt||"").trim())return;
+  if(!isNew&&!confirm("PDFの元の文字を、直した文字に置き換えます。元の文字はPDFから消えます。\nよろしいですか？\n(いいえ: そのままにして、保存するときに反映します)")){it._noApply=true;return;}
   applying=true;ov.style.pointerEvents="none";
-  try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}
-  finally{applying=false;ov.style.pointerEvents="";}
+  applyP=(async()=>{try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
+  await applyP;applyP=null;
 }
 function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
   leaveEdit(it);   // 選択を外したら、入力モードも終わり(入力用の枠の見た目のまま、PDFに近い枠にする)
-  if(it&&it.type==="fix")setTimeout(()=>applyNow(it),0);
+  if(it&&(it.type==="fix"||it.type==="text"))setTimeout(()=>applyNow(it),0);
   if(it&&it.type==="text"&&!(it.txt||"").trim()){const i=items.indexOf(it);if(i>=0)items.splice(i,1);}
 }
 function select(it,focus){
@@ -2687,6 +2688,7 @@ async function stripPageText(doc,pageIndex,viewRects){
   }catch(e){console.warn("文字の命令を取り除けませんでした",e);return none;}
 }
 async function commit(only){
+  if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
