@@ -15,7 +15,7 @@ const {launch,WORK}=require('./harness');
   await page.keyboard.press('Control+a');await page.keyboard.type('NEWTEXT');await page.waitForTimeout(300);
   const before=await f.evaluate(()=>window.pdfEditorDebug.bytes().length);
   {const ob=await fr.locator('#ov').boundingBox();await page.mouse.click(ob.x+15,ob.y+ob.height-20);}await page.waitForTimeout(3500);
-  chk('選択を外すと、置き換えの確認が出る',dlg.some(m=>/置き換えます/.test(m)));
+  chk('置き換えの確認は出ない',!dlg.some(m=>/置き換えます/.test(m)));
   const t=await f.evaluate(()=>window.pdfEditorDebug.bytes());fs.writeFileSync('/tmp/replace_out.pdf',Buffer.from(t));
   const txt=execSync('pdftotext /tmp/replace_out.pdf -').toString();console.log('先頭:',JSON.stringify(txt.slice(0,80)));
   chk('新しい文字がPDFに入っている',txt.replace(/\s/g,'').includes('NEWTEXT'));
