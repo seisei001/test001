@@ -87,6 +87,13 @@ body.noimg #pagewrap{background:#fff;}
 #helpBox .hbar,#setBox .hbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;}
 #helpBox .hbody,#setBox .hbody{padding:10px 14px;overflow:auto;font-size:.88rem;line-height:1.6;}
 body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
+body.emb-rule #modeSeg,body.emb-rule #optText,body.emb-rule #optImg,body.emb-rule #optFix,body.emb-rule #optOcr,body.emb-rule #optWarp,body.emb-rule #modeHint,body.emb-rule #selPanel{display:none!important;}
+body.emb-warp #optRule,body.emb-edit #optRule{display:none!important;}
+#ov .rl{position:absolute;cursor:pointer;touch-action:manipulation;}
+#ov .rl .rln{position:absolute;pointer-events:none;background:rgba(37,99,235,.38);border-radius:1px;}
+#ov .rl:hover .rln{background:rgba(37,99,235,.7);}
+#ov .rl.on .rln{background:rgba(220,38,38,.85);}
+#ov .rband{position:absolute;border:1px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
 body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #status{font-size:.85rem;color:var(--muted);min-height:1.3em;}
@@ -227,6 +234,9 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button>
 <button id="wApply">補正する</button>
 <button class="sub-btn" id="wCancel">やめる</button>
+</div>
+<div class="row hidden" id="optRule" style="margin-bottom:8px">
+<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><span class="sub" id="rNum"></span>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
@@ -499,6 +509,7 @@ function toUser(vx,vy,W,H,r){
 }
 const K=()=>ov.getBoundingClientRect().width/VW||1;
 const HINTS={
+  rule:"",
   sel:"PDFの文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)すると、その文字が編集できる部品になります。書き換え(訂正)・打ち足し(加筆)・全部消す(削除)ができます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。文字のない所をドラッグすると、新しい文字の枠になります。部品はタップで選択し、移動・サイズ変更・削除ができます。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください(PDFの文字の上でも、新しい枠を作ります)。",
   warp:"写真で歪んだページを直します。四隅の青い点でページの形を合わせ、白い点(格子点)を動かすと、その点を通る曲線で、中ほどだけの歪みも直せます。確定(補正する)するまで、ページは変わりません。補正したページは画像になります(文字データはなくなります。元に戻すで戻せます)。補正後に「🔍 画像の文字を認識」で文字にできます。",
@@ -530,7 +541,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
-  mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp");document.body.classList.add("m-"+m);
+  mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp","m-rule");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("modeHint").textContent=HINTS[m];
@@ -539,9 +550,10 @@ function setMode(m){
   $("optFix").classList.toggle("hidden",m!=="sel"&&m!=="ocr");
   $("optOcr").classList.toggle("hidden",m!=="ocr");
   $("optWarp").classList.toggle("hidden",m!=="warp");
+  $("optRule").classList.toggle("hidden",m!=="rule");
   if(m!=="warp"){warp=null;$("wPrevBox").classList.add("hidden");}
   else{updateWarpUi();if(warpKind==="page"&&pdfView&&!warp)initWarpPage();}
-  ov.classList.add("draw");ov.classList.toggle("noitems",m==="ocr"||m==="warp");   // 範囲指定のときは、部品の上からでもドラッグできる
+  ov.classList.toggle("draw",m!=="rule");ov.classList.toggle("noitems",m==="ocr"||m==="warp");   // 範囲指定のときは、部品の上からでもドラッグできる
   renderOverlay();
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
@@ -1047,6 +1059,7 @@ document.addEventListener("keydown",e=>{
 function renderOverlay(){
   if(!pdfView)return;
   const k=K();ov.innerHTML="";itemEls.clear();document.body.classList.toggle("has-sel",!!cs);
+  if(mode==="rule"){ruleDraw(k);return;}
   if(mode==="sel"&&runsFor===cur){
     const seen=new Set(); // 点線の枠は、選択したときにまとまる単位(セル・段落・1行)で描く
     blockOf.forEach(g=>{if(seen.has(g))return;seen.add(g);if(g.every(taken))return;   // 訂正の部品にした文字には、点線の枠を出さない
@@ -1449,7 +1462,7 @@ function beginRange(e){
   ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
 }
 function rangeOk(){
-  if(!bytes)return false;
+  if(!bytes||mode==="rule")return false;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return false;}
   return true;
 }
@@ -2979,9 +2992,176 @@ document.addEventListener("wheel",e=>{if(!e.ctrlKey)return;e.preventDefault();se
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
-// ===== PDFスタジオの「ページ編集」「歪み補正」フォームとして動く(?embed=1&form=edit|warp) =====
+// ===== 罫線編集: PDFの罫線(線・薄い塗り四角)を、ページの命令ごと取り除く =====
+// 位置(命令の中の場所)は覚えない。操作のたびにページの命令を読み直して、その場で切り取る(文字を取り除いたあとでも、ずれない)
+const RULE={for:null,scanning:null,els:[],sel:new Set()};
+const rlMul=(m,k)=>[m[0]*k[0]+m[1]*k[2],m[0]*k[1]+m[1]*k[3],m[2]*k[0]+m[3]*k[2],m[2]*k[1]+m[3]*k[3],m[4]*k[0]+m[5]*k[2]+k[4],m[4]*k[1]+m[5]*k[3]+k[5]];
+const rlAp=(m,x,y)=>[x*m[0]+y*m[2]+m[4],x*m[1]+y*m[3]+m[5]];
+const rlFmt=v=>{const r=Math.round(v*10000)/10000;return String(Object.is(r,-0)?0:r);};
+const rlDec=new TextDecoder("latin1"),rlSl=(u,s,e)=>rlDec.decode(u.subarray(s,e)),rlEnc=new TextEncoder();
+function rlScan(doc,page){   // ページ(と、その中の Form XObject)の命令から、線・四角を描く命令を集める
+  const ctx={doc,page,owners:new Map(),paints:[],formUse:new Map()};
+  const pc=pageContentBytes(doc,page);
+  ctx.owners.set("P",{id:"P",bytes:pc,ref:null});
+  rlWalk(ctx,"P",pc,page.node.Resources(),[1,0,0,1,0,0],0);
+  ctx.owners.forEach(o=>{if(o.key&&ctx.formUse.get(o.key)>1)o.locked=true;});   // 何か所かで使っている Form は、片方だけ書き換えられないので、触らない
+  return ctx;
+}
+function rlWalk(ctx,owner,u,res,ctm0,depth){
+  const N=PDFLib.PDFName,T=pdfTokens(u);
+  let gs={ctm:ctm0.slice(),lw:1},stack=[],vals=[],cur=[],path=null,clip=false,pstart=-1;
+  const nums=()=>vals.filter(v=>v.n!==undefined).map(v=>v.n);
+  for(const tk of T){
+    if(tk.t==="v"){vals.push(tk);continue;}
+    const op=tk.v,n=nums();
+    if(op==="q")stack.push({ctm:gs.ctm.slice(),lw:gs.lw});
+    else if(op==="Q"){if(stack.length)gs=stack.pop();}
+    else if(op==="cm"&&n.length>=6)gs.ctm=rlMul(n.slice(-6),gs.ctm);
+    else if(op==="w"&&n.length)gs.lw=n[0];
+    else if(op==="m"&&n.length>=2){if(pstart<0)pstart=vals[0].s;path={type:"path",s:vals[0].s,e:tk.e,pts:[[n[0],n[1]]],segs:[],curve:false};cur.push(path);}
+    else if(op==="l"&&n.length>=2&&path){const a=path.pts[path.pts.length-1],b=[n[0],n[1]];path.segs.push({a,b});path.pts.push(b);path.e=tk.e;}
+    else if((op==="c"||op==="v"||op==="y")&&path){path.curve=true;path.pts.push([n[n.length-2],n[n.length-1]]);path.e=tk.e;}
+    else if(op==="h"&&path){if(!path.curve&&path.pts.length>1&&!path.closed)path.segs.push({a:path.pts[path.pts.length-1],b:path.pts[0]});path.closed=true;path.e=tk.e;}
+    else if(op==="re"&&n.length>=4){if(pstart<0)pstart=vals[0].s;cur.push({type:"re",s:vals[0].s,e:tk.e,n:n.slice(-4)});path=null;}
+    else if(op==="W"||op==="W*")clip=true;
+    else if(/^(S|s|f|F|f\*|B|B\*|b|b\*|n)$/.test(op)){
+      if(op==="s"||op==="b"||op==="b*")cur.forEach(c=>{if(c.type==="path"&&!c.closed&&!c.curve&&c.pts.length>1){c.segs.push({a:c.pts[c.pts.length-1],b:c.pts[0]});c.closed=true;}});   // 「閉じて線を引く」命令の、閉じる辺
+      if(pstart>=0&&!clip)ctx.paints.push({id:ctx.paints.length,owner,s:pstart,e:tk.e,op,stroke:/^(S|s|B|B\*|b|b\*)$/.test(op),fill:/^(f|F|f\*|B|B\*|b|b\*)$/.test(op),subs:cur,gs:{ctm:gs.ctm.slice(),lw:gs.lw}});
+      cur=[];path=null;clip=false;pstart=-1;
+    }
+    else if(op==="Do"&&depth<5){
+      const nm=vals.find(v=>u[v.s]===0x2f),name=nm&&String.fromCharCode(...u.subarray(nm.s+1,nm.e));
+      try{
+        const xo=res&&res.lookup(N.of("XObject")),ro=xo&&xo.get?xo.get(N.of(name)):null,o=ro&&(ro instanceof PDFLib.PDFRef?ctx.doc.context.lookup(ro):ro);
+        const sub=o&&o.dict&&o.dict.lookup(N.of("Subtype"));
+        if(ro instanceof PDFLib.PDFRef&&sub&&/Form/.test(String(sub))){
+          const m=o.dict.lookup(N.of("Matrix")),mm=m instanceof PDFLib.PDFArray&&m.size()===6?[0,1,2,3,4,5].map(i=>m.lookup(i).asNumber()):[1,0,0,1,0,0];
+          const data=PDFLib.decodePDFRawStream(o).decode(),fr=o.dict.lookup(N.of("Resources"))||res,key="X"+ro.objectNumber;
+          ctx.formUse.set(key,(ctx.formUse.get(key)||0)+1);
+          if(!ctx.owners.has(key)){ctx.owners.set(key,{id:key,key,bytes:data,ref:ro,dict:o.dict});rlWalk(ctx,key,data,fr,rlMul(mm,gs.ctm),depth+1);}
+        }
+      }catch{}
+    }
+    vals=[];
+  }
+}
+function rlRules(ctx){   // 描く命令 → 水平・垂直の罫線(1本ずつ。座標は PDF のページの座標)
+  const out=[];
+  for(const p of ctx.paints){
+    const ow=ctx.owners.get(p.owner);if(ow.locked)continue;
+    const ctm=p.gs.ctm,sc=Math.sqrt(Math.abs(ctm[0]*ctm[3]-ctm[1]*ctm[2]))||1,Tr=a=>rlAp(ctm,a[0],a[1]);
+    const push=(kind,si,A,B,t,extra)=>{
+      const dx=Math.abs(B[0]-A[0]),dy=Math.abs(B[1]-A[1]);if(Math.hypot(dx,dy)<1e-6)return;if(dy>dx*0.01&&dx>dy*0.01)return;   // 斜めは対象外
+      out.push({kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,...extra});};
+    const bar=(si,pts)=>{const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),W=x1-x0,H=y1-y0;
+      if(Math.min(W,H)>3||Math.max(W,H)<8)return false;   // 薄くて細長い塗り四角だけを、罫線とみなす
+      if(W>=H)push("bar",si,[x0,(y0+y1)/2],[x1,(y0+y1)/2],H);else push("bar",si,[(x0+x1)/2,y0],[(x0+x1)/2,y1],W);return true;};
+    p.subs.forEach((sub,si)=>{
+      if(sub.type==="re"){
+        const [x,y,w,h]=sub.n;
+        if(p.stroke){const c=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];for(let i=0;i<4;i++)push("edge",si,Tr(c[i]),Tr(c[(i+1)%4]),p.gs.lw*sc,{edge:i});}
+        else if(p.fill)bar(si,[Tr([x,y]),Tr([x+w,y]),Tr([x+w,y+h]),Tr([x,y+h])]);
+      }else if(!sub.curve){
+        if(p.stroke)sub.segs.forEach((g,gi)=>push("seg",si,Tr(g.a),Tr(g.b),p.gs.lw*sc,{seg:gi}));
+        else if(p.fill)bar(si,sub.pts.map(Tr));
+      }
+    });
+  }
+  return out;
+}
+// 選んだ罫線(rlRules の番号)を取り除く。残る辺は、線に書き直す。取り除けたかを、読み直して確かめる
+async function ruleApply(u8,idxs){
+  const doc=await PDFDocument.load(u8),page=doc.getPage(cur),ctx=rlScan(doc,page),rules=rlRules(ctx);
+  const plan=new Map();
+  idxs.forEach(i=>{const r=rules[i];if(!r)return;
+    let pl=plan.get(r.paint);if(!pl){pl=new Map();plan.set(r.paint,pl);}
+    let sp=pl.get(r.sub);if(!sp){sp={del:false,seg:new Set(),edge:new Set()};pl.set(r.sub,sp);}
+    if(r.kind==="bar")sp.del=true;else if(r.kind==="seg")sp.seg.add(r.seg);else sp.edge.add(r.edge);});
+  const eds=new Map(),add=(o,s,e,t)=>{if(!eds.has(o))eds.set(o,[]);eds.get(o).push({s,e,t,q:eds.get(o).length});};
+  for(const [pid,pl] of plan){
+    const p=ctx.paints[pid],u=ctx.owners.get(p.owner).bytes,emit=[],cut=[];let live=0;
+    p.subs.forEach((sub,si)=>{
+      const sp=pl.get(si);if(!sp){live++;return;}
+      cut.push([sub.s,sub.e]);
+      if(sub.type==="re"){
+        if(sp.del||sp.edge.size>=4)return;
+        const [x,y,w,h]=sub.n,c=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+        if(p.fill)emit.push(`${sub.n.map(rlFmt).join(" ")} re f`);
+        for(let i=0;i<4;i++)if(!sp.edge.has(i)){const a=c[i],b=c[(i+1)%4];emit.push(`${rlFmt(a[0])} ${rlFmt(a[1])} m ${rlFmt(b[0])} ${rlFmt(b[1])} l S`);}
+      }else{
+        if(sp.del)return;
+        if(p.fill)emit.push(`${rlSl(u,sub.s,sub.e)} f`);
+        sub.segs.forEach((g,gi)=>{if(!sp.seg.has(gi))emit.push(`${rlFmt(g.a[0])} ${rlFmt(g.a[1])} m ${rlFmt(g.b[0])} ${rlFmt(g.b[1])} l S`);});
+      }
+    });
+    if(!live)add(p.owner,p.s,p.e,"");else cut.forEach(c=>add(p.owner,c[0],c[1],""));
+    if(emit.length)add(p.owner,p.e,p.e,"\n"+emit.join("\n")+"\n");
+  }
+  for(const [id,list] of eds){
+    const o=ctx.owners.get(id);list.sort((a,b)=>a.s-b.s||a.e-b.e||a.q-b.q);
+    let at=0;const parts=[];
+    for(const q of list){if(q.s<at)throw new Error("罫線を書き換えられませんでした");parts.push(o.bytes.subarray(at,q.s),rlEnc.encode(q.t||" "));at=q.e;}
+    parts.push(o.bytes.subarray(at));
+    const len=parts.reduce((a,b)=>a+b.length,0),nb=new Uint8Array(len);let k=0;parts.forEach(b=>{nb.set(b,k);k+=b.length;});
+    if(id==="P")page.node.set(PDFLib.PDFName.of("Contents"),doc.context.register(doc.context.flateStream(nb)));
+    else{const d={};for(const [kk,v] of o.dict.entries()){const kn=kk.asString();if(/^\/(Filter|DecodeParms|Length)$/.test(kn))continue;d[kn.slice(1)]=v;}doc.context.assign(o.ref,doc.context.flateStream(nb,d));}
+  }
+  const out=new Uint8Array(await doc.save());
+  const d2=await PDFDocument.load(out),n2=rlRules(rlScan(d2,d2.getPage(cur))).length;
+  if(n2!==rules.length-idxs.length)throw Object.assign(new Error("罫線をうまく消せませんでした。"),{noHint:true});   // 消えた本数が合わないときは、反映しない
+  return out;
+}
+async function ruleLoad(){   // 画面に出す罫線の一覧(画面の座標つき)を作る
+  const b=bytes;if(RULE.scanning===b)return;RULE.scanning=b;
+  try{
+    const doc=await PDFDocument.load(b),page=doc.getPage(cur),pg=await pdfView.getPage(cur+1),vp=pg.getViewport({scale:1});
+    const els=rlRules(rlScan(doc,page));
+    els.forEach(r=>{const A=vp.convertToViewportPoint(r.x0,r.y0),B=vp.convertToViewportPoint(r.x1,r.y1);r.v=[A[0],A[1],B[0],B[1]];});
+    if(bytes!==b)return;
+    RULE.for=b;RULE.els=els;RULE.sel=new Set();
+  }finally{if(RULE.scanning===b)RULE.scanning=null;}
+  renderOverlay();ruleSync();
+}
+function ruleSync(){const n=RULE.sel.size;$("rDel").disabled=!n;$("rClr").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
+function ruleDraw(k){
+  if(RULE.for!==bytes){ruleLoad().catch(e=>status("罫線を読み取れませんでした: "+(e.message||e)));return;}
+  const pad=Math.max(7/k,0);
+  RULE.els.map((r,i)=>[r,i]).sort((p,q)=>Math.hypot(q[0].v[2]-q[0].v[0],q[0].v[3]-q[0].v[1])-Math.hypot(p[0].v[2]-p[0].v[0],p[0].v[3]-p[0].v[1])).forEach(([r,i])=>{   // 長い線を先に描く(短い線が上になって、選びやすい)
+    const [ax,ay,bx,by]=r.v,hz=Math.abs(bx-ax)>=Math.abs(by-ay),el=document.createElement("div");
+    el.className="rl"+(RULE.sel.has(i)?" on":"");el.dataset.i=i;
+    const x0=Math.min(ax,bx),x1=Math.max(ax,bx),y0=Math.min(ay,by),y1=Math.max(ay,by);
+    const L=(hz?x0:x0-pad)*k,Tp=(hz?y0-pad:y0)*k,W=(hz?x1-x0:2*pad)*k,H=(hz?2*pad:y1-y0)*k;
+    el.style.cssText=`left:${L}px;top:${Tp}px;width:${W}px;height:${H}px`;
+    const ln=document.createElement("div");ln.className="rln";
+    const lt=Math.max(3,r.t*k);   // 見える太さは、3px 以上
+    ln.style.cssText=hz?`left:0;right:0;top:${H/2-lt/2}px;height:${lt}px`:`top:0;bottom:0;left:${W/2-lt/2}px;width:${lt}px`;
+    el.appendChild(ln);
+    el.onclick=e=>{e.stopPropagation();RULE.sel.has(i)?RULE.sel.delete(i):RULE.sel.add(i);el.classList.toggle("on");ruleSync();};
+    ov.appendChild(el);
+  });
+}
+$("rAll").onclick=()=>{RULE.els.forEach((_,i)=>RULE.sel.add(i));renderOverlay();ruleSync();};
+$("rClr").onclick=()=>{RULE.sel.clear();renderOverlay();ruleSync();};
+$("rDel").onclick=busy(async()=>{
+  const idxs=[...RULE.sel];if(!idxs.length||!bytes)return;
+  const nb=await ruleApply(bytes,idxs);
+  await setBytes(nb,true);status(`${idxs.length}本の罫線を消しました。`);
+});
+ov.addEventListener("pointerdown",e=>{   // 何もない所をドラッグ: 通った罫線をまとめて選ぶ(マウス)。軽くクリック: 選択を外す
+  if(mode!=="rule"||e.target!==ov||e.pointerType!=="mouse"||e.button!==0)return;
+  const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
+  d.className="rband";ov.appendChild(d);let moved=false;
+  const mv=ev=>{const x=Math.min(x0,X(ev)),y=Math.min(y0,Y(ev)),w=Math.abs(X(ev)-x0),h=Math.abs(Y(ev)-y0);if(w*k>4||h*k>4)moved=true;d.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;};
+  const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();
+    if(!moved){RULE.sel.clear();}
+    else{const xa=Math.min(x0,X(ev)),xb=Math.max(x0,X(ev)),ya=Math.min(y0,Y(ev)),yb=Math.max(y0,Y(ev));
+      RULE.els.forEach((r,i)=>{const [ax,ay,bx,by]=r.v;if(Math.max(ax,bx)>=xa&&Math.min(ax,bx)<=xb&&Math.max(ay,by)>=ya&&Math.min(ay,by)<=yb)RULE.sel.add(i);});}
+    renderOverlay();ruleSync();};
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
+});
+// ===== PDFスタジオの「ページ編集」「歪み補正」「罫線編集」フォームとして動く(?embed=1&form=edit|warp|rule) =====
 // 親(束デスク)から、表示中の1ページだけのPDFを受け取り、編集して「保存して束に戻す」で返す。画面の名前・バージョンは親が上に表示する
-const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":"edit";
+const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":QS.get("form")==="rule"?"rule":"edit";
 if(EMBED){
   document.body.classList.add("embed","emb-"+FORMKIND);
   {   // 見出しに集約: 元に戻す・状況・モード・モードごとの操作・選んでいる枠の道具を、見出しの中に移す(IDはそのまま)
@@ -2989,7 +3169,7 @@ if(EMBED){
     $("embRow1").querySelector(".embL").prepend($("bUndo"));
     $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
     $("embRow3").appendChild($("modeSeg"));
-    ["optImg","optOcr","optWarp","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
+    ["optImg","optOcr","optWarp","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
     const sb=$("setBody");["ocrEngine","ocrClean","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
     $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
     $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
@@ -2997,15 +3177,15 @@ if(EMBED){
   }
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
-  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
+  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
     if(m&&m.type==="zoom"){GEO.set(m);applyZoom();clearTimeout(jobPlT);jobPlT=setTimeout(placeJob,300);onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
     fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];cs=null;lastSel=null;hideSizePop();blockOf=new Map();runs=[];runsFor=-1;curBase=null;imgData=null;syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
-    setMode(FORMKIND==="warp"?"warp":"sel");
-    status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":"このページを編集できます。");
+    setMode(FORMKIND==="warp"?"warp":FORMKIND==="rule"?"rule":"sel");
+    status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":FORMKIND==="rule"?"罫線を青く表示しています。":"このページを編集できます。");
   }));
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
@@ -3016,7 +3196,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

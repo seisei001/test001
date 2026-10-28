@@ -141,9 +141,10 @@ button:disabled{opacity:.4;cursor:default;}
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
   desk:{name:"束デスク",ver:"2.12"},
-  menu:{name:"機能メニュー",ver:"2.01"},
+  menu:{name:"機能メニュー",ver:"2.02"},
   edit:{name:"ページ編集",ver:"2.77",src:"forms/editor.html?form=edit"},
-  warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"}
+  warp:{name:"歪み補正",ver:"2.02",src:"forms/editor.html?form=warp"},
+  rule:{name:"罫線編集",ver:"1.00",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -542,6 +543,7 @@ function openMenu(b){
   const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
   add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
   add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
+  add("📏 罫線編集",`${pn}の罫線(線・表の枠)を選んで消す`,()=>openForm("rule",b));
   $("menu").classList.remove("hidden");
 }
 function closeMenu(){$("menu").classList.add("hidden");}
@@ -554,7 +556,7 @@ let formB=null,panPos=null;
 function openForm(kind,b){
   const F=FORMS[kind];formB=b;
   $("formName").textContent=F.name;$("formVer").textContent=F.ver;
-  const fr=$("formFrame");/* 版を付けて、古い画面(キャッシュ)を使い続けないようにする */fr.src=F.src+"&embed=1&v="+encodeURIComponent(FORMS.edit.ver+"-"+FORMS.warp.ver);$("formHost").classList.remove("hidden");fr._kind=kind;
+  const fr=$("formFrame");/* 版を付けて、古い画面(キャッシュ)を使い続けないようにする */fr.src=F.src+"&embed=1&v="+encodeURIComponent(FORMS.edit.ver+"-"+FORMS.warp.ver+"-"+FORMS.rule.ver);$("formHost").classList.remove("hidden");fr._kind=kind;
 }
 function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
 $("formClose").onclick=closeForm;
