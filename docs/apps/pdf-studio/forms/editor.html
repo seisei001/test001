@@ -2989,6 +2989,12 @@ function setPZ(z,cx,cy){
   renderOverlay();
 }
 document.addEventListener("wheel",e=>{if(!e.ctrlKey)return;e.preventDefault();setPZ(PZ*Math.exp(-e.deltaY*0.0015),e.clientX,e.clientY);},{passive:false});   // Ctrl+ホイール(トラックパッドのピンチも)は、ページだけを拡大・縮小する
+{const sg=document.querySelector(".stage");   // 2本指のピンチも、ページだけの拡大・縮小にする(画面全体の拡大は、この領域の上では止める)
+ sg.style.touchAction="pan-x pan-y";
+ let p0=null;const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+ sg.addEventListener("touchstart",e=>{p0=e.touches.length===2?{d:dist(e.touches)||1,z:PZ}:null;},{passive:true});
+ sg.addEventListener("touchmove",e=>{if(!p0||e.touches.length!==2)return;e.preventDefault();const t=e.touches;setPZ(p0.z*dist(t)/p0.d,(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2);},{passive:false});
+ sg.addEventListener("touchend",e=>{if(e.touches.length<2)p0=null;},{passive:true});}
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
