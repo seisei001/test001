@@ -235,7 +235,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </div>
 <div class="row hidden" id="optWarp" style="margin-bottom:8px">
 <div class="seg"><button id="wkPage" class="on">一括(ページ全体)</button><button id="wkPart">部分(範囲を指定)</button></div>
-<button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button>
+<button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button><label id="wEraseLbl" class="hidden"><input type="checkbox" id="wErase" checked> 元の場所は消す</label><button class="sub-btn hidden" id="wDstReset">貼り付け先を元の場所に戻す</button>
 <button id="wApply">補正する</button>
 <button class="sub-btn" id="wCancel">やめる</button>
 </div>
@@ -1515,7 +1515,7 @@ ov.addEventListener("touchmove",e=>{if(tlp&&tlp.armed&&e.touches.length<2){if(e.
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== 歪み補正: 一括(台形補正) / 部分(上下左右のベジェ曲線で曲面を伸ばす) ======
-let warp=null,warpKind="page",warpSvg=null,warpHandles=[],warpLines=[],warpPrevTimer=null,warpPrevSrc=null;
+let warp=null,warpKind="page",warpDst=null,warpSvg=null,warpHandles=[],warpLines=[],warpPrevTimer=null,warpPrevSrc=null;
 const lerp2=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
 function bez(p0,c1,c2,p3,t){const u=1-t,a=u*u*u,b=3*u*u*t,c=3*u*t*t,d=t*t*t;return[a*p0[0]+b*c1[0]+c*c2[0]+d*p3[0],a*p0[1]+b*c1[1]+c*c2[1]+d*p3[1]];}
 // 曲線を「長さ」で等分に引けるようにする(文字の間隔が偏らないように)
@@ -1607,6 +1607,7 @@ function warpRatio(wp){const P=warpP(wp);return((dist2(P.tl,P.bl)+dist2(P.tr,P.b
 function updateWarpUi(){
   $("wkPage").classList.toggle("on",warpKind==="page");$("wkPart").classList.toggle("on",warpKind==="part");
   $("wAuto").classList.toggle("hidden",warpKind!=="page");
+  const part=warpKind==="part"&&!!warp&&warp.kind==="part";$("wEraseLbl").classList.toggle("hidden",!part);$("wDstReset").classList.toggle("hidden",!part);
 }
 function initWarpPage(){
   const m=0.04;
@@ -1618,8 +1619,8 @@ function initWarpPage(){
 }
 function createPartWarp(x,y,w,h){
   const G=[];for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push([x+w*c/(GN-1),y+h*r/(GN-1)]);}
-  warp={kind:"part",rect:{x,y,w,h},curved:true,G};renderWarp();warpPreviewSoon();
-  status("青い角と白い点(格子点)を、歪んだ文字の行・列に合わせて動かしてください。動かした点を通る曲線で、まわり(中ほどだけの歪みも)なめらかに直ります。枠の中が、元の範囲の四角にまっすぐ伸びます。");
+  warp={kind:"part",rect:{x,y,w,h},curved:true,G,dst:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]};updateWarpUi();renderWarp();warpPreviewSoon();
+  status("青い角と白い点(格子点)を、直したい部分の行・列に合わせて動かしてください(元の画像の範囲)。緑の枠が、直した画像を置く場所です。緑の枠をドラッグして動かし、緑の角で形と大きさを決めてください。");
 }
 const SVGNS="http://www.w3.org/2000/svg";
 function renderWarp(){
@@ -1634,6 +1635,13 @@ function renderWarp(){
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"h",f:i/4});
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"v",f:i/4});
   }
+  warpDst=null;
+  if(warp.kind==="part"&&warp.dst){   // 直した画像を置く場所(緑の四角形)。中をドラッグで動かし、角で形・大きさを決める
+    const poly=mk("polygon",{fill:"rgba(22,163,74,.10)",stroke:"#16a34a","stroke-width":px(2),"stroke-dasharray":`${px(6)} ${px(4)}`});
+    poly.style.cssText="pointer-events:all;cursor:move;touch-action:none";
+    const hs=warp.dst.map((_,i)=>{const e=mk("circle",{r:px(9),fill:"#16a34a",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;cursor:move;touch-action:none";return e;});
+    warpDst={poly,hs};dragDst(poly,-1);hs.forEach((e,i)=>dragDst(e,i));
+  }
   for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
     const id=r+"_"+c,corner=(r===0||r===GN-1)&&(c===0||c===GN-1),inner=r>0&&r<GN-1&&c>0&&c<GN-1;
     const e=mk("circle",{r:px(corner?9:inner?6:7),fill:corner?"#2563eb":"#fff",stroke:"#2563eb","stroke-width":px(2.5),"data-h":id});
@@ -1647,6 +1655,54 @@ function updateWarpSvg(){
   const f=makeUnitMap(warp),N=28;
   warpLines.forEach(l=>{const pts=[];for(let i=0;i<=N;i++){const u=i/N,[x,y]=l.dir==="h"?f(u,l.f):f(l.f,u);pts.push(x.toFixed(2)+","+y.toFixed(2));}l.el.setAttribute("points",pts.join(" "));});
   warpHandles.forEach(h=>{const p=warp.G[h.r][h.c];h.el.setAttribute("cx",p[0]);h.el.setAttribute("cy",p[1]);});
+  if(warpDst&&warp.dst){warpDst.poly.setAttribute("points",warp.dst.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "));warpDst.hs.forEach((e,i)=>{e.setAttribute("cx",warp.dst[i][0]);e.setAttribute("cy",warp.dst[i][1]);});}
+}
+function dragDst(el,idx){   // idx=-1: 四角形ぜんたいを動かす / 0〜3: その角だけ動かす
+  el.addEventListener("pointerdown",e=>{
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    const k=K(),sx=e.clientX,sy=e.clientY,D0=warp.dst.map(q=>q.slice());
+    const mv=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
+      if(idx<0){const mnx=Math.min(...D0.map(q=>q[0])),mxx=Math.max(...D0.map(q=>q[0])),mny=Math.min(...D0.map(q=>q[1])),mxy=Math.max(...D0.map(q=>q[1]));
+        const ddx=Math.max(-mnx,Math.min(VW-mxx,dx)),ddy=Math.max(-mny,Math.min(VH-mxy,dy));warp.dst=D0.map(q=>[q[0]+ddx,q[1]+ddy]);}
+      else{warp.dst=D0.map(q=>q.slice());warp.dst[idx]=[Math.max(0,Math.min(VW,D0[idx][0]+dx)),Math.max(0,Math.min(VH,D0[idx][1]+dy))];}
+      updateWarpSvg();};
+    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
+    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+  });
+}
+// 四角形(単位正方形の写像 squareToQuad と同じ向き)の、逆写像: ページの点 → (u,v)
+function quadInverse(p0,p1,p2,p3){
+  const [x0,y0]=p0,[x1,y1]=p1,[x2,y2]=p2,[x3,y3]=p3,sx=x0-x1+x2-x3,sy=y0-y1+y2-y3;let a,b,c,d,e,f,g=0,h=0;
+  if(Math.abs(sx)<1e-9&&Math.abs(sy)<1e-9){a=x1-x0;b=x2-x1;c=x0;d=y1-y0;e=y2-y1;f=y0;}
+  else{const dx1=x1-x2,dx2=x3-x2,dy1=y1-y2,dy2=y3-y2,det=dx1*dy2-dx2*dy1;g=(sx*dy2-dx2*sy)/det;h=(dx1*sy-sx*dy1)/det;a=x1-x0+g*x1;b=x3-x0+h*x3;c=x0;d=y1-y0+g*y1;e=y3-y0+h*y3;f=y0;}
+  const A=e-f*h,B=c*h-b,C=b*f-c*e,D=f*g-d,E=a-c*g,F=c*d-a*f,G=d*h-e*g,Hh=b*g-a*h,I=a*e-b*d;   // 3×3 行列の余因子(逆行列の定数倍)
+  return(x,y)=>{const w=G*x+Hh*y+I;if(Math.abs(w)<1e-12)return null;return[(A*x+B*y+C)/w,(D*x+E*y+F)/w];};
+}
+// 元の範囲(曲線の格子)を、緑の四角形に合わせて貼り付ける。sampleCv=直す前のページ、outCv=貼り付け先(ここに書き込む)、S=画素/pt
+function pasteWarpToQuad(sampleCv,outCv,wp,S){
+  const D=wp.dst,inv=quadInverse(D[0],D[1],D[2],D[3]),f=makeUnitMap(wp);
+  const NT=48,T=[];for(let j=0;j<=NT;j++){T.push([]);for(let i=0;i<=NT;i++)T[j].push(f(i/NT,j/NT));}   // 元の位置の対応表(細かく計算せず、表を補間する)
+  const T2=(u,v)=>{const X=Math.max(0,Math.min(NT-1e-6,u*NT)),Y=Math.max(0,Math.min(NT-1e-6,v*NT)),i=Math.floor(X),j=Math.floor(Y),fx=X-i,fy=Y-j,a=T[j][i],b=T[j][i+1],c=T[j+1][i],d=T[j+1][i+1];
+    return[a[0]*(1-fx)*(1-fy)+b[0]*fx*(1-fy)+c[0]*(1-fx)*fy+d[0]*fx*fy,a[1]*(1-fx)*(1-fy)+b[1]*fx*(1-fy)+c[1]*(1-fx)*fy+d[1]*fx*fy];};
+  const sw=sampleCv.width,sh=sampleCv.height,sd=sampleCv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,sw,sh).data;
+  const xs=D.map(q=>q[0]),ys=D.map(q=>q[1]),bx0=Math.max(0,Math.floor(Math.min(...xs)*S)),by0=Math.max(0,Math.floor(Math.min(...ys)*S)),bx1=Math.min(outCv.width,Math.ceil(Math.max(...xs)*S)),by1=Math.min(outCv.height,Math.ceil(Math.max(...ys)*S));
+  const bw=bx1-bx0,bh=by1-by0;if(bw<=0||bh<=0)return;
+  const octx=outCv.getContext("2d"),od=octx.getImageData(bx0,by0,bw,bh),o=od.data;
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
+    const uv=inv((bx0+x+0.5)/S,(by0+y+0.5)/S);if(!uv||uv[0]<0||uv[0]>1||uv[1]<0||uv[1]>1)continue;
+    const [px,py]=T2(uv[0],uv[1]),X=px*S-0.5,Y=py*S-0.5,x0=Math.floor(X),y0=Math.floor(Y),k=(y*bw+x)*4;
+    if(x0<-1||y0<-1||x0>=sw||y0>=sh){o[k]=o[k+1]=o[k+2]=255;o[k+3]=255;continue;}
+    const fx=X-x0,fy=Y-y0,xa=Math.max(0,Math.min(sw-1,x0)),xb=Math.max(0,Math.min(sw-1,x0+1)),ya=Math.max(0,Math.min(sh-1,y0)),yb=Math.max(0,Math.min(sh-1,y0+1));
+    const i00=(ya*sw+xa)*4,i10=(ya*sw+xb)*4,i01=(yb*sw+xa)*4,i11=(yb*sw+xb)*4;
+    for(let c=0;c<3;c++)o[k+c]=sd[i00+c]*(1-fx)*(1-fy)+sd[i10+c]*fx*(1-fy)+sd[i01+c]*(1-fx)*fy+sd[i11+c]*fx*fy;
+    o[k+3]=255;}
+  octx.putImageData(od,bx0,by0);
+}
+// 元の範囲(曲線で囲まれた形)を白く塗る
+function eraseWarpSource(cv,wp,S){
+  const f=makeUnitMap(wp),ctx=cv.getContext("2d"),N=40;ctx.save();ctx.fillStyle="#fff";ctx.beginPath();
+  const pts=[];for(let i=0;i<=N;i++)pts.push(f(i/N,0));for(let i=1;i<=N;i++)pts.push(f(1,i/N));for(let i=1;i<=N;i++)pts.push(f(1-i/N,1));for(let i=1;i<N;i++)pts.push(f(0,1-i/N));
+  pts.forEach((q,i)=>{if(i)ctx.lineTo(q[0]*S,q[1]*S);else ctx.moveTo(q[0]*S,q[1]*S);});ctx.closePath();ctx.fill();ctx.lineWidth=Math.max(1,S);ctx.strokeStyle="#fff";ctx.stroke();ctx.restore();   // 縁も塗る(取り残しが出ないように)
 }
 function dragWarpHandle(el,r,c){
   el.addEventListener("pointerdown",e=>{
@@ -1677,7 +1733,7 @@ async function renderWarpPreview(){
   const wp=warp;if(!wp)return;
   let outW,outH;
   if(wp.kind==="page"){outW=Math.min(520,Math.round(VW*Sp));outH=Math.round(outW*warpRatio(wp));}
-  else{const sc=Math.min(520/wp.rect.w,Sp);outW=Math.max(8,Math.round(wp.rect.w*sc));outH=Math.max(8,Math.round(wp.rect.h*sc));}
+  else{const D=wp.dst||[[wp.rect.x,wp.rect.y],[wp.rect.x+wp.rect.w,wp.rect.y],[wp.rect.x+wp.rect.w,wp.rect.y+wp.rect.h],[wp.rect.x,wp.rect.y+wp.rect.h]],dw=Math.max(8,(dist2(D[0],D[1])+dist2(D[3],D[2]))/2),dh=Math.max(8,(dist2(D[0],D[3])+dist2(D[1],D[2]))/2),sc=Math.min(520/dw,Sp);outW=Math.max(8,Math.round(dw*sc));outH=Math.max(8,Math.round(dh*sc));}
   const res=warpImage(warpPrevSrc.cv,makePixMap(wp,outW,outH),outW,outH,Sp);
   const pc=$("wPrev");pc.width=res.width;pc.height=res.height;pc.getContext("2d").drawImage(res,0,0);
   $("wPrevBox").classList.remove("hidden");
@@ -1693,16 +1749,23 @@ async function applyWarp(){
     const ratio=warpRatio(wp),outW=Math.round(VW*WS),outH=Math.round(outW*ratio);
     result=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);newH=VW*ratio;
   }else{
-    const r=wp.rect,outW=Math.round(r.w*WS),outH=Math.round(r.h*WS);
-    const patch=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);
-    page.getContext("2d").drawImage(patch,Math.round(r.x*WS),Math.round(r.y*WS));result=page;
+    const D=wp.dst,same=!D||D.every((q,i)=>Math.hypot(q[0]-[wp.rect.x,wp.rect.x+wp.rect.w,wp.rect.x+wp.rect.w,wp.rect.x][i],q[1]-[wp.rect.y,wp.rect.y,wp.rect.y+wp.rect.h,wp.rect.y+wp.rect.h][i])<0.5);
+    if(same){   // 置き場所が元の範囲と同じ: 範囲の中を、まっすぐに直す
+      const r=wp.rect,outW=Math.round(r.w*WS),outH=Math.round(r.h*WS);
+      const patch=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);
+      page.getContext("2d").drawImage(patch,Math.round(r.x*WS),Math.round(r.y*WS));result=page;
+    }else{   // 置き場所が別: 元の範囲の画像を直して、緑の四角形のところへ貼る(元の場所は、選べば白く消す)
+      const orig=document.createElement("canvas");orig.width=page.width;orig.height=page.height;orig.getContext("2d").drawImage(page,0,0);
+      if($("wErase").checked)eraseWarpSource(page,wp,WS);
+      pasteWarpToQuad(orig,page,wp,WS);result=page;
+    }
   }
   const blob=await new Promise(res=>result.toBlob(res,"image/jpeg",0.92));
   const doc=await PDFDocument.load(bytes);
   const img=await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
   const idx=cur;doc.removePage(idx);const np=doc.insertPage(idx,[newW,newH]);
   np.drawImage(img,{x:0,y:0,width:newW,height:newH});
-  warp=null;$("wPrevBox").classList.add("hidden");
+  warp=null;warpDst=null;$("wPrevBox").classList.add("hidden");
   await setBytes(await doc.save(),true);
   setMode("sel");
   status("歪みを補正しました(このページは画像になりました)。続けて「🔍 画像の文字を認識」で文字にできます。元に戻すで戻せます。");
@@ -1719,6 +1782,7 @@ $("wAuto").onclick=busy(async()=>{
   updateWarpSvg();warpPreviewSoon();
   status("四隅の位置を提案しました。ずれていれば、点をドラッグして合わせてから「補正する」を押してください。");
 });
+$("wDstReset").onclick=()=>{if(!warp||warp.kind!=="part")return;const r=warp.rect;warp.dst=[[r.x,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h],[r.x,r.y+r.h]];updateWarpSvg();warpPreviewSoon();};
 $("wApply").onclick=busy(applyWarp);
 $("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMode("sel");};
 
@@ -3291,7 +3355,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
