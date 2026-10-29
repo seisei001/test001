@@ -566,11 +566,22 @@ function setMode(m){
 {let g="1";try{g=localStorage.getItem("pdfEditorGhost")||"1";}catch{}
  $("ovGhost").checked=g==="1";ov.classList.toggle("ghost",$("ovGhost").checked);}
 $("ovGhost").onchange=()=>{ov.classList.toggle("ghost",$("ovGhost").checked);try{localStorage.setItem("pdfEditorGhost",$("ovGhost").checked?"1":"0");}catch{}};
+function jpegOrient(u){   // JPEG の EXIF の『向き』(1=そのまま、2〜8=回転・反転が必要)。無ければ 1
+  try{if(u[0]!==0xff||u[1]!==0xd8)return 1;let i=2;
+    while(i+4<u.length){if(u[i]!==0xff){i++;continue;}const m=u[i+1],len=(u[i+2]<<8)|u[i+3];
+      if(m===0xe1&&u[i+4]===0x45&&u[i+5]===0x78&&u[i+6]===0x69&&u[i+7]===0x66){
+        const t=i+10,le=u[t]===0x49,g16=o=>le?u[o]|(u[o+1]<<8):(u[o]<<8)|u[o+1],g32=o=>le?(u[o]|(u[o+1]<<8)|(u[o+2]<<16)|(u[o+3]<<24))>>>0:((u[o]<<24)|(u[o+1]<<16)|(u[o+2]<<8)|u[o+3])>>>0;
+        const ifd=t+g32(t+4),n=g16(ifd);for(let k=0;k<n;k++){const e=ifd+2+k*12;if(g16(e)===0x0112)return g16(e+8)||1;}return 1;}
+      if(m===0xda||m===0xd9)break;i+=2+len;}}catch{}
+  return 1;}
 $("fImg").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   if(imgData)URL.revokeObjectURL(imgData.url);
   imgData={bytes:await readFile(f),png:f.type==="image/png",url:URL.createObjectURL(f)};
   const im=new Image();im.src=imgData.url;await im.decode();imgData.ratio=im.naturalHeight/im.naturalWidth;
+  if(!imgData.png&&jpegOrient(imgData.bytes)>1){   // スマホの写真など: 向きが『EXIF』という付属の情報にだけ書いてある JPEG は、画面ではそのとおりに見えるが、PDFに入れると向きが無視されて、縦横が入れ替わる。画素を正しい向きに描き直して入れる
+    const cv=document.createElement("canvas");cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext("2d").drawImage(im,0,0);
+    const bl=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.92));if(bl)imgData.bytes=new Uint8Array(await bl.arrayBuffer());}
   $("imgName").textContent=f.name;e.target.value="";
 });
 
