@@ -783,13 +783,13 @@ function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字�
 function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
   const k=K(),bg=bgOf(it);let rs;
-  if(it.type==="fix"&&bgModeOf(it)==="ink"){
+  if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"){
     inkCompute(it).catch(()=>{});const st=it._ink;
     if(st&&!st.busy&&!st.failed){   // 文字のインクだけを消した、パッチの画像を、元の画像の上に重ねる
       st.patches.forEach(pc=>{const c=document.createElement("canvas");c.width=pc.cv.width;c.height=pc.cv.height;c.getContext("2d").drawImage(pc.cv,0,0);c.className="cover inkp"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;
         c.style.cssText=`left:${pc.x*k}px;top:${pc.y*k}px;width:${pc.w*k}px;height:${pc.h*k}px`;ov.appendChild(c);});
       return;}
-    rs=(it.covers||[it.cover]).filter(Boolean);   // 計算の間(と、消せなかったとき)は、背景色の四角
+    rs=st&&st.failed?coverRects(it,true):it.type==="text"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:(it.covers||[it.cover]).filter(Boolean);   // 計算の間(と、消せなかったとき)は、背景色の四角
   }else rs=coverRects(it,true);
   if(!rs.length)return;
   rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
@@ -841,7 +841,9 @@ function estimate(w,h,s){const per=Math.max(1,Math.floor(w/s)),lines=Math.max(1,
 let newSizePt=null;   // 「サイズ」欄に自分で入れた値(これから作る枠に使う)
 function newText(x,y,w,h){
   const size=newSizePt||autoSize(w,h);if(!newSizePt)$("nSize").value=size;   // 自分で決めたサイズがなければ、枠から割り出したサイズを、欄にも表示する
-  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true};
+  // 枠の範囲に、PDFの文字(文字のデータ)がなければ、そこにあるのは画像(スキャン・写真)。画像の上に置く枠は、PDFにする瞬間に、枠の範囲の下の文字のインクだけを消す。PDFの文字があるときは、従来どおり(文字を取り除く)
+  const fr0={x:x,y:y,w:w,h:Math.max(h,size*1.3)},imgPage=!!pdfView&&!(runsFor===cur&&runs.some(r=>{const b=runBox(r);return b.x<fr0.x+fr0.w&&fr0.x<b.x+b.w&&b.y<fr0.y+fr0.h&&fr0.y<b.y+b.h;}));   // (文字のデータを、まだ読んでいないときは、画像として扱う)
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true,bgMode:imgPage?"ink":undefined};   // 画像のページに置く文字の枠は、枠の範囲の下の文字のインクだけを消す(罫線・図形・背景は残す)
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
 function tightCovers(list){
@@ -3066,7 +3068,7 @@ async function commit(only){
     if(it.type==="img")continue;
     // 文字のあるPDFでは、下の文字を取り除くか画像にしたので、白い四角は要らない(罫線などが、欠けないように)。文字のないページ(スキャンなど)・取り除けなかったときだけ、従来どおり白抜きする
     const Ux=under.get(it.page),noPatch=it.type==="text"&&bgModeOf(it)!=="all"&&Ux&&Ux.hasText&&[...Ux.ex.values()].every(e=>e.done);
-    if(it.type==="fix"&&bgModeOf(it)==="ink"&&fixChanged(it)){   // 文字のインクだけを消したパッチを、元の画像の上に重ねる(画像そのものは変えない)。できなかったら、下の四角
+    if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&fixChanged(it)){   // 文字のインクだけを消したパッチを、元の画像の上に重ねる(画像そのものは変えない)。できなかったら、下の四角
       const st=await inkCompute(it);
       if(!st.failed&&st.patches.length){
         const pg=doc.getPage(it.page),{width:W0,height:H0}=pg.getSize(),r0=((pg.getRotation().angle%360)+360)%360;
@@ -3257,7 +3259,7 @@ function inkErase(cv,box,S,fl){
 function inkScale(){return Math.max(2,Math.min(3.5,Math.round((1240/Math.max(1,VW))*10)/10));}
 // 枠(it)の、元の文字の範囲ごとに、パッチ(文字のインクを消した画像)を作る。結果は it._ink にしまう(範囲が変わらなければ使い回す)
 async function inkCompute(it){
-  const rects=(it.covers||[it.cover]).filter(Boolean),key=JSON.stringify([cur,bytes.length,rects.map(c=>[c.x,c.y,c.w,c.h].map(v=>Math.round(v*10)/10)),partKeep("rule"),partKeep("figure")]);
+  const rects=(it.type==="text"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:(it.covers||[it.cover])).filter(Boolean),key=JSON.stringify([cur,bytes.length,rects.map(c=>[c.x,c.y,c.w,c.h].map(v=>Math.round(v*10)/10)),partKeep("rule"),partKeep("figure")]);
   if(it._ink&&it._ink.key===key)return it._ink.p;
   const st={key,patches:[],failed:false,busy:true};it._ink=st;
   if(it.page!==cur){st.failed=true;st.busy=false;st.p=Promise.resolve(st);return st.p;}   // いま開いているページの枠だけ
@@ -3854,7 +3856,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix").map(it=>({mode:bgModeOf(it),ink:it._ink?{failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
