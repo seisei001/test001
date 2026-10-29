@@ -145,7 +145,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.16"},
+  desk:{name:"製本デスク",ver:"2.17"},
   menu:{name:"機能メニュー",ver:"2.02"},
   edit:{name:"ページ編集",ver:"2.81",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.12",src:"forms/editor.html?form=warp"},
@@ -324,8 +324,10 @@ $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value=
  document.addEventListener("drop",async e=>{
    if(!hasFiles(e))return;e.preventDefault();depth=0;show(false);
    if(formOpen()){status("編集の画面を閉じてから、PDFをドロップしてください。");return;}
-   const its=[...e.dataTransfer.items||[]].filter(i=>i.kind==="file"),hs=await Promise.all(its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):null));   // 元のファイルを覚えて、あとで上書き保存できるようにする
-   const fs=[...e.dataTransfer.files],pdfs=fs.map((f,k)=>({f,h:hs[k]&&hs[k].kind==="file"&&hs[k].name===f.name?hs[k]:null})).filter(x=>/\.pdf$/i.test(x.f.name)||x.f.type==="application/pdf");
+   // 落とした内容(files・items)は、イベントの処理が終わる(最初の await)と、空になる。先に全部、同期で取り出しておく
+   const fs=[...e.dataTransfer.files],its=[...e.dataTransfer.items||[]].filter(i=>i.kind==="file"),hp=its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):Promise.resolve(null));
+   const hs=await Promise.all(hp),   // 元のファイルを覚えて、あとで上書き保存できるようにする
+     pdfs=fs.map((f,k)=>({f,h:hs[k]&&hs[k].kind==="file"&&hs[k].name===f.name?hs[k]:null})).filter(x=>/\.pdf$/i.test(x.f.name)||x.f.type==="application/pdf");
    if(!pdfs.length){status("PDFファイルをドロップしてください。");return;}
    addFiles(pdfs);
  });}
