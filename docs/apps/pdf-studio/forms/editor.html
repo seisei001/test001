@@ -835,10 +835,11 @@ function newText(x,y,w,h){
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
 function tightCovers(list){
+  const gm=list.some(r=>r.ocr)?OCR_SPLIT_GAP:0.8;   // 文字認識の行は、1つの枠にまとめる語どうし(buildBlocks と同じ隙間)の間も隠す。語の四角の外に出た字の端が、語の間に残らないように
   const rs=list.map(r=>{const b=r.box||{x:r.x-0.5,y:r.base-r.size*0.88,w:r.w+1,h:r.size*1.1};return{x:b.x,y:b.y,w:b.w,h:b.h,s:r.size};}).sort((a,b)=>(Math.abs(a.y-b.y)<a.s*0.4?a.x-b.x:a.y-b.y));
   const out=[];
   rs.forEach(r=>{const l=out[out.length-1];
-    if(l&&Math.abs(l.y-r.y)<r.s*0.4&&r.x-(l.x+l.w)<r.s*0.8){const x1=Math.max(l.x+l.w,r.x+r.w),y0=Math.min(l.y,r.y),y1=Math.max(l.y+l.h,r.y+r.h);l.w=x1-l.x;l.y=y0;l.h=y1-y0;}
+    if(l&&Math.abs(l.y-r.y)<r.s*0.4&&r.x-(l.x+l.w)<r.s*gm){const x1=Math.max(l.x+l.w,r.x+r.w),y0=Math.min(l.y,r.y),y1=Math.max(l.y+l.h,r.y+r.h);l.w=x1-l.x;l.y=y0;l.h=y1-y0;}
     else out.push({x:r.x,y:r.y,w:r.w,h:r.h,s:r.s});});
   return out.map(({x,y,w,h})=>({x,y,w,h}));
 }

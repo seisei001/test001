@@ -1,6 +1,5 @@
 // ページ編集(画像の文字認識): 直した枠は、元の画像を重ねて見せず、直した状態を見せる / 元の文字を隠す四角が、文字の端で切れない
 //   node .claude/skills/pdf-app/scripts/test-studio-ocr-cover.js   (先に make-*-scan.js で form_scan.pdf)
-// 元の文字を隠す四角を、文字の端まで広げる処理(growBoxesToInk)は入れたが、保存後に行の下に出る小さなかけらは消えていない(調査中)
 process.env.PDFAPP_TARGET='pdf-studio';
 const fs=require('fs'),{execSync}=require('child_process');
 const {launch,WORK}=require('./harness');
@@ -23,7 +22,15 @@ const {launch,WORK}=require('./harness');
   ok('1つ直すと、その枠・四角だけ「元の画像を重ねる」をやめる(枠 '+n0+'→'+n1+' / 四角 '+c0+'→'+c1+')',n1===n0-1&&c1<c0);
   const op=await f.evaluate(()=>{const cs=[...document.querySelectorAll('#ov .cover:not(.ocrc)')];return cs.length?getComputedStyle(cs[0]).opacity:null;});
   ok('直した枠の下の四角は、不透明(元の文字が見えない): '+op,op==='1');
-  // ※ 保存後に、行の下に小さなかけらが残る件(原因の調べ中)は、まだ確かめていない
+  // 保存して、元の文字のかけら(語と語の間に残っていた、字の端のインク)が残らないか: 「税理士 坂口 誠」の行の、語の間(150dpiで x 440〜535, y 378〜392)
+  await fr.locator('#embSave').click();await page.waitForTimeout(4000);
+  fs.writeFileSync('/tmp/cover_out.pdf',Buffer.from(await page.evaluate(()=>Array.from(window.pdfStudioDebug.bytes(0)))));
+  execSync('pdftoppm -r 150 -png -f 1 -l 1 -singlefile /tmp/cover_out.pdf /tmp/cover_out');
+  const frag=+execSync(`python3 -W ignore -c "
+from PIL import Image
+a=Image.open('/tmp/cover_out.png').convert('L');px=a.load()
+print(sum(1 for y in range(378,393) for x in range(440,535) if px[x,y]<140))"`).toString().trim();
+  ok('語と語の間に、元の文字のかけらが残らない(暗い点 '+frag+')',frag<=3);
   ok('エラーなし '+errs.join('|'),!errs.length);
   await browser.close();process.exit(allOk?0:1);
 })();
