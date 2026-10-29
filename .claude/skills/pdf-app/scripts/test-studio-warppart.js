@@ -11,7 +11,7 @@ const {PDFDocument,rgb}=require(LIB+'pdf-lib');
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>d.accept());
   let allOk=true;const ok=(l,c)=>{console.log((c?'OK  ':'NG  ')+l);if(!c)allOk=false;};
   await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
-  await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'歪み補正'}).click();await page.waitForTimeout(3500);
+  await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
   const fr=page.frameLocator('#formFrame'),F=()=>page.frames().find(x=>x!==page.mainFrame());
   const G=()=>F().evaluate(()=>window.pdfEditorDebug.warpG());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595,X=v=>ob.x+v*k,Y=v=>ob.y+v*k;
@@ -30,7 +30,7 @@ const {PDFDocument,rgb}=require(LIB+'pdf-lib');
   ok('一括: 角を動かすと、中の点もついてくる (中央の点 '+a.moved.toFixed(1)+'pt 動いた)',a.moved>3);
   // 一括の周りの点(右辺の中ほど)を動かす → 辺の上の点がついてきて、曲線になる
   await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
-  await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'歪み補正'}).click();await page.waitForTimeout(3500);
+  await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
   const b=await run('part');
   ok('部分: 角を動かすと、中の点もついてくる (中央の点 '+b.moved.toFixed(1)+'pt 動いた)',b.moved>3);
   const cornerPt=50/k;ok('部分も、一括と同じ割合で中央の点が動く(角の動き '+cornerPt.toFixed(1)+'pt の 10〜40%): '+b.moved.toFixed(1),b.moved>0.1*cornerPt&&b.moved<0.4*cornerPt);

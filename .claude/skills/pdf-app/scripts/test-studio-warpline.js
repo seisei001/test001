@@ -6,7 +6,7 @@ const {launch,WORK}=require('./harness');
   await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('.mnb').click();
-  await page.locator('#menuBtns button',{hasText:'歪み補正'}).click();await page.waitForTimeout(3000);
+  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3000);
   const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
   let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
   const G=()=>f.evaluate(()=>window.pdfEditorDebug.warpG());

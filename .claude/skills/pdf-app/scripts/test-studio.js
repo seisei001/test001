@@ -47,7 +47,7 @@ const S=WORK+'/samples/';
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.waitForTimeout(300);
   const items=await page.evaluate(()=>[...document.querySelectorAll('#menuBtns button')].map(x=>x.textContent.replace(/\s+/g,' ').trim().slice(0,14)));
   console.log('    メニュー:',items.join(' / '));
-  ok('機能メニューが開く(名前と版つき)',items.length>=2&&await page.evaluate(()=>!document.getElementById('menu').classList.contains('hidden')&&document.getElementById('verMenu').textContent==='2.02'));
+  ok('機能メニューが開く(名前と版つき)',items.length>=2&&await page.evaluate(()=>!document.getElementById('menu').classList.contains('hidden')&&document.getElementById('verMenu').textContent==='2.03'));
   // 戻る(上の「← 戻る」と、下の「← 戻る」と、Esc)
   await page.click('#menuBack');ok('上の「戻る」でメニューが閉じ、束デスクに戻る',await page.evaluate(()=>document.getElementById('menu').classList.contains('hidden')));
   await page.locator('.card').nth(2).locator('canvas').dblclick();await page.click('#menuClose');ok('下の「戻る」でもメニューが閉じる',await page.evaluate(()=>document.getElementById('menu').classList.contains('hidden')));
