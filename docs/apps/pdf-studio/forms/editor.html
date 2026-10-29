@@ -760,6 +760,8 @@ function buildBlocks(list,gapOverride){
 }
 // 訂正の部品を、文字・大きさ・色・位置・フォントのどれかを変えたかどうか。変えていない部品は、元の文字のまま残す(背景を白抜きしない・PDFにも書かない)
 const fixSig=it=>JSON.stringify([it.txt,it.size,it.color,Math.round(it.vx*10),Math.round(it.vy*10),Math.round(it.vw*10),Math.round(it.vh*10),it.ls||0,it.align||"left",it.fmt,it.font||"orig",it.sz||[]]);
+const ocrSigOf=it=>[it.txt,it.size,Math.round(it.vx),Math.round(it.vy),it.ls||0,it.align||"left"].join("|");
+const ocrEdited=it=>!!it.ocrMade&&it.ocrSig!=null&&ocrSigOf(it)!==it.ocrSig;   // 文字認識でできた枠を、直した(文字・大きさ・位置)あとかどうか。直したら、元の画像を重ねて見せるのをやめて、直した状態(元の文字は消えた状態)を見せる
 const fixChanged=it=>it.type!=="fix"||it.ocrMade||!it.sig0||fixSig(it)!==it.sig0;
 // 背景の選び方(✥の設定): none=完全透明(何も隠さない)/ text=余白透明(文字のあるところだけ白抜き。標準)/ all=白抜き(枠の全体)
 const bgModeOf=it=>it.bgMode||(it.erase===false?"none":"text");
@@ -780,10 +782,11 @@ function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字�
 function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
   const rs=coverRects(it,true);if(!rs.length)return;const k=K(),bg=bgOf(it);
-  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
+  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   if(it.type==="img")return;
+  if(el&&it.ocrMade)el.classList.toggle("ocrf",!ocrEdited(it));
   renderCovers(it);
 }
 // すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
@@ -885,7 +888,7 @@ let applying=false,applyP=null;   // applyP: 反映の最中(保存は、これ�
 // 直したPDFの部品は、選択を外したとき、PDFの元の文字を取り除いて、新しい文字に置き換える(確認を出す)。そのあと、PDFの文字から枠を作り直す。やめたときは、保存するときに反映する
 async function applyNow(it){
   const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
-  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&it.sig0&&fixChanged(it)))||it._noApply||!(it.txt||"").trim())return;
+  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&((it.sig0&&fixChanged(it))||(it.ocrMade&&ocrEdited(it)))))||it._noApply||!(it.txt||"").trim())return;   // 文字認識でできた枠も、直したら(ocrEdited)、選択を外したときに、PDFにする(元の画像の文字は隠れ、直した文字がPDFの文字になる)
   applying=true;ov.style.pointerEvents="none";
   applyP=(async()=>{try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
   await applyP;applyP=null;
@@ -1066,6 +1069,7 @@ document.addEventListener("pointerdown",e=>{if(!ctx.contains(e.target))hideCtx()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")hideCtx();});
 window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
+  if(it.ocrMade){const u=!ocrEdited(it);if(el.classList.contains("ocrf")!==u){el.classList.toggle("ocrf",u);renderCovers(it);}}   // 動かした・大きさを変えたら、元の画像を重ねて見せるのをやめる
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
   if(t){t.style.whiteSpace=it.ol?"pre":"";t.style.overflowWrap=it.ol?"normal":"";t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
@@ -1139,7 +1143,7 @@ function renderOverlay(){
     renderCovers(it);
   });
   items.filter(it=>it.page===cur).forEach(it=>{
-    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade?" ocrf":"");
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade&&!ocrEdited(it)?" ocrf":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
@@ -2423,6 +2427,25 @@ function verifyChars(r,ink,ox,oy,fam){
   if(changed){r.str=chars.join("");r.verified=changed;}
   return changed;
 }
+// 文字認識の行の四角(元の文字を隠す範囲)を、四角のすぐ外に続いている文字のインクまで広げる。広げすぎない: 隣の行の四角には入らない・大きさの0.35倍まで・帯いっぱいに続く線(罫線・下線)は広げない
+function growBoxesToInk(runs,cv,S,ox,oy){
+  const ink=makeInk(cv,S),w=ink.w,h=ink.h,R=ink.R,I=ink.I,TH=0.3,st=1/R;
+  const at=(px,py)=>{const i=Math.round((px-ox)*R),j=Math.round((py-oy)*R);return i<0||j<0||i>=w||j>=h?0:I[j*w+i];};
+  const inter=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+  const band=(x0,y0,x1,y1)=>{let n=0,c=0;if(x1-x0>=y1-y0){for(let px=x0;px<=x1;px+=st){c++;if(at(px,(y0+y1)/2)>TH)n++;}}else{for(let py=y0;py<=y1;py+=st){c++;if(at((x0+x1)/2,py)>TH)n++;}}return{n,f:c?n/c:0};};
+  runs.forEach(r=>{
+    if(!r.box)return;const b={...r.box},mx=Math.max(1.5,r.size*0.35),nb=runs.filter(q=>q!==r&&q.box).map(q=>q.box);
+    for(const side of ["b","t","r","l"]){
+      for(let ext=0;ext<mx;ext+=st){
+        const s=side==="b"?{x:b.x,y:b.y+b.h,w:b.w,h:st}:side==="t"?{x:b.x,y:b.y-st,w:b.w,h:st}:side==="r"?{x:b.x+b.w,y:b.y,w:st,h:b.h}:{x:b.x-st,y:b.y,w:st,h:b.h};
+        if(nb.some(q=>inter(s,q)))break;
+        const g=band(s.x,s.y,s.x+s.w,s.y+s.h);if(!g.n||g.f>0.6)break;
+        if(side==="b")b.h+=st;else if(side==="t"){b.y-=st;b.h+=st;}else if(side==="r")b.w+=st;else{b.x-=st;b.w+=st;}
+      }
+    }
+    r.box=b;
+  });
+}
 async function refineRuns(runs,cv,S,ox,oy){
   const ink=makeInk(cv,S),inkHi=makeInkHi(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
   for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;if(r.refScore==null||r.refScore>=OCR_MIN_MATCH)st.chars=(st.chars||0)+verifyChars(r,inkHi,ox,oy,fam);}catch(e){st.skip++;console.warn("照合に失敗",e);}
@@ -2602,6 +2625,7 @@ async function doOcrBody(x,y,w,h){
   if(dropped){runs.length=0;runs.push(...keep);}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
   lastRefine=nref;lastOcrRuns=runs;
+  growBoxesToInk(runs,cv,S,x,y);   // 元の文字を隠す四角が、文字の下・横にはみ出た線や点(下がる部分・小さな点)の端で、切れないようにする
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
@@ -2615,6 +2639,7 @@ async function doOcrBody(x,y,w,h){
     }
     it.ocrMade=true;growToFit(it);clampToPage(it);
     if(!ocrRange.whole)keepInRange(it,x,y,w,h);
+    it.ocrSig=ocrSigOf(it);
     made.push(it);
   });
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
