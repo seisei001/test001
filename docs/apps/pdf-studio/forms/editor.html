@@ -95,7 +95,8 @@ body.emb-warp #optRule,body.emb-edit #optRule{display:none!important;}
 #ov .rl:hover .rln{background:rgba(37,99,235,.7);}
 #ov .rl.on .rln{background:rgba(220,38,38,.85);}
 #ov .rl.on{touch-action:none;cursor:move;}
-#ov.rdraw{cursor:crosshair;touch-action:none;}
+#ov.rdraw,#ov.rbandon{cursor:crosshair;touch-action:none;}
+#ov.rbandon .rl:not(.on){pointer-events:none;}
 #ov .tc{position:absolute;box-sizing:border-box;border:1px dashed rgba(22,163,74,.7);background:rgba(22,163,74,.06);touch-action:none;cursor:cell;}
 #ov .tc.on{background:rgba(22,163,74,.35);}
 #ov.rdraw .rl{pointer-events:none;}
@@ -242,7 +243,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="wCancel">やめる</button>
 </div>
 <div class="row hidden" id="optRule" style="margin-bottom:8px">
-<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
+<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rBand">範囲で選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tColDel" disabled>列を消す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
@@ -3112,7 +3113,7 @@ $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
 // ===== 罫線編集: PDFの罫線(線・薄い塗り四角)を、ページの命令ごと取り除く =====
 // 位置(命令の中の場所)は覚えない。操作のたびにページの命令を読み直して、その場で切り取る(文字を取り除いたあとでも、ずれない)
-const RULE={for:null,scanning:null,els:[],sel:new Set(),vp:null,draw:false,dragAt:0,tab:false,tables:[],cellSel:null};
+const RULE={for:null,scanning:null,els:[],sel:new Set(),vp:null,draw:false,dragAt:0,tab:false,tables:[],cellSel:null,band:false};
 const rlMul=(m,k)=>[m[0]*k[0]+m[1]*k[2],m[0]*k[1]+m[1]*k[3],m[2]*k[0]+m[3]*k[2],m[2]*k[1]+m[3]*k[3],m[4]*k[0]+m[5]*k[2]+k[4],m[4]*k[1]+m[5]*k[3]+k[5]];
 const rlAp=(m,x,y)=>[x*m[0]+y*m[2]+m[4],x*m[1]+y*m[3]+m[5]];
 const rlFmt=v=>{const r=Math.round(v*10000)/10000;return String(Object.is(r,-0)?0:r);};
@@ -3127,16 +3128,20 @@ function rlScan(doc,page){   // ページ(と、その中の Form XObject)の命
 }
 function rlWalk(ctx,owner,u,res,ctm0,depth){
   const N=PDFLib.PDFName,T=pdfTokens(u);
-  let gs={ctm:ctm0.slice(),lw:1},stack=[],vals=[],cur=[],path=null,clip=false,pstart=-1,bt=null,tm=[1,0,0,1,0,0],tlm=[1,0,0,1,0,0],lead=0;
+  let gs={ctm:ctm0.slice(),lw:1,s:[0,0,0],f:[0,0,0]},stack=[],vals=[],cur=[],path=null,clip=false,pstart=-1,bt=null,tm=[1,0,0,1,0,0],tlm=[1,0,0,1,0,0],lead=0;
   const noteText=()=>{if(bt){bt.xs.push(tm[4]*gs.ctm[0]+tm[5]*gs.ctm[2]+gs.ctm[4]);bt.ys.push(tm[4]*gs.ctm[1]+tm[5]*gs.ctm[3]+gs.ctm[5]);}};
   const nums=()=>vals.filter(v=>v.n!==undefined).map(v=>v.n);
   for(const tk of T){
     if(tk.t==="v"){vals.push(tk);continue;}
     const op=tk.v,n=nums();
-    if(op==="q")stack.push({ctm:gs.ctm.slice(),lw:gs.lw});
+    if(op==="q")stack.push({ctm:gs.ctm.slice(),lw:gs.lw,s:gs.s,f:gs.f});
     else if(op==="Q"){if(stack.length)gs=stack.pop();}
     else if(op==="cm"&&n.length>=6)gs.ctm=rlMul(n.slice(-6),gs.ctm);
     else if(op==="w"&&n.length)gs.lw=n[0];
+    else if(op==="G"&&n.length)gs.s=[n[0],n[0],n[0]];else if(op==="g"&&n.length)gs.f=[n[0],n[0],n[0]];
+    else if(op==="RG"&&n.length>=3)gs.s=n.slice(-3);else if(op==="rg"&&n.length>=3)gs.f=n.slice(-3);
+    else if(op==="K"&&n.length>=4){const c=n.slice(-4);gs.s=[(1-c[0])*(1-c[3]),(1-c[1])*(1-c[3]),(1-c[2])*(1-c[3])];}
+    else if(op==="k"&&n.length>=4){const c=n.slice(-4);gs.f=[(1-c[0])*(1-c[3]),(1-c[1])*(1-c[3]),(1-c[2])*(1-c[3])];}
     else if(op==="m"&&n.length>=2){if(pstart<0)pstart=vals[0].s;path={type:"path",s:vals[0].s,e:tk.e,pts:[[n[0],n[1]]],segs:[],curve:false};cur.push(path);}
     else if(op==="l"&&n.length>=2&&path){const a=path.pts[path.pts.length-1],b=[n[0],n[1]];path.segs.push({a,b});path.pts.push(b);path.e=tk.e;}
     else if((op==="c"||op==="v"||op==="y")&&path){path.curve=true;path.pts.push([n[n.length-2],n[n.length-1]]);path.e=tk.e;}
@@ -3145,7 +3150,7 @@ function rlWalk(ctx,owner,u,res,ctm0,depth){
     else if(op==="W"||op==="W*")clip=true;
     else if(/^(S|s|f|F|f\*|B|B\*|b|b\*|n)$/.test(op)){
       if(op==="s"||op==="b"||op==="b*")cur.forEach(c=>{if(c.type==="path"&&!c.closed&&!c.curve&&c.pts.length>1){c.segs.push({a:c.pts[c.pts.length-1],b:c.pts[0]});c.closed=true;}});   // 「閉じて線を引く」命令の、閉じる辺
-      if(pstart>=0&&!clip)ctx.paints.push({id:ctx.paints.length,owner,s:pstart,e:tk.e,op,stroke:/^(S|s|B|B\*|b|b\*)$/.test(op),fill:/^(f|F|f\*|B|B\*|b|b\*)$/.test(op),subs:cur,gs:{ctm:gs.ctm.slice(),lw:gs.lw}});
+      if(pstart>=0&&!clip)ctx.paints.push({id:ctx.paints.length,owner,s:pstart,e:tk.e,op,stroke:/^(S|s|B|B\*|b|b\*)$/.test(op),fill:/^(f|F|f\*|B|B\*|b|b\*)$/.test(op),subs:cur,gs:{ctm:gs.ctm.slice(),lw:gs.lw,s:gs.s,f:gs.f}});
       cur=[];path=null;clip=false;pstart=-1;
     }
     else if(op==="BT"){bt={owner,s:tk.s,e:tk.e,xs:[],ys:[],ctm:gs.ctm.slice()};tm=[1,0,0,1,0,0];tlm=tm.slice();}
@@ -3185,7 +3190,7 @@ function rlRules(ctx){   // 描く命令 → 水平・垂直の罫線(1本ずつ
     const ctm=p.gs.ctm,sc=Math.sqrt(Math.abs(ctm[0]*ctm[3]-ctm[1]*ctm[2]))||1,Tr=a=>rlAp(ctm,a[0],a[1]);
     const push=(kind,si,A,B,t,extra)=>{
       const dx=Math.abs(B[0]-A[0]),dy=Math.abs(B[1]-A[1]);if(Math.hypot(dx,dy)<1e-6)return;if(dy>dx*0.01&&dx>dy*0.01)return;   // 斜めは対象外
-      const h=dy<=dx*0.01;out.push({kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,h,pos:h?(A[1]+B[1])/2:(A[0]+B[0])/2,a:h?Math.min(A[0],B[0]):Math.min(A[1],B[1]),b:h?Math.max(A[0],B[0]):Math.max(A[1],B[1]),...extra});};
+      const h=dy<=dx*0.01;out.push({rgb:p.stroke?p.gs.s:p.gs.f,kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,h,pos:h?(A[1]+B[1])/2:(A[0]+B[0])/2,a:h?Math.min(A[0],B[0]):Math.min(A[1],B[1]),b:h?Math.max(A[0],B[0]):Math.max(A[1],B[1]),...extra});};
     const bar=(si,pts)=>{const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),W=x1-x0,H=y1-y0;
       if(Math.min(W,H)>3||Math.max(W,H)<8)return false;   // 薄くて細長い塗り四角だけを、罫線とみなす
       if(W>=H)push("bar",si,[x0,(y0+y1)/2],[x1,(y0+y1)/2],H);else push("bar",si,[(x0+x1)/2,y0],[(x0+x1)/2,y1],W);return true;};
@@ -3392,6 +3397,10 @@ async function tableApply(u8,op){
     if(op.kind==="insRow")o={map:(x,y)=>y<yb-eps?[x,y-d]:[x,y],clone:{sel:pts=>band(pts)&&!topOnly(pts),dx:0,dy:-d}};
     else if(op.kind==="delRow")o={map:(x,y)=>y>=yt-eps?[x,y]:y<=yb+eps?[x,y+d]:[x,yt],kill:pts=>band(pts)&&!topOnly(pts),killText:t=>t.ys.every(y=>y>yb+eps&&y<yt-eps)&&t.xs[0]>=T.box.x0-1&&t.xs[0]<=T.box.x1+1};
     else{const nd=d-op.h;o={map:(x,y)=>y<=yb+eps?[x,y+nd]:[x,y]};}   // 縮める(nd>0)と、行の下が上へ動く
+  }else if(op.kind==="delCol"){
+    const c=op.c1,xl=T.xs[c],xr=T.xs[c+1],d=xr-xl,bandY=y=>y>=T.box.y0-1&&y<=T.box.y1+1;
+    const band=pts=>pts.every(q=>q[0]>=xl-eps&&q[0]<=xr+eps)&&inY(pts),leftOnly=pts=>pts.every(q=>Math.abs(q[0]-xl)<eps);
+    o={map:(x,y)=>!bandY(y)||x<=xl+eps?[x,y]:x>=xr-eps?[x-d,y]:[xl,y],kill:pts=>band(pts)&&!leftOnly(pts),killText:t=>t.xs.every(x=>x>xl+eps&&x<xr-eps)&&t.ys[0]>=T.box.y0-1&&t.ys[0]<=T.box.y1+1};
   }else if(op.kind==="insCol"){
     const c=op.c1,xl=T.xs[c],xr=T.xs[c+1],d=xr-xl,bandY=y=>y>=T.box.y0-1&&y<=T.box.y1+1;
     const band=pts=>pts.every(q=>q[0]>=xl-eps&&q[0]<=xr+eps)&&inY(pts),leftOnly=pts=>pts.every(q=>Math.abs(q[0]-xl)<eps);
@@ -3422,7 +3431,10 @@ async function ruleLoad(){   // 画面に出す罫線の一覧(画面の座標�
   }finally{if(RULE.scanning===b)RULE.scanning=null;}
   renderOverlay();ruleSync();
 }
-function ruleSync(){const n=RULE.sel.size;$("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
+function ruleSync(){const n=RULE.sel.size;
+  if(n&&!RULE.tab){const r=RULE.els[[...RULE.sel][0]];if(r){$("rW").value=Math.round(r.t*100)/100;
+    if(r.rgb)$("rC").value="#"+r.rgb.map(v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,"0")).join("");}}   // 選んだ線の、いまの太さと色を欄に出す
+  $("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
 function ruleDraw(k){
   if(RULE.for!==bytes){ruleLoad().catch(e=>status("罫線を読み取れませんでした: "+(e.message||e)));return;}
   if(RULE.tab){tabDraw(k);return;}
@@ -3482,7 +3494,7 @@ function tabDraw(k){
   tabPaint();
 }
 function tabPaint(){const s=RULE.cellSel;ov.querySelectorAll(".tc").forEach(d=>{const ti=+d.dataset.ti,r=+d.dataset.r,c=+d.dataset.c;d.classList.toggle("on",!!s&&s.ti===ti&&r>=s.r0&&r<=s.r1&&c>=s.c0&&c<=s.c1);});tabSync();}
-function tabSync(){const s=RULE.cellSel,n=!!s;["tRowAdd","tRowDel","tRowH","tColAdd"].forEach(id=>{$(id).disabled=!n;});$("tMerge").disabled=!(n&&(s.r1>s.r0||s.c1>s.c0));
+function tabSync(){const s=RULE.cellSel,n=!!s;["tRowAdd","tRowDel","tRowH","tColAdd","tColDel"].forEach(id=>{$(id).disabled=!n;});$("tMerge").disabled=!(n&&(s.r1>s.r0||s.c1>s.c0));
   if(n){const T=RULE.tables[s.ti];if(T)$("tH").value=(Math.round((T.ys[s.r1]-T.ys[s.r1+1])*100)/100);}
   $("rNum").textContent=n?`${s.r1-s.r0+1}行 × ${s.c1-s.c0+1}列を選択中`:"";}
 ov.addEventListener("pointerdown",e=>{
@@ -3500,13 +3512,15 @@ const tableDo=busy(async(kind,h)=>{
   else if(kind==="rowH"){for(let r=s.r1;r>=s.r0;r--)nb=await tableApply(nb,{kind,box,r1:r,h});msg=`行の高さを ${h}pt にしました。`;}
   else if(kind==="insRow"){nb=await tableApply(nb,{kind,box,r1:s.r1});msg="行を足しました。";}
   else if(kind==="insCol"){nb=await tableApply(nb,{kind,box,c1:s.c1});msg="列を足しました。";}
+  else if(kind==="delCol"){for(let c=s.c1;c>=s.c0;c--)nb=await tableApply(nb,{kind,box,c1:c});msg=`${s.c1-s.c0+1}列を消しました。`;}
   else{nb=await tableApply(nb,{kind:"merge",box,r0:s.r0,c0:s.c0,r1:s.r1,c1:s.c1});msg="セルを結合しました。";}
   await setBytes(nb,true);status(msg+"(ページの下の内容は、押し下げ・引き上げられます)");
 });
 $("tMode").onclick=()=>{RULE.tab=!RULE.tab;RULE.cellSel=null;if(RULE.tab&&RULE.draw)$("rDraw").click();$("tMode").classList.toggle("on",RULE.tab);$("tTools").classList.toggle("hidden",!RULE.tab);
   status(RULE.tab?"表のセルをタップ(ドラッグで範囲)して選び、行や列を操作してください。":"罫線を青く表示しています。");renderOverlay();ruleSync();};
-$("tRowAdd").onclick=()=>tableDo("insRow");$("tRowDel").onclick=()=>tableDo("delRow");$("tColAdd").onclick=()=>tableDo("insCol");$("tMerge").onclick=()=>tableDo("merge");
+$("tRowAdd").onclick=()=>tableDo("insRow");$("tRowDel").onclick=()=>tableDo("delRow");$("tColAdd").onclick=()=>tableDo("insCol");$("tColDel").onclick=()=>tableDo("delCol");$("tMerge").onclick=()=>tableDo("merge");
 $("tRowH").onclick=()=>{const h=+$("tH").value;if(h>=2)tableDo("rowH",h);};
+$("rBand").onclick=()=>{RULE.band=!RULE.band;$("rBand").classList.toggle("on",RULE.band);ov.classList.toggle("rbandon",RULE.band);status(RULE.band?"範囲をドラッグすると、通った罫線をまとめて選びます。":"罫線を青く表示しています。");};
 $("rAll").onclick=()=>{RULE.els.forEach((_,i)=>RULE.sel.add(i));renderOverlay();ruleSync();};
 $("rClr").onclick=()=>{RULE.sel.clear();renderOverlay();ruleSync();};
 $("rDel").onclick=busy(async()=>{
@@ -3515,7 +3529,7 @@ $("rDel").onclick=busy(async()=>{
   await setBytes(nb,true);status(`${idxs.length}本の罫線を消しました。`);
 });
 ov.addEventListener("pointerdown",e=>{   // 何もない所をドラッグ: 通った罫線をまとめて選ぶ(マウス)。軽くクリック: 選択を外す
-  if(mode!=="rule"||RULE.draw||e.target!==ov||e.pointerType!=="mouse"||e.button!==0)return;
+  if(mode!=="rule"||RULE.draw||RULE.tab||e.target!==ov||(e.pointerType!=="mouse"&&!RULE.band)||e.button>0)return;
   const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
   d.className="rband";ov.appendChild(d);let moved=false;
   const mv=ev=>{const x=Math.min(x0,X(ev)),y=Math.min(y0,Y(ev)),w=Math.abs(X(ev)-x0),h=Math.abs(Y(ev)-y0);if(w*k>4||h*k>4)moved=true;d.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;};

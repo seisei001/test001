@@ -56,6 +56,13 @@ const {PDFDocument,rgb,StandardFonts}=require(LIB+'pdf-lib');
   t=await TB();ok('列を足して 4 列: '+t[0].cols,t[0].cols===4);
   w=await words();ok('C3 の文字が 100pt 右へ: '+(w.R1C3.x-w0.R1C3.x).toFixed(1),Math.abs((w.R1C3.x-w0.R1C3.x)-100)<1.5);
   ok('C1・C2 は動かない',Math.abs(w.R1C1.x-w0.R1C1.x)<0.5&&Math.abs(w.R1C2.x-w0.R1C2.x)<0.5);
+  // 列を消す(足した列=2列目の右 ではなく、いま 4 列。2列目(c=1)を消す)
+  await fr.locator('#tMode').click();await fr.locator('#tMode').click();await page.waitForTimeout(500);
+  await cell(0,1).dispatchEvent('pointerdown',{button:0,bubbles:true});await page.waitForTimeout(200);
+  await fr.locator('#tColDel').click();await page.waitForTimeout(2200);
+  t=await TB();ok('列を消して 3 列に戻る: '+t[0].cols,t[0].cols===3);
+  w=await words();ok('C3 の文字が 100pt 左へ戻る(元との差 '+(w.R1C3.x-w0.R1C3.x).toFixed(1)+')',Math.abs(w.R1C3.x-w0.R1C3.x)<1.5);
+  ok('消した列の文字(R1C2)は無い・ほかの列の文字は残る',!('R1C2' in w)&&'R1C1' in w&&'R1C3' in w&&'R3C3' in w);
   // セルを結合(左上の 2×2)
   await fr.locator('#tMode').click();await fr.locator('#tMode').click();await page.waitForTimeout(500);
   const before=(await F().evaluate(()=>window.pdfEditorDebug.rules())).length;
