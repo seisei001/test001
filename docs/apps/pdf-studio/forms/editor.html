@@ -236,7 +236,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="bOcrRange">範囲を指定</button>
 <button class="sub-btn" id="bImgToggle" title="元の画像を消して、認識した文字だけを見る(もう一度押すと、元の画像を出す)">元画像を消す</button>
 <label>言語 <select id="ocrLang" style="font-size:16px;min-height:34px"><option value="jpn">日本語(英数字も可)</option><option value="eng">英語</option></select></label>
-<div class="xhide"><label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label><label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label></div>
+<div class="xhide"><label><input type="checkbox" id="keepRule" checked> 文字を消すとき、罫線は残す</label><label><input type="checkbox" id="keepFig" checked> 文字を消すとき、図形は残す</label><label>認識エンジン <select id="ocrEngine" style="font-size:16px;min-height:44px"><option value="ndl">最高精度(国会図書館NDLOCR-Lite・初回のみ約36〜120MB)</option><option value="paddle">高精度(PaddleOCR・初回のみ約17MB)</option><option value="tess">標準(Tesseract・初回のみ約2MB)</option></select></label><label><input type="checkbox" id="ocrClean" checked> 背景に模様があるときは、消してから認識する</label></div>
 <span class="sub helptext">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
 </div>
 <div class="row hidden" id="optWarp" style="margin-bottom:8px">
@@ -760,6 +760,8 @@ function buildBlocks(list,gapOverride){
 }
 // 訂正の部品を、文字・大きさ・色・位置・フォントのどれかを変えたかどうか。変えていない部品は、元の文字のまま残す(背景を白抜きしない・PDFにも書かない)
 const fixSig=it=>JSON.stringify([it.txt,it.size,it.color,Math.round(it.vx*10),Math.round(it.vy*10),Math.round(it.vw*10),Math.round(it.vh*10),it.ls||0,it.align||"left",it.fmt,it.font||"orig",it.sz||[]]);
+const ocrSigOf=it=>[it.txt,it.size,Math.round(it.vx),Math.round(it.vy),it.ls||0,it.align||"left"].join("|");
+const ocrEdited=it=>!!it.ocrMade&&it.ocrSig!=null&&ocrSigOf(it)!==it.ocrSig;   // 文字認識でできた枠を、直した(文字・大きさ・位置)あとかどうか。直したら、元の画像を重ねて見せるのをやめて、直した状態(元の文字は消えた状態)を見せる
 const fixChanged=it=>it.type!=="fix"||it.ocrMade||!it.sig0||fixSig(it)!==it.sig0;
 // 背景の選び方(✥の設定): none=完全透明(何も隠さない)/ text=余白透明(文字のあるところだけ白抜き。標準)/ all=白抜き(枠の全体)
 const bgModeOf=it=>it.bgMode||(it.erase===false?"none":"text");
@@ -772,18 +774,29 @@ function lineRectsOf(it){   // 入力した文字の、行ごとの四角(文字
 }
 function bgOf(it){if(it.bg)return it.bg;try{it.bg=sampleColors({x:it.vx,y:it.vy,w:it.vw,h:it.vh}).bg;}catch{it.bg="#ffffff";}return it.bg||"#ffffff";}
 function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字があれば必ず白抜き・文字のないところは、選んだ背景に従う
-  if(it.type==="img")return[];const m=bgModeOf(it);if(m==="none")return[];
+  if(it.type==="img")return[];let m=bgModeOf(it);if(m==="none")return[];
+  if(m==="ink"){if(!(it._ink&&it._ink.failed))return[];m="text";}   // 「文字だけ消す」は、パッチで消すので、四角は要らない。消せなかったときだけ、「文字だけ白抜き」にする
   if(it.type==="fix"&&!forScreen&&!fixChanged(it))return[];   // 変えていない訂正の部品は、PDFには何もしない(画面では、拾い上げた時点で元の文字を隠す)
   if(m==="all")return[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}];
   return[...(it.type==="fix"?(it.covers||[it.cover]):[]),...lineRectsOf(it)];
 }
 function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
-  const rs=coverRects(it,true);if(!rs.length)return;const k=K(),bg=bgOf(it);
-  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
+  const k=K(),bg=bgOf(it);let rs;
+  if(it.type==="fix"&&bgModeOf(it)==="ink"){
+    inkCompute(it).catch(()=>{});const st=it._ink;
+    if(st&&!st.busy&&!st.failed){   // 文字のインクだけを消した、パッチの画像を、元の画像の上に重ねる
+      st.patches.forEach(pc=>{const c=document.createElement("canvas");c.width=pc.cv.width;c.height=pc.cv.height;c.getContext("2d").drawImage(pc.cv,0,0);c.className="cover inkp"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;
+        c.style.cssText=`left:${pc.x*k}px;top:${pc.y*k}px;width:${pc.w*k}px;height:${pc.h*k}px`;ov.appendChild(c);});
+      return;}
+    rs=(it.covers||[it.cover]).filter(Boolean);   // 計算の間(と、消せなかったとき)は、背景色の四角
+  }else rs=coverRects(it,true);
+  if(!rs.length)return;
+  rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   if(it.type==="img")return;
+  if(el&&it.ocrMade)el.classList.toggle("ocrf",!ocrEdited(it));
   renderCovers(it);
 }
 // すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
@@ -832,10 +845,11 @@ function newText(x,y,w,h){
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
 function tightCovers(list){
+  const gm=list.some(r=>r.ocr)?OCR_SPLIT_GAP:0.8;   // 文字認識の行は、1つの枠にまとめる語どうし(buildBlocks と同じ隙間)の間も隠す。語の四角の外に出た字の端が、語の間に残らないように
   const rs=list.map(r=>{const b=r.box||{x:r.x-0.5,y:r.base-r.size*0.88,w:r.w+1,h:r.size*1.1};return{x:b.x,y:b.y,w:b.w,h:b.h,s:r.size};}).sort((a,b)=>(Math.abs(a.y-b.y)<a.s*0.4?a.x-b.x:a.y-b.y));
   const out=[];
   rs.forEach(r=>{const l=out[out.length-1];
-    if(l&&Math.abs(l.y-r.y)<r.s*0.4&&r.x-(l.x+l.w)<r.s*0.8){const x1=Math.max(l.x+l.w,r.x+r.w),y0=Math.min(l.y,r.y),y1=Math.max(l.y+l.h,r.y+r.h);l.w=x1-l.x;l.y=y0;l.h=y1-y0;}
+    if(l&&Math.abs(l.y-r.y)<r.s*0.4&&r.x-(l.x+l.w)<r.s*gm){const x1=Math.max(l.x+l.w,r.x+r.w),y0=Math.min(l.y,r.y),y1=Math.max(l.y+l.h,r.y+r.h);l.w=x1-l.x;l.y=y0;l.h=y1-y0;}
     else out.push({x:r.x,y:r.y,w:r.w,h:r.h,s:r.s});});
   return out.map(({x,y,w,h})=>({x,y,w,h}));
 }
@@ -885,7 +899,7 @@ let applying=false,applyP=null;   // applyP: 反映の最中(保存は、これ�
 // 直したPDFの部品は、選択を外したとき、PDFの元の文字を取り除いて、新しい文字に置き換える(確認を出す)。そのあと、PDFの文字から枠を作り直す。やめたときは、保存するときに反映する
 async function applyNow(it){
   const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
-  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&it.sig0&&fixChanged(it)))||it._noApply||!(it.txt||"").trim())return;
+  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&((it.sig0&&fixChanged(it))||(it.ocrMade&&ocrEdited(it)))))||it._noApply||!(it.txt||"").trim())return;   // 文字認識でできた枠も、直したら(ocrEdited)、選択を外したときに、PDFにする(元の画像の文字は隠れ、直した文字がPDFの文字になる)
   applying=true;ov.style.pointerEvents="none";
   applyP=(async()=>{try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
   await applyP;applyP=null;
@@ -1066,6 +1080,7 @@ document.addEventListener("pointerdown",e=>{if(!ctx.contains(e.target))hideCtx()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")hideCtx();});
 window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
+  if(it.ocrMade){const u=!ocrEdited(it);if(el.classList.contains("ocrf")!==u){el.classList.toggle("ocrf",u);renderCovers(it);}}   // 動かした・大きさを変えたら、元の画像を重ねて見せるのをやめる
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
   if(t){t.style.whiteSpace=it.ol?"pre":"";t.style.overflowWrap=it.ol?"normal":"";t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
@@ -1139,7 +1154,7 @@ function renderOverlay(){
     renderCovers(it);
   });
   items.filter(it=>it.page===cur).forEach(it=>{
-    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade?" ocrf":"");
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade&&!ocrEdited(it)?" ocrf":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
@@ -1302,7 +1317,7 @@ function showSizePop(it,anchor){
   d.innerHTML=`<span>フォント</span><select id="spFont" style="min-height:30px;font-size:16px;max-width:8.5em;text-overflow:ellipsis"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select>
 <span>サイズ</span><span style="display:flex;gap:4px;align-items:center"><input id="spIn" type="text" inputmode="decimal" list="spList" size="4" autocomplete="off" style="min-height:30px;font-size:16px;width:4.2em"><datalist id="spList">${SIZE_LIST.map(v=>`<option value="${v}">`).join("")}</datalist><span>pt</span></span>
 <span>文字色</span><input id="spColor" type="color" style="min-height:30px;width:3em;padding:0">
-<span>背景</span><select id="spBg" style="min-height:30px;font-size:16px;max-width:8.5em"><option value="none">透明</option><option value="text">文字だけ白抜き</option><option value="all">全体白抜き</option></select>
+<span>背景</span><select id="spBg" style="min-height:30px;font-size:16px;max-width:8.5em"><option value="ink">文字だけ消す(罫線・図形・背景は残す)</option><option value="none">透明(何も消さない)</option><option value="text">文字のところを白抜き</option><option value="all">全体白抜き</option></select>
 <span>字間</span><span style="display:flex;gap:4px;align-items:center"><input id="spLs" type="number" step="0.1" min="-2" max="40" style="min-height:30px;font-size:16px;width:4.2em"><span>pt</span></span>
 ${it.type==="fix"?'<span></span><button id="spErase" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">元のPDFの文字を消す</button>':""}
 <span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button></span>
@@ -2423,6 +2438,25 @@ function verifyChars(r,ink,ox,oy,fam){
   if(changed){r.str=chars.join("");r.verified=changed;}
   return changed;
 }
+// 文字認識の行の四角(元の文字を隠す範囲)を、四角のすぐ外に続いている文字のインクまで広げる。広げすぎない: 隣の行の四角には入らない・大きさの0.35倍まで・帯いっぱいに続く線(罫線・下線)は広げない
+function growBoxesToInk(runs,cv,S,ox,oy){
+  const ink=makeInk(cv,S),w=ink.w,h=ink.h,R=ink.R,I=ink.I,TH=0.3,st=1/R;
+  const at=(px,py)=>{const i=Math.round((px-ox)*R),j=Math.round((py-oy)*R);return i<0||j<0||i>=w||j>=h?0:I[j*w+i];};
+  const inter=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+  const band=(x0,y0,x1,y1)=>{let n=0,c=0;if(x1-x0>=y1-y0){for(let px=x0;px<=x1;px+=st){c++;if(at(px,(y0+y1)/2)>TH)n++;}}else{for(let py=y0;py<=y1;py+=st){c++;if(at((x0+x1)/2,py)>TH)n++;}}return{n,f:c?n/c:0};};
+  runs.forEach(r=>{
+    if(!r.box)return;const b={...r.box},mx=Math.max(1.5,r.size*0.35),nb=runs.filter(q=>q!==r&&q.box).map(q=>q.box);
+    for(const side of ["b","t","r","l"]){
+      for(let ext=0;ext<mx;ext+=st){
+        const s=side==="b"?{x:b.x,y:b.y+b.h,w:b.w,h:st}:side==="t"?{x:b.x,y:b.y-st,w:b.w,h:st}:side==="r"?{x:b.x+b.w,y:b.y,w:st,h:b.h}:{x:b.x-st,y:b.y,w:st,h:b.h};
+        if(nb.some(q=>inter(s,q)))break;
+        const g=band(s.x,s.y,s.x+s.w,s.y+s.h);if(!g.n||g.f>0.6)break;
+        if(side==="b")b.h+=st;else if(side==="t"){b.y-=st;b.h+=st;}else if(side==="r")b.w+=st;else{b.x-=st;b.w+=st;}
+      }
+    }
+    r.box=b;
+  });
+}
 async function refineRuns(runs,cv,S,ox,oy){
   const ink=makeInk(cv,S),inkHi=makeInkHi(cv,S),fam=famOf("text"),st={fixed:0,kept:0,skip:0};
   for(let i=0;i<runs.length;i++){const r=runs[i];if(!r.ocr)continue;try{const k=refineRun(r,ink,ox,oy,fam);if(k===1)st.fixed++;else if(k===0)st.kept++;else st.skip++;if(r.refScore==null||r.refScore>=OCR_MIN_MATCH)st.chars=(st.chars||0)+verifyChars(r,inkHi,ox,oy,fam);}catch(e){st.skip++;console.warn("照合に失敗",e);}
@@ -2602,6 +2636,7 @@ async function doOcrBody(x,y,w,h){
   if(dropped){runs.length=0;runs.push(...keep);}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
   lastRefine=nref;lastOcrRuns=runs;
+  growBoxesToInk(runs,cv,S,x,y);   // 元の文字を隠す四角が、文字の下・横にはみ出た線や点(下がる部分・小さな点)の端で、切れないようにする
   buildBlocks(runs,OCR_SPLIT_GAP).forEach(g=>{
     const it=newFix(g),chs=[...new Set(g.map(r=>r.ch))];
     if(g.some(r=>r.ocr&&!r.refined))fitOcrWidth(it,g);   // 照合できなかった行だけ、従来の幅の合わせ込み
@@ -2613,8 +2648,9 @@ async function doOcrBody(x,y,w,h){
       if(c.align==="center"){it.vx=(ux0+ux1)/2-it.vw/2;}
       else if(c.align==="right"){it.vx=ux1-it.vw+fs*0.2;}
     }
-    it.ocrMade=true;growToFit(it);clampToPage(it);
+    it.ocrMade=true;it.bgMode="ink";growToFit(it);clampToPage(it);   // 画像の文字は、文字のインクだけを消す(罫線・図形・背景は残す)
     if(!ocrRange.whole)keepInRange(it,x,y,w,h);
+    it.ocrSig=ocrSigOf(it);
     made.push(it);
   });
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
@@ -3030,6 +3066,13 @@ async function commit(only){
     if(it.type==="img")continue;
     // 文字のあるPDFでは、下の文字を取り除くか画像にしたので、白い四角は要らない(罫線などが、欠けないように)。文字のないページ(スキャンなど)・取り除けなかったときだけ、従来どおり白抜きする
     const Ux=under.get(it.page),noPatch=it.type==="text"&&bgModeOf(it)!=="all"&&Ux&&Ux.hasText&&[...Ux.ex.values()].every(e=>e.done);
+    if(it.type==="fix"&&bgModeOf(it)==="ink"&&fixChanged(it)){   // 文字のインクだけを消したパッチを、元の画像の上に重ねる(画像そのものは変えない)。できなかったら、下の四角
+      const st=await inkCompute(it);
+      if(!st.failed&&st.patches.length){
+        const pg=doc.getPage(it.page),{width:W0,height:H0}=pg.getSize(),r0=((pg.getRotation().angle%360)+360)%360;
+        for(const pc of st.patches){const bl=await new Promise(res=>pc.cv.toBlob(res,"image/png")),im=await doc.embedPng(new Uint8Array(await bl.arrayBuffer())),[ax,ay]=toUser(pc.x,pc.y+pc.h,W0,H0,r0);pg.drawImage(im,{x:ax,y:ay,width:pc.w,height:pc.h,rotate:degrees(r0)});}
+        continue;}
+    }
     const rs=((it._stripped||noPatch)&&bgModeOf(it)!=="all")?[]:coverRects(it);if(!rs.length)continue;
     const page=doc.getPage(it.page);const {width:W,height:H}=page.getSize();const r=((page.getRotation().angle%360)+360)%360,col=hex2rgb(bgOf(it));
     for(const c of rs){const [a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);
@@ -3131,6 +3174,107 @@ window.addEventListener("scroll",()=>{const h=$("embHead");if(h)h.style.transfor
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
+// ===== 部品の管理表 =====
+// 画像の中の、どんな部品を、編集の対象にするか・残す(守る)かを、ここで管理する。部品が増えたら、ここに足す(検出の処理は、それぞれ別)
+const PARTS=[
+  {id:"text",name:"文字",detect:"文字認識(OCR)・PDFの文字",edit:true,keep:false,note:"実装済み"},
+  {id:"rule",name:"罫線",detect:"長い水平・垂直の線(点線は未対応)",edit:false,keep:true,note:"文字を消すとき守る。消すときは白塗り"},
+  {id:"figure",name:"図形",detect:"枠に収まらないインクの塊",edit:false,keep:true,note:"文字を消すとき守る。種類ごとの検出は今後"},
+  {id:"background",name:"背景",detect:"周りの画素",edit:false,keep:true,note:"文字を消すとき、周りから埋める"},
+  {id:"qr",name:"QRコード",detect:"QR認識",edit:false,keep:true,note:"未実装(別の機能)"},
+  {id:"pattern",name:"模様",detect:"-",edit:false,keep:true,note:"未実装"}
+];
+try{const sv=JSON.parse(localStorage.getItem("pdfEditorKeep")||"{}");PARTS.forEach(p=>{if(sv[p.id]!==undefined&&(p.id==="rule"||p.id==="figure"))p.keep=!!sv[p.id];});}catch{}
+const keepUi=()=>{["rule","figure"].forEach(id=>{const e=document.getElementById(id==="rule"?"keepRule":"keepFig");if(e){e.checked=partKeep(id);e.onchange=()=>{PARTS.find(q=>q.id===id).keep=e.checked;try{localStorage.setItem("pdfEditorKeep",JSON.stringify({rule:partKeep("rule"),figure:partKeep("figure")}));}catch{}};}});};
+const partKeep=id=>{const p=PARTS.find(q=>q.id===id);return!p||p.keep;};
+keepUi();
+// ===== 「文字だけ消す」(画像の中の文字のインクだけを消して、周りの画素から埋める。罫線・図形・背景は残す) =====
+// 考え方は、写真の異物を消す「インペインティング」と同じ: ①消す範囲(マスク)を作る ②周りのインクでない画素の平均で埋める。文字のような細い線では、これが一番きれい(合成画像での比較)
+function inkBlur(a,W,H,r){   // 箱ぼかし(縦横に分けて、累積和で)
+  const out=new Float32Array(a.length),tmp=new Float32Array(a.length);
+  for(let y=0;y<H;y++){const o=y*W;let s=0;const cs=new Float64Array(W+1);for(let x=0;x<W;x++){s+=a[o+x];cs[x+1]=s;}
+    for(let x=0;x<W;x++){const x0=Math.max(0,x-r),x1=Math.min(W-1,x+r);tmp[o+x]=(cs[x1+1]-cs[x0])/(x1-x0+1);}}
+  for(let x=0;x<W;x++){let s=0;const cs=new Float64Array(H+1);for(let y=0;y<H;y++){s+=tmp[y*W+x];cs[y+1]=s;}
+    for(let y=0;y<H;y++){const y0=Math.max(0,y-r),y1=Math.min(H-1,y+r);out[y*W+x]=(cs[y1+1]-cs[y0])/(y1-y0+1);}}
+  return out;
+}
+function inkMax(a,W,H,r){   // 最大値フィルタ(暗い文字を飛ばして、背景の明るさを求める)
+  const tmp=new Float32Array(a.length),out=new Float32Array(a.length);
+  for(let y=0;y<H;y++){const o=y*W;for(let x=0;x<W;x++){let m=-1;const x0=Math.max(0,x-r),x1=Math.min(W-1,x+r);for(let k=x0;k<=x1;k++)if(a[o+k]>m)m=a[o+k];tmp[o+x]=m;}}
+  for(let x=0;x<W;x++){for(let y=0;y<H;y++){let m=-1;const y0=Math.max(0,y-r),y1=Math.min(H-1,y+r);for(let k=y0;k<=y1;k++)if(tmp[k*W+x]>m)m=tmp[k*W+x];out[y*W+x]=m;}}
+  return out;
+}
+function inkDilate(m,W,H,r){   // マスクを r 画素ぶん太らせる(縦横に分けて)
+  const t=new Uint8Array(m.length),o=new Uint8Array(m.length);
+  for(let y=0;y<H;y++){let last=-1e9;for(let x=0;x<W;x++){if(m[y*W+x])last=x;if(x-last<=r)t[y*W+x]=1;}last=1e9;for(let x=W-1;x>=0;x--){if(m[y*W+x])last=x;if(last-x<=r)t[y*W+x]=1;}}
+  for(let x=0;x<W;x++){let last=-1e9;for(let y=0;y<H;y++){if(t[y*W+x])last=y;if(y-last<=r)o[y*W+x]=1;}last=1e9;for(let y=H-1;y>=0;y--){if(t[y*W+x])last=y;if(last-y<=r)o[y*W+x]=1;}}
+  return o;
+}
+// cv: 枠のまわりを含めて描いた画像。box: 消したい枠(cv の画素)。S: 画素/pt。fl:{keepRule,keepFigure}
+// 返り値: {ok,cv(パッチの画像),px,py(パッチの左上=cv の画素),nMask}。ok=false なら、四角で塗るほうに切り替える(文字を見つけられない・広すぎる)
+function inkErase(cv,box,S,fl){
+  fl=Object.assign({keepRule:true,keepFigure:true,T:40},fl||{});
+  const W=cv.width,H=cv.height,n=W*H,ctx=cv.getContext("2d",{willReadFrequently:true}),img=ctx.getImageData(0,0,W,H),d=img.data;
+  const g=new Float32Array(n);for(let i=0;i<n;i++)g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
+  const bh=Math.max(6,box.h),r=Math.max(2,Math.round(bh*0.6)),bgG=inkBlur(inkMax(g,W,H,r),W,H,Math.max(1,r>>1));
+  const ink=new Uint8Array(n);for(let i=0;i<n;i++)if(bgG[i]-g[i]>fl.T)ink[i]=1;
+  // 罫線: 長く続くインク(水平・垂直。1画素の途切れは許す)
+  const L=Math.max(24,Math.round(bh*2)),rule=new Uint8Array(n);
+  for(let y=0;y<H;y++){let s=-1,gap=0,x=0;for(;x<=W;x++){const on=x<W&&ink[y*W+x];if(on){if(s<0)s=x;gap=0;}else if(s>=0){gap++;if(gap>1||x>=W){const e=x-gap;if(e-s+1>=L)for(let k=s;k<=e;k++)rule[y*W+k]=1;s=-1;gap=0;}}}}
+  for(let x=0;x<W;x++){let s=-1,gap=0,y=0;for(;y<=H;y++){const on=y<H&&ink[y*W+x];if(on){if(s<0)s=y;gap=0;}else if(s>=0){gap++;if(gap>1||y>=H){const e=y-gap;if(e-s+1>=L)for(let k=s;k<=e;k++)rule[k*W+x]=1;s=-1;gap=0;}}}}
+  const ruleD=inkDilate(rule,W,H,1);
+  // 文字: 罫線を除いたインクの塊(連結成分)のうち、枠(+0.15×高さ)に収まり、高さが枠の高さ以下のもの
+  const e=bh*0.15,bx0=box.x-e,by0=box.y-e,bx1=box.x+box.w+e,by1=box.y+box.h+e,lab=new Int32Array(n),mask=new Uint8Array(n);
+  let nMask=0;const st=[];
+  for(let i0=0;i0<n;i0++){
+    if(!ink[i0]||ruleD[i0]||lab[i0])continue;
+    let x0=W,y0=H,x1=-1,y1=-1;const px=[];st.length=0;st.push(i0);lab[i0]=1;
+    while(st.length){const i=st.pop(),x=i%W,y=(i/W)|0;px.push(i);if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=W||yy>=H)continue;const j=yy*W+xx;if(ink[j]&&!ruleD[j]&&!lab[j]){lab[j]=1;st.push(j);}}}
+    const inBox=x0>=bx0&&x1<=bx1&&y0>=by0&&y1<=by1&&(y1-y0+1)<=bh*1.1;
+    const touches=!(x1<box.x||x0>box.x+box.w||y1<box.y||y0>box.y+box.h);
+    if(inBox||(!fl.keepFigure&&touches))for(const i of px){mask[i]=1;nMask++;}
+  }
+  if(!fl.keepRule){for(let y=Math.max(0,Math.floor(box.y));y<Math.min(H,Math.ceil(box.y+box.h));y++)for(let x=Math.max(0,Math.floor(box.x));x<Math.min(W,Math.ceil(box.x+box.w));x++)if(ruleD[y*W+x]&&!mask[y*W+x]){mask[y*W+x]=1;nMask++;}}
+  if(nMask<10||nMask>box.w*box.h*0.7)return{ok:false,nMask};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
+  const rd=S>=3?3:2;let mk=inkDilate(mask,W,H,rd);
+  if(fl.keepRule)for(let i=0;i<n;i++)if(ruleD[i])mk[i]=0;   // 罫線は、そのまま
+  // 埋める: インクでなく・マスクでもない画素の、周りの平均(重み付き)。3回ぼかして、ガウスに近づける
+  const inkD=inkDilate(ink,W,H,1),w=new Float32Array(n);for(let i=0;i<n;i++)w[i]=(!inkD[i]&&!mk[i])?1:0;
+  const rb=Math.max(2,Math.round(bh*0.35)),ch=[0,1,2].map(c=>{const a=new Float32Array(n);for(let i=0;i<n;i++)a[i]=w[i]?d[i*4+c]:0;return a;});
+  const blur3=a=>inkBlur(inkBlur(inkBlur(a,W,H,rb),W,H,rb),W,H,rb),bw=blur3(w),bc=ch.map(blur3);
+  // 範囲(パッチ): 枠のまわり rd+2 画素
+  const pad=rd+3,qx0=Math.max(0,Math.floor(box.x-e-pad)),qy0=Math.max(0,Math.floor(box.y-e-pad)),qx1=Math.min(W,Math.ceil(box.x+box.w+e+pad)),qy1=Math.min(H,Math.ceil(box.y+box.h+e+pad)),pw=qx1-qx0,ph=qy1-qy0;
+  const out=document.createElement("canvas");out.width=pw;out.height=ph;const oc=out.getContext("2d"),od=oc.createImageData(pw,ph);
+  for(let y=0;y<ph;y++)for(let x=0;x<pw;x++){
+    const i=(y+qy0)*W+(x+qx0),o=(y*pw+x)*4;
+    if(mk[i]){const k=bw[i]>1e-3?bw[i]:0;for(let c=0;c<3;c++)od.data[o+c]=k?Math.max(0,Math.min(255,bc[c][i]/k)):Math.max(0,Math.min(255,bgG[i]));od.data[o+3]=255;}   // 消す(埋める)画素だけ、不透明。ほかは透明=元の画像のまま(罫線・図形が、描き直しでぼやけない)
+  }
+  oc.putImageData(od,0,0);
+  return{ok:true,cv:out,px:qx0,py:qy0,nMask};
+}
+// ページの画像の、1pt あたりの画素数(元の画像の解像度)。だいたいでよい
+function inkScale(){return Math.max(2,Math.min(3.5,Math.round((1240/Math.max(1,VW))*10)/10));}
+// 枠(it)の、元の文字の範囲ごとに、パッチ(文字のインクを消した画像)を作る。結果は it._ink にしまう(範囲が変わらなければ使い回す)
+async function inkCompute(it){
+  const rects=(it.covers||[it.cover]).filter(Boolean),key=JSON.stringify([cur,bytes.length,rects.map(c=>[c.x,c.y,c.w,c.h].map(v=>Math.round(v*10)/10)),partKeep("rule"),partKeep("figure")]);
+  if(it._ink&&it._ink.key===key)return it._ink.p;
+  const st={key,patches:[],failed:false,busy:true};it._ink=st;
+  if(it.page!==cur){st.failed=true;st.busy=false;st.p=Promise.resolve(st);return st.p;}   // いま開いているページの枠だけ
+  st.p=(async()=>{
+    try{
+      const S=inkScale();
+      for(const c of rects){
+        const hh=Math.max(c.h,4),m=Math.max(6,hh*3),x0=Math.max(0,c.x-m),y0=Math.max(0,c.y-m),x1=Math.min(VW,c.x+c.w+m),y1=Math.min(VH,c.y+c.h+m);
+        const cv=await renderRegion(x0,y0,x1-x0,y1-y0,S),r=inkErase(cv,{x:(c.x-x0)*S,y:(c.y-y0)*S,w:c.w*S,h:c.h*S},S,{keepRule:partKeep("rule"),keepFigure:partKeep("figure")});
+        if(!r.ok){st.failed=true;break;}
+        st.patches.push({x:x0+r.px/S,y:y0+r.py/S,w:r.cv.width/S,h:r.cv.height/S,cv:r.cv});
+      }
+    }catch(err){st.failed=true;console.warn("文字だけ消す処理に失敗",err);}
+    st.busy=false;if(it._ink===st)renderCovers(it);return st;
+  })();
+  return st.p;
+}
 // ===== 整形(ページの形を整える道具): 歪み補正(上の warp)・傾き補正・切り抜き・回転/反転 =====
 // 傾き補正・切り抜き・左右/上下の反転は、ページを画像にして置き換える(歪み補正と同じ)。90度・180度の回転は、ページの向きだけを変える(文字も残る)
 let shapeTool="warp";
@@ -3684,7 +3828,7 @@ if(EMBED){
     $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
     $("embRow3").appendChild($("modeSeg"));$("embRow3").appendChild($("shapeSeg"));
     ["optImg","optOcr","optWarp","optTilt","optCrop","optRot","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
-    const sb=$("setBody");["ocrEngine","ocrClean","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
+    const sb=$("setBody");["ocrEngine","ocrClean","keepRule","keepFig","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
     $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
     $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
     $("bOcrRange").onclick=()=>{status("ページの上を、ドラッグして、認識する範囲を指定してください(指は、長押ししてから、ドラッグ)。");const b=$("bOcrRange");b.classList.add("on");setTimeout(()=>b.classList.remove("on"),4000);};
@@ -3710,7 +3854,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix").map(it=>({mode:bgModeOf(it),ink:it._ink?{failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
