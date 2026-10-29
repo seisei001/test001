@@ -121,7 +121,7 @@ button:disabled{opacity:.4;cursor:default;}
   <p><b>ファイル</b>: 新規作成(白紙)/ PDFを開く / 閉じる / 保存 / 印刷 / 元に戻す</p>
   <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)/ このページを印刷</p>
   <p><b>製本</b>(束の操作): 全部選択 / 選択解除 / 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
-  <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「歪み補正」を開けます。</p>
+  <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「整形」「罫線編集」を開けます。</p>
   </div>
   <div style="margin-top:10px;text-align:right"><button class="sub" id="deskHelpClose">閉じる</button></div>
 </div></div>
@@ -146,9 +146,9 @@ button:disabled{opacity:.4;cursor:default;}
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
   desk:{name:"製本デスク",ver:"2.17"},
-  menu:{name:"機能メニュー",ver:"2.02"},
-  edit:{name:"ページ編集",ver:"2.81",src:"forms/editor.html?form=edit"},
-  warp:{name:"歪み補正",ver:"2.12",src:"forms/editor.html?form=warp"},
+  menu:{name:"機能メニュー",ver:"2.03"},
+  edit:{name:"ページ編集",ver:"2.82",src:"forms/editor.html?form=edit"},
+  shape:{name:"整形",ver:"1.00",src:"forms/editor.html?form=shape"},
   rule:{name:"罫線編集",ver:"1.30",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
@@ -571,7 +571,7 @@ function openMenu(b){
   const add=(label,sub,fn,dis,cls)=>{const x=document.createElement("button");if(cls)x.className=cls;x.disabled=!!dis;x.innerHTML=`<span>${label}${sub?`<small>${sub}</small>`:""}</span>`;x.onclick=()=>{closeMenu();fn();};bx.appendChild(x);};
   const pn=b.n>1?`${b.cur+1}ページ目`:"このページ";
   add("✏️ ページ編集",`${pn}の文字・画像・OCRなどを編集`,()=>openForm("edit",b));
-  add("📐 歪み補正",`${pn}の写真の歪みを直す`,()=>openForm("warp",b));
+  add("📐 整形",`${pn}の歪み補正・傾き補正・切り抜き・回転・反転`,()=>openForm("shape",b));
   add("📏 罫線編集",`${pn}の罫線(線・表の枠)を選んで消す`,()=>openForm("rule",b));
   $("menu").classList.remove("hidden");
 }
@@ -585,7 +585,7 @@ let formB=null,panPos=null;
 function openForm(kind,b){
   const F=FORMS[kind];formB=b;
   $("formName").textContent=F.name;$("formVer").textContent=F.ver;
-  const fr=$("formFrame");/* 版を付けて、古い画面(キャッシュ)を使い続けないようにする */fr.src=F.src+"&embed=1&v="+encodeURIComponent(FORMS.edit.ver+"-"+FORMS.warp.ver+"-"+FORMS.rule.ver);$("formHost").classList.remove("hidden");fr._kind=kind;
+  const fr=$("formFrame");/* 版を付けて、古い画面(キャッシュ)を使い続けないようにする */fr.src=F.src+"&embed=1&v="+encodeURIComponent(FORMS.edit.ver+"-"+FORMS.shape.ver+"-"+FORMS.rule.ver);$("formHost").classList.remove("hidden");fr._kind=kind;
 }
 function closeForm(){$("formHost").classList.add("hidden");$("formFrame").src="about:blank";formB=null;}
 $("formClose").onclick=closeForm;

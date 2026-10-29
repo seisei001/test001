@@ -23,7 +23,7 @@ print(bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),bb(lambda c:c[2]>200 and c[0
   for(const erase of [true,false]){
     await page.reload();await page.waitForTimeout(2300);
     await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
-    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'歪み補正'}).click();await page.waitForTimeout(3500);
+    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
     const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
     await fr.locator('#wkPart').click();await page.waitForTimeout(300);
     const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;
@@ -35,7 +35,7 @@ print(bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),bb(lambda c:c[2]>200 and c[0
     // 緑の枠の中(赤い四角の外側の角の近く)をつかんで、右へ 200pt、下へ 100pt 動かす
     await page.mouse.move(X(116),Y(116));await page.mouse.down();await page.mouse.move(X(316),Y(216),{steps:8});await page.mouse.up();await page.waitForTimeout(1200);
     console.log('   緑の枠:',JSON.stringify(await f.evaluate(()=>window.pdfEditorDebug.warpDst())));
-    await fr.locator('#wApply').click();await page.waitForTimeout(6000);
+    await fr.locator('#wApply').click();await page.waitForTimeout(6000);await fr.locator('#embSave').click();await page.waitForTimeout(3000);
     const u=await page.evaluate(()=>Array.from(window.pdfStudioDebug.bytes(0)));fs.writeFileSync('/tmp/warpdst_out.pdf',Buffer.from(u));
     execSync('pdftoppm -r 72 -png -singlefile /tmp/warpdst_out.pdf /tmp/warpdst_out');
     const r=bbox('/tmp/warpdst_out.png');console.log('   erase='+erase,r);

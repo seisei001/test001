@@ -89,7 +89,10 @@ body.noimg #pagewrap{background:#fff;}
 #helpBox .hbody,#setBox .hbody{padding:10px 14px;overflow:auto;font-size:.88rem;line-height:1.6;}
 body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
 body.emb-rule #modeSeg,body.emb-rule #optText,body.emb-rule #optImg,body.emb-rule #optFix,body.emb-rule #optOcr,body.emb-rule #optWarp,body.emb-rule #modeHint,body.emb-rule #selPanel{display:none!important;}
-body.emb-warp #optRule,body.emb-edit #optRule{display:none!important;}
+body.emb-warp #optRule,body.emb-edit #optRule,body.emb-shape #optRule{display:none!important;}
+#shapeSeg{display:none;}body.emb-shape #shapeSeg{display:inline-flex;}
+body.emb-shape #modeSeg,body.emb-shape #optText,body.emb-shape #optImg,body.emb-shape #optFix,body.emb-shape #optOcr,body.emb-shape #modeHint,body.emb-shape #selPanel{display:none!important;}
+body.emb-edit #optTilt,body.emb-edit #optCrop,body.emb-edit #optRot,body.emb-warp #optTilt,body.emb-warp #optCrop,body.emb-warp #optRot,body.emb-rule #optTilt,body.emb-rule #optCrop,body.emb-rule #optRot{display:none!important;}
 #ov .rl{position:absolute;cursor:pointer;touch-action:manipulation;}
 #ov .rl .rln{position:absolute;pointer-events:none;background:rgba(37,99,235,.38);border-radius:1px;}
 #ov .rl:hover .rln{background:rgba(37,99,235,.7);}
@@ -241,6 +244,17 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button><label id="wEraseLbl" class="hidden"><input type="checkbox" id="wErase" checked> 元の場所は消す</label><button class="sub-btn hidden" id="wDstReset">貼り付け先を元の場所に戻す</button>
 <button id="wApply">補正する</button>
 <button class="sub-btn" id="wCancel">やめる</button>
+</div>
+<div class="seg" id="shapeSeg"><button data-t="warp" class="on">歪み補正</button><button data-t="tilt">傾き補正</button><button data-t="crop">切り抜き</button><button data-t="rot">回転・反転</button></div>
+<div class="row hidden" id="optTilt" style="margin-bottom:8px">
+<label>角度(度) <input type="number" id="shAng" value="0" min="-20" max="20" step="0.1" style="width:5em"></label><input type="range" id="shAngR" min="-20" max="20" step="0.1" value="0" style="width:170px">
+<button class="sub-btn" id="shAuto">自動で傾きを探す</button><button id="shTiltApply">傾きを直す</button>
+</div>
+<div class="row hidden" id="optCrop" style="margin-bottom:8px">
+<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button>
+</div>
+<div class="row hidden" id="optRot" style="margin-bottom:8px">
+<button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
 </div>
 <div class="row hidden" id="optRule" style="margin-bottom:8px">
 <button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rBand">範囲で選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tColDel" disabled>列を消す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
@@ -516,7 +530,7 @@ function toUser(vx,vy,W,H,r){
 }
 const K=()=>ov.getBoundingClientRect().width/VW||1;
 const HINTS={
-  rule:"",
+  rule:"",tilt:"",crop:"",rot:"",
   sel:"PDFの文字をタップ(1つのまとまり)かドラッグ(範囲内を一括)すると、その文字が編集できる部品になります。書き換え(訂正)・打ち足し(加筆)・全部消す(削除)ができます。同じ大きさの文字が横に並んでいれば1つの枠になり、大きな空白や、間に線・点線があるところで分かれます。元の文字は背景色で隠し、新しい文字を重ねます。文字のない所をドラッグすると、新しい文字の枠になります。部品はタップで選択し、移動・サイズ変更・削除ができます。",
   text:"ページ上を十字カーソルでドラッグして、文字を置く範囲を指定します。そのまま範囲の中に文字を入力してください(PDFの文字の上でも、新しい枠を作ります)。",
   warp:"写真で歪んだページを直します。四隅の青い点でページの形を合わせ、白い点(格子点)を動かすと、その点を通る曲線で、中ほどだけの歪みも直せます。確定(補正する)するまで、ページは変わりません。補正したページは画像になります(文字データはなくなります。元に戻すで戻せます)。補正後に「🔍 画像の文字を認識」で文字にできます。",
@@ -532,7 +546,7 @@ function openHelp(){
   const names={sel:"✋ 選択・訂正",text:"＋文字",img:"＋画像",ocr:"🔍 画像の文字を認識",warp:"📐 歪み補正"};
   const esc=t=>String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
   let h=`<h3>いまのモード: ${names[mode]||""}</h3><p>${esc(HINTS[mode]||"")}</p><h3>ほかのモード</h3>`;
-  Object.keys(HINTS).filter(k=>k!==mode).forEach(k=>{h+=`<p><b>${names[k]}</b><br>${esc(HINTS[k])}</p>`;});
+  Object.keys(HINTS).filter(k=>k!==mode&&names[k]&&HINTS[k]).forEach(k=>{h+=`<p><b>${names[k]}</b><br>${esc(HINTS[k])}</p>`;});
   h+="<h3>そのほか</h3>";
   document.querySelectorAll(".helptext").forEach(e=>{if(e.id==="modeHint"||!e.innerHTML.trim())return;h+=`<p>${e.innerHTML}</p>`;});
   h+="<p>画面を拡大・移動するには、ふつうに、ドラッグ・2本指の拡大縮小をしてください(枠や操作の上以外)。</p>";
@@ -548,7 +562,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
-  mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp","m-rule");document.body.classList.add("m-"+m);
+  mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp","m-rule","m-tilt","m-crop","m-rot");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
   $("modeHint").textContent=HINTS[m];
@@ -558,9 +572,14 @@ function setMode(m){
   $("optOcr").classList.toggle("hidden",m!=="ocr");
   $("optWarp").classList.toggle("hidden",m!=="warp");
   $("optRule").classList.toggle("hidden",m!=="rule");
+  $("optTilt").classList.toggle("hidden",m!=="tilt");$("optCrop").classList.toggle("hidden",m!=="crop");$("optRot").classList.toggle("hidden",m!=="rot");
+  if(["warp","tilt","crop","rot"].includes(m)){shapeTool=m;[...$("shapeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.t===m));}
+  if(m!=="tilt"&&m!=="warp")$("wPrevBox").classList.add("hidden");
+  if(m==="tilt")tiltSet(0);
+  if(m==="crop"&&pdfView)cropInit();
   if(m!=="warp"){warp=null;$("wPrevBox").classList.add("hidden");}
   else{updateWarpUi();if(warpKind==="page"&&pdfView&&!warp)initWarpPage();}
-  ov.classList.toggle("draw",m!=="rule");ov.classList.toggle("noitems",m==="ocr"||m==="warp");   // 範囲指定のときは、部品の上からでもドラッグできる
+  ov.classList.toggle("draw",m!=="rule");ov.classList.toggle("noitems",m==="ocr"||m==="warp"||m==="crop"||m==="tilt"||m==="rot");   // 範囲指定のときは、部品の上からでもドラッグできる
   renderOverlay();
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
@@ -1210,6 +1229,7 @@ function renderOverlay(){
     ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);placeGrip(it,el);
   });
   if(mode==="warp"){if(!warp&&warpKind==="page")initWarpPage();else renderWarp();}
+  else if(mode==="crop")renderCrop();
 }
 // 枠の大きさに合わせて文字サイズを決める(枠に収まる最大サイズ。複数行・サイズ混在は相対比を保つ)
 const fitsAt=(it,g)=>{const d=measureHost(it,g);const ok=d.scrollHeight<=it.vh+0.5&&d.scrollWidth<=it.vw+0.5;d.remove();return ok;};
@@ -1511,7 +1531,7 @@ function beginRange(e){
   ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
 }
 function rangeOk(){
-  if(!bytes||mode==="rule")return false;
+  if(!bytes||mode==="rule"||mode==="crop"||mode==="tilt"||mode==="rot")return false;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return false;}
   return true;
 }
@@ -1801,7 +1821,7 @@ async function applyWarp(){
   np.drawImage(img,{x:0,y:0,width:newW,height:newH});
   warp=null;warpDst=null;$("wPrevBox").classList.add("hidden");
   await setBytes(await doc.save(),true);
-  setMode("sel");
+  setMode(FORMKIND==="shape"?"warp":"sel");
   status("歪みを補正しました(このページは画像になりました)。続けて「🔍 画像の文字を認識」で文字にできます。元に戻すで戻せます。");
 }
 $("wkPage").onclick=()=>{warpKind="page";warp=null;updateWarpUi();$("wPrevBox").classList.add("hidden");if(pdfView)initWarpPage();};
@@ -1818,7 +1838,7 @@ $("wAuto").onclick=busy(async()=>{
 });
 $("wDstReset").onclick=()=>{if(!warp||warp.kind!=="part")return;const r=warp.rect;warp.dst=[[r.x,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h],[r.x,r.y+r.h]];updateWarpSvg();warpPreviewSoon();};
 $("wApply").onclick=busy(applyWarp);
-$("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMode("sel");};
+$("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMode(FORMKIND==="shape"?"warp":"sel");};
 
 // ====== 文字認識(OCR): 画像の文字を、編集できる部品にする ======
 const TESS_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
@@ -3111,6 +3131,119 @@ window.addEventListener("scroll",()=>{const h=$("embHead");if(h)h.style.transfor
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
+// ===== 整形(ページの形を整える道具): 歪み補正(上の warp)・傾き補正・切り抜き・回転/反転 =====
+// 傾き補正・切り抜き・左右/上下の反転は、ページを画像にして置き換える(歪み補正と同じ)。90度・180度の回転は、ページの向きだけを変える(文字も残る)
+let shapeTool="warp";
+async function replacePageImage(cv,newW,newH,msg){
+  const blob=await new Promise(res=>cv.toBlob(res,"image/jpeg",0.92));
+  const doc=await PDFDocument.load(bytes),img=await doc.embedJpg(new Uint8Array(await blob.arrayBuffer())),idx=cur;
+  doc.removePage(idx);const np=doc.insertPage(idx,[newW,newH]);np.drawImage(img,{x:0,y:0,width:newW,height:newH});
+  await setBytes(await doc.save(),true);$("wPrevBox").classList.add("hidden");status(msg);setMode(shapeTool);
+}
+const shapeScale=(w,h)=>Math.min(5,3000/Math.max(w,h));
+// --- 傾き補正 ---
+let tiltTimer=null;
+function tiltSet(a){a=Math.max(-20,Math.min(20,Math.round(a*10)/10));$("shAng").value=a;$("shAngR").value=a;clearTimeout(tiltTimer);tiltTimer=setTimeout(()=>tiltPreview().catch(e=>console.warn(e)),200);}
+function tiltDraw(src,a,outW,outH){const cv=document.createElement("canvas");cv.width=outW;cv.height=outH;const c=cv.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,outW,outH);
+  c.translate(outW/2,outH/2);c.rotate(a*Math.PI/180);c.drawImage(src,-outW/2,-outH/2,outW,outH);return cv;}
+async function tiltPreview(){
+  if(!pdfView||mode!=="tilt")return;
+  const Sp=Math.min(2,900/Math.max(VW,VH));
+  if(!warpPrevSrc||warpPrevSrc.page!==cur||warpPrevSrc.bytes!==bytes)warpPrevSrc={page:cur,bytes,cv:await renderRegion(0,0,VW,VH,Sp)};
+  const src=warpPrevSrc.cv,sc=Math.min(1,520/src.width),w=Math.round(src.width*sc),h=Math.round(src.height*sc),res=tiltDraw(src,+$("shAng").value||0,w,h),pc=$("wPrev");
+  pc.width=w;pc.height=h;const c=pc.getContext("2d");c.drawImage(res,0,0);c.strokeStyle="rgba(37,99,235,.45)";c.lineWidth=1;   // 水平の目印(文字の行がこれに沿えば、まっすぐ)
+  for(let y=40;y<h;y+=40){c.beginPath();c.moveTo(0,y+.5);c.lineTo(w,y+.5);c.stroke();}
+  $("wPrevBox").classList.remove("hidden");
+}
+async function tiltAutoAngle(){   // 文字の行が水平に一番そろう角度を探す(暗い点を回して、行ごとの数のばらつきが最大になる角度)
+  const Sd=Math.min(1,500/Math.max(VW,VH)),cv=await renderRegion(0,0,VW,VH,Sd),w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const g=new Float32Array(w*h);let sum=0;for(let i=0;i<w*h;i++){g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;sum+=g[i];}
+  const thr=sum/(w*h)*0.7,pts=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(g[y*w+x]<thr)pts.push(x-w/2,y-h/2);
+  if(pts.length<200)return null;
+  const step=Math.max(1,Math.floor(pts.length/2/40000)),bins=new Float32Array(w+h+4);
+  const score=a=>{const r=a*Math.PI/180,s=Math.sin(r),c=Math.cos(r);bins.fill(0);for(let i=0;i<pts.length;i+=2*step){const y=pts[i]*s+pts[i+1]*c+(w+h)/2;bins[Math.max(0,Math.min(bins.length-1,Math.round(y)))]++;}let t=0;for(let i=0;i<bins.length;i++)t+=bins[i]*bins[i];return t;};
+  let best=0,bs=score(0);for(let a=-10;a<=10.001;a+=0.5){const v=score(a);if(v>bs){bs=v;best=a;}}
+  for(let a=best-0.5;a<=best+0.501;a+=0.1){const v=score(a);if(v>bs*1.0001){bs=v;best=a;}}
+  return Math.round(best*10)/10;
+}
+async function tiltApply(){
+  const a=+$("shAng").value||0;if(!a){status("角度が 0 度です。角度を決めてから押してください。");return;}
+  await commit();status("傾きを直しています…");
+  const WS=shapeScale(VW,VH),page=await renderRegion(0,0,VW,VH,WS);
+  await replacePageImage(tiltDraw(page,a,page.width,page.height),VW,VH,`傾きを ${a} 度直しました(このページは画像になりました。四隅の余白は白です)。元に戻すで戻せます。`);
+}
+$("shAng").oninput=()=>tiltSet(+$("shAng").value||0);$("shAngR").oninput=()=>tiltSet(+$("shAngR").value);
+$("shAuto").onclick=busy(async()=>{status("傾きを探しています…");const a=await tiltAutoAngle();if(a===null){status("文字や線が少なくて、傾きを探せませんでした。角度を手で合わせてください。");return;}tiltSet(a);status(`傾きを ${a} 度と見つけました。プレビューの目印の線に文字の行がそろっているか確かめて、「傾きを直す」を押してください。`);});
+$("shTiltApply").onclick=busy(tiltApply);
+// --- 切り抜き ---
+let crop=null,cropSvg=null;
+function cropInit(){crop={b:bytes,x:0,y:0,w:VW,h:VH};}
+function renderCrop(){
+  if(cropSvg){cropSvg.remove();cropSvg=null;}
+  if(mode!=="crop"||!pdfView)return;
+  if(!crop||crop.b!==bytes)cropInit();
+  const k=K(),px=v=>v/k,svg=document.createElementNS(SVGNS,"svg");svg.setAttribute("viewBox",`0 0 ${VW} ${VH}`);
+  svg.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:8";
+  const mk=(tag,at)=>{const e=document.createElementNS(SVGNS,tag);for(const q in at)e.setAttribute(q,at[q]);svg.appendChild(e);return e;};
+  const c=crop,shade=mk("path",{d:`M0 0H${VW}V${VH}H0Z M${c.x} ${c.y}V${c.y+c.h}H${c.x+c.w}V${c.y}Z`,"fill-rule":"evenodd",fill:"rgba(0,0,0,.45)"});
+  const body=mk("rect",{x:c.x,y:c.y,width:c.w,height:c.h,fill:"transparent",stroke:"#2563eb","stroke-width":px(2)});body.style.cssText="pointer-events:all;cursor:move;touch-action:none";
+  const H=[[0,0,-1,-1],[.5,0,0,-1],[1,0,1,-1],[1,.5,1,0],[1,1,1,1],[.5,1,0,1],[0,1,-1,1],[0,.5,-1,0]];   // 8つの持ち手: 位置の割合と、動かす辺(-1=左/上、1=右/下、0=動かさない)
+  const hs=H.map(h=>{const e=mk("circle",{r:px(h[2]&&h[3]?10:8),fill:"#2563eb",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;touch-action:none;cursor:pointer";return e;});
+  const place=()=>{const c=crop;shade.setAttribute("d",`M0 0H${VW}V${VH}H0Z M${c.x} ${c.y}V${c.y+c.h}H${c.x+c.w}V${c.y}Z`);body.setAttribute("x",c.x);body.setAttribute("y",c.y);body.setAttribute("width",c.w);body.setAttribute("height",c.h);
+    hs.forEach((e,i)=>{e.setAttribute("cx",c.x+c.w*H[i][0]);e.setAttribute("cy",c.y+c.h*H[i][1]);});};
+  place();
+  const drag=(el,hi)=>el.addEventListener("pointerdown",e=>{
+    if(hi<0&&crop.w*crop.h>=VW*VH*0.98){e.stopPropagation();cropNew(e);return;}   // ページ全体のときは、中をドラッグして、新しい範囲を決める(動かす余地がない)
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    const kk=K(),sx=e.clientX,sy=e.clientY,c0={...crop};
+    const mv=ev=>{const dx=(ev.clientX-sx)/kk,dy=(ev.clientY-sy)/kk;let x0=c0.x,y0=c0.y,x1=c0.x+c0.w,y1=c0.y+c0.h;
+      if(hi<0){const ddx=Math.max(-x0,Math.min(VW-x1,dx)),ddy=Math.max(-y0,Math.min(VH-y1,dy));x0+=ddx;x1+=ddx;y0+=ddy;y1+=ddy;}
+      else{const [,,hx,hy]=H[hi];if(hx<0)x0=Math.max(0,Math.min(x1-20,x0+dx));if(hx>0)x1=Math.min(VW,Math.max(x0+20,x1+dx));if(hy<0)y0=Math.max(0,Math.min(y1-20,y0+dy));if(hy>0)y1=Math.min(VH,Math.max(y0+20,y1+dy));}
+      crop={b:c0.b,x:x0,y:y0,w:x1-x0,h:y1-y0};place();};
+    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);};
+    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+  });
+  drag(body,-1);hs.forEach((e,i)=>drag(e,i));
+  ov.appendChild(svg);cropSvg=svg;
+}
+function cropNew(e){   // ドラッグで、切り抜く範囲を新しく決める
+  e.preventDefault();const rc=ov.getBoundingClientRect(),kk=K(),X=ev=>Math.max(0,Math.min(VW,(ev.clientX-rc.left)/kk)),Y=ev=>Math.max(0,Math.min(VH,(ev.clientY-rc.top)/kk)),x0=X(e),y0=Y(e);
+  const mv=ev=>{const x1=X(ev),y1=Y(ev);crop={b:bytes,x:Math.min(x0,x1),y:Math.min(y0,y1),w:Math.abs(x1-x0),h:Math.abs(y1-y0)};renderCrop();};
+  const up=()=>{document.removeEventListener("pointermove",mv);if(crop.w<20||crop.h<20)cropInit();renderCrop();};
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
+}
+ov.addEventListener("pointerdown",e=>{if(mode==="crop"&&e.target===ov&&e.button<=0)cropNew(e);});   // 何もない所をドラッグ
+async function cropAuto(){   // 紙のまわりの余白(背景と同じ色の部分)を、自動で切る範囲にする
+  const Sd=Math.min(1,500/Math.max(VW,VH)),cv=await renderRegion(0,0,VW,VH,Sd),w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const hist=new Uint32Array(64);for(let i=0;i<w*h;i++)hist[((d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)>>2)]++;
+  let bg=0;for(let i=1;i<64;i++)if(hist[i]>hist[bg])bg=i;bg=bg*4+2;   // いちばん多い明るさ=余白(背景)
+  let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=d[i]*.3+d[i+1]*.59+d[i+2]*.11;if(Math.abs(g-bg)>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+  if(x1<0){status("切る余白が見つかりませんでした。");return;}
+  const m=12/Sd*0.5,sx=1/Sd;x0=Math.max(0,x0*sx-m);y0=Math.max(0,y0*sx-m);x1=Math.min(VW,(x1+1)*sx+m);y1=Math.min(VH,(y1+1)*sx+m);
+  crop={b:bytes,x:x0,y:y0,w:x1-x0,h:y1-y0};renderCrop();status("文字や絵のある範囲を、切り抜く範囲にしました。角の点をドラッグして調整してから「この範囲で切り抜く」を押してください。");
+}
+async function cropApply(){
+  const c=crop;if(!c||c.w<10||c.h<10){status("切り抜く範囲が小さすぎます。");return;}
+  await commit();status("切り抜いています…");
+  const WS=shapeScale(c.w,c.h),cv=await renderRegion(c.x,c.y,c.w,c.h,WS);
+  await replacePageImage(cv,c.w,c.h,"切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
+}
+$("shCropAuto").onclick=busy(cropAuto);$("shCropAll").onclick=()=>{cropInit();renderCrop();};$("shCropApply").onclick=busy(cropApply);
+// --- 回転・反転 ---
+async function pageRotate(delta){
+  await commit();const doc=await PDFDocument.load(bytes),pg=doc.getPage(cur);pg.setRotation(degrees((((pg.getRotation().angle+delta)%360)+360)%360));
+  await setBytes(await doc.save(),true);status(`ページを${delta===180?"180度":delta>0?"右に90度":"左に90度"}回しました。元に戻すで戻せます。`);setMode(shapeTool);
+}
+async function pageFlip(horizontal){
+  await commit();status("反転しています…");
+  const WS=shapeScale(VW,VH),page=await renderRegion(0,0,VW,VH,WS),out=document.createElement("canvas");out.width=page.width;out.height=page.height;
+  const c=out.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,out.width,out.height);
+  if(horizontal){c.translate(out.width,0);c.scale(-1,1);}else{c.translate(0,out.height);c.scale(1,-1);}
+  c.drawImage(page,0,0);await replacePageImage(out,VW,VH,`${horizontal?"左右":"上下"}を反転しました(このページは画像になりました)。元に戻すで戻せます。`);
+}
+$("shRotL").onclick=busy(()=>pageRotate(-90));$("shRotR").onclick=busy(()=>pageRotate(90));$("shRot180").onclick=busy(()=>pageRotate(180));
+$("shFlipH").onclick=busy(()=>pageFlip(true));$("shFlipV").onclick=busy(()=>pageFlip(false));
+[...$("shapeSeg").children].forEach(b=>b.onclick=()=>setMode(b.dataset.t));
 // ===== 罫線編集: PDFの罫線(線・薄い塗り四角)を、ページの命令ごと取り除く =====
 // 位置(命令の中の場所)は覚えない。操作のたびにページの命令を読み直して、その場で切り取る(文字を取り除いたあとでも、ずれない)
 const RULE={for:null,scanning:null,els:[],sel:new Set(),vp:null,draw:false,dragAt:0,tab:false,tables:[],cellSel:null,band:false};
@@ -3542,15 +3675,15 @@ ov.addEventListener("pointerdown",e=>{   // 何もない所をドラッグ: 通�
 });
 // ===== PDFスタジオの「ページ編集」「歪み補正」「罫線編集」フォームとして動く(?embed=1&form=edit|warp|rule) =====
 // 親(束デスク)から、表示中の1ページだけのPDFを受け取り、編集して「保存して束に戻す」で返す。画面の名前・バージョンは親が上に表示する
-const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":QS.get("form")==="rule"?"rule":"edit";
+const QS=new URLSearchParams(location.search),EMBED=QS.get("embed")==="1"&&window.parent!==window,FORMKIND=QS.get("form")==="warp"?"warp":QS.get("form")==="shape"?"shape":QS.get("form")==="rule"?"rule":"edit";
 if(EMBED){
   document.body.classList.add("embed","emb-"+FORMKIND);
   {   // 見出しに集約: 元に戻す・状況・モード・モードごとの操作・選んでいる枠の道具を、見出しの中に移す(IDはそのまま)
     document.body.appendChild($("job"));   // 処理の表示(緑の枠)は、「① ファイル」の窓と一緒に消えないよう、外に出す
     $("embRow1").querySelector(".embL").prepend($("bUndo"));
     $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
-    $("embRow3").appendChild($("modeSeg"));
-    ["optImg","optOcr","optWarp","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
+    $("embRow3").appendChild($("modeSeg"));$("embRow3").appendChild($("shapeSeg"));
+    ["optImg","optOcr","optWarp","optTilt","optCrop","optRot","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
     const sb=$("setBody");["ocrEngine","ocrClean","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
     $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
     $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
@@ -3558,15 +3691,15 @@ if(EMBED){
   }
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
-  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
+  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="shape"?"ページの形を整えて、「保存」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
     if(m&&m.type==="zoom"){GEO.set(m);applyZoom();clearTimeout(jobPlT);jobPlT=setTimeout(placeJob,300);onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
     const m=e.data;if(!m||m.type!=="load")return;
     const b=new Uint8Array(m.bytes);await PDFDocument.load(b);
     fileName=m.name;saveHandle=null;hist=[];bytes=null;cur=0;sel=new Set();items=[];cs=null;lastSel=null;hideSizePop();blockOf=new Map();runs=[];runsFor=-1;curBase=null;imgData=null;syncPanel();await setBytes(b);hist=[];$("bUndo").disabled=true;
-    setMode(FORMKIND==="warp"?"warp":FORMKIND==="rule"?"rule":"sel");
-    status(FORMKIND==="warp"?"歪んだページを、四隅や格子点で合わせてください。":FORMKIND==="rule"?"罫線を青く表示しています。":"このページを編集できます。");
+    setMode(FORMKIND==="warp"||FORMKIND==="shape"?"warp":FORMKIND==="rule"?"rule":"sel");
+    status(FORMKIND==="warp"||FORMKIND==="shape"?"歪んだページを、四隅や格子点で合わせてください。":FORMKIND==="rule"?"罫線を青く表示しています。":"このページを編集できます。");
   }));
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
