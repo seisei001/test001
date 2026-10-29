@@ -247,7 +247,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
 <input id="fImg" type="file" accept="image/png,image/jpeg" class="hidden">
-<span id="imgName" class="sub"></span>
+<span id="imgName" class="sub"></span><button class="sub-btn" id="bPasteImg">スクリーンショットを貼り付け</button>
 </div>
 <div class="stage"><div id="pagewrap"><canvas id="stage"></canvas><div id="ov"></div></div></div>
 <div id="wPrevBox" class="hidden" style="margin-top:10px"><div class="sub" style="margin-bottom:4px">補正後のイメージ</div><canvas id="wPrev" style="max-width:100%;border:1px solid var(--border);background:#fff"></canvas></div>
@@ -576,15 +576,45 @@ function jpegOrient(u){   // JPEG の EXIF の『向き』(1=そのまま、2〜
         const ifd=t+g32(t+4),n=g16(ifd);for(let k=0;k<n;k++){const e=ifd+2+k*12;if(g16(e)===0x0112)return g16(e+8)||1;}return 1;}
       if(m===0xda||m===0xd9)break;i+=2+len;}}catch{}
   return 1;}
+async function imgFromBlob(f){   // 画像(ファイル・クリップボード)を、PDFに入れられる形にする。PNG/JPEG以外は PNG にし、向き(EXIF)つきの JPEG は、画素を正しい向きに描き直す
+  const bytes=new Uint8Array(await f.arrayBuffer()),url=URL.createObjectURL(f),d={bytes,png:f.type==="image/png",url};
+  const im=new Image();im.src=url;await im.decode();d.ratio=im.naturalHeight/im.naturalWidth;
+  const redraw=async(type,q)=>{const cv=document.createElement("canvas");cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext("2d").drawImage(im,0,0);
+    const bl=await new Promise(r=>cv.toBlob(r,type,q));return bl?new Uint8Array(await bl.arrayBuffer()):null;};
+  if(f.type!=="image/png"&&f.type!=="image/jpeg"){const b=await redraw("image/png");if(b){d.bytes=b;d.png=true;}}   // WebP・GIF・BMP など
+  else if(!d.png&&jpegOrient(bytes)>1){   // スマホの写真など: 向きが『EXIF』という付属の情報にだけ書いてある JPEG は、画面ではそのとおりに見えるが、PDFに入れると向きが無視されて、縦横が入れ替わる。画素を正しい向きに描き直して入れる
+    const b=await redraw("image/jpeg",0.92);if(b)d.bytes=b;}
+  return d;
+}
 $("fImg").onchange=busy(async e=>{
   const f=e.target.files[0];if(!f)return;
   if(imgData)URL.revokeObjectURL(imgData.url);
-  imgData={bytes:await readFile(f),png:f.type==="image/png",url:URL.createObjectURL(f)};
-  const im=new Image();im.src=imgData.url;await im.decode();imgData.ratio=im.naturalHeight/im.naturalWidth;
-  if(!imgData.png&&jpegOrient(imgData.bytes)>1){   // スマホの写真など: 向きが『EXIF』という付属の情報にだけ書いてある JPEG は、画面ではそのとおりに見えるが、PDFに入れると向きが無視されて、縦横が入れ替わる。画素を正しい向きに描き直して入れる
-    const cv=document.createElement("canvas");cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext("2d").drawImage(im,0,0);
-    const bl=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.92));if(bl)imgData.bytes=new Uint8Array(await bl.arrayBuffer());}
+  imgData=await imgFromBlob(f);
   $("imgName").textContent=f.name;e.target.value="";
+});
+// スクリーンショット(クリップボードの画像)を、ページの見えている中ほどに貼る。縦横比は、そのまま。大きさは、角の矢印(⇲)で変えられる(縦横比は変わらない)
+async function pasteImage(blob){
+  if(!pdfView||!bytes){status("先にページを開いてください。");return;}
+  const d=await imgFromBlob(blob);
+  const rc=ov.getBoundingClientRect(),k=K(),hb=$("embHead")&&getComputedStyle($("embHead")).display!=="none"?$("embHead").getBoundingClientRect().bottom:0;
+  const top=Math.max(rc.top,hb),bottom=Math.min(rc.bottom,innerHeight),left=Math.max(rc.left,0),right=Math.min(rc.right,innerWidth);
+  let cx=(left+right)/2-rc.left,cy=(top+bottom)/2-rc.top;cx/=k;cy/=k;
+  let w=Math.max(60,VW*0.45),h=w*d.ratio;if(h>VH*0.6){h=VH*0.6;w=h/d.ratio;}
+  const it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:Math.max(0,Math.min(VW-w,cx-w/2)),vy:Math.max(0,Math.min(VH-h,cy-h/2)),vw:w,vh:h,data:d,ratio:d.ratio};
+  items.push(it);renderOverlay();select(it,true);syncPanel();
+  status("スクリーンショットを貼りました。✥でドラッグして動かし、⇲で拡大・縮小できます(縦横比はそのまま)。");
+}
+document.addEventListener("paste",e=>{   // Ctrl+V(スマホは、長押しの「ペースト」): クリップボードに画像があれば貼る。文字だけのときは、何もしない(入力中の文字の貼り付けは、そのまま)
+  if(mode==="rule"||mode==="warp")return;
+  const cd=e.clipboardData;if(!cd)return;
+  const f=[...(cd.files||[])].find(x=>/^image\//.test(x.type))||[...(cd.items||[])].map(x=>x.kind==="file"&&/^image\//.test(x.type)?x.getAsFile():null).find(Boolean);
+  if(!f)return;e.preventDefault();pasteImage(f).catch(err=>status("貼り付けられませんでした: "+(err.message||err)));
+});
+$("bPasteImg").onclick=busy(async()=>{
+  if(!navigator.clipboard||!navigator.clipboard.read){status("このブラウザでは、ボタンからの貼り付けができません。Ctrl+V(または、長押しの「ペースト」)で貼ってください。");return;}
+  const its=await navigator.clipboard.read();
+  for(const it of its){const t=it.types.find(x=>/^image\//.test(x));if(t){await pasteImage(await it.getType(t));return;}}
+  status("クリップボードに画像がありません。スクリーンショットを撮ってから、もう一度押してください。");
 });
 
 // --- 既存テキストの位置情報 ---
@@ -1350,7 +1380,8 @@ function dragHandle(h,it,el,resize){
     let lpTm=null;if(!resize&&e.pointerType!=="mouse"){lpTm=setTimeout(()=>{lpTm=null;ringAt(sx,sy);showSizePop(it,h);},500);}   // 指: ✥の長押しで、文字の設定
     const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
     const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>14){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
-      if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
+      if(resize&&it.type==='img'){const r0=oh/ow||1,sc=((ow+dx)*ow+(oh+dy)*oh)/(ow*ow+oh*oh);let nw=ow*sc;nw=Math.max(16,Math.min(nw,VW-it.vx,(VH-it.vy)/r0));it.vw=nw;it.vh=nw*r0;}   // 画像は、縦横比をそのままに、大きく・小さくする
+      else if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
     const cleanup=()=>{if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",cx);};
