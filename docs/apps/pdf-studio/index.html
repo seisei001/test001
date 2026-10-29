@@ -47,6 +47,9 @@ button:disabled{opacity:.4;cursor:default;}
 .mdrop button:disabled{opacity:.4;}
 .menubar .msz{margin-left:auto;white-space:nowrap;font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;}
 .menubar input[type=range]{width:64px;min-height:36px;}
+#dropHint{position:fixed;inset:0;z-index:5000;background:rgba(37,99,235,.18);border:4px dashed #2563eb;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+#dropHint.hidden{display:none;}
+#dropHint div{background:var(--panel-bg,#fff);color:var(--text);padding:14px 22px;border-radius:12px;font-size:1.1rem;font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.3);}
 #deskWrap{flex:1;overflow-y:scroll;overflow-x:hidden;padding:14px 12px 40px;position:relative;scrollbar-gutter:stable;}
 #deskWrap::-webkit-scrollbar{width:16px;}
 #deskWrap::-webkit-scrollbar-track{background:var(--bg);border-left:1px solid var(--border);}
@@ -109,6 +112,8 @@ button:disabled{opacity:.4;cursor:default;}
   <div id="status"></div>
 </div>
 
+<div id="dropHint" class="hidden"><div>ここにPDFをドロップして開く</div></div>
+
 <div id="deskHelp" class="modal hidden"><div class="panel">
   <div class="formhead"><h1>ヘルプ</h1></div>
   <div style="font-size:.9rem;line-height:1.7;max-height:70vh;overflow:auto">
@@ -140,7 +145,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.15"},
+  desk:{name:"製本デスク",ver:"2.16"},
   menu:{name:"機能メニュー",ver:"2.02"},
   edit:{name:"ページ編集",ver:"2.81",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.12",src:"forms/editor.html?form=warp"},
@@ -310,10 +315,20 @@ $("bAdd").onclick=async()=>{
     return;}
   $("fAdd").click();};
 $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value="";};
-{const w=$("deskWrap");w.addEventListener("dragover",e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files"))e.preventDefault();});
- w.addEventListener("drop",async e=>{if(e.dataTransfer&&e.dataTransfer.files.length){e.preventDefault();
-   const its=[...e.dataTransfer.items||[]].filter(i=>i.kind==="file"),hs=await Promise.all(its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):null));
-   const fs=[...e.dataTransfer.files];addFiles(fs.map((f,k)=>({f,h:hs[k]&&hs[k].kind==="file"&&hs[k].name===f.name?hs[k]:null})));}});}
+// PDFのドラッグ&ドロップ: 画面のどこに落としても、束として開く(落とした所が見出しや余白でも、ブラウザがPDFを開いて、この画面が置き換わらないように)。ドラッグ中は、「ここにドロップ」の表示を出す
+{const hasFiles=e=>!!(e.dataTransfer&&[...(e.dataTransfer.types||[])].includes("Files")),hint=$("dropHint");let depth=0;
+ const show=on=>hint.classList.toggle("hidden",!on);
+ document.addEventListener("dragenter",e=>{if(!hasFiles(e))return;e.preventDefault();depth++;if(!formOpen())show(true);});
+ document.addEventListener("dragover",e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect=formOpen()?"none":"copy";});
+ document.addEventListener("dragleave",e=>{if(!hasFiles(e))return;depth=Math.max(0,depth-1);if(!depth||!e.relatedTarget)show(false);});
+ document.addEventListener("drop",async e=>{
+   if(!hasFiles(e))return;e.preventDefault();depth=0;show(false);
+   if(formOpen()){status("編集の画面を閉じてから、PDFをドロップしてください。");return;}
+   const its=[...e.dataTransfer.items||[]].filter(i=>i.kind==="file"),hs=await Promise.all(its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):null));   // 元のファイルを覚えて、あとで上書き保存できるようにする
+   const fs=[...e.dataTransfer.files],pdfs=fs.map((f,k)=>({f,h:hs[k]&&hs[k].kind==="file"&&hs[k].name===f.name?hs[k]:null})).filter(x=>/\.pdf$/i.test(x.f.name)||x.f.type==="application/pdf");
+   if(!pdfs.length){status("PDFファイルをドロップしてください。");return;}
+   addFiles(pdfs);
+ });}
 
 // ===== サムネイル =====
 let tw=170;
