@@ -94,7 +94,7 @@ button:disabled{opacity:.4;cursor:default;}
   <div class="formhead"><h1 id="fnDesk">製本デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
   <div class="menubar" id="menubar">
     <div class="mg"><button class="mtop" data-d="mdFile">ファイル</button><div class="mdrop hidden" id="mdFile">
-      <button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
+      <button id="bNew">新規作成(白紙)</button><button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
     </div></div>
     <div class="mg"><button class="mtop" data-d="mdEdit">編集</button><div class="mdrop hidden" id="mdEdit">
       <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button>
@@ -140,11 +140,11 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.13"},
+  desk:{name:"製本デスク",ver:"2.14"},
   menu:{name:"機能メニュー",ver:"2.02"},
   edit:{name:"ページ編集",ver:"2.79",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.04",src:"forms/editor.html?form=warp"},
-  rule:{name:"罫線編集",ver:"1.02",src:"forms/editor.html?form=rule"}
+  rule:{name:"罫線編集",ver:"1.10",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -299,6 +299,10 @@ async function addFiles(files){
   }
   if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
 }
+$("bNew").onclick=async()=>{   // 白紙のPDF(A4・1ページ)を、「新規作成ファイル」という名前の束として作る
+  const d=await PDFDocument.create();d.addPage([595.28,841.89]);const bytes=new Uint8Array(await d.save());
+  let name="新規作成ファイル.pdf",k=2;while(bundles.some(b=>b.name===name))name=`新規作成ファイル(${k++}).pdf`;
+  snap();bundles.forEach(b=>{b.sel=false;});bundles.push(mk(name,bytes,1,0,null,null,true));bundles[bundles.length-1].sel=true;render();persist();status(`「${name}」を作りました。`);};
 $("bAdd").onclick=async()=>{
   if(window.showOpenFilePicker){   // 元のファイルを覚えて、あとで上書き保存できるようにする
     try{const hs=await showOpenFilePicker({multiple:true,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});await addFiles(await Promise.all(hs.map(async h=>({f:await h.getFile(),h}))));}
