@@ -1619,8 +1619,8 @@ function initWarpPage(){
 }
 function createPartWarp(x,y,w,h){
   const G=[];for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push([x+w*c/(GN-1),y+h*r/(GN-1)]);}
-  warp={kind:"part",rect:{x,y,w,h},curved:true,G,dst:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]};updateWarpUi();renderWarp();warpPreviewSoon();
-  status("青い角と白い点(格子点)を、直したい部分の行・列に合わせて動かしてください(元の画像の範囲)。緑の枠が、直した画像を置く場所です。緑の枠をドラッグして動かし、緑の角で形と大きさを決めてください。");
+  warp={kind:"part",rect:{x,y,w,h},curved:false,G,dst:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]};updateWarpUi();renderWarp();warpPreviewSoon();
+  status("青い四隅を、直したい部分の角に合わせてください(中の白い点もついてきます)。周りの白い点や中の白い点を動かすと、その点を通る曲線で曲げられます(元の画像の範囲)。緑の枠が、直した画像を置く場所です。緑の枠をドラッグして動かし、緑の角で形と大きさを決めてください。");
 }
 const SVGNS="http://www.w3.org/2000/svg";
 function renderWarp(){
