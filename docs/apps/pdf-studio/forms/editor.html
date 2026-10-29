@@ -96,6 +96,8 @@ body.emb-warp #optRule,body.emb-edit #optRule{display:none!important;}
 #ov .rl.on .rln{background:rgba(220,38,38,.85);}
 #ov .rl.on{touch-action:none;cursor:move;}
 #ov.rdraw{cursor:crosshair;touch-action:none;}
+#ov .tc{position:absolute;box-sizing:border-box;border:1px dashed rgba(22,163,74,.7);background:rgba(22,163,74,.06);touch-action:none;cursor:cell;}
+#ov .tc.on{background:rgba(22,163,74,.35);}
 #ov.rdraw .rl{pointer-events:none;}
 #ov .rband{position:absolute;border:1px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 body.emb-warp #modeSeg,body.emb-warp #optText,body.emb-warp #optImg,body.emb-warp #optFix,body.emb-warp #optOcr,body.emb-warp #modeHint{display:none!important;}
@@ -240,7 +242,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="wCancel">やめる</button>
 </div>
 <div class="row hidden" id="optRule" style="margin-bottom:8px">
-<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><span class="sub" id="rNum"></span>
+<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
@@ -3079,13 +3081,13 @@ $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
 // ===== 罫線編集: PDFの罫線(線・薄い塗り四角)を、ページの命令ごと取り除く =====
 // 位置(命令の中の場所)は覚えない。操作のたびにページの命令を読み直して、その場で切り取る(文字を取り除いたあとでも、ずれない)
-const RULE={for:null,scanning:null,els:[],sel:new Set(),vp:null,draw:false,dragAt:0};
+const RULE={for:null,scanning:null,els:[],sel:new Set(),vp:null,draw:false,dragAt:0,tab:false,tables:[],cellSel:null};
 const rlMul=(m,k)=>[m[0]*k[0]+m[1]*k[2],m[0]*k[1]+m[1]*k[3],m[2]*k[0]+m[3]*k[2],m[2]*k[1]+m[3]*k[3],m[4]*k[0]+m[5]*k[2]+k[4],m[4]*k[1]+m[5]*k[3]+k[5]];
 const rlAp=(m,x,y)=>[x*m[0]+y*m[2]+m[4],x*m[1]+y*m[3]+m[5]];
 const rlFmt=v=>{const r=Math.round(v*10000)/10000;return String(Object.is(r,-0)?0:r);};
 const rlDec=new TextDecoder("latin1"),rlSl=(u,s,e)=>rlDec.decode(u.subarray(s,e)),rlEnc=new TextEncoder();
 function rlScan(doc,page){   // ページ(と、その中の Form XObject)の命令から、線・四角を描く命令を集める
-  const ctx={doc,page,owners:new Map(),paints:[],formUse:new Map()};
+  const ctx={doc,page,owners:new Map(),paints:[],formUse:new Map(),texts:[],dos:[]};
   const pc=pageContentBytes(doc,page);
   ctx.owners.set("P",{id:"P",bytes:pc,ref:null});
   rlWalk(ctx,"P",pc,page.node.Resources(),[1,0,0,1,0,0],0);
@@ -3094,7 +3096,8 @@ function rlScan(doc,page){   // ページ(と、その中の Form XObject)の命
 }
 function rlWalk(ctx,owner,u,res,ctm0,depth){
   const N=PDFLib.PDFName,T=pdfTokens(u);
-  let gs={ctm:ctm0.slice(),lw:1},stack=[],vals=[],cur=[],path=null,clip=false,pstart=-1;
+  let gs={ctm:ctm0.slice(),lw:1},stack=[],vals=[],cur=[],path=null,clip=false,pstart=-1,bt=null,tm=[1,0,0,1,0,0],tlm=[1,0,0,1,0,0],lead=0;
+  const noteText=()=>{if(bt){bt.xs.push(tm[4]*gs.ctm[0]+tm[5]*gs.ctm[2]+gs.ctm[4]);bt.ys.push(tm[4]*gs.ctm[1]+tm[5]*gs.ctm[3]+gs.ctm[5]);}};
   const nums=()=>vals.filter(v=>v.n!==undefined).map(v=>v.n);
   for(const tk of T){
     if(tk.t==="v"){vals.push(tk);continue;}
@@ -3114,12 +3117,25 @@ function rlWalk(ctx,owner,u,res,ctm0,depth){
       if(pstart>=0&&!clip)ctx.paints.push({id:ctx.paints.length,owner,s:pstart,e:tk.e,op,stroke:/^(S|s|B|B\*|b|b\*)$/.test(op),fill:/^(f|F|f\*|B|B\*|b|b\*)$/.test(op),subs:cur,gs:{ctm:gs.ctm.slice(),lw:gs.lw}});
       cur=[];path=null;clip=false;pstart=-1;
     }
+    else if(op==="BT"){bt={owner,s:tk.s,e:tk.e,xs:[],ys:[],ctm:gs.ctm.slice()};tm=[1,0,0,1,0,0];tlm=tm.slice();}
+    else if(op==="ET"){if(bt){bt.e=tk.e;if(owner==="P")ctx.texts.push(bt);bt=null;}}
+    else if(op==="Tm"&&n.length>=6){tm=n.slice(-6);tlm=tm.slice();}
+    else if(op==="Td"&&n.length>=2){tlm=rlMul([1,0,0,1,n[n.length-2],n[n.length-1]],tlm);tm=tlm.slice();}
+    else if(op==="TD"&&n.length>=2){lead=-n[n.length-1];tlm=rlMul([1,0,0,1,n[n.length-2],n[n.length-1]],tlm);tm=tlm.slice();}
+    else if(op==="TL"&&n.length)lead=n[0];
+    else if(op==="T*"){tlm=rlMul([1,0,0,1,0,-lead],tlm);tm=tlm.slice();}
+    else if(op==="Tj"||op==="TJ")noteText();
+    else if(op==="'"||op==='"'){tlm=rlMul([1,0,0,1,0,-lead],tlm);tm=tlm.slice();noteText();}
     else if(op==="Do"&&depth<5){
       const nm=vals.find(v=>u[v.s]===0x2f),name=nm&&String.fromCharCode(...u.subarray(nm.s+1,nm.e));
       try{
         const xo=res&&res.lookup(N.of("XObject")),ro=xo&&xo.get?xo.get(N.of(name)):null,o=ro&&(ro instanceof PDFLib.PDFRef?ctx.doc.context.lookup(ro):ro);
-        const sub=o&&o.dict&&o.dict.lookup(N.of("Subtype"));
-        if(ro instanceof PDFLib.PDFRef&&sub&&/Form/.test(String(sub))){
+        const sub=o&&o.dict&&o.dict.lookup(N.of("Subtype")),isForm=!!(sub&&/Form/.test(String(sub)));
+        if(owner==="P"&&o&&o.dict){const rec={owner,s:vals[0]?vals[0].s:tk.s,e:tk.e,ctm:gs.ctm.slice(),form:isForm};
+          if(isForm){const m=o.dict.lookup(N.of("Matrix")),mm=m instanceof PDFLib.PDFArray&&m.size()===6?[0,1,2,3,4,5].map(i=>m.lookup(i).asNumber()):[1,0,0,1,0,0],bb=o.dict.lookup(N.of("BBox"));
+            if(bb instanceof PDFLib.PDFArray&&bb.size()===4){const b=[0,1,2,3].map(i=>bb.lookup(i).asNumber()),M=rlMul(mm,gs.ctm);rec.bboxPts=[rlAp(M,b[0],b[1]),rlAp(M,b[2],b[3]),rlAp(M,b[0],b[3]),rlAp(M,b[2],b[1])];}}
+          ctx.dos.push(rec);}
+        if(ro instanceof PDFLib.PDFRef&&isForm){
           const m=o.dict.lookup(N.of("Matrix")),mm=m instanceof PDFLib.PDFArray&&m.size()===6?[0,1,2,3,4,5].map(i=>m.lookup(i).asNumber()):[1,0,0,1,0,0];
           const data=PDFLib.decodePDFRawStream(o).decode(),fr=o.dict.lookup(N.of("Resources"))||res,key="X"+ro.objectNumber;
           ctx.formUse.set(key,(ctx.formUse.get(key)||0)+1);
@@ -3138,7 +3154,7 @@ function rlRules(ctx){   // 描く命令 → 水平・垂直の罫線(1本ずつ
     const ctm=p.gs.ctm,sc=Math.sqrt(Math.abs(ctm[0]*ctm[3]-ctm[1]*ctm[2]))||1,Tr=a=>rlAp(ctm,a[0],a[1]);
     const push=(kind,si,A,B,t,extra)=>{
       const dx=Math.abs(B[0]-A[0]),dy=Math.abs(B[1]-A[1]);if(Math.hypot(dx,dy)<1e-6)return;if(dy>dx*0.01&&dx>dy*0.01)return;   // 斜めは対象外
-      out.push({kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,...extra});};
+      const h=dy<=dx*0.01;out.push({kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,h,pos:h?(A[1]+B[1])/2:(A[0]+B[0])/2,a:h?Math.min(A[0],B[0]):Math.min(A[1],B[1]),b:h?Math.max(A[0],B[0]):Math.max(A[1],B[1]),...extra});};
     const bar=(si,pts)=>{const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),W=x1-x0,H=y1-y0;
       if(Math.min(W,H)>3||Math.max(W,H)<8)return false;   // 薄くて細長い塗り四角だけを、罫線とみなす
       if(W>=H)push("bar",si,[x0,(y0+y1)/2],[x1,(y0+y1)/2],H);else push("bar",si,[(x0+x1)/2,y0],[(x0+x1)/2,y1],W);return true;};
@@ -3238,6 +3254,132 @@ async function rlCommit(doc,page,ctx,eds){
   }
   return new Uint8Array(await doc.save());
 }
+// ===== 表(罫線の格子)の操作: 行を足す・消す・高さを変える / 列を足す / セルを結合 =====
+// 罫線から格子(行・列の位置)を見つけ、ページの全ての図形・文字・画像の位置を、写像(map)で書き換える。位置は覚えず、毎回読み直す
+function rlTables(rules){
+  const rs=rules.map((r,i)=>({r,i,h:r.h,pos:r.pos,a:r.a,b:r.b})).filter(q=>q.r.owner==="P"&&q.r.t<=4);
+  const tol=1.5,bx=q=>q.h?{x0:q.a,x1:q.b,y0:q.pos-q.r.t/2,y1:q.pos+q.r.t/2}:{x0:q.pos-q.r.t/2,x1:q.pos+q.r.t/2,y0:q.a,y1:q.b};
+  const near=(p,q)=>{const a=bx(p),b=bx(q);return a.x0-tol<=b.x1&&b.x0-tol<=a.x1&&a.y0-tol<=b.y1&&b.y0-tol<=a.y1;};
+  const par=rs.map((_,i)=>i),fd=i=>par[i]===i?i:(par[i]=fd(par[i]));
+  for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++)if(rs[i].h!==rs[j].h&&near(rs[i],rs[j]))par[fd(i)]=fd(j);
+  const g=new Map();rs.forEach((q,i)=>{const k=fd(i);(g.get(k)||g.set(k,[]).get(k)).push(q);});
+  const cl=(arr,tc)=>{arr=arr.slice().sort((a,b)=>a-b);const o=[];arr.forEach(v=>{const l=o[o.length-1];if(l&&v-l[l.length-1]<=tc)l.push(v);else o.push([v]);});return o.map(c=>c.reduce((a,b)=>a+b)/c.length);};
+  const out=[];
+  for(const q of g.values()){
+    const H=q.filter(x=>x.h),V=q.filter(x=>!x.h);if(H.length<2||V.length<2)continue;
+    const ys=cl(H.map(x=>x.pos),1).sort((a,b)=>b-a),xs=cl(V.map(x=>x.pos),1).sort((a,b)=>a-b);if(ys.length<2||xs.length<2)continue;
+    const all=q.map(bx),box={x0:Math.min(...all.map(b=>b.x0)),x1:Math.max(...all.map(b=>b.x1)),y0:Math.min(...all.map(b=>b.y0)),y1:Math.max(...all.map(b=>b.y1))};
+    out.push({rules:q,ys,xs,box,rows:ys.length-1,cols:xs.length-1});
+  }
+  return out.sort((a,b)=>b.rules.length-a.rules.length);
+}
+function rlFindTable(tables,box){return tables.findIndex(t=>Math.abs(t.box.x0-box.x0)<2&&Math.abs(t.box.y1-box.y1)<2);}
+// 図形(線・四角・塗り)・文字・画像を、写像 o.map で動かす。o:{map(x,y)->[x,y], kill(点列)->bool, killText(t)->bool, clone:{sel(点列),dx,dy}, cut:Map(罫線の番号->[{A,B}...])}
+function rlTransform(ctx,rules,o){
+  const eds=new Map(),add=(ow,s,e,t)=>{if(!eds.has(ow))eds.set(ow,[]);eds.get(ow).push({s,e,t,q:eds.get(ow).length});};
+  const P=ctx.owners.get("P"),u=P.bytes,f=rlFmt,eps=1e-6,map=o.map;
+  const cutPlan=new Map();
+  (o.cut||new Map()).forEach((pieces,i)=>{const r=rules[i];if(!r||r.owner!=="P")return;
+    let pl=cutPlan.get(r.paint);if(!pl){pl=new Map();cutPlan.set(r.paint,pl);}
+    let sp=pl.get(r.sub);if(!sp){sp={del:false,segs:new Map(),edges:new Map(),bar:null};pl.set(r.sub,sp);}
+    if(r.kind==="bar"){sp.del=true;sp.bar={pieces,t:r.t};}else if(r.kind==="seg")sp.segs.set(r.seg,pieces);else sp.edges.set(r.edge,pieces);});
+  const shift=(s,e,ctm,dx,dy)=>{const iv=rlInv(ctm)||[1,0,0,1,0,0],lx=dx*iv[0]+dy*iv[2],ly=dx*iv[1]+dy*iv[3];add("P",s,s,`1 0 0 1 ${f(lx)} ${f(ly)} cm `);add("P",e,e,` 1 0 0 1 ${f(-lx)} ${f(-ly)} cm`);};
+  const moved=(a,b)=>Math.abs(a[0]-b[0])>eps||Math.abs(a[1]-b[1])>eps;
+  for(const p of ctx.paints){
+    if(p.owner!=="P")continue;
+    const ctm=p.gs.ctm,iv=rlInv(ctm)||[1,0,0,1,0,0],rot=Math.abs(ctm[1])>1e-6||Math.abs(ctm[2])>1e-6;
+    const Tr=a=>rlAp(ctm,a[0],a[1]),Lo=a=>rlAp(iv,a[0],a[1]);
+    if(p.subs.some(s=>s.type==="path"&&s.curve)){   // 曲線を含む図形(角丸の枠・背景): 点は動かさず、ひとまとまりで平行移動だけ
+      if(!map)continue;const pts=[];p.subs.forEach(s=>{if(s.type==="re"){const [x,y,w,h]=s.n;pts.push(Tr([x,y]),Tr([x+w,y+h]));}else s.pts.forEach(q=>pts.push(Tr(q)));});
+      const xs=pts.map(q=>q[0]),ys=pts.map(q=>q[1]),c0=[Math.min(...xs),Math.min(...ys)],c1=[Math.max(...xs),Math.max(...ys)],m0=map(c0[0],c0[1]),m1=map(c1[0],c1[1]);
+      const d0=[m0[0]-c0[0],m0[1]-c0[1]],d1=[m1[0]-c1[0],m1[1]-c1[1]];
+      if(moved(d0,[0,0])||moved(d1,[0,0])){if(Math.abs(d0[0]-d1[0])<0.01&&Math.abs(d0[1]-d1[1])<0.01)shift(p.s,p.e,ctm,d0[0],d0[1]);}   // またぐ図形は、動かさない
+      continue;
+    }
+    const emit=[],cp=cutPlan.get(p.id);let live=0;const edits=[];
+    const lineT=(A,B)=>{const a=Lo(A),b=Lo(B);return `${f(a[0])} ${f(a[1])} m ${f(b[0])} ${f(b[1])} l S`;};
+    const rectT=(q0,q1)=>{const a=Lo(q0),b=Lo(q1);return `${f(a[0])} ${f(a[1])} ${f(b[0]-a[0])} ${f(b[1]-a[1])} re`;};
+    const pathT=(pts,closed)=>pts.map((q,k)=>{const a=Lo(q);return `${f(a[0])} ${f(a[1])} ${k?"l":"m"}`;}).join(" ")+(closed?" h":"");
+    const mp=A=>map?map(A[0],A[1]):A;
+    const barT=(A,B,t)=>{const hz=Math.abs(B[1]-A[1])<=Math.abs(B[0]-A[0]);const x0=Math.min(A[0],B[0]),x1=Math.max(A[0],B[0]),y0=Math.min(A[1],B[1]),y1=Math.max(A[1],B[1]);
+      return (hz?rectT([x0,A[1]-t/2],[x1,A[1]+t/2]):rectT([A[0]-t/2,y0],[A[0]+t/2,y1]))+" "+p.op;};
+    p.subs.forEach((sub,si)=>{
+      const pagePts=sub.type==="re"?(()=>{const [x,y,w,h]=sub.n;return[Tr([x,y]),Tr([x+w,y]),Tr([x+w,y+h]),Tr([x,y+h])];})():sub.pts.map(Tr);
+      const sp=cp&&cp.get(si);
+      if(sp){   // 罫線として切る: 残る辺は線に書き直す(動かす写像があれば、それも当てる)。切った結果の線(pieces)は、そのまま置く
+        edits.push([sub.s,sub.e,null]);
+        if(sp.del){sp.bar.pieces.forEach(pc=>emit.push(barT(pc.A,pc.B,sp.bar.t)));}
+        else if(sub.type==="re"){
+          if(p.fill)emit.push(rectT(mp(pagePts[0]),mp(pagePts[2]))+" f");
+          for(let i=0;i<4;i++){const A=pagePts[i],B=pagePts[(i+1)%4];
+            if(sp.edges.has(i))sp.edges.get(i).forEach(pc=>emit.push(lineT(pc.A,pc.B)));else emit.push(lineT(mp(A),mp(B)));}
+        }else{
+          if(p.fill)emit.push(pathT(pagePts.map(mp),sub.closed)+" f");
+          sub.segs.forEach((g,gi)=>{if(sp.segs.has(gi))sp.segs.get(gi).forEach(pc=>emit.push(lineT(pc.A,pc.B)));else emit.push(lineT(mp(Tr(g.a)),mp(Tr(g.b))));});
+        }
+        return;
+      }
+      if(o.kill&&o.kill(pagePts)){edits.push([sub.s,sub.e,null]);return;}
+      if(o.clone&&o.clone.sel(pagePts)){   // 同じ見た目の図形を、ずらして複製する(元の図形の直後に置く)
+        const d=o.clone,sh=q=>[q[0]+d.dx,q[1]+d.dy];
+        emit.push((sub.type==="re"?rectT(sh(pagePts[0]),sh(pagePts[2])):pathT(pagePts.map(sh),sub.closed))+" "+p.op);
+      }
+      live++;
+      if(!map)return;
+      const np=pagePts.map(q=>map(q[0],q[1]));if(!np.some((q,i)=>moved(q,pagePts[i])))return;
+      if(sub.type==="re"){if(rot)return;edits.push([sub.s,sub.e,rectT(np[0],np[2])]);}
+      else edits.push([sub.s,sub.e,pathT(np,sub.closed)]);
+    });
+    const removed=edits.filter(q=>q[2]===null).length;
+    if(removed&&removed===p.subs.length)add("P",p.s,p.e,"");else edits.forEach(q=>add("P",q[0],q[1],q[2]===null?"":q[2]));
+    if(emit.length)add("P",p.e,p.e,"\n"+emit.join("\n")+"\n");
+  }
+  for(const t of ctx.texts){
+    if(!t.ys.length)continue;
+    if(o.killText&&o.killText(t)){add("P",t.s,t.e,"");continue;}
+    if(!map)continue;const m=map(t.xs[0],t.ys[0]),dx=m[0]-t.xs[0],dy=m[1]-t.ys[0];
+    if(Math.abs(dx)>eps||Math.abs(dy)>eps)shift(t.s,t.e,t.ctm,dx,dy);
+  }
+  if(map)for(const d of ctx.dos){
+    if(d.owner!=="P")continue;
+    if(d.form){if(!d.bboxPts)continue;const xs=d.bboxPts.map(q=>q[0]),ys=d.bboxPts.map(q=>q[1]),c0=[Math.min(...xs),Math.min(...ys)],c1=[Math.max(...xs),Math.max(...ys)],m0=map(c0[0],c0[1]),m1=map(c1[0],c1[1]);
+      const d0=[m0[0]-c0[0],m0[1]-c0[1]],d1=[m1[0]-c1[0],m1[1]-c1[1]];if(Math.abs(d0[0]-d1[0])<0.01&&Math.abs(d0[1]-d1[1])<0.01&&(Math.abs(d0[0])>eps||Math.abs(d0[1])>eps))shift(d.s,d.e,d.ctm,d0[0],d0[1]);continue;}
+    const c=rlAp(d.ctm,0.5,0.5),m=map(c[0],c[1]),dx=m[0]-c[0],dy=m[1]-c[1];if(Math.abs(dx)>eps||Math.abs(dy)>eps)shift(d.s,d.e,d.ctm,dx,dy);
+  }
+  return eds;
+}
+// 表の操作。op:{kind:"insRow"|"delRow"|"rowH"|"insCol"|"merge", box(表の左上を覚えておく), r0,c0,r1,c1, h}
+async function tableApply(u8,op){
+  const doc=await PDFDocument.load(u8),page=doc.getPage(cur),ctx=rlScan(doc,page),rules=rlRules(ctx),tables=rlTables(rules),ti=rlFindTable(tables,op.box);
+  if(ti<0)throw Object.assign(new Error("表が見つかりませんでした。"),{noHint:true});
+  const T=tables[ti],eps=0.6,inX=pts=>pts.every(q=>q[0]>=T.box.x0-1&&q[0]<=T.box.x1+1),inY=pts=>pts.every(q=>q[1]>=T.box.y0-1&&q[1]<=T.box.y1+1);
+  let o;
+  if(op.kind==="insRow"||op.kind==="delRow"||op.kind==="rowH"){
+    const r=op.r1,yt=T.ys[r],yb=T.ys[r+1],d=yt-yb;
+    const band=pts=>pts.every(q=>q[1]>=yb-eps&&q[1]<=yt+eps)&&inX(pts);
+    const topOnly=pts=>pts.every(q=>Math.abs(q[1]-yt)<eps);
+    if(op.kind==="insRow")o={map:(x,y)=>y<yb-eps?[x,y-d]:[x,y],clone:{sel:pts=>band(pts)&&!topOnly(pts),dx:0,dy:-d}};
+    else if(op.kind==="delRow")o={map:(x,y)=>y>=yt-eps?[x,y]:y<=yb+eps?[x,y+d]:[x,yt],kill:pts=>band(pts)&&!topOnly(pts),killText:t=>t.ys.every(y=>y>yb+eps&&y<yt-eps)&&t.xs[0]>=T.box.x0-1&&t.xs[0]<=T.box.x1+1};
+    else{const nd=d-op.h;o={map:(x,y)=>y<=yb+eps?[x,y+nd]:[x,y]};}   // 縮める(nd>0)と、行の下が上へ動く
+  }else if(op.kind==="insCol"){
+    const c=op.c1,xl=T.xs[c],xr=T.xs[c+1],d=xr-xl,bandY=y=>y>=T.box.y0-1&&y<=T.box.y1+1;
+    const band=pts=>pts.every(q=>q[0]>=xl-eps&&q[0]<=xr+eps)&&inY(pts),leftOnly=pts=>pts.every(q=>Math.abs(q[0]-xl)<eps);
+    o={map:(x,y)=>x>xr+eps&&bandY(y)?[x+d,y]:[x,y],clone:{sel:pts=>band(pts)&&!leftOnly(pts),dx:d,dy:0}};
+  }else if(op.kind==="merge"){
+    const xL=T.xs[op.c0],xR=T.xs[op.c1+1],yT=T.ys[op.r0],yB=T.ys[op.r1+1],tol=1.0,cut=new Map();
+    const inner=(v,arr,a,b)=>arr.slice(a,b+1).some(w=>Math.abs(w-v)<=tol);
+    for(const q of T.rules){
+      const lo=q.h?xL:yB,hi=q.h?xR:yT,on=q.h?inner(q.pos,T.ys,op.r0+1,op.r1):inner(q.pos,T.xs,op.c0+1,op.c1);
+      if(!on||q.b<=lo+tol||q.a>=hi-tol)continue;
+      const pcs=[];if(q.a<lo-tol)pcs.push([q.a,lo]);if(q.b>hi+tol)pcs.push([hi,q.b]);
+      cut.set(q.i,pcs.map(([u,v])=>q.h?{A:[u,q.pos],B:[v,q.pos]}:{A:[q.pos,u],B:[q.pos,v]}));
+    }
+    o={cut};
+  }
+  const eds=rlTransform(ctx,rules,o),out=await rlCommit(doc,page,ctx,eds);
+  const d2=await PDFDocument.load(out);rlRules(rlScan(d2,d2.getPage(cur)));   // 読み直せることを確かめる
+  return out;
+}
 async function ruleLoad(){   // 画面に出す罫線の一覧(画面の座標つき)を作る
   const b=bytes;if(RULE.scanning===b)return;RULE.scanning=b;
   try{
@@ -3245,13 +3387,14 @@ async function ruleLoad(){   // 画面に出す罫線の一覧(画面の座標�
     const els=rlRules(rlScan(doc,page));
     els.forEach(r=>{const A=vp.convertToViewportPoint(r.x0,r.y0),B=vp.convertToViewportPoint(r.x1,r.y1);r.v=[A[0],A[1],B[0],B[1]];});
     if(bytes!==b)return;
-    RULE.for=b;RULE.els=els;RULE.vp=vp;RULE.sel=new Set();
+    RULE.for=b;RULE.els=els;RULE.vp=vp;RULE.sel=new Set();RULE.tables=rlTables(els);RULE.cellSel=null;
   }finally{if(RULE.scanning===b)RULE.scanning=null;}
   renderOverlay();ruleSync();
 }
 function ruleSync(){const n=RULE.sel.size;$("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
 function ruleDraw(k){
   if(RULE.for!==bytes){ruleLoad().catch(e=>status("罫線を読み取れませんでした: "+(e.message||e)));return;}
+  if(RULE.tab){tabDraw(k);return;}
   const pad=Math.max(7/k,0);
   RULE.els.map((r,i)=>[r,i]).sort((p,q)=>Math.hypot(q[0].v[2]-q[0].v[0],q[0].v[3]-q[0].v[1])-Math.hypot(p[0].v[2]-p[0].v[0],p[0].v[3]-p[0].v[1])).forEach(([r,i])=>{   // 長い線を先に描く(短い線が上になって、選びやすい)
     const [ax,ay,bx,by]=r.v,hz=Math.abs(bx-ax)>=Math.abs(by-ay),el=document.createElement("div");
@@ -3299,6 +3442,40 @@ ov.addEventListener("pointerdown",e=>{   // 線を引く: ドラッグした方�
     ruleDo(()=>ruleAdd(bytes,{x0:P[0],y0:P[1],x1:Q[0],y1:Q[1],t:Math.max(0.1,+$("rW").value||0.75),rgb:rlRGB()}),"線を引きました。");};
   document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
 });
+// ---- 表の編集(セルを選んで、行・列を操作) ----
+function tabDraw(k){
+  RULE.tables.forEach((T,ti)=>{for(let r=0;r<T.rows;r++)for(let c=0;c<T.cols;c++){
+    const A=RULE.vp.convertToViewportPoint(T.xs[c],T.ys[r]),B=RULE.vp.convertToViewportPoint(T.xs[c+1],T.ys[r+1]),d=document.createElement("div");
+    d.className="tc";d.dataset.ti=ti;d.dataset.r=r;d.dataset.c=c;
+    d.style.cssText=`left:${Math.min(A[0],B[0])*k}px;top:${Math.min(A[1],B[1])*k}px;width:${Math.abs(B[0]-A[0])*k}px;height:${Math.abs(B[1]-A[1])*k}px`;ov.appendChild(d);}});
+  tabPaint();
+}
+function tabPaint(){const s=RULE.cellSel;ov.querySelectorAll(".tc").forEach(d=>{const ti=+d.dataset.ti,r=+d.dataset.r,c=+d.dataset.c;d.classList.toggle("on",!!s&&s.ti===ti&&r>=s.r0&&r<=s.r1&&c>=s.c0&&c<=s.c1);});tabSync();}
+function tabSync(){const s=RULE.cellSel,n=!!s;["tRowAdd","tRowDel","tRowH","tColAdd"].forEach(id=>{$(id).disabled=!n;});$("tMerge").disabled=!(n&&(s.r1>s.r0||s.c1>s.c0));
+  if(n){const T=RULE.tables[s.ti];if(T)$("tH").value=(Math.round((T.ys[s.r1]-T.ys[s.r1+1])*100)/100);}
+  $("rNum").textContent=n?`${s.r1-s.r0+1}行 × ${s.c1-s.c0+1}列を選択中`:"";}
+ov.addEventListener("pointerdown",e=>{
+  const d=e.target.closest&&e.target.closest(".tc");if(mode!=="rule"||!RULE.tab||!d||e.button>0)return;
+  e.preventDefault();const ti=+d.dataset.ti,r0=+d.dataset.r,c0=+d.dataset.c;
+  RULE.cellSel={ti,r0,c0,r1:r0,c1:c0};tabPaint();
+  const mv=ev=>{const el=document.elementFromPoint(ev.clientX,ev.clientY),q=el&&el.closest&&el.closest(".tc");if(!q||+q.dataset.ti!==ti)return;
+    const r=+q.dataset.r,c=+q.dataset.c;RULE.cellSel={ti,r0:Math.min(r0,r),c0:Math.min(c0,c),r1:Math.max(r0,r),c1:Math.max(c0,c)};tabPaint();};
+  const up=()=>{document.removeEventListener("pointermove",mv);};
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
+});
+const tableDo=busy(async(kind,h)=>{
+  const s=RULE.cellSel;if(!s)return;const T=RULE.tables[s.ti];if(!T)return;const box={...T.box};let nb=bytes,msg="";
+  if(kind==="delRow"){for(let r=s.r1;r>=s.r0;r--)nb=await tableApply(nb,{kind,box,r1:r});msg=`${s.r1-s.r0+1}行を消しました。`;}
+  else if(kind==="rowH"){for(let r=s.r1;r>=s.r0;r--)nb=await tableApply(nb,{kind,box,r1:r,h});msg=`行の高さを ${h}pt にしました。`;}
+  else if(kind==="insRow"){nb=await tableApply(nb,{kind,box,r1:s.r1});msg="行を足しました。";}
+  else if(kind==="insCol"){nb=await tableApply(nb,{kind,box,c1:s.c1});msg="列を足しました。";}
+  else{nb=await tableApply(nb,{kind:"merge",box,r0:s.r0,c0:s.c0,r1:s.r1,c1:s.c1});msg="セルを結合しました。";}
+  await setBytes(nb,true);status(msg+"(ページの下の内容は、押し下げ・引き上げられます)");
+});
+$("tMode").onclick=()=>{RULE.tab=!RULE.tab;RULE.cellSel=null;if(RULE.tab&&RULE.draw)$("rDraw").click();$("tMode").classList.toggle("on",RULE.tab);$("tTools").classList.toggle("hidden",!RULE.tab);
+  status(RULE.tab?"表のセルをタップ(ドラッグで範囲)して選び、行や列を操作してください。":"罫線を青く表示しています。");renderOverlay();ruleSync();};
+$("tRowAdd").onclick=()=>tableDo("insRow");$("tRowDel").onclick=()=>tableDo("delRow");$("tColAdd").onclick=()=>tableDo("insCol");$("tMerge").onclick=()=>tableDo("merge");
+$("tRowH").onclick=()=>{const h=+$("tH").value;if(h>=2)tableDo("rowH",h);};
 $("rAll").onclick=()=>{RULE.els.forEach((_,i)=>RULE.sel.add(i));renderOverlay();ruleSync();};
 $("rClr").onclick=()=>{RULE.sel.clear();renderOverlay();ruleSync();};
 $("rDel").onclick=busy(async()=>{
@@ -3355,7 +3532,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
