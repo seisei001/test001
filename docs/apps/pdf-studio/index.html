@@ -94,10 +94,10 @@ button:disabled{opacity:.4;cursor:default;}
   <div class="formhead"><h1 id="fnDesk">製本デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
   <div class="menubar" id="menubar">
     <div class="mg"><button class="mtop" data-d="mdFile">ファイル</button><div class="mdrop hidden" id="mdFile">
-      <button id="bNew">新規作成(白紙)</button><button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
+      <button id="bNew">新規作成(白紙)</button><button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="選んでいる束を、PDFファイルとして保存">保存</button><button id="bPrint" disabled title="選んでいる束を、印刷">印刷</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
     </div></div>
     <div class="mg"><button class="mtop" data-d="mdEdit">編集</button><div class="mdrop hidden" id="mdEdit">
-      <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button>
+      <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button><button id="bPrintPg" disabled title="表示しているページだけを、印刷">このページを印刷</button>
     </div></div>
     <div class="mg"><button class="mtop" data-d="mdBind">製本</button><div class="mdrop hidden" id="mdBind">
       <button id="bAll">全部選択</button><button id="bNone">選択解除</button><button id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button id="bMerge" disabled>結合</button>
@@ -113,8 +113,8 @@ button:disabled{opacity:.4;cursor:default;}
   <div class="formhead"><h1>ヘルプ</h1></div>
   <div style="font-size:.9rem;line-height:1.7;max-height:70vh;overflow:auto">
   <p><b>束</b>: 開いたPDF1つが1つの束です。複数ページの束は重なって見え、下の「＜ ＞」でページをめくれます。ドラッグで並べ替えられます。</p>
-  <p><b>ファイル</b>: PDFを開く / 閉じる / 保存 / 元に戻す</p>
-  <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)</p>
+  <p><b>ファイル</b>: 新規作成(白紙)/ PDFを開く / 閉じる / 保存 / 印刷 / 元に戻す</p>
+  <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)/ このページを印刷</p>
   <p><b>製本</b>(束の操作): 全部選択 / 選択解除 / 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
   <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「歪み補正」を開けます。</p>
   </div>
@@ -140,7 +140,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.14"},
+  desk:{name:"製本デスク",ver:"2.15"},
   menu:{name:"機能メニュー",ver:"2.02"},
   edit:{name:"ページ編集",ver:"2.81",src:"forms/editor.html?form=edit"},
   warp:{name:"歪み補正",ver:"2.12",src:"forms/editor.html?form=warp"},
@@ -347,7 +347,7 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=$("bBurst").disabled=!bundles.some(b=>b.sel&&b.n>1);$("bSplit").disabled=!(c===1&&bundles.some(b=>b.sel&&b.n>1&&b.cur>=1));$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bPrint").disabled=$("bPrintPg").disabled=$("bSave").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=$("bBurst").disabled=!bundles.some(b=>b.sel&&b.n>1);$("bSplit").disabled=!(c===1&&bundles.some(b=>b.sel&&b.n>1&&b.cur>=1));$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
   el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
@@ -643,6 +643,34 @@ window.addEventListener("message",async e=>{
 
 // ===== 起動 =====
 render();
+// ===== 印刷 =====
+// 選んでいる束(複数なら、並んでいる順に1つにつなげて)を、ブラウザの印刷の画面で印刷する。「このページを印刷」は、表示しているページだけ
+// パソコン: 見えない枠にPDFを読み込んで、印刷の画面を開く。iPhone・iPad: 印刷の画面を直接は開けないので、PDFを別の画面で開く(共有 → プリント)
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+async function printBundles(onlyCurrent){
+  const list=bundles.filter(b=>b.sel);if(!list.length)return;
+  const win=isIOS()&&!window.__printHook?window.open("","_blank"):null;   // 新しい画面は、操作の直後でないと開けないので、先に開いておく
+  try{
+    status("印刷の準備をしています…");
+    let bytes,name;
+    if(list.length===1&&!onlyCurrent){bytes=list[0].bytes;name=list[0].name;}
+    else{
+      const out=await PDFDocument.create();
+      for(const b of list){const src=await PDFDocument.load(b.bytes,{ignoreEncryption:true});
+        (await out.copyPages(src,onlyCurrent?[b.cur]:src.getPageIndices())).forEach(p=>out.addPage(p));}
+      bytes=new Uint8Array(await out.save());name=onlyCurrent?`${baseName(list[0].name)}_p${list[0].cur+1}.pdf`:"印刷.pdf";
+    }
+    if(window.__printHook){window.__printHook(bytes,name);status("印刷の画面を開きました。");return;}   // 動作確認用
+    const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+    if(win){win.location.href=url;status("PDFを別の画面で開きました。共有ボタンから「プリント」を選んでください。");return;}
+    const fr=document.createElement("iframe");fr.style.cssText="position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none";
+    const clean=()=>setTimeout(()=>{try{fr.remove();URL.revokeObjectURL(url);}catch{}},60000);
+    fr.onload=()=>{try{fr.contentWindow.focus();fr.contentWindow.print();status("印刷の画面を開きました。");clean();}
+      catch(e){window.open(url,"_blank");status("PDFを別の画面で開きました。そこから印刷してください。");clean();}};   // 枠から印刷できないブラウザは、別の画面で開く
+    fr.src=url;document.body.appendChild(fr);
+  }catch(e){if(win)win.close();status("印刷できませんでした: "+(e&&e.message?e.message:e));}
+}
+$("bPrint").onclick=()=>printBundles(false);$("bPrintPg").onclick=()=>printBundles(true);
 window.pdfStudioDebug={bytes:i=>Array.from(bundles[i].bytes),bundles:()=>bundles.map(b=>({id:b.id,name:b.name,n:b.n,cur:b.cur,sel:b.sel})),forms:FORMS};
 </script>
 </body>
