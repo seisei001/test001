@@ -67,6 +67,7 @@ body.embed #filePanel{display:none!important;}
 #embHead #selPanel{border:0;padding:0;margin:0!important;background:none;box-shadow:none;border-radius:0;}
 #embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sClose,#embHead #sLsLbl{display:none!important;}
 #embHead #selPanel,#embHead #selTextBox,#embHead #selPanel .row{display:contents;}   /* 道具は、1つながりに並べる(入りきらなければ折り返す) */
+body.embed .stage{overflow:visible;}   /* 縦と横を、別々のスクロールにしない(別々だと、斜めに動かせない)。画面全体のスクロールひとつで、縦も横も斜めも動く */
 body.embed #editPanel{border:0;box-shadow:none;background:none;padding:6px 0;}
 body.embed #editPanel > h2{display:none;}
 #embHead #selPanel label{display:flex;gap:4px;align-items:center;font-size:.85rem;}
@@ -2982,9 +2983,8 @@ function setPZ(z,cx,cy){
   if(z===1){w.style.maxWidth="";w.style.width="";$("stage").style.maxWidth="";$("stage").style.width="";}
   else{w.style.maxWidth="none";w.style.width=(PZ0W*z)+"px";$("stage").style.maxWidth="none";}
   $("stage").style.width=z===1?"":"100%";   // ページの画像も、枠の幅いっぱいに(重ねている枠とずれないように)
-  const r1=w.getBoundingClientRect(),sg=document.querySelector(".stage");
-  if(sg)sg.scrollLeft+=(r1.left+fx*r1.width)-(cx==null?r1.left+r1.width/2:cx)-0;   // 指・マウスの下のページの場所が、動かないように
-  window.scrollBy(0,(r1.top+fy*r1.height)-(cy==null?r1.top+r1.height/2:cy));
+  const r1=w.getBoundingClientRect();
+  window.scrollBy((r1.left+fx*r1.width)-(cx==null?r1.left+r1.width/2:cx),(r1.top+fy*r1.height)-(cy==null?r1.top+r1.height/2:cy));   // 指・マウスの下のページの場所が、動かないように(縦も横も、画面全体のスクロールひとつで動かす)
   $("pzR").textContent=Math.round(z*100)+"%";
   renderOverlay();
 }
@@ -2995,6 +2995,7 @@ document.addEventListener("wheel",e=>{if(!e.ctrlKey)return;e.preventDefault();se
  sg.addEventListener("touchstart",e=>{p0=e.touches.length===2?{d:dist(e.touches)||1,z:PZ}:null;},{passive:true});
  sg.addEventListener("touchmove",e=>{if(!p0||e.touches.length!==2)return;e.preventDefault();const t=e.touches;setPZ(p0.z*dist(t)/p0.d,(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2);},{passive:false});
  sg.addEventListener("touchend",e=>{if(e.touches.length<2)p0=null;},{passive:true});}
+window.addEventListener("scroll",()=>{const h=$("embHead");if(h)h.style.transform=scrollX?`translateX(${scrollX}px)`:"";},{passive:true});   // 横にスクロールしても、見出しは左端のまま
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
