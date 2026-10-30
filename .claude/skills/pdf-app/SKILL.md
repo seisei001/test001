@@ -443,3 +443,6 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 超拡大の操作性: 行間・字間バー(`.spbar`)が表示倍率kに比例して巨大化(744%で1915px幅)していた → k を 0.5〜2 に制限。枠の上端・左端が画面の外に出たとき、バーと✥(`.hdl.mv`)を見える位置に寄せる(`barKeep`、スクロールにも追従)。テスト: test-studio-spbarzoom.js。
 - テストの罠: Playwright の strict mode 違反は "Timeout" を含まない。grep は `^NG|Timeout|rror` で。test-studio-forms.js の「保存しない」は `button.sub-btn` で絞る(フォームの「✕ 閉じる(保存しない)」と衝突)。
 - 既知の失敗(以前から): test-studio-edit-ui.js(51行目 size)、test-studio-font.js、test-studio-encrypted.js。
+
+## v121: 製本デスク 2.23
+- サムネイルの大きさ(「大きさ」バー・ピンチ・Ctrl+ホイール)の範囲を 90〜320px → 40〜800px。保存済みの値も範囲内に収める。サムネイルは `tw*dpr` の幅で描くので、大きくすると細かくなる(画面の近くのカードだけ描く)。テスト: test-studio-deskzoom.js。
