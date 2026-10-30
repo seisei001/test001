@@ -3253,12 +3253,12 @@ function inkErase(cv,box,S,fl){
     if(inBox||(!fl.keepFigure&&touches))for(const i of px){mask[i]=1;nMask++;}
   }
   if(!fl.keepRule){for(let y=Math.max(0,Math.floor(box.y));y<Math.min(H,Math.ceil(box.y+box.h));y++)for(let x=Math.max(0,Math.floor(box.x));x<Math.min(W,Math.ceil(box.x+box.w));x++)if(ruleD[y*W+x]&&!mask[y*W+x]){mask[y*W+x]=1;nMask++;}}
-  // 背景が、紙のように平らでないとき(写真の木目・模様、机と紙のまたがり)は、文字だけを消せない → 四角に戻す。枠の中の明るさの、40%点と85%点の差(文字のインクは暗い側に出るので、平らな背景なら、小さい)
+  // 背景が、紙のように平らでないとき(写真の木目・模様、机と紙のまたがり)は、文字だけを消せない → 四角に戻す。枠の中の明るさの、70%点と95%点の差(文字のインクは暗い側に出るので、字が詰まっていても、平らな背景なら、小さい)
   {const xa=Math.max(0,Math.floor(box.x)),xb=Math.min(W,Math.ceil(box.x+box.w)),ya=Math.max(0,Math.floor(box.y)),yb=Math.min(H,Math.ceil(box.y+box.h)),vs=[];
    const stp=Math.max(1,Math.floor(Math.sqrt((xb-xa)*(yb-ya)/20000)));
    for(let y=ya;y<yb;y+=stp)for(let x=xa;x<xb;x+=stp)vs.push(g[y*W+x]);
-   if(vs.length>30){vs.sort((p,q)=>p-q);const spread=vs[Math.floor(vs.length*0.85)]-vs[Math.floor(vs.length*0.40)];if(spread>35)return{ok:false,nMask,why:"背景が平らでない("+Math.round(spread)+")"};}}
-  if(nMask<10||nMask>box.w*box.h*0.35)return{ok:false,nMask,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
+   if(vs.length>30){vs.sort((p,q)=>p-q);const spread=vs[Math.floor(vs.length*0.95)]-vs[Math.floor(vs.length*0.70)];if(spread>30)return{ok:false,nMask,why:"背景が平らでない("+Math.round(spread)+")"};}}
+  if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
   const rd=S>=3?3:2;let mk=inkDilate(mask,W,H,rd);
   if(fl.keepRule)for(let i=0;i<n;i++)if(ruleD[i])mk[i]=0;   // 罫線は、そのまま
   // 埋める: インクでなく・マスクでもない画素の、周りの平均(重み付き)。2回ぼかして、山の形(ガウスに近い)にする。パッチの範囲とそのまわりだけで計算する(ページ全体は要らない)
