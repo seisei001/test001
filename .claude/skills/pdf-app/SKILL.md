@@ -404,3 +404,6 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 整形>切り抜き: 「この範囲だけ残す(まわりは白)」(`#shCropKeep`, `cropKeep`)。ページの大きさはそのまま、範囲の外を白抜き。
 - 行間・字間バー(`.spbar`): PCは文字15pt相当、携帯(`isTouch()`)は10pt相当の大きさ。
 - テスト: test-studio-v111.js(新規)、menubar/print/spbar/forms/test-studio.js を更新。
+
+## v112: 製本デスク 2.19
+- サムネイルのダブルクリック(マウス)で、選択の有無・他の束を選んでいるかに関係なく、その束の表示ページの「ページ編集」が直接開く(以前は1つだけ選んでいるときに機能メニュー)。機能メニューは ⋮ ボタンから。テストはメニューを開くのに `.mnb` を使う(test-studio.js / test-studio-forms.js)。

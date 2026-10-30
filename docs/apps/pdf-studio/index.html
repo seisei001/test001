@@ -146,7 +146,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.18"},
+  desk:{name:"製本デスク",ver:"2.19"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"2.90",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.01",src:"forms/editor.html?form=shape"},
@@ -442,7 +442,7 @@ function attachDrag(el,b){
     if(wasDrag){finishDrag(e.type==="pointerup");return;}
   };
   el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
-  el.addEventListener("dblclick",e=>{if(lastType!=="mouse"||e.target.closest(".chk,.nav,.mnb"))return;if(b.sel&&selCount()===1)openMenu(b);});   // ダブルクリックはマウスだけの近道。ちょうど1つ選んでいる束でだけメニューが開く(指は ⋮ ボタン)
+  el.addEventListener("dblclick",e=>{if(lastType!=="mouse"||e.target.closest(".chk,.nav,.mnb"))return;openForm("edit",b);});   // ダブルクリックはマウスだけの近道。選んでいなくても、ほかの束を選んでいても、そのページのページ編集が開く(指は ⋮ ボタン)
   el.addEventListener("contextmenu",e=>{if(e.pointerType==="touch")e.preventDefault();});
 }
 function startDrag(el,b,e){

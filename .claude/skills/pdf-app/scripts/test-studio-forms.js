@@ -12,8 +12,10 @@ const S=WORK+'/samples/';
   const before=await sig();
   // ページ編集
   await page.locator('.card').nth(0).locator('.next').click();await page.waitForTimeout(400);
-  await page.locator('.card').nth(0).locator('canvas').dblclick();
-  await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(2500);
+  await page.evaluate(()=>document.getElementById('bNew').click());await page.waitForTimeout(800);   // 白紙の束が増え、そちらが選ばれた状態になる
+  // 別の束を選んでいても、ダブルクリックした束のページ編集が開く
+  await page.locator('.card').nth(0).locator('canvas').dblclick();await page.waitForTimeout(2500);
+  ok('ダブルクリックで直接ページ編集が開く(別の束を選んでいても)',await page.evaluate(()=>!document.getElementById('formHost').classList.contains('hidden'))&&/ページ編集/.test(await page.textContent('#formName')));
   ok('フォームの名前と版: '+await page.textContent('#formName')+' '+await page.textContent('#formVer'),/ページ編集/.test(await page.textContent('#formName'))&&(await page.textContent('#formVer')).includes('2.90'));
   const fr=page.frameLocator('#formFrame');
   await fr.locator('#embSave').waitFor({timeout:20000});
@@ -31,11 +33,12 @@ const S=WORK+'/samples/';
   ok('保存でフォームが閉じる',await page.evaluate(()=>document.getElementById('formHost').classList.contains('hidden')));
   const after=await sig();ok('サムネイルが変わった',before!==after);
   const b=await page.evaluate(()=>window.pdfStudioDebug.bundles());ok('ページ数そのまま(4)・2ページ目のまま: '+JSON.stringify(b[0]),b[0].n===4&&b[0].cur===1);
+  await page.evaluate(()=>document.getElementById('bClose').click());await page.locator('button',{hasText:'保存しない'}).click();await page.waitForTimeout(600);   // 白紙の束を閉じて、元の流れに戻す
   await page.locator('.card').nth(0).locator('canvas').screenshot({path:WORK+'/shot_form_after.png'});
   // 歪み補正
   await page.setInputFiles('#fAdd',[S+'photo_persp.pdf']);await page.waitForTimeout(1500);
   const w0=await page.evaluate(()=>document.querySelectorAll('.card')[1].querySelector('canvas').toDataURL().length);
-  await page.locator('.card').nth(1).locator('.chk').click();await page.locator('.card').nth(0).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(1).locator('canvas').dblclick();
+  await page.locator('.card').nth(1).locator('.chk').click();await page.locator('.card').nth(0).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(1).locator('.mnb').evaluate(e=>e.click());
   await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(2500);
   ok('整形の名前: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName')));
   const vis=async s=>fr.locator(s).isVisible();
@@ -49,7 +52,7 @@ const S=WORK+'/samples/';
   const w1=await page.evaluate(()=>document.querySelectorAll('.card')[1].querySelector('canvas').toDataURL().length);
   ok(`サムネイル更新 ${w0}→${w1}`,w0!==w1);
   // キャンセル
-  await page.locator('.card').nth(0).locator('.chk').click();await page.locator('.card').nth(1).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(0).locator('canvas').dblclick();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(2500);
+  await page.locator('.card').nth(0).locator('.chk').click();await page.locator('.card').nth(1).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(0).locator('.mnb').evaluate(e=>e.click());await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(2500);
   await page.evaluate(()=>document.getElementById('formClose').click());await page.waitForTimeout(500);
   ok('閉じる(保存しない)で戻る',await page.evaluate(()=>document.getElementById('formHost').classList.contains('hidden')));
   console.log('JSエラー:',errs.length,errs.slice(0,2));
