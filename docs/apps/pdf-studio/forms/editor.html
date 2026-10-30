@@ -176,7 +176,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embPrint" title="いま見ているページを印刷">印刷</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -251,7 +251,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="shAuto">自動で傾きを探す</button><button id="shTiltApply">傾きを直す</button>
 </div>
 <div class="row hidden" id="optCrop" style="margin-bottom:8px">
-<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
+<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn" id="shCropMove" title="この範囲を切り抜いて、好きな場所・形に動かして貼ります">この範囲を切り抜いて動かす</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
 </div>
 <div class="row hidden" id="optRot" style="margin-bottom:8px">
 <button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
@@ -3431,6 +3431,12 @@ async function cropKeep(){   // ページの大きさはそのまま、範囲の
   await replacePageImage(cv,VW,VH,"範囲のまわりを白くしました(ページの大きさはそのまま・このページは画像になりました)。元に戻すで戻せます。");
 }
 $("shCropKeep").onclick=busy(cropKeep);
+$("shCropMove").onclick=()=>{   // 切り抜く範囲を、歪み補正の「部分」に渡す。緑の枠(置く場所)を動かす・角で変形して貼る
+  const c=crop;if(!c||c.w<10||c.h<10){status("動かす範囲が小さすぎます。");return;}
+  setMode("warp");warpKind="part";updateWarpUi();$("wPrevBox").classList.add("hidden");
+  createPartWarp(c.x,c.y,c.w,c.h);
+  status("切り抜いた範囲に、緑の枠が出ました。緑の枠の中をドラッグして動かし、緑の角で形・大きさを変えて、「補正する」を押すと貼れます。元の場所を残すときは「元の場所は消す」のチェックを外してください。");
+};
 $("shCropAuto").onclick=busy(cropAuto);$("shCropAll").onclick=()=>{cropInit();renderCrop();};$("shCropApply").onclick=busy(cropApply);
 // --- 回転・反転 ---
 async function pageRotate(delta){
@@ -3907,6 +3913,7 @@ if(EMBED){
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
   $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
+  $("embPrint").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
   $("embCancel").onclick=()=>{const changed=hist.length>0||items.some(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});
