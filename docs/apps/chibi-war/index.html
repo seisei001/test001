@@ -119,7 +119,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <h1>ちびっこ大合戦</h1>
       <p>かわいい兵隊をずらりと並べて、魔法とスキルで魔王城をたおそう。</p>
       <ul class="how">
-        <li>号令は1つずつ実行に時間がかかり、同時には出せない</li>
+        <li>号令は1つずつ時間がかかる。敵は号令に失敗し、兵もサボる</li>
         <li>草原をタップすると出す場所が変わる</li>
         <li>魔法カードを選び、戦場を指でねらう</li>
       </ul>
@@ -195,7 +195,7 @@ const T={
 const UNIT_ORDER=['soldier','archer','mage','healer','golem'];
 const SK={soldier:'まもりのたて',archer:'矢の雨',mage:'ファイアボール',healer:'きらきらの祈り',golem:'地ならし'};
 const SP={meteor:{name:'メテオ',cost:5,r:48},heal:{name:'いやしの雨',cost:4,r:58},freeze:{name:'こおりの嵐',cost:4,r:60}};
-const DIFF={easy:{regen:.85,lag:[2.5,5],miss:.3,spell:.3,pow:.6},normal:{regen:1.15,lag:[1.2,3],miss:.08,spell:.6,pow:.9},hard:{regen:1.3,lag:[.8,2],miss:0,spell:.9,pow:1}};
+const DIFF={easy:{regen:.9,lag:[2.5,5],miss:.2,spell:.3,pow:.7,slip:.55,sabo:.45},normal:{regen:1.25,lag:[1,2.6],miss:.05,spell:.65,pow:.9,slip:.4,sabo:.3},hard:{regen:1.5,lag:[.8,1.8],miss:0,spell:.9,pow:1,slip:.3,sabo:.18}};
 const COL={k:'#2F72BC',d:'#C24A2D'};
 
 /* ---------- 描画ヘルパ ---------- */
@@ -332,7 +332,7 @@ function blank(){
     castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv',busy:null,wait:4,view:[],viewT:0},front:[null,null]};
 }
 function mkCastle(team){return {isCastle:true,team,x:W/2,y:team===0?H-50:50,hp:CASTLE_HP,max:CASTLE_HP,r:CASTLE_R,cd:1,flash:0};}
-function makeUnit(team,type,x,y){const S=T[type];return {id:G.uid++,team,type,x,y,hp:S.hp,max:S.hp,r:S.r,cd:rnd(0,S.cd),skillCd:rnd(2,6),tgt:null,tt:rnd(0,.3),freeze:0,stun:0,guard:0,hitFlash:0,atkAnim:0,phase:rnd(0,6.28),sv:rnd(.92,1.08),moving:false,dead:false};}
+function makeUnit(team,type,x,y){const S=T[type];return {id:G.uid++,team,type,x,y,hp:S.hp,max:S.hp,r:S.r,cd:rnd(0,S.cd),skillCd:rnd(2,6),tgt:null,tt:rnd(0,.3),freeze:0,stun:0,guard:0,sab:null,sabCd:rnd(6,14),hitFlash:0,atkAnim:0,phase:rnd(0,6.28),sv:rnd(.92,1.08),moving:false,dead:false};}
 function cnt(team){let n=0;for(const u of G.units)if(u.team===team&&!u.dead)n++;return n;}
 function power(team){let s=0;for(const u of G.units)if(u.team===team&&!u.dead)s+=u.hp;return s;}
 function valid(t){return !!t&&!t.dead&&t.hp>0;}
@@ -428,7 +428,7 @@ function doAttack(u,t){
     P(t.x,t.y-6,0,0,.3,5,'#fff','star');
   }
   else if(u.type==='archer')G.projs.push(mkProj({kind:'arrow',team:u.team,x:u.x,y:u.y-10,tgt:t,tx:t.x,ty:t.y,speed:230,dmg:S.atk}));
-  else if(u.type==='mage')G.projs.push(mkProj({kind:'orb',team:u.team,x:u.x,y:u.y-12,tgt:t,tx:t.x,ty:t.y,speed:170,dmg:S.atk,splash:16}));
+  else if(u.type==='mage')G.projs.push(mkProj({kind:'orb',team:u.team,x:u.x,y:u.y-12,tgt:t,tx:t.x,ty:t.y,speed:170,dmg:S.atk,splash:(u.sab&&u.sab.kind==='mutiny')?0:16}));
 }
 function skills(u,t){
   if(u.skillCd>0)return;
@@ -504,6 +504,28 @@ function healerLogic(u,dt){
     }else u.skillCd=1.5;
   }
 }
+function startSab(u){
+  const kinds=u.type==='healer'?['idle','back']:['idle','back','mutiny','mutiny'];
+  const k=kinds[(Math.random()*kinds.length)|0];
+  u.sab={kind:k,t:rnd(4,7)};
+  if(G.texts.length<3)popText(u.x,u.y-34,{idle:'サボり中…',back:'まいごになった',mutiny:'なかまわれだ！'}[k],COL.d);
+}
+function doSab(u,dt){
+  const sb=u.sab;sb.t-=dt;
+  if(sb.t<=0){u.sab=null;u.tgt=null;return false;}
+  if(sb.kind==='idle'){if(Math.random()<dt*2)P(u.x+5,u.y-24,0,-10,.8,1.6,'#9FB0FF','star');return true;}
+  if(sb.kind==='back'){const c=castleOf(u.team);moveToward(u,u.x,c.y-20,dt,.8);return true;}
+  u.cd-=dt;u.tt-=dt;
+  if(!valid(u.tgt)||u.tgt.isCastle||u.tgt.team!==u.team||u.tt<=0){
+    let best=null,bd=130*130;
+    for(const a of G.units){if(a===u||a.team!==u.team||a.dead)continue;const d=(a.x-u.x)**2+(a.y-u.y)**2;if(d<bd){bd=d;best=a;}}
+    u.tgt=best;u.tt=rnd(.3,.5);
+  }
+  const t=u.tgt;if(!t)return true;
+  const S=T[u.type],d=Math.hypot(t.x-u.x,t.y-u.y),reach=S.ranged?S.range+t.r:u.r+t.r+S.range;
+  if(d<=reach){if(u.cd<=0){doAttack(u,t);u.cd=S.cd*rnd(.9,1.1);}}else moveToward(u,t.x,t.y,dt);
+  return true;
+}
 function updUnit(u,dt){
   const S=T[u.type];
   u.phase+=dt*(u.moving?6:0);
@@ -511,6 +533,11 @@ function updUnit(u,dt){
   u.moving=false;
   if(u.stun>0){u.stun-=dt;return;}
   if(u.freeze>0){u.freeze-=dt;if(Math.random()<dt*6)P(u.x+rnd(-6,6),u.y-rnd(4,16),0,-8,.5,1.3,'#EAF8FF');return;}
+  if(u.team===1&&G.state==='play'){
+    u.sabCd-=dt;
+    if(!u.sab&&u.sabCd<=0){u.sabCd=rnd(8,16);if(Math.random()<DIFF[G.diff].sabo)startSab(u);}
+  }
+  if(u.sab&&doSab(u,dt))return;
   if(u.type==='healer'){healerLogic(u,dt);return;}
   u.cd-=dt;u.skillCd-=dt;u.tt-=dt;
   const stance=stanceOf(u.team);
@@ -531,9 +558,9 @@ function updUnit(u,dt){
 function updCastle(c,dt){
   c.cd-=dt;if(c.flash>0)c.flash-=dt;
   if(c.cd>0||c.hp<=0)return;
-  let best=null,bd=130*130;
+  let best=null,bd=150*150;
   for(const u of G.units){if(u.team===c.team||u.dead)continue;const d=(u.x-c.x)**2+(u.y-c.y)**2;if(d<bd){bd=d;best=u;}}
-  if(best){c.cd=.95;G.projs.push(mkProj({kind:'arrow',team:c.team,x:c.x,y:c.y-26,tgt:best,tx:best.x,ty:best.y,speed:230,dmg:6}));}
+  if(best){c.cd=.7;G.projs.push(mkProj({kind:'arrow',team:c.team,x:c.x,y:c.y-26,tgt:best,tx:best.x,ty:best.y,speed:230,dmg:10}));}
   else c.cd=.3;
 }
 function computeFront(){
@@ -635,7 +662,8 @@ function tickBusy(dt){
     b.t+=dt;
     if(b.t>=b.dur){
       o.busy=null;
-      if(b.kind==='unit')deploy(side,b.type,b.x);
+      if(b.dud){}
+      else if(b.kind==='unit')deploy(side,b.type,b.x);
       else if(b.kind==='spell'&&b.key!=='meteor')castSpell(side,b.key,b.x,b.y);
       else if(b.kind==='stance'){if(side===0){G.stance=b.val;syncCtl();}else G.ai.stance=b.val;}
     }
@@ -650,6 +678,33 @@ function aiTick(dt){
   if(A.busy||A.wait>0)return;
   aiDecide();
 }
+function slipText(x,y,t){popText(x,y,t,COL.d);}
+/* 敵の号令は、ときどき失敗する(ねらいミス・取りちがえ・不発・もたつき) */
+function aiGo(act,cost){
+  const A=G.ai,D=DIFF[G.diff];
+  A.mana-=cost;
+  if(Math.random()<D.slip){
+    const r=Math.random();
+    if(r<.3&&act.kind==='spell'){
+      const a=rnd(0,TAU),d=rnd(60,100);
+      act.x=clamp(act.x+Math.cos(a)*d,20,W-20);act.y=clamp(act.y+Math.sin(a)*d,40,H-40);
+      slipText(act.x,act.y-24,'ねらいがそれた！');
+    }else if(r<.62){
+      const pool=UNIT_ORDER.map(k=>({kind:'unit',type:k,x:rnd(50,310),dur:DUR[k],cost:T[k].cost}));
+      pool.push({kind:'spell',key:'heal',x:rnd(40,320),y:rnd(H*.3,H*.7),dur:DUR.heal,cost:4});
+      pool.push({kind:'spell',key:'freeze',x:rnd(40,320),y:rnd(H*.2,H*.8),dur:DUR.freeze,cost:4});
+      pool.push({kind:'spell',key:'meteor',x:rnd(40,320),y:rnd(60,H-60),dur:DUR.meteor,cost:5});
+      pool.push({kind:'stance',val:A.stance==='adv'?'hold':'adv',dur:DUR.stance,cost:0});
+      const pick=pool[(Math.random()*pool.length)|0];
+      A.mana+=cost;
+      if(pick.cost<=A.mana&&!(pick.kind==='unit'&&cnt(1)+T[pick.type].n>CAP)){A.mana-=pick.cost;act=pick;slipText(180,100,'命令を取りちがえた！');}
+      else{A.mana-=cost;act.dud=true;slipText(180,100,'号令をまちがえた…');}
+    }else if(r<.82){act.dud=true;slipText(180,100,'不発…');}
+    else{act.dur*=1.8;slipText(180,100,'もたもたしている');}
+  }
+  if(act.kind==='spell'&&act.key==='meteor'&&!act.dud)castSpell(1,'meteor',act.x,act.y);
+  startAct(1,act);
+}
 function aiDecide(){
   const A=G.ai,D=DIFF[G.diff];
   A.wait=rnd(D.lag[0],D.lag[1]);
@@ -657,16 +712,16 @@ function aiDecide(){
   let fp=0;for(const u of foes)fp+=u.hp;const ep=power(1);
   let want=A.stance;
   if(G.t<10||ep>fp*1.1)want='adv';else if(ep<fp*.65)want='hold';
-  if(want!==A.stance){startAct(1,{kind:'stance',val:want,dur:DUR.stance});return;}
+  if(want!==A.stance){aiGo({kind:'stance',val:want,dur:DUR.stance},0);return;}
   if(Math.random()<D.miss)return;
   if(foes.length>=6){
     const c=findCluster(foes,46);
-    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;const x=c.x+rnd(-26,26),y=c.y+rnd(-26,26);castSpell(1,'meteor',x,y);startAct(1,{kind:'spell',key:'meteor',x,y,dur:DUR.meteor});return;}
-    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;startAct(1,{kind:'spell',key:'freeze',x:c.x,y:c.y,dur:DUR.freeze});return;}
+    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){aiGo({kind:'spell',key:'meteor',x:c.x+rnd(-26,26),y:c.y+rnd(-26,26),dur:DUR.meteor},5);return;}
+    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){aiGo({kind:'spell',key:'freeze',x:c.x,y:c.y,dur:DUR.freeze},4);return;}
   }
   if(mine.length>=5&&A.mana>=4){
     const hl=mine.filter(u=>u.hp<u.max*.55);
-    if(hl.length>=5&&Math.random()<D.spell*.6){const c=findCluster(hl,52);A.mana-=4;startAct(1,{kind:'spell',key:'heal',x:c.x,y:c.y,dur:DUR.heal});return;}
+    if(hl.length>=5&&Math.random()<D.spell*.6){const c=findCluster(hl,52);aiGo({kind:'spell',key:'heal',x:c.x,y:c.y,dur:DUR.heal},4);return;}
   }
   const ranged=mine.filter(u=>u.type==='archer'||u.type==='mage').length,front=mine.filter(u=>u.type==='soldier'||u.type==='golem').length;
   const w={soldier:4,archer:3,mage:2.4,healer:mine.length>=9?1.2:0,golem:1.3};
@@ -675,8 +730,7 @@ function aiDecide(){
   if(!opts.length){A.wait=.8;return;}
   let tot=0;opts.forEach(k=>tot+=w[k]);let pick=rnd(0,tot),k=opts[0];
   for(const o of opts){pick-=w[o];if(pick<=0){k=o;break;}}
-  A.mana-=T[k].cost;
-  startAct(1,{kind:'unit',type:k,x:[75,180,285][(Math.random()*3)|0]+rnd(-18,18),dur:DUR[k]});
+  aiGo({kind:'unit',type:k,x:[75,180,285][(Math.random()*3)|0]+rnd(-18,18),dur:DUR[k]},T[k].cost);
 }
 function aiStep(dt){
   const A=G.ai,D=DIFF[G.diff];
@@ -873,6 +927,7 @@ function drawUnit(u){
   ctx.drawImage(s.cv,-s.ox,-s.oy,s.w,s.h);
   if(u.hitFlash>0){ctx.globalAlpha=.5;circ(ctx,0,-9,u.r+3,'#fff');ctx.globalAlpha=1;}
   if(u.freeze>0){ctx.globalAlpha=.6;circ(ctx,0,-9,u.r+5,'#BDEBFF','#fff',1.4);ctx.globalAlpha=1;}
+  if(u.sab){ctx.font='900 10px "Zen Maru Gothic",sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#fff';const m=u.sab.kind==='idle'?'zZ':u.sab.kind==='back'?'？':'！';const my=-(u.type==='golem'?48:u.type==='mage'?46:36);ctx.strokeText(m,0,my);ctx.fillStyle=u.sab.kind==='mutiny'?'#E5262E':'#6A60C8';ctx.fillText(m,0,my);}
   if(u.guard>0){ctx.strokeStyle='#FFC53D';ctx.lineWidth=1.8;ctx.beginPath();ctx.ellipse(0,0,u.r+4,u.r*.55+2,0,0,TAU);ctx.stroke();}
   ctx.restore();
 }
@@ -985,7 +1040,7 @@ function newGame(){
   H=computeH();
   G=blank();G.state='play';G.diff=diff;
   fit();
-  deploy(0,'soldier',180);deploy(1,'soldier',180);
+  deploy(0,'soldier',180);deploy(1,'soldier',180);deploy(1,'archer',120);
   $('#ovStart').hidden=true;$('#ovEnd').hidden=true;$('#ovPause').hidden=true;
   syncCtl();setArmed(null);
   toast('草原をタップすると、部隊の出る場所が変わるよ',2600);
