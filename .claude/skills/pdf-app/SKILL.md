@@ -429,3 +429,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 30MB超のファイルが先頭4つにあるときは、先回り読み込みを1つずつにする(メモリのピークを抑える)。
 - 回帰の修正: 2.18 で、ページ数をpdf.jsで数えるようにしたため、編集制限つき(鍵つき)PDFの「鍵を外すか」の質問が出なくなっていた → `hasEncrypt(bytes)`("/Encrypt" を走査)で、鍵の印があるときだけpdf-libで確かめる。壊れたファイルは、鍵の質問ではなく理由を知らせる。
 - test-studio-encrypted.js は古い前提(質問なしで束になる)で失敗する(バージョン前から)。test-studio-locked.js は通る。テスト: test-studio-loadfail.js。
+
+## v118: ページ編集 2.93 / 整形 1.06 / 罫線編集 1.32
+- ページ表示の拡大縮小の範囲: 50〜500% → 20〜1000%。「全体」ボタン(`#pzF`、`pzFit`)でページ全体が画面に収まる大きさに。
+- 拡大すると絵が荒くなる問題: `sharpenStage`(拡大の350ms後)で、ステージのcanvasを表示幅に合わせて細かく描き直す(画素数は3600万まで、`stageScale` も更新。縮小すると標準に戻る)。`stageScale` を使う処理(行818付近)は、更新後の値を見る。
+- テスト: test-studio-pagezoom.js。
