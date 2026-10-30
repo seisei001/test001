@@ -37,7 +37,7 @@ print(round(res*100,2),round(rk/rk0*100,2),round(fk/fk0*100,2),round(bgd,3))"`).
     await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
     const f=page.frames().find(x=>x!==page.mainFrame());
     for(const b of boxes)await f.evaluate(([b,mode,sc])=>window.pdfEditorDebug.addFix({s:b.s,x:b.x0/sc-1,y:b.y0/sc-1,w:(b.x1-b.x0)/sc+2,h:(b.y1-b.y0)/sc+2,size:b.size/sc,mode,txt:'.'}),[b,mode,SC]);
-    await page.waitForTimeout(mode==='ink'?5000:1000);
+    if(mode==='ink')await f.evaluate(()=>window.pdfEditorDebug.inkAll());else await page.waitForTimeout(1000);
     const st=await f.evaluate(()=>window.pdfEditorDebug.inkState());
     await page.frameLocator('#formFrame').locator('#embSave').click();await page.waitForTimeout(mode==='ink'?9000:5000);
     fs.writeFileSync('/tmp/inkscan_'+mode+'.pdf',Buffer.from(await page.evaluate(()=>Array.from(window.pdfStudioDebug.bytes(0)))));
