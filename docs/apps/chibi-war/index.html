@@ -77,6 +77,11 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .pip i{position:absolute;inset:0;transform-origin:left center;transform:scaleX(0);background:linear-gradient(#8F82FF,var(--mana))}
 .mana-num{font-family:var(--f-display);font-size:17px;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
 .pips.flash .pip{background:#FFD3CB}
+.cmdrow{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--ink-soft)}
+.cmdbar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.cmdbar i{display:block;height:100%;width:100%;transform-origin:left center;background:var(--kingdom);transition:background .2s}
+.cmdrow b{min-width:34px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.cd.wait{opacity:.6}
 .ctl{display:flex;gap:8px}
 .ctl .seg{flex:1}
 .ico-btn{flex:none;min-width:48px;height:40px;border:2px solid var(--line);background:#fff;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:14px;padding:0 8px}
@@ -100,9 +105,9 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <body>
 <div id="app">
   <header class="hud"><div class="hud-in">
-    <div class="hp k"><div class="lab"><span>王国城</span><b id="hpkn">1600</b></div><div class="bar"><div class="fill" id="hpk"></div></div></div>
+    <div class="hp k"><div class="lab"><span>王国城</span><b id="hpkn">4000</b></div><div class="bar"><div class="fill" id="hpk"></div></div></div>
     <div class="timer" id="timer">0:00</div>
-    <div class="hp d"><div class="lab"><b id="hpdn">1600</b><span>魔王城</span></div><div class="bar"><div class="fill" id="hpd"></div></div></div>
+    <div class="hp d"><div class="lab"><b id="hpdn">4000</b><span>魔王城</span></div><div class="bar"><div class="fill" id="hpd"></div></div></div>
   </div></header>
 
   <main id="stage">
@@ -114,7 +119,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <h1>ちびっこ大合戦</h1>
       <p>かわいい兵隊をずらりと並べて、魔法とスキルで魔王城をたおそう。</p>
       <ul class="how">
-        <li>カードをタップすると部隊が出てくる</li>
+        <li>カードで部隊を出す。号令は一定時間ごとに1回だけ</li>
         <li>草原をタップすると出す場所が変わる</li>
         <li>魔法カードを選び、戦場を指でねらう</li>
       </ul>
@@ -155,6 +160,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <div class="pips" id="pips" role="meter" aria-label="マナ"></div>
       <div class="mana-num" id="manaNum">5</div>
     </div>
+    <div class="cmdrow"><span>号令</span><div class="cmdbar"><i id="cmdFill"></i></div><b id="cmdTxt">OK</b></div>
     <div class="ctl">
       <div class="seg" id="stanceSeg" role="group" aria-label="号令">
         <button type="button" data-s="adv" aria-pressed="true">すすめ</button>
@@ -170,7 +176,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <script>
 (()=>{
 'use strict';
-const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=1.0,PLAYER_REGEN=1.1, CASTLE_HP=1600;
+const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=.8,PLAYER_REGEN=.8,PLAYER_CMD=4.5, CASTLE_HP=4000;
 let H=640;
 const $=s=>document.querySelector(s);
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -180,16 +186,16 @@ let dpr=Math.min(window.devicePixelRatio||1,2.5), scale=1, bg=null;
 
 /* ---------- データ ---------- */
 const T={
-  soldier:{name:'ソルジャー',cost:4,n:8,cols:4,hp:70,atk:8,cd:.9,range:5,speed:34,r:7,ranged:false,off:0},
-  archer:{name:'アーチャー',cost:4,n:6,cols:3,hp:34,atk:7,cd:1.1,range:105,speed:30,r:6.5,ranged:true,off:14},
-  mage:{name:'メイジ',cost:5,n:4,cols:2,hp:30,atk:11,cd:1.5,range:92,speed:27,r:6.5,ranged:true,off:24},
-  healer:{name:'ヒーラー',cost:3,n:3,cols:3,hp:38,atk:0,cd:1.1,range:70,speed:28,r:6.5,ranged:true,off:34},
-  golem:{name:'ゴーレム',cost:6,n:1,cols:1,hp:420,atk:26,cd:1.5,range:8,speed:21,r:13,ranged:false,off:4}
+  soldier:{name:'ソルジャー',cost:4,n:8,cols:4,hp:150,atk:6,cd:.9,range:5,speed:17,r:7,ranged:false,off:0},
+  archer:{name:'アーチャー',cost:4,n:6,cols:3,hp:75,atk:5,cd:1.1,range:105,speed:15,r:6.5,ranged:true,off:14},
+  mage:{name:'メイジ',cost:5,n:4,cols:2,hp:65,atk:8,cd:1.5,range:92,speed:14,r:6.5,ranged:true,off:24},
+  healer:{name:'ヒーラー',cost:3,n:3,cols:3,hp:80,atk:0,cd:1.1,range:70,speed:14,r:6.5,ranged:true,off:34},
+  golem:{name:'ゴーレム',cost:6,n:1,cols:1,hp:900,atk:18,cd:1.5,range:8,speed:11,r:13,ranged:false,off:4}
 };
 const UNIT_ORDER=['soldier','archer','mage','healer','golem'];
 const SK={soldier:'まもりのたて',archer:'矢の雨',mage:'ファイアボール',healer:'きらきらの祈り',golem:'地ならし'};
 const SP={meteor:{name:'メテオ',cost:5,r:48},heal:{name:'いやしの雨',cost:4,r:58},freeze:{name:'こおりの嵐',cost:4,r:60}};
-const DIFF={easy:{regen:.8,think:1.5,spell:.25,pow:.6},normal:{regen:1,think:1,spell:.5,pow:.85},hard:{regen:1.1,think:.75,spell:.75,pow:1}};
+const DIFF={easy:{regen:.85,cmd:6.5,spell:.25,pow:.6},normal:{regen:1.1,cmd:4.5,spell:.6,pow:.9},hard:{regen:1.25,cmd:4.5,spell:.9,pow:1}};
 const COL={k:'#2F72BC',d:'#C24A2D'};
 
 /* ---------- 描画ヘルパ ---------- */
@@ -322,8 +328,8 @@ function iconFor(key,isSpell){
 let G=null;
 function blank(){
   return {state:'idle',t:0,units:[],projs:[],parts:[],texts:[],timers:[],zones:[],warns:[],shake:0,
-    mana:6,deployX:180,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
-    castles:[mkCastle(0),mkCastle(1)],ai:{mana:4,timer:6,stance:'adv'},front:[null,null]};
+    mana:6,deployX:180,cmd:0,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
+    castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv'},front:[null,null]};
 }
 function mkCastle(team){return {isCastle:true,team,x:W/2,y:team===0?H-50:50,hp:CASTLE_HP,max:CASTLE_HP,r:CASTLE_R,cd:1,flash:0};}
 function makeUnit(team,type,x,y){const S=T[type];return {id:G.uid++,team,type,x,y,hp:S.hp,max:S.hp,r:S.r,cd:rnd(0,S.cd),skillCd:rnd(2,6),tgt:null,tt:rnd(0,.3),freeze:0,stun:0,guard:0,hitFlash:0,atkAnim:0,phase:rnd(0,6.28),sv:rnd(.92,1.08),moving:false,dead:false};}
@@ -433,16 +439,16 @@ function skills(u,t){
   }else if(u.type==='archer'){
     if(t.isCastle||near(tm,t.x,t.y,34)<3)return;
     u.skillCd=9+rnd(0,3);popText(u.x,u.y-34,SK.archer,tm?COL.d:COL.k);
-    for(let i=0;i<8;i++)G.projs.push(mkProj({kind:'arrow',team:tm,x:t.x+rnd(-26,26),y:t.y-130-rnd(0,50),tx:t.x+rnd(-24,24),ty:t.y+rnd(-22,22),speed:260,dmg:11,splash:10}));
+    for(let i=0;i<8;i++)G.projs.push(mkProj({kind:'arrow',team:tm,x:t.x+rnd(-26,26),y:t.y-130-rnd(0,50),tx:t.x+rnd(-24,24),ty:t.y+rnd(-22,22),speed:260,dmg:8,splash:10}));
   }else if(u.type==='mage'){
     if(t.isCastle||near(tm,t.x,t.y,40)<2)return;
     u.skillCd=7.5+rnd(0,2.5);popText(u.x,u.y-40,SK.mage,tm?COL.d:COL.k);
-    G.projs.push(mkProj({kind:'fire',team:tm,x:u.x,y:u.y-14,tgt:t,tx:t.x,ty:t.y,speed:150,dmg:38,splash:40}));
+    G.projs.push(mkProj({kind:'fire',team:tm,x:u.x,y:u.y-14,tgt:t,tx:t.x,ty:t.y,speed:150,dmg:28,splash:40}));
   }else if(u.type==='golem'){
     if(!t.isCastle&&near(tm,u.x,u.y,54)<2)return;
     u.skillCd=8+rnd(0,2);popText(u.x,u.y-42,SK.golem,tm?COL.d:COL.k);
-    for(const e of G.units){if(e.team!==tm&&!e.dead&&Math.hypot(e.x-u.x,e.y-u.y)<54+e.r){hurt(e,30,'melee');e.stun=1.2;}}
-    if(t.isCastle)hurt(t,30,'melee');
+    for(const e of G.units){if(e.team!==tm&&!e.dead&&Math.hypot(e.x-u.x,e.y-u.y)<54+e.r){hurt(e,22,'melee');e.stun=1.2;}}
+    if(t.isCastle)hurt(t,22,'melee');
     ring(u.x,u.y,54,'#E8D9B0');for(let i=0;i<10;i++)P(u.x,u.y,rnd(-50,50),rnd(-30,10),.5,rnd(2,4),'#D8C9A0','c',{g:60});G.shake=Math.max(G.shake,3);
   }
 }
@@ -481,7 +487,7 @@ function healerLogic(u,dt){
   if(valid(a)){
     const d=Math.hypot(a.x-u.x,a.y-u.y);
     if(d<=60){
-      if(u.cd<=0){a.hp=Math.min(a.max,a.hp+10);u.cd=1.1;u.atkAnim=.22;for(let i=0;i<3;i++)P(a.x+rnd(-5,5),a.y-rnd(6,16),0,-14,.6,1.8,'#9FF0C0','star');}
+      if(u.cd<=0){a.hp=Math.min(a.max,a.hp+13);u.cd=1.1;u.atkAnim=.22;for(let i=0;i<3;i++)P(a.x+rnd(-5,5),a.y-rnd(6,16),0,-14,.6,1.8,'#9FF0C0','star');}
     }else moveToward(u,a.x,a.y,dt);
   }else{
     const f=G.front[u.team];
@@ -494,13 +500,13 @@ function healerLogic(u,dt){
     let n=0;for(const a2 of G.units)if(a2.team===u.team&&!a2.dead&&a2.hp<a2.max*.75&&Math.hypot(a2.x-u.x,a2.y-u.y)<70)n++;
     if(n>=3){
       u.skillCd=9+rnd(0,3);popText(u.x,u.y-38,SK.healer,u.team?COL.d:COL.k);ring(u.x,u.y,70,'#9FF0C0');
-      for(const a2 of G.units){if(a2.team===u.team&&!a2.dead&&Math.hypot(a2.x-u.x,a2.y-u.y)<70){a2.hp=Math.min(a2.max,a2.hp+28);P(a2.x,a2.y-12,0,-18,.7,2.6,'#9FF0C0','star');}}
+      for(const a2 of G.units){if(a2.team===u.team&&!a2.dead&&Math.hypot(a2.x-u.x,a2.y-u.y)<70){a2.hp=Math.min(a2.max,a2.hp+40);P(a2.x,a2.y-12,0,-18,.7,2.6,'#9FF0C0','star');}}
     }else u.skillCd=1.5;
   }
 }
 function updUnit(u,dt){
   const S=T[u.type];
-  u.phase+=dt*(u.moving?9:0);
+  u.phase+=dt*(u.moving?6:0);
   if(u.hitFlash>0)u.hitFlash-=dt;if(u.atkAnim>0)u.atkAnim-=dt;if(u.guard>0)u.guard-=dt;
   u.moving=false;
   if(u.stun>0){u.stun-=dt;return;}
@@ -527,7 +533,7 @@ function updCastle(c,dt){
   if(c.cd>0||c.hp<=0)return;
   let best=null,bd=130*130;
   for(const u of G.units){if(u.team===c.team||u.dead)continue;const d=(u.x-c.x)**2+(u.y-c.y)**2;if(d<bd){bd=d;best=u;}}
-  if(best){c.cd=.95;G.projs.push(mkProj({kind:'arrow',team:c.team,x:c.x,y:c.y-26,tgt:best,tx:best.x,ty:best.y,speed:230,dmg:9}));}
+  if(best){c.cd=.95;G.projs.push(mkProj({kind:'arrow',team:c.team,x:c.x,y:c.y-26,tgt:best,tx:best.x,ty:best.y,speed:230,dmg:6}));}
   else c.cd=.3;
 }
 function computeFront(){
@@ -603,10 +609,10 @@ function meteorHit(team,x,y){
   for(const u of G.units){
     if(u.team===team||u.dead)continue;
     const d=Math.hypot(u.x-x,u.y-y);
-    if(d<r+u.r)hurt(u,70*pw*(1-.45*d/(r+u.r)),'fire');
+    if(d<r+u.r)hurt(u,45*pw*(1-.45*d/(r+u.r)),'fire');
   }
   const c=G.castles[1-team];
-  if(Math.hypot(c.x-x,c.y-y)<r+CASTLE_R)hurt(c,60,'fire');
+  if(Math.hypot(c.x-x,c.y-y)<r+CASTLE_R)hurt(c,40,'fire');
   ring(x,y,r,'#FF9A4D');ring(x,y,r*.6,'#FFE08A');
   for(let i=0;i<22;i++)P(x,y,rnd(-90,90),rnd(-100,30),.6,rnd(2,6),i%3?'#FFB347':'#FF6B3D','c',{g:120});
   G.shake=7;
@@ -622,22 +628,23 @@ function findCluster(list,r){
   }
   return best;
 }
+function aiDone(){G.ai.timer=DIFF[G.diff].cmd+rnd(0,.6);}
 function aiStep(dt){
   const A=G.ai,D=DIFF[G.diff];
   A.mana=Math.min(10,A.mana+dt*MANA_REGEN*D.regen);
   A.timer-=dt;if(A.timer>0)return;
-  A.timer=rnd(1.8,3.2)*D.think;
+  A.timer=.6;
   const pw=power(0),ew=power(1);
   if(G.t<10||ew>pw*1.1)A.stance='adv';else if(ew<pw*.65)A.stance='hold';
   const mine=G.units.filter(u=>u.team===1&&!u.dead),foes=G.units.filter(u=>u.team===0&&!u.dead);
   if(foes.length>=6){
     const c=findCluster(foes,46);
-    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x+rnd(-26,26),c.y+rnd(-26,26));return;}
-    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;castSpell(1,'freeze',c.x,c.y);return;}
+    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x+rnd(-26,26),c.y+rnd(-26,26));aiDone();return;}
+    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;castSpell(1,'freeze',c.x,c.y);aiDone();return;}
   }
   if(mine.length>=5&&A.mana>=4){
     const hurtList=mine.filter(u=>u.hp<u.max*.55);
-    if(hurtList.length>=5&&Math.random()<D.spell*.6){const c=findCluster(hurtList,52);A.mana-=4;castSpell(1,'heal',c.x,c.y);return;}
+    if(hurtList.length>=5&&Math.random()<D.spell*.6){const c=findCluster(hurtList,52);A.mana-=4;castSpell(1,'heal',c.x,c.y);aiDone();return;}
   }
   if(A.mana<5&&foes.length>=6&&Math.random()<.3)return;
   const ranged=mine.filter(u=>u.type==='archer'||u.type==='mage').length,front=mine.filter(u=>u.type==='soldier'||u.type==='golem').length;
@@ -649,7 +656,7 @@ function aiStep(dt){
   for(const o of opts){pick-=w[o];if(pick<=0){k=o;break;}}
   if(cnt(1)+T[k].n>CAP)return;
   A.mana-=T[k].cost;
-  deploy(1,k,[75,180,285][(Math.random()*3)|0]+rnd(-18,18));
+  deploy(1,k,[75,180,285][(Math.random()*3)|0]+rnd(-18,18));aiDone();
 }
 
 /* ---------- 1コマ進める ---------- */
@@ -664,7 +671,7 @@ function fx(dt){
   if(G.shake>0)G.shake=Math.max(0,G.shake-dt*18);
 }
 function step(dt){
-  G.t+=dt;G.mana=Math.min(10,G.mana+dt*PLAYER_REGEN);
+  G.t+=dt;G.mana=Math.min(10,G.mana+dt*PLAYER_REGEN);if(G.cmd>0)G.cmd=Math.max(0,G.cmd-dt);
   for(const tm of G.timers)tm.t-=dt;
   const due=G.timers.filter(t=>t.t<=0);G.timers=G.timers.filter(t=>t.t>0);due.forEach(t=>t.fn());
   computeFront();buildGrid();
@@ -679,7 +686,7 @@ function step(dt){
     for(let i=0;i<2;i++){const a=rnd(0,TAU),d=Math.sqrt(Math.random())*z.r;P(z.x+Math.cos(a)*d,z.y+Math.sin(a)*d-30,0,120,.28,1.4,'#8DD0FF','drop');}
     if(z.tick<=0){
       z.tick=.5;
-      for(const u of G.units){if(u.team===z.team&&!u.dead&&u.hp<u.max&&Math.hypot(u.x-z.x,u.y-z.y)<z.r){u.hp=Math.min(u.max,u.hp+7);P(u.x,u.y-12,0,-14,.5,2,'#9FF0C0','star');}}
+      for(const u of G.units){if(u.team===z.team&&!u.dead&&u.hp<u.max&&Math.hypot(u.x-z.x,u.y-z.y)<z.r){u.hp=Math.min(u.max,u.hp+12);P(u.x,u.y-12,0,-14,.5,2,'#9FF0C0','star');}}
     }
   }
   G.zones=G.zones.filter(z=>z.t>0);
@@ -854,16 +861,22 @@ function poorFeedback(k){
   pipsEl.classList.add('flash');setTimeout(()=>pipsEl.classList.remove('flash'),300);
   toast('マナがたりないよ',1000);
 }
+function waitFeedback(k){
+  const e=cardEls[k];if(e){e.el.classList.remove('shake');void e.el.offsetWidth;e.el.classList.add('shake');}
+  toast('号令がたまるまで、あと'+Math.ceil(G.cmd)+'秒',900);
+}
 function tryDeploy(k){
   if(G.state!=='play'||G.paused)return;
   const S=T[k];
+  if(G.cmd>0){waitFeedback(k);return;}
   if(G.mana<S.cost){poorFeedback(k);return;}
   if(cnt(0)+S.n>CAP){toast('兵隊がいっぱいで出せないよ');return;}
-  G.mana-=S.cost;deploy(0,k,G.deployX);
+  G.mana-=S.cost;G.cmd=PLAYER_CMD;deploy(0,k,G.deployX);
 }
 function arm(k){
   if(G.state!=='play'||G.paused)return;
   if(G.armed===k){setArmed(null);return;}
+  if(G.cmd>0){waitFeedback(k);return;}
   if(G.mana<SP[k].cost){poorFeedback(k);return;}
   setArmed(k);toast('時間がゆっくり。ゆび先でねらって、はなすと発動！',2400);
 }
@@ -883,7 +896,7 @@ cv.addEventListener('pointerup',e=>{
   if(!G.aim||!G.armed)return;
   const p=wpos(e),k=G.armed;G.aim=null;
   if(G.mana<SP[k].cost){poorFeedback(k);setArmed(null);return;}
-  G.mana-=SP[k].cost;castSpell(0,k,p.x,p.y);setArmed(null);
+  G.mana-=SP[k].cost;G.cmd=PLAYER_CMD;castSpell(0,k,p.x,p.y);setArmed(null);
 });
 cv.addEventListener('pointercancel',()=>{G.aim=null;});
 
@@ -897,6 +910,10 @@ function ui(){
   $('#timer').textContent=fmt(G.state==='idle'?0:G.t);
   for(let i=0;i<10;i++){const s=Math.round(clamp(G.mana-i,0,1)*20)/20;if(manaC[i]!==s){manaC[i]=s;pips[i].style.transform='scaleX('+s+')';}}
   $('#manaNum').textContent=Math.floor(G.mana);
+  const cr=G.state==='idle'?1:1-G.cmd/PLAYER_CMD;
+  $('#cmdFill').style.transform='scaleX('+cr+')';$('#cmdFill').style.background=cr>=1?'var(--kingdom)':'#B8AEE0';
+  $('#cmdTxt').textContent=G.cmd>0?(Math.ceil(G.cmd)+'秒'):'OK';
+  const waiting=G.cmd>0;for(const key of Object.keys(cardEls)){if(cardEls[key].waiting!==waiting){cardEls[key].waiting=waiting;cardEls[key].el.classList.toggle('wait',waiting);}}
   pipsEl.setAttribute('aria-valuenow',Math.floor(G.mana));
   for(const key of Object.keys(cardEls)){const e=cardEls[key],poor=G.mana<e.cost;if(cardPoor[key]!==poor){cardPoor[key]=poor;e.el.classList.toggle('poor',poor);}}
 }
