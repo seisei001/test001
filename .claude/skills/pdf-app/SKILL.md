@@ -414,3 +414,6 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 ## v114: 製本デスク 2.21 / ページ編集 2.91 / 整形 1.02 / 罫線編集 1.31
 - 編集画面(embRow1の左、設定の隣)に「印刷」ボタン(`#embPrint`)。commit後に現在の1ページのPDFを親へ `{type:"print"}` で送り、親の `printBytesOut(make)`(束の印刷 printBundles と共用)で印刷する。iframe(origin null)内では印刷しない。テスト: test-studio-editprint.js(`__printHook` で受ける)。
 - 整形 1.03: 切り抜き>「この範囲を切り抜いて動かす」(`#shCropMove`)。切り抜く範囲を歪み補正「部分」(`createPartWarp`)に渡し、緑の枠(置く場所)を動かす・角で変形して貼る。「元の場所は消す」で移動/コピーを選ぶ。新しい処理は作らず、既存の部分補正を再利用。回転専用の取っ手は未実装(緑の角で変形)。テスト: test-studio-cropmove.js。
+
+## v115: 整形 1.04
+- 緑の枠(部分補正の置く場所)に回転のつまみ(白い丸+線、上の辺の外側。`circle[data-h=rot]`、`dragRot`)。真ん中のまわりに4つの角を回す(Shiftで15度刻み)。「切り抜いて動かす」と歪み補正「部分」の両方で使える。テスト: test-studio-croprot.js(45度)。
