@@ -119,7 +119,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <h1>ちびっこ大合戦</h1>
       <p>かわいい兵隊をずらりと並べて、魔法とスキルで魔王城をたおそう。</p>
       <ul class="how">
-        <li>カードで部隊を出す。号令は一定時間ごとに1回だけ</li>
+        <li>号令は1つずつ実行に時間がかかり、同時には出せない</li>
         <li>草原をタップすると出す場所が変わる</li>
         <li>魔法カードを選び、戦場を指でねらう</li>
       </ul>
@@ -160,7 +160,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
       <div class="pips" id="pips" role="meter" aria-label="マナ"></div>
       <div class="mana-num" id="manaNum">5</div>
     </div>
-    <div class="cmdrow"><span>号令</span><div class="cmdbar"><i id="cmdFill"></i></div><b id="cmdTxt">OK</b></div>
+    <div class="cmdrow"><span id="cmdLab">号令</span><div class="cmdbar"><i id="cmdFill"></i></div><b id="cmdTxt">OK</b></div>
     <div class="ctl">
       <div class="seg" id="stanceSeg" role="group" aria-label="号令">
         <button type="button" data-s="adv" aria-pressed="true">すすめ</button>
@@ -176,7 +176,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <script>
 (()=>{
 'use strict';
-const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=.8,PLAYER_REGEN=.8,PLAYER_CMD=4.5, CASTLE_HP=4000;
+const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=.8,PLAYER_REGEN=.8,PLAYER_CMD=4.5,DUR={soldier:4,archer:4,mage:5,healer:3,golem:7,meteor:4,heal:3,freeze:3.5,stance:1.5}, CASTLE_HP=4000;
 let H=640;
 const $=s=>document.querySelector(s);
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -195,7 +195,7 @@ const T={
 const UNIT_ORDER=['soldier','archer','mage','healer','golem'];
 const SK={soldier:'まもりのたて',archer:'矢の雨',mage:'ファイアボール',healer:'きらきらの祈り',golem:'地ならし'};
 const SP={meteor:{name:'メテオ',cost:5,r:48},heal:{name:'いやしの雨',cost:4,r:58},freeze:{name:'こおりの嵐',cost:4,r:60}};
-const DIFF={easy:{regen:.85,cmd:6.5,spell:.25,pow:.6},normal:{regen:1.1,cmd:4.5,spell:.6,pow:.9},hard:{regen:1.25,cmd:4.5,spell:.9,pow:1}};
+const DIFF={easy:{regen:.85,lag:[2.5,5],miss:.3,spell:.3,pow:.6},normal:{regen:1.15,lag:[1.2,3],miss:.08,spell:.6,pow:.9},hard:{regen:1.3,lag:[.8,2],miss:0,spell:.9,pow:1}};
 const COL={k:'#2F72BC',d:'#C24A2D'};
 
 /* ---------- 描画ヘルパ ---------- */
@@ -328,8 +328,8 @@ function iconFor(key,isSpell){
 let G=null;
 function blank(){
   return {state:'idle',t:0,units:[],projs:[],parts:[],texts:[],timers:[],zones:[],warns:[],shake:0,
-    mana:6,deployX:180,cmd:0,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
-    castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv'},front:[null,null]};
+    mana:6,deployX:180,busy:null,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
+    castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv',busy:null,wait:4,view:[],viewT:0},front:[null,null]};
 }
 function mkCastle(team){return {isCastle:true,team,x:W/2,y:team===0?H-50:50,hp:CASTLE_HP,max:CASTLE_HP,r:CASTLE_R,cd:1,flash:0};}
 function makeUnit(team,type,x,y){const S=T[type];return {id:G.uid++,team,type,x,y,hp:S.hp,max:S.hp,r:S.r,cd:rnd(0,S.cd),skillCd:rnd(2,6),tgt:null,tt:rnd(0,.3),freeze:0,stun:0,guard:0,hitFlash:0,atkAnim:0,phase:rnd(0,6.28),sv:rnd(.92,1.08),moving:false,dead:false};}
@@ -591,7 +591,7 @@ function separate(){
 function castSpell(team,key,x,y){
   const nm=SP[key].name,col=team?COL.d:COL.k;
   if(key==='meteor'){
-    const dur=team===1?1.6:.95;
+    const dur=DUR.meteor;
     G.warns.push({x,y,r:SP.meteor.r,t:0,dur,team});
     G.timers.push({t:dur,fn:()=>meteorHit(team,x,y)});
   }else if(key==='heal'){
@@ -628,7 +628,56 @@ function findCluster(list,r){
   }
   return best;
 }
-function aiDone(){G.ai.timer=DIFF[G.diff].cmd+rnd(0,.6);}
+function startAct(side,act){(side===0?G:G.ai).busy=Object.assign({t:0},act);}
+function tickBusy(dt){
+  for(const side of [0,1]){
+    const o=side===0?G:G.ai,b=o.busy;if(!b)continue;
+    b.t+=dt;
+    if(b.t>=b.dur){
+      o.busy=null;
+      if(b.kind==='unit')deploy(side,b.type,b.x);
+      else if(b.kind==='spell'&&b.key!=='meteor')castSpell(side,b.key,b.x,b.y);
+      else if(b.kind==='stance'){if(side===0){G.stance=b.val;syncCtl();}else G.ai.stance=b.val;}
+    }
+  }
+}
+function aiTick(dt){
+  const A=G.ai,D=DIFF[G.diff];
+  A.mana=Math.min(10,A.mana+dt*MANA_REGEN*D.regen);
+  A.viewT-=dt;
+  if(A.viewT<=0){A.viewT=2.5;A.view=G.units.filter(u=>!u.dead).map(u=>({team:u.team,type:u.type,x:u.x,y:u.y,hp:u.hp,max:u.max}));}
+  A.wait-=dt;
+  if(A.busy||A.wait>0)return;
+  aiDecide();
+}
+function aiDecide(){
+  const A=G.ai,D=DIFF[G.diff];
+  A.wait=rnd(D.lag[0],D.lag[1]);
+  const foes=A.view.filter(u=>u.team===0),mine=G.units.filter(u=>u.team===1&&!u.dead);
+  let fp=0;for(const u of foes)fp+=u.hp;const ep=power(1);
+  let want=A.stance;
+  if(G.t<10||ep>fp*1.1)want='adv';else if(ep<fp*.65)want='hold';
+  if(want!==A.stance){startAct(1,{kind:'stance',val:want,dur:DUR.stance});return;}
+  if(Math.random()<D.miss)return;
+  if(foes.length>=6){
+    const c=findCluster(foes,46);
+    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;const x=c.x+rnd(-26,26),y=c.y+rnd(-26,26);castSpell(1,'meteor',x,y);startAct(1,{kind:'spell',key:'meteor',x,y,dur:DUR.meteor});return;}
+    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;startAct(1,{kind:'spell',key:'freeze',x:c.x,y:c.y,dur:DUR.freeze});return;}
+  }
+  if(mine.length>=5&&A.mana>=4){
+    const hl=mine.filter(u=>u.hp<u.max*.55);
+    if(hl.length>=5&&Math.random()<D.spell*.6){const c=findCluster(hl,52);A.mana-=4;startAct(1,{kind:'spell',key:'heal',x:c.x,y:c.y,dur:DUR.heal});return;}
+  }
+  const ranged=mine.filter(u=>u.type==='archer'||u.type==='mage').length,front=mine.filter(u=>u.type==='soldier'||u.type==='golem').length;
+  const w={soldier:4,archer:3,mage:2.4,healer:mine.length>=9?1.2:0,golem:1.3};
+  if(ranged>front*1.6){w.soldier+=3;w.golem+=1.5;}
+  const opts=UNIT_ORDER.filter(k=>w[k]>0&&T[k].cost<=A.mana&&cnt(1)+T[k].n<=CAP);
+  if(!opts.length){A.wait=.8;return;}
+  let tot=0;opts.forEach(k=>tot+=w[k]);let pick=rnd(0,tot),k=opts[0];
+  for(const o of opts){pick-=w[o];if(pick<=0){k=o;break;}}
+  A.mana-=T[k].cost;
+  startAct(1,{kind:'unit',type:k,x:[75,180,285][(Math.random()*3)|0]+rnd(-18,18),dur:DUR[k]});
+}
 function aiStep(dt){
   const A=G.ai,D=DIFF[G.diff];
   A.mana=Math.min(10,A.mana+dt*MANA_REGEN*D.regen);
@@ -671,7 +720,7 @@ function fx(dt){
   if(G.shake>0)G.shake=Math.max(0,G.shake-dt*18);
 }
 function step(dt){
-  G.t+=dt;G.mana=Math.min(10,G.mana+dt*PLAYER_REGEN);if(G.cmd>0)G.cmd=Math.max(0,G.cmd-dt);
+  G.t+=dt;G.mana=Math.min(10,G.mana+dt*PLAYER_REGEN);tickBusy(dt);
   for(const tm of G.timers)tm.t-=dt;
   const due=G.timers.filter(t=>t.t<=0);G.timers=G.timers.filter(t=>t.t>0);due.forEach(t=>t.fn());
   computeFront();buildGrid();
@@ -693,7 +742,7 @@ function step(dt){
   for(const w of G.warns)w.t+=dt;
   G.warns=G.warns.filter(w=>w.t<w.dur);
   G.units=G.units.filter(u=>!u.dead);
-  if(G.state==='play')aiStep(dt);
+  if(G.state==='play')aiTick(dt);
   fx(dt);
 }
 
@@ -743,6 +792,12 @@ function render(){
   for(const z of G.zones){
     ctx.globalAlpha=.28+Math.sin(G.t*6)*.05;circ(ctx,z.x,z.y,z.r,'#9FF0C0');ctx.globalAlpha=.9;
     ctx.strokeStyle='#4CB782';ctx.lineWidth=1.4;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+  }
+  for(const side of [0,1]){
+    const b=side===0?G.busy:G.ai.busy;
+    if(b&&b.kind==='spell'&&b.key!=='meteor'){
+      ctx.globalAlpha=.55;ctx.strokeStyle=side?'#C24A2D':'#2F72BC';ctx.lineWidth=2;ctx.setLineDash([3,5]);ctx.beginPath();ctx.arc(b.x,b.y,SP[b.key].r*(.5+.5*b.t/b.dur),0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    }
   }
   for(const w of G.warns){
     const p=w.t/w.dur;
@@ -861,22 +916,23 @@ function poorFeedback(k){
   pipsEl.classList.add('flash');setTimeout(()=>pipsEl.classList.remove('flash'),300);
   toast('マナがたりないよ',1000);
 }
+function busyFeedback(k){return waitFeedback(k);}
 function waitFeedback(k){
   const e=cardEls[k];if(e){e.el.classList.remove('shake');void e.el.offsetWidth;e.el.classList.add('shake');}
-  toast('号令がたまるまで、あと'+Math.ceil(G.cmd)+'秒',900);
+  toast('号令を実行中。あと'+Math.ceil(G.busy?G.busy.dur-G.busy.t:0)+'秒は次の号令を出せないよ',1300);
 }
 function tryDeploy(k){
   if(G.state!=='play'||G.paused)return;
   const S=T[k];
-  if(G.cmd>0){waitFeedback(k);return;}
+  if(G.busy){waitFeedback(k);return;}
   if(G.mana<S.cost){poorFeedback(k);return;}
   if(cnt(0)+S.n>CAP){toast('兵隊がいっぱいで出せないよ');return;}
-  G.mana-=S.cost;G.cmd=PLAYER_CMD;deploy(0,k,G.deployX);
+  G.mana-=S.cost;startAct(0,{kind:'unit',type:k,x:G.deployX,dur:DUR[k],label:S.name+'を出す'});
 }
 function arm(k){
   if(G.state!=='play'||G.paused)return;
   if(G.armed===k){setArmed(null);return;}
-  if(G.cmd>0){waitFeedback(k);return;}
+  if(G.busy){waitFeedback(k);return;}
   if(G.mana<SP[k].cost){poorFeedback(k);return;}
   setArmed(k);toast('時間がゆっくり。ゆび先でねらって、はなすと発動！',2400);
 }
@@ -896,7 +952,7 @@ cv.addEventListener('pointerup',e=>{
   if(!G.aim||!G.armed)return;
   const p=wpos(e),k=G.armed;G.aim=null;
   if(G.mana<SP[k].cost){poorFeedback(k);setArmed(null);return;}
-  G.mana-=SP[k].cost;G.cmd=PLAYER_CMD;castSpell(0,k,p.x,p.y);setArmed(null);
+  G.mana-=SP[k].cost;if(k==='meteor')castSpell(0,k,p.x,p.y);startAct(0,{kind:'spell',key:k,x:p.x,y:p.y,dur:DUR[k],label:SP[k].name+'の詠唱'});setArmed(null);
 });
 cv.addEventListener('pointercancel',()=>{G.aim=null;});
 
@@ -910,10 +966,11 @@ function ui(){
   $('#timer').textContent=fmt(G.state==='idle'?0:G.t);
   for(let i=0;i<10;i++){const s=Math.round(clamp(G.mana-i,0,1)*20)/20;if(manaC[i]!==s){manaC[i]=s;pips[i].style.transform='scaleX('+s+')';}}
   $('#manaNum').textContent=Math.floor(G.mana);
-  const cr=G.state==='idle'?1:1-G.cmd/PLAYER_CMD;
-  $('#cmdFill').style.transform='scaleX('+cr+')';$('#cmdFill').style.background=cr>=1?'var(--kingdom)':'#B8AEE0';
-  $('#cmdTxt').textContent=G.cmd>0?(Math.ceil(G.cmd)+'秒'):'OK';
-  const waiting=G.cmd>0;for(const key of Object.keys(cardEls)){if(cardEls[key].waiting!==waiting){cardEls[key].waiting=waiting;cardEls[key].el.classList.toggle('wait',waiting);}}
+  const b=G.busy,cr=b?b.t/b.dur:1;
+  $('#cmdFill').style.transform='scaleX('+clamp(cr,0,1)+')';$('#cmdFill').style.background=b?'#B8AEE0':'var(--kingdom)';
+  $('#cmdLab').textContent=b?b.label:'号令';
+  $('#cmdTxt').textContent=b?(Math.ceil(b.dur-b.t)+'秒'):'OK';
+  const waiting=!!b;for(const key of Object.keys(cardEls)){if(cardEls[key].waiting!==waiting){cardEls[key].waiting=waiting;cardEls[key].el.classList.toggle('wait',waiting);}}
   pipsEl.setAttribute('aria-valuenow',Math.floor(G.mana));
   for(const key of Object.keys(cardEls)){const e=cardEls[key],poor=G.mana<e.cost;if(cardPoor[key]!==poor){cardPoor[key]=poor;e.el.classList.toggle('poor',poor);}}
 }
@@ -968,7 +1025,7 @@ $('#btnResume').addEventListener('click',()=>setPause(false));
 $('#btnGiveup').addEventListener('click',toStart);
 $('#btnPause').addEventListener('click',()=>setPause(!G.paused));
 $('#btnSpeed').addEventListener('click',()=>{if(G.state!=='play')return;G.speed=G.speed===1?2:1;syncCtl();});
-document.querySelectorAll('#stanceSeg button').forEach(b=>b.addEventListener('click',()=>{if(G.state!=='play')return;G.stance=b.dataset.s;syncCtl();}));
+document.querySelectorAll('#stanceSeg button').forEach(b=>b.addEventListener('click',()=>{if(G.state!=='play')return;if(G.busy){waitFeedback('soldier');return;}if(b.dataset.s===G.stance)return;startAct(0,{kind:'stance',val:b.dataset.s,dur:DUR.stance,label:'陣形を変える'});}));
 document.querySelectorAll('#diffSeg button').forEach(b=>b.addEventListener('click',()=>{diff=b.dataset.d;document.querySelectorAll('#diffSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));}));
 window.addEventListener('keydown',e=>{
   if(G.state!=='play')return;
