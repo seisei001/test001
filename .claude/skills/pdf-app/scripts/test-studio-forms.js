@@ -16,7 +16,7 @@ const S=WORK+'/samples/';
   // 別の束を選んでいても、ダブルクリックした束のページ編集が開く
   await page.locator('.card').nth(0).locator('canvas').dblclick();await page.waitForTimeout(2500);
   ok('ダブルクリックで直接ページ編集が開く(別の束を選んでいても)',await page.evaluate(()=>!document.getElementById('formHost').classList.contains('hidden'))&&/ページ編集/.test(await page.textContent('#formName')));
-  ok('フォームの名前と版: '+await page.textContent('#formName')+' '+await page.textContent('#formVer'),/ページ編集/.test(await page.textContent('#formName'))&&(await page.textContent('#formVer')).includes('2.91'));
+  ok('フォームの名前と版: '+await page.textContent('#formName')+' '+await page.textContent('#formVer'),/ページ編集/.test(await page.textContent('#formName'))&&(await page.textContent('#formVer')).includes('2.92'));
   const fr=page.frameLocator('#formFrame');
   await fr.locator('#embSave').waitFor({timeout:20000});
   await page.waitForTimeout(1500);
