@@ -434,3 +434,12 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ページ表示の拡大縮小の範囲: 50〜500% → 20〜1000%。「全体」ボタン(`#pzF`、`pzFit`)でページ全体が画面に収まる大きさに。
 - 拡大すると絵が荒くなる問題: `sharpenStage`(拡大の350ms後)で、ステージのcanvasを表示幅に合わせて細かく描き直す(画素数は3600万まで、`stageScale` も更新。縮小すると標準に戻る)。`stageScale` を使う処理(行818付近)は、更新後の値を見る。
 - テスト: test-studio-pagezoom.js。
+
+## v119: ページ編集 2.94
+- 「文字だけ消す」で、新しい文字の枠の下に消す文字が無い(空白・罫線だけ。`inkErase` の nMask<10)とき、失敗扱いで枠全体を白い四角で塗っていた → 罫線が枠の形に欠けて見えた(実機の報告)。`st.empty`(消す文字なし)にして、type==="text" のときは何も塗らない。確定時も塗らない。文字の訂正枠(fix/OCR)は、薄い文字を残さないため従来どおり四角にフォールバック。テスト: test-studio-inkempty.js(修正前は失敗)。
+- 実機の画面(iPhone 801%)の「反映できませんでした: フォントの追加を取りやめました」は、フォント追加の確認を「やめる」にした結果で、別の挙動(確認を取りやめると確定されない)。
+
+## v120: ページ編集 2.95(v119 の「文字だけ消す」修正も含む)
+- 超拡大の操作性: 行間・字間バー(`.spbar`)が表示倍率kに比例して巨大化(744%で1915px幅)していた → k を 0.5〜2 に制限。枠の上端・左端が画面の外に出たとき、バーと✥(`.hdl.mv`)を見える位置に寄せる(`barKeep`、スクロールにも追従)。テスト: test-studio-spbarzoom.js。
+- テストの罠: Playwright の strict mode 違反は "Timeout" を含まない。grep は `^NG|Timeout|rror` で。test-studio-forms.js の「保存しない」は `button.sub-btn` で絞る(フォームの「✕ 閉じる(保存しない)」と衝突)。
+- 既知の失敗(以前から): test-studio-edit-ui.js(51行目 size)、test-studio-font.js、test-studio-encrypted.js。

@@ -1219,7 +1219,7 @@ function renderOverlay(){
           gr.addEventListener("pointermove",mvf);gr.addEventListener("pointerup",up);gr.addEventListener("pointercancel",up);
         });
         el.appendChild(gr);
-        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${((isTouch()?10:15)*k/11).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
+        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${((isTouch()?10:15)*Math.min(2,Math.max(0.5,k))/11).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
 
         bar.innerHTML='<label>行間 <b class="v1"></b><input type="range" class="r1" min="0.8" max="3" step="0.05"></label><label>字間 <b class="v2"></b><input type="range" class="r2" min="-2" max="20" step="0.5"></label>';
         const r1=bar.querySelector(".r1"),r2=bar.querySelector(".r2"),v1=bar.querySelector(".v1"),v2=bar.querySelector(".v2");
@@ -1228,7 +1228,7 @@ function renderOverlay(){
         ["pointerdown","pointermove","pointerup","click","touchstart"].forEach(n=>bar.addEventListener(n,e=>e.stopPropagation()));
         const apply=()=>{it.lh=+r1.value;it.ls=+r2.value||0;show();growToFit(it);boxStyle(it,el);placeGrip(it,el);};
         r1.addEventListener("input",apply);r2.addEventListener("input",apply);
-        el.appendChild(bar);
+        el.appendChild(bar);barKeepSoon();
       }
     }
     el.addEventListener("pointerdown",e=>{
@@ -3096,7 +3096,8 @@ async function commit(only){
     const Ux=under.get(it.page),noPatch=it.type==="text"&&bgModeOf(it)!=="all"&&Ux&&Ux.hasText&&[...Ux.ex.values()].every(e=>e.done);
     if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&fixChanged(it)){   // 文字のインクだけを消したパッチを、元の画像の上に重ねる(画像そのものは変えない)。できなかったら、下の四角
       let st=await inkCompute(it);
-      for(let t=0;t<4&&!st.failed&&!st.patches.length;t++){await new Promise(r=>setTimeout(r,150));st=await inkCompute(it);}   // 表示の作り直しで中断されたときは、もう一度
+      for(let t=0;t<4&&!st.failed&&!st.empty&&!st.patches.length;t++){await new Promise(r=>setTimeout(r,150));st=await inkCompute(it);}   // 表示の作り直しで中断されたときは、もう一度
+      if(st.empty)continue;   // 消す文字が無い: 何も塗らない(罫線などを残す)
       if(!st.failed&&!st.patches.length)it._ink={failed:true,patches:[],busy:false,key:"x"};   // それでもできなければ、四角に戻す
       if(!st.failed&&st.patches.length){
         const pg=doc.getPage(it.page),{width:W0,height:H0}=pg.getSize(),r0=((pg.getRotation().angle%360)+360)%360;
@@ -3220,6 +3221,21 @@ window.addEventListener("scroll",()=>{const h=$("embHead");if(h)h.style.transfor
 $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR").onclick=()=>setPZ(1);$("pzF").onclick=pzFit;
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
+// 超拡大で、枠の上端・左端が画面の外に出たときも、行間・字間のバーが見える位置に寄せる
+let barRaf=0;
+function barKeepSoon(){if(barRaf)return;barRaf=requestAnimationFrame(()=>{barRaf=0;barKeep();});}
+function barKeep(){
+  const hm=ov.querySelector(".ibox.on .hdl.mv");   // 動かす印(✥)も、枠の上端・左端が画面の外に出たら、見える位置に寄せる
+  if(hm){const el=hm.parentElement,r=el.getBoundingClientRect(),hd=$("embHead"),top=hd?hd.getBoundingClientRect().bottom:0,sz=hm.offsetWidth||12;
+    const offX=r.left<0&&r.right>sz+8,offY=r.top<top&&r.bottom>top+sz+8;
+    hm.style.left=offX?(-r.left+8)+"px":"";hm.style.top=offY?(top+8-r.top)+"px":"";}
+  const bar=ov.querySelector(".spbar");if(!bar)return;const el=bar.parentElement,r=el.getBoundingClientRect(),hd=$("embHead"),top=hd?hd.getBoundingClientRect().bottom:0,sc=bar.getBoundingClientRect().height/(bar.offsetHeight||1)||1;
+  const need=r.top<top+4&&r.bottom>top+bar.offsetHeight*sc+8;   // 上端が隠れていて、枠はまだ下に続いている
+  if(need){bar.style.bottom="auto";bar.style.transformOrigin="0 0";bar.style.top=(top+4-r.top)+"px";}
+  else{bar.style.bottom="";bar.style.top="";bar.style.transformOrigin="";}
+  const dx=r.left<0?(-r.left+6):6;bar.style.left=Math.min(dx,Math.max(6,r.width-40))+"px";
+}
+window.addEventListener("scroll",barKeepSoon,{passive:true});
 // ===== 部品の管理表 =====
 // 画像の中の、どんな部品を、編集の対象にするか・残す(守る)かを、ここで管理する。部品が増えたら、ここに足す(検出の処理は、それぞれ別)
 const PARTS=[
@@ -3293,7 +3309,7 @@ async function inkErase(cv,box,S,fl){
    const stp=Math.max(1,Math.floor(Math.sqrt((xb-xa)*(yb-ya)/20000)));
    for(let y=ya;y<yb;y+=stp)for(let x=xa;x<xb;x+=stp)vs.push(g[y*W+x]);
    if(vs.length>30){vs.sort((p,q)=>p-q);const spread=vs[Math.floor(vs.length*0.95)]-vs[Math.floor(vs.length*0.70)];if(spread>30)return{ok:false,nMask,why:"背景が平らでない("+Math.round(spread)+")"};}}
-  if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
+  if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,empty:nMask<10,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
   const rd=S>=3?3:2;let mk=inkDilate(mask,W,H,rd);
   await tick(0.8);
   if(fl.keepRule)for(let i=0;i<n;i++)if(ruleD[i])mk[i]=0;   // 罫線は、そのまま
@@ -3347,12 +3363,14 @@ async function inkCompute(it){
         if(ow<4||oh<4){st.failed=true;break;}
         const cv=document.createElement("canvas");cv.width=ow;cv.height=oh;cv.getContext("2d").drawImage(pg,ox,oy,ow,oh,0,0,ow,oh);   // ページ全体を、1回だけ描いて、そこから切り出す(枠ごとに、画像を読み直さない)
         const r=await inkErase(cv,{x:c.x*S-ox,y:c.y*S-oy,w:c.w*S,h:c.h*S},S,{onPhase:f=>{inkBatch.part=f;inkJobStep();},keepRule:partKeep("rule"),keepFigure:partKeep("figure"),maxH:it.type==="text"?Math.max(12,(it.size||12)*S*2.5):0});   // 新しい枠では、入れる文字の大きさの2.5倍までの塊だけを、文字として消す(大きな絵・模様は残す)
+        if(!r.ok&&r.empty&&it.type==="text"){st.why="消す文字がない";st.emptyN=(st.emptyN||0)+1;continue;}   // 新しい枠の下に、消す文字が無い(空白や罫線だけ)ときは、何も塗らない(四角で塗ると、罫線まで消える)
         if(!r.ok){st.failed=true;st.why=r.why;break;}
         st.patches.push({x:(ox+r.px)/S,y:(oy+r.py)/S,w:r.cv.width/S,h:r.cv.height/S,cv:r.cv});
       }
     }catch(err){
       if(bytes.length!==Number(key.match(/^\[\d+,(\d+)/)[1])||/sendWithPromise|Cancelled/.test(String(err))){if(it._ink===st)it._ink=null;st.failed=false;st.busy=false;st.patches=[];setTimeout(()=>{if(items.includes(it))renderCovers(it);},50);return st;}   // 表示を作り直している途中で止まった: 失敗ではないので、あとで、もう一度作る
       st.failed=true;console.warn("文字だけ消す処理に失敗",err);}
+    st.empty=!st.failed&&st.emptyN>0&&st.emptyN===rects.length;   // 消す文字が、どの範囲にも無かった
     st.busy=false;if(it._ink===st)renderCovers(it);return st;
   },bigPx>250000);
   return st.p;
