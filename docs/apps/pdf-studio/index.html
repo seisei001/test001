@@ -103,9 +103,10 @@ button:disabled{opacity:.4;cursor:default;}
       <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button><button id="bPrintPg" disabled title="表示しているページだけを、印刷">このページを印刷</button>
     </div></div>
     <div class="mg"><button class="mtop" data-d="mdBind">製本</button><div class="mdrop hidden" id="mdBind">
-      <button id="bAll">全部選択</button><button id="bNone">選択解除</button><button id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button id="bMerge" disabled>結合</button>
+      <button id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button id="bMerge" disabled>結合</button>
     </div></div>
     <div class="mg"><button class="mtop" id="bHelp">ヘルプ</button></div>
+    <div class="mg selbtns"><button class="mtop" id="bAll">全選択</button><button class="mtop" id="bNone">全解除</button></div>
     <label class="msz">大きさ <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
@@ -120,7 +121,7 @@ button:disabled{opacity:.4;cursor:default;}
   <p><b>束</b>: 開いたPDF1つが1つの束です。複数ページの束は重なって見え、下の「＜ ＞」でページをめくれます。ドラッグで並べ替えられます。</p>
   <p><b>ファイル</b>: 新規作成(白紙)/ PDFを開く / 閉じる / 保存 / 印刷 / 元に戻す</p>
   <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)/ このページを印刷</p>
-  <p><b>製本</b>(束の操作): 全部選択 / 選択解除 / 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
+  <p><b>メニューの右の「全選択」「全解除」</b>: 束をすべて選ぶ / すべての選択を外す(いつでも押せます)。<br><b>製本</b>(束の操作): 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
   <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「整形」「罫線編集」を開けます。</p>
   </div>
   <div style="margin-top:10px;text-align:right"><button class="sub" id="deskHelpClose">閉じる</button></div>
@@ -145,10 +146,10 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.17"},
+  desk:{name:"製本デスク",ver:"2.18"},
   menu:{name:"機能メニュー",ver:"2.03"},
-  edit:{name:"ページ編集",ver:"2.89",src:"forms/editor.html?form=edit"},
-  shape:{name:"整形",ver:"1.00",src:"forms/editor.html?form=shape"},
+  edit:{name:"ページ編集",ver:"2.90",src:"forms/editor.html?form=edit"},
+  shape:{name:"整形",ver:"1.01",src:"forms/editor.html?form=shape"},
   rule:{name:"罫線編集",ver:"1.30",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
@@ -277,13 +278,22 @@ async function rasterize(bytes,name,keepText){
 }
 async function addFiles(files){
   let added=0,lastNote="";
-  for(const it of files){
-    const f=it.f||it,fh=it.h||null;
-    if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf")continue;
-    let bytes=new Uint8Array(await f.arrayBuffer());
+  const list=files.filter(it=>{const f=it.f||it;return /\.pdf$/i.test(f.name)||f.type==="application/pdf";});
+  // 読み込みと、ページ数の確認(軽いpdf.js)は、数個ずつ先回りして並行で進める(多数のファイルで、1つずつ待つと遅い)。この文書はサムネイルにも使い回す
+  const prep=[],prepOne=async it=>{const f=it.f||it,bytes=new Uint8Array(await f.arrayBuffer());let pre=null,n=0;
+    try{pre=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;n=pre.numPages;}catch{if(pre){try{pre.destroy();}catch{}}pre=null;}
+    return{bytes,pre,n};};
+  const AHEAD=4,kick=i=>{for(let k=i;k<Math.min(list.length,i+AHEAD);k++)if(!prep[k])prep[k]=prepOne(list[k]).catch(()=>null);};
+  for(let i=0;i<list.length;i++){
+    const it=list[i],f=it.f||it,fh=it.h||null;
+    kick(i);const r0=await prep[i];
+    if(!r0){status(`「${f.name}」を開けませんでした(読み込みに失敗)。`);continue;}
+    let bytes=r0.bytes;
     try{
-      let n,note="";
-      try{n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();}
+      let n=r0.n,note="",pre=r0.pre;
+      try{
+        if(!pre)n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();   // pdf.jsで開けないとき(鍵付きなど)は、pdf-libで確かめる
+      }
       catch(e){   // 鍵(暗号化)などで、そのままでは編集用に開けないPDF
         const ch=await askLocked(f.name);
         if(ch==="cancel")throw new Error("取り込みをやめました");
@@ -299,7 +309,7 @@ async function addFiles(files){
           note=ch==="edit"?(r.nText?`(鍵を外せなかったため、各ページを画像にして読み込みました。PDFの文字データ${r.nText}個は、見えない文字として残してあります)`:"(鍵を外せなかったため、各ページを画像にして読み込みました。文字は画像になっています)"):"(画像として取り込みました。元の文章は変わりません)";
         }
       }
-      if(!added)snap();bundles.push(mk(f.name,bytes,n,0,null,note?null:fh,!!note));added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
+      if(!added)snap();const nb0=mk(f.name,bytes,n,0,null,note?null:fh,!!note);if(pre&&!note)nb0.doc=pre;else if(pre){try{pre.destroy();}catch{}}bundles.push(nb0);added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
     }catch(e){status(`「${f.name}」を開けませんでした(${e&&e.message?e.message:"読み込みに失敗"})。`);}
   }
   if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
@@ -348,10 +358,11 @@ $("rSize").oninput=()=>setTw(+$("rSize").value);
 applySize();
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const b=bundles.find(x=>x.card===e.target);if(b)thumb(b);}}),{root:null,rootMargin:"300px"});
 let rq=Promise.resolve();
+function nearView(el){const r=el.getBoundingClientRect(),h=window.innerHeight||800;return r.bottom>-300&&r.top<h+300;}   // 画面の近くにあるカードだけ描く
 function thumb(b){
   if(!b.card)return;const key=b.cur+"|"+tw+"|"+(b.ver||0);if(b.key===key)return;
   rq=rq.then(async()=>{
-    if(!b.card||b.key===key)return;
+    if(!b.card||b.key===key||!nearView(b.card))return;   // 遠いカードは、近づいたとき(IntersectionObserver)に描く
     try{
       if(!b.doc)b.doc=await pdfjsLib.getDocument({data:b.bytes.slice(0)}).promise;
       const pg=await b.doc.getPage(b.cur+1),dpr=Math.min(2,window.devicePixelRatio||1),v0=pg.getViewport({scale:1}),sc=tw*dpr/v0.width,vp=pg.getViewport({scale:sc});

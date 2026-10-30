@@ -27,7 +27,7 @@ const S=WORK+'/samples/';
   ok('表示していた2ページ目の中身',t1.trim()===t2.trim()&&t1.trim().length>0);
   // 2つの束を選んでつなげる
   await page.setInputFiles('#fAdd',[S+'photo_persp.pdf']);await page.waitForTimeout(1500);
-  await page.click('.mtop[data-d=mdBind]');await page.click('#bAll');await page.click('.mtop[data-d=mdFile]');await page.click('#bPrint');await page.waitForTimeout(1800);
+  await page.click('#bAll');await page.click('.mtop[data-d=mdFile]');await page.click('#bPrint');await page.waitForTimeout(1800);
   c=await page.evaluate(()=>window.__printCalls);fs.writeFileSync('/tmp/print3.pdf',Buffer.from(c[2].b));
   ok('2つの束をつなげて印刷: 5ページ',/Pages: +5/.test(execSync('pdfinfo /tmp/print3.pdf').toString()));
   ok('エラーなし '+errs.join('|'),!errs.length);
