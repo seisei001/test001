@@ -170,7 +170,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 <script>
 (()=>{
 'use strict';
-const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=1.0, CASTLE_HP=1600;
+const W=360, TAU=Math.PI*2, RES=3, CASTLE_R=32, CAP=130, MANA_REGEN=1.0,PLAYER_REGEN=1.1, CASTLE_HP=1600;
 let H=640;
 const $=s=>document.querySelector(s);
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -189,7 +189,7 @@ const T={
 const UNIT_ORDER=['soldier','archer','mage','healer','golem'];
 const SK={soldier:'まもりのたて',archer:'矢の雨',mage:'ファイアボール',healer:'きらきらの祈り',golem:'地ならし'};
 const SP={meteor:{name:'メテオ',cost:5,r:48},heal:{name:'いやしの雨',cost:4,r:58},freeze:{name:'こおりの嵐',cost:4,r:60}};
-const DIFF={easy:{regen:.75,think:1.4,spell:.35},normal:{regen:1,think:1,spell:.6},hard:{regen:1.3,think:.8,spell:.85}};
+const DIFF={easy:{regen:.7,think:1.5,spell:.25,pow:.6},normal:{regen:.95,think:1.05,spell:.5,pow:.85},hard:{regen:1.2,think:.85,spell:.8,pow:1}};
 const COL={k:'#2F72BC',d:'#C24A2D'};
 
 /* ---------- 描画ヘルパ ---------- */
@@ -322,7 +322,7 @@ function iconFor(key,isSpell){
 let G=null;
 function blank(){
   return {state:'idle',t:0,units:[],projs:[],parts:[],texts:[],timers:[],zones:[],warns:[],shake:0,
-    mana:5,deployX:180,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
+    mana:6,deployX:180,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
     castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv'},front:[null,null]};
 }
 function mkCastle(team){return {isCastle:true,team,x:W/2,y:team===0?H-50:50,hp:CASTLE_HP,max:CASTLE_HP,r:CASTLE_R,cd:1,flash:0};}
@@ -598,11 +598,11 @@ function castSpell(team,key,x,y){
   popText(x,y-26,nm,col);
 }
 function meteorHit(team,x,y){
-  const r=SP.meteor.r;
+  const r=SP.meteor.r,pw=team===1?DIFF[G.diff].pow:1;
   for(const u of G.units){
     if(u.team===team||u.dead)continue;
     const d=Math.hypot(u.x-x,u.y-y);
-    if(d<r+u.r)hurt(u,70*(1-.45*d/(r+u.r)),'fire');
+    if(d<r+u.r)hurt(u,70*pw*(1-.45*d/(r+u.r)),'fire');
   }
   const c=G.castles[1-team];
   if(Math.hypot(c.x-x,c.y-y)<r+CASTLE_R)hurt(c,60,'fire');
@@ -631,8 +631,8 @@ function aiStep(dt){
   const mine=G.units.filter(u=>u.team===1&&!u.dead),foes=G.units.filter(u=>u.team===0&&!u.dead);
   if(foes.length>=6){
     const c=findCluster(foes,46);
-    if(A.mana>=5&&c.n>=6&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x,c.y);return;}
-    if(A.mana>=4&&c.n>=9&&Math.random()<D.spell*.45){A.mana-=4;castSpell(1,'freeze',c.x,c.y);return;}
+    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x,c.y);return;}
+    if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;castSpell(1,'freeze',c.x,c.y);return;}
   }
   if(mine.length>=5&&A.mana>=4){
     const hurtList=mine.filter(u=>u.hp<u.max*.55);
@@ -663,7 +663,7 @@ function fx(dt){
   if(G.shake>0)G.shake=Math.max(0,G.shake-dt*18);
 }
 function step(dt){
-  G.t+=dt;G.mana=Math.min(10,G.mana+dt*MANA_REGEN);
+  G.t+=dt;G.mana=Math.min(10,G.mana+dt*PLAYER_REGEN);
   for(const tm of G.timers)tm.t-=dt;
   const due=G.timers.filter(t=>t.t<=0);G.timers=G.timers.filter(t=>t.t>0);due.forEach(t=>t.fn());
   computeFront();buildGrid();
