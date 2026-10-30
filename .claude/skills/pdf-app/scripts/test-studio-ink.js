@@ -45,7 +45,7 @@ print(len(rule),kept,qa,qb)`).split(' ').map(Number);
     await fr.locator('[data-m=ocr]').click();await fr.locator('#bOcrPage').click();
     await f.waitForFunction(()=>/個のまとまり|認識できません|読み込めません/.test(document.querySelector('#status').textContent),null,{timeout:400000});
     if(mode!=='ink')await f.evaluate(m=>window.pdfEditorDebug.setBg(m),mode);
-    await page.waitForTimeout(mode==='ink'?9000:1500);
+    if(mode==='ink')await f.evaluate(()=>window.pdfEditorDebug.inkAll());else await page.waitForTimeout(1500);
     const st=await f.evaluate(()=>window.pdfEditorDebug.inkState());
     await fr.locator('#embSave').click();await page.waitForTimeout(mode==='ink'?12000:5000);
     fs.writeFileSync('/tmp/ink_'+mode+'.pdf',Buffer.from(await page.evaluate(()=>Array.from(window.pdfStudioDebug.bytes(0)))));
