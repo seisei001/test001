@@ -1722,7 +1722,9 @@ function renderWarp(){
     const poly=mk("polygon",{fill:"rgba(22,163,74,.10)",stroke:"#16a34a","stroke-width":px(2),"stroke-dasharray":`${px(6)} ${px(4)}`});
     poly.style.cssText="pointer-events:all;cursor:move;touch-action:none";
     const hs=warp.dst.map((_,i)=>{const e=mk("circle",{r:px(9),fill:"#16a34a",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;cursor:move;touch-action:none";return e;});
-    warpDst={poly,hs};dragDst(poly,-1);hs.forEach((e,i)=>dragDst(e,i));
+    const rl=mk("line",{stroke:"#16a34a","stroke-width":px(2)}),rh=mk("circle",{r:px(10),fill:"#fff",stroke:"#16a34a","stroke-width":px(3)});   // 回転のつまみ(上の辺の外側)
+    rh.style.cssText="pointer-events:all;cursor:grab;touch-action:none";rh.setAttribute("data-h","rot");
+    warpDst={poly,hs,rl,rh,off:px(34)};dragDst(poly,-1);hs.forEach((e,i)=>dragDst(e,i));dragRot(rh);
   }
   for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
     const id=r+"_"+c,corner=(r===0||r===GN-1)&&(c===0||c===GN-1),inner=r>0&&r<GN-1&&c>0&&c<GN-1;
@@ -1737,7 +1739,9 @@ function updateWarpSvg(){
   const f=makeUnitMap(warp),N=28;
   warpLines.forEach(l=>{const pts=[];for(let i=0;i<=N;i++){const u=i/N,[x,y]=l.dir==="h"?f(u,l.f):f(l.f,u);pts.push(x.toFixed(2)+","+y.toFixed(2));}l.el.setAttribute("points",pts.join(" "));});
   warpHandles.forEach(h=>{const p=warp.G[h.r][h.c];h.el.setAttribute("cx",p[0]);h.el.setAttribute("cy",p[1]);});
-  if(warpDst&&warp.dst){warpDst.poly.setAttribute("points",warp.dst.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "));warpDst.hs.forEach((e,i)=>{e.setAttribute("cx",warp.dst[i][0]);e.setAttribute("cy",warp.dst[i][1]);});}
+  if(warpDst&&warp.dst){warpDst.poly.setAttribute("points",warp.dst.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "));warpDst.hs.forEach((e,i)=>{e.setAttribute("cx",warp.dst[i][0]);e.setAttribute("cy",warp.dst[i][1]);});
+    const D=warp.dst,mx=(D[0][0]+D[1][0])/2,my=(D[0][1]+D[1][1])/2,cx=(D[0][0]+D[1][0]+D[2][0]+D[3][0])/4,cy=(D[0][1]+D[1][1]+D[2][1]+D[3][1])/4,L=Math.hypot(mx-cx,my-cy)||1,hx=mx+(mx-cx)/L*warpDst.off,hy=my+(my-cy)/L*warpDst.off;
+    warpDst.rl.setAttribute("x1",mx);warpDst.rl.setAttribute("y1",my);warpDst.rl.setAttribute("x2",hx);warpDst.rl.setAttribute("y2",hy);warpDst.rh.setAttribute("cx",hx);warpDst.rh.setAttribute("cy",hy);}
 }
 function dragDst(el,idx){   // idx=-1: 四角形ぜんたいを動かす / 0〜3: その角だけ動かす
   el.addEventListener("pointerdown",e=>{
@@ -1748,6 +1752,17 @@ function dragDst(el,idx){   // idx=-1: 四角形ぜんたいを動かす / 0〜3
         const ddx=Math.max(-mnx,Math.min(VW-mxx,dx)),ddy=Math.max(-mny,Math.min(VH-mxy,dy));warp.dst=D0.map(q=>[q[0]+ddx,q[1]+ddy]);}
       else{warp.dst=D0.map(q=>q.slice());warp.dst[idx]=[Math.max(0,Math.min(VW,D0[idx][0]+dx)),Math.max(0,Math.min(VH,D0[idx][1]+dy))];}
       updateWarpSvg();};
+    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
+    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+  });
+}
+function dragRot(el){   // 緑の四角形を、真ん中のまわりに回す(つまみのある方向へ引いた角度に合わせる)
+  el.addEventListener("pointerdown",e=>{
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    const D0=warp.dst.map(q=>q.slice()),cx=D0.reduce((a,q)=>a+q[0],0)/4,cy=D0.reduce((a,q)=>a+q[1],0)/4,rc=ov.getBoundingClientRect(),k=K();
+    const ang=ev=>Math.atan2((ev.clientY-rc.top)/k-cy,(ev.clientX-rc.left)/k-cx),a0=ang(e);
+    const mv=ev=>{let da=ang(ev)-a0;if(ev.shiftKey){da=Math.round(da/(Math.PI/12))*(Math.PI/12);}   // Shiftで15度ずつ
+      const co=Math.cos(da),si=Math.sin(da);warp.dst=D0.map(q=>[cx+(q[0]-cx)*co-(q[1]-cy)*si,cy+(q[0]-cx)*si+(q[1]-cy)*co]);updateWarpSvg();};
     const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
     el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
   });
