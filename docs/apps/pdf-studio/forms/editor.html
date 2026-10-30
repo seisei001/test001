@@ -176,7 +176,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embPrint" title="いま見ているページを印刷">印刷</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -3907,6 +3907,7 @@ if(EMBED){
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
   $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
+  $("embPrint").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
   $("embCancel").onclick=()=>{const changed=hist.length>0||items.some(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});

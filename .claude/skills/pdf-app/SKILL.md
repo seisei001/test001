@@ -410,3 +410,6 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 
 ## v113: 製本デスク 2.20
 - 「製本」メニューを廃止。中身(回転・全部バラす・分割・結合)を、全選択/全解除と並べてメニューバーに常時表示(`.selbtns`)。メニューバーは flex-wrap(狭い画面で折り返す)。無効のときは `.mtop:disabled` で薄く表示。テストは `.selbtns button` を直接押す。
+
+## v114: 製本デスク 2.21 / ページ編集 2.91 / 整形 1.02 / 罫線編集 1.31
+- 編集画面(embRow1の左、設定の隣)に「印刷」ボタン(`#embPrint`)。commit後に現在の1ページのPDFを親へ `{type:"print"}` で送り、親の `printBytesOut(make)`(束の印刷 printBundles と共用)で印刷する。iframe(origin null)内では印刷しない。テスト: test-studio-editprint.js(`__printHook` で受ける)。

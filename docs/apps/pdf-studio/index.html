@@ -144,11 +144,11 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.20"},
+  desk:{name:"製本デスク",ver:"2.21"},
   menu:{name:"機能メニュー",ver:"2.03"},
-  edit:{name:"ページ編集",ver:"2.90",src:"forms/editor.html?form=edit"},
-  shape:{name:"整形",ver:"1.01",src:"forms/editor.html?form=shape"},
-  rule:{name:"罫線編集",ver:"1.30",src:"forms/editor.html?form=rule"}
+  edit:{name:"ページ編集",ver:"2.91",src:"forms/editor.html?form=edit"},
+  shape:{name:"整形",ver:"1.02",src:"forms/editor.html?form=shape"},
+  rule:{name:"罫線編集",ver:"1.31",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -661,6 +661,7 @@ window.addEventListener("message",async e=>{
     panPos.x+=+m.dx||0;panPos.y+=+m.dy||0;panPos.t=now;
     try{window.scrollTo(panPos.x,panPos.y);}catch{}
     setTimeout(()=>{sendZoom();try{src.postMessage({type:"panres",t:`親の画面を動かす依頼: ${(+m.dx).toFixed(1)},${(+m.dy).toFixed(1)}\n親のスクロール位置 ${sx0.toFixed(0)},${sy0.toFixed(0)} → ${scrollX.toFixed(0)},${scrollY.toFixed(0)}\n見える左上 ${b0?`${b0.l.toFixed(0)},${b0.t.toFixed(0)} → ${v.pageLeft.toFixed(0)},${v.pageTop.toFixed(0)}`:"不明"}\n${document.scrollingElement.scrollWidth}x${document.scrollingElement.scrollHeight} (内容の大きさ)`},"*");}catch{}},60);   // 拡大中のドラッグが画面の端に来たとき、ゆっくり画面を動かす
+  }else if(m.type==="print"&&formB){printBytesOut(async()=>({bytes:new Uint8Array(m.bytes),name:`${baseName(formB.name)}_p${formB.cur+1}.pdf`}));   // ページ編集の画面の、いまの1ページを印刷
   }else if(m.type==="needzoom"){sendZoom();
   }else if(m.type==="touch"){vvTouching=m.n||0;if(!vvTouching){vvLastEnd=Date.now();liftFit();setTimeout(sendZoom,60);setTimeout(sendZoom,350);}else if(window.visualViewport)vvKeep=vvNow();   // 指を離したあと(ピンチの終わり)に、拡大率を伝え直す
      // フォームの中の指の数(親は、フォームの中の指の操作を直接見られない)
@@ -675,17 +676,19 @@ render();
 const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 async function printBundles(onlyCurrent){
   const list=bundles.filter(b=>b.sel);if(!list.length)return;
+  await printBytesOut(async()=>{
+    if(list.length===1&&!onlyCurrent)return{bytes:list[0].bytes,name:list[0].name};
+    const out=await PDFDocument.create();
+    for(const b of list){const src=await PDFDocument.load(b.bytes,{ignoreEncryption:true});
+      (await out.copyPages(src,onlyCurrent?[b.cur]:src.getPageIndices())).forEach(p=>out.addPage(p));}
+    return{bytes:new Uint8Array(await out.save()),name:onlyCurrent?`${baseName(list[0].name)}_p${list[0].cur+1}.pdf`:"印刷.pdf"};
+  });
+}
+async function printBytesOut(make){   // make() が {bytes,name} を返す。印刷の画面を開く(束の印刷と、ページ編集の印刷で共用)
   const win=isIOS()&&!window.__printHook?window.open("","_blank"):null;   // 新しい画面は、操作の直後でないと開けないので、先に開いておく
   try{
     status("印刷の準備をしています…");
-    let bytes,name;
-    if(list.length===1&&!onlyCurrent){bytes=list[0].bytes;name=list[0].name;}
-    else{
-      const out=await PDFDocument.create();
-      for(const b of list){const src=await PDFDocument.load(b.bytes,{ignoreEncryption:true});
-        (await out.copyPages(src,onlyCurrent?[b.cur]:src.getPageIndices())).forEach(p=>out.addPage(p));}
-      bytes=new Uint8Array(await out.save());name=onlyCurrent?`${baseName(list[0].name)}_p${list[0].cur+1}.pdf`:"印刷.pdf";
-    }
+    const {bytes,name}=await make();
     if(window.__printHook){window.__printHook(bytes,name);status("印刷の画面を開きました。");return;}   // 動作確認用
     const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
     if(win){win.location.href=url;status("PDFを別の画面で開きました。共有ボタンから「プリント」を選んでください。");return;}
