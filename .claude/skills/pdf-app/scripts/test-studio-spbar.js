@@ -27,7 +27,7 @@ const {launch,WORK}=require('./harness');
   chk('行間と字間は縦に並ぶ(上:行間 下:字間)',lb.length===2&&lb[1][1]>lb[0][1]&&Math.abs(lb[1][0]-lb[0][0])<2);
   const k=await f.evaluate(()=>document.querySelector('.ibox.on').getBoundingClientRect().width/window.pdfEditorDebug.items().filter(x=>x.type==='fix').pop().vw);
   const bh=(await bar.boundingBox()).height;
-  chk(`バーの文字は10ptの大きさ(文字の高さ=10pt×表示倍率${k.toFixed(2)}): バーの高さ ${bh.toFixed(0)}px`,Math.abs(bh/(await bar.evaluate(e=>e.offsetHeight))-10*k/11)<0.02);
+  chk(`バーの文字はPCで15ptの大きさ(文字の高さ=PC15pt(携帯10pt)×表示倍率${k.toFixed(2)}): バーの高さ ${bh.toFixed(0)}px`,Math.abs(bh/(await bar.evaluate(e=>e.offsetHeight))-15*k/11)<0.02);
   await f.evaluate(()=>document.documentElement.style.setProperty('--zs','0.25'));
   chk('画面の拡大率(--zs)には左右されない',Math.abs((await bar.boundingBox()).height-bh)<1);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);

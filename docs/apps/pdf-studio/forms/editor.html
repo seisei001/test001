@@ -251,7 +251,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="shAuto">自動で傾きを探す</button><button id="shTiltApply">傾きを直す</button>
 </div>
 <div class="row hidden" id="optCrop" style="margin-bottom:8px">
-<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button>
+<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
 </div>
 <div class="row hidden" id="optRot" style="margin-bottom:8px">
 <button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
@@ -1219,7 +1219,7 @@ function renderOverlay(){
           gr.addEventListener("pointermove",mvf);gr.addEventListener("pointerup",up);gr.addEventListener("pointercancel",up);
         });
         el.appendChild(gr);
-        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${(10*k/11).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
+        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${((isTouch()?10:15)*k/11).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
 
         bar.innerHTML='<label>行間 <b class="v1"></b><input type="range" class="r1" min="0.8" max="3" step="0.05"></label><label>字間 <b class="v2"></b><input type="range" class="r2" min="-2" max="20" step="0.5"></label>';
         const r1=bar.querySelector(".r1"),r2=bar.querySelector(".r2"),v1=bar.querySelector(".v1"),v2=bar.querySelector(".v2");
@@ -3423,6 +3423,14 @@ async function cropApply(){
   const WS=shapeScale(c.w,c.h),cv=await renderRegion(c.x,c.y,c.w,c.h,WS);
   await replacePageImage(cv,c.w,c.h,"切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
 }
+async function cropKeep(){   // ページの大きさはそのまま、範囲の外を白抜きにする
+  const c=crop;if(!c||c.w<10||c.h<10){status("残す範囲が小さすぎます。");return;}
+  await commit();status("範囲のまわりを白くしています…");
+  const WS=shapeScale(VW,VH),cv=await renderRegion(0,0,VW,VH,WS),g=cv.getContext("2d"),k=cv.width/VW;
+  g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);g.rect(c.x*k,c.y*k,c.w*k,c.h*k);g.fill("evenodd");   // 外側だけ塗る(穴あきの四角)
+  await replacePageImage(cv,VW,VH,"範囲のまわりを白くしました(ページの大きさはそのまま・このページは画像になりました)。元に戻すで戻せます。");
+}
+$("shCropKeep").onclick=busy(cropKeep);
 $("shCropAuto").onclick=busy(cropAuto);$("shCropAll").onclick=()=>{cropInit();renderCrop();};$("shCropApply").onclick=busy(cropApply);
 // --- 回転・反転 ---
 async function pageRotate(delta){
