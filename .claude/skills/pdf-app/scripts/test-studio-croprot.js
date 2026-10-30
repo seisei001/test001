@@ -17,7 +17,7 @@ const {PDFDocument,rgb}=require(path.join(WORK,'lib/node_modules')+'/pdf-lib');
   await page.mouse.move(X(90),Y(90));await page.mouse.down();await page.mouse.move(X(160),Y(160),{steps:8});await page.mouse.up();await page.waitForTimeout(800);
   await fr.locator('#shCropMove').click();await page.waitForTimeout(1200);
   ok('回転のつまみが出る',await fr.locator('svg.warp circle[data-h=rot]').count()===1);
-  const hb=await fr.locator('svg.warp circle[data-h=rot]').boundingBox(),hx=hb.x+hb.width/2,hy=hb.y+hb.height/2,cx=X(125),cy=Y(125);
+  const ob2=await fr.locator('#ov').boundingBox(),k2=ob2.width/595;const hb=await fr.locator('svg.warp circle[data-h=rot]').boundingBox(),hx=hb.x+hb.width/2,hy=hb.y+hb.height/2,cx=ob2.x+125*k2,cy=ob2.y+125*k2;
   const r=Math.hypot(hx-cx,hy-cy),a=Math.atan2(hy-cy,hx-cx)+Math.PI/4;
   await page.mouse.move(hx,hy);await page.mouse.down();await page.mouse.move(cx+r*Math.cos(a),cy+r*Math.sin(a),{steps:8});await page.mouse.up();await page.waitForTimeout(800);
   const d=await f.evaluate(()=>window.pdfEditorDebug.warpDst());

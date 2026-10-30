@@ -67,7 +67,7 @@ body.embed #filePanel{display:none!important;}
 #embHead #selPanel{border:0;padding:0;margin:0!important;background:none;box-shadow:none;border-radius:0;}
 #embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sClose,#embHead #sLsLbl{display:none!important;}
 #embHead #selPanel,#embHead #selTextBox,#embHead #selPanel .row{display:contents;}   /* 道具は、1つながりに並べる(入りきらなければ折り返す) */
-body.embed .stage{overflow:visible;}   /* 縦と横を、別々のスクロールにしない(別々だと、斜めに動かせない)。画面全体のスクロールひとつで、縦も横も斜めも動く */
+body.embed .stage{overflow:visible;padding:clamp(28px,5vw,52px);}   /* ページのまわりに余白(回転のつまみなど、ページの外に出る持ち手も触れるように) */   /* 縦と横を、別々のスクロールにしない(別々だと、斜めに動かせない)。画面全体のスクロールひとつで、縦も横も斜めも動く */
 body.embed #editPanel{border:0;box-shadow:none;background:none;padding:6px 0;}
 body.embed #editPanel > h2{display:none;}
 #embHead #selPanel label{display:flex;gap:4px;align-items:center;font-size:.85rem;}
@@ -251,7 +251,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="shAuto">自動で傾きを探す</button><button id="shTiltApply">傾きを直す</button>
 </div>
 <div class="row hidden" id="optCrop" style="margin-bottom:8px">
-<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn" id="shCropMove" title="この範囲を切り抜いて、好きな場所・形に動かして貼ります">この範囲を切り抜いて動かす</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
+<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropFree" title="四隅を、好きな位置に動かせる範囲にします(斜め・台形でもOK)">四隅を自由に動かす</button><button class="sub-btn" id="shCropQuad" title="紙の四隅を探して、その形の範囲にします">四隅を自動で探す</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn hidden" id="shCropStraight" title="四隅の形を、まっすぐな長方形に直して切り抜きます">まっすぐに直して切り抜く</button><button class="sub-btn" id="shCropMove" title="この範囲を切り抜いて、好きな場所・形に動かして貼ります">この範囲を切り抜いて動かす</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
 </div>
 <div class="row hidden" id="optRot" style="margin-bottom:8px">
 <button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
@@ -1724,7 +1724,7 @@ function renderWarp(){
     const hs=warp.dst.map((_,i)=>{const e=mk("circle",{r:px(9),fill:"#16a34a",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;cursor:move;touch-action:none";return e;});
     const rl=mk("line",{stroke:"#16a34a","stroke-width":px(2)}),rh=mk("circle",{r:px(10),fill:"#fff",stroke:"#16a34a","stroke-width":px(3)});   // 回転のつまみ(上の辺の外側)
     rh.style.cssText="pointer-events:all;cursor:grab;touch-action:none";rh.setAttribute("data-h","rot");
-    warpDst={poly,hs,rl,rh,off:px(34)};dragDst(poly,-1);hs.forEach((e,i)=>dragDst(e,i));dragRot(rh);
+    warpDst={poly,hs,rl,rh,off:px(30)};dragDst(poly,-1);hs.forEach((e,i)=>dragDst(e,i));dragRot(rh);
   }
   for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
     const id=r+"_"+c,corner=(r===0||r===GN-1)&&(c===0||c===GN-1),inner=r>0&&r<GN-1&&c>0&&c<GN-1;
@@ -3387,7 +3387,10 @@ $("shAuto").onclick=busy(async()=>{status("傾きを探しています…");cons
 $("shTiltApply").onclick=busy(tiltApply);
 // --- 切り抜き ---
 let crop=null,cropSvg=null;
-function cropInit(){crop={b:bytes,x:0,y:0,w:VW,h:VH};}
+function cropInit(){crop={b:bytes,x:0,y:0,w:VW,h:VH};cropUi();}
+function cropSetQuad(q){const xs=q.map(a=>a[0]),ys=q.map(a=>a[1]),x=Math.min(...xs),y=Math.min(...ys);crop={b:bytes,x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,q};cropUi();}   // 四隅を決める(外枠の長方形も一緒に持つ。ほかの機能はこれを使う)
+function cropUi(){const e=$("shCropStraight");if(e)e.classList.toggle("hidden",!(crop&&crop.q));const f=$("shCropFree");if(f)f.classList.toggle("on",!!(crop&&crop.q));}
+function cropPoly(g,q,S,ox,oy){q.forEach((a,i)=>g[i?"lineTo":"moveTo"]((a[0]-ox)*S,(a[1]-oy)*S));g.closePath();}
 function renderCrop(){
   if(cropSvg){cropSvg.remove();cropSvg=null;}
   if(mode!=="crop"||!pdfView)return;
@@ -3395,6 +3398,25 @@ function renderCrop(){
   const k=K(),px=v=>v/k,svg=document.createElementNS(SVGNS,"svg");svg.setAttribute("viewBox",`0 0 ${VW} ${VH}`);
   svg.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:8";
   const mk=(tag,at)=>{const e=document.createElementNS(SVGNS,tag);for(const q in at)e.setAttribute(q,at[q]);svg.appendChild(e);return e;};
+  if(crop.q){   // 四隅が自由な範囲(斜め・台形)
+    const poly=()=>crop.q.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "),shadeQ=mk("path",{"fill-rule":"evenodd",fill:"rgba(0,0,0,.45)"}),bodyQ=mk("polygon",{fill:"transparent",stroke:"#2563eb","stroke-width":px(2)});
+    bodyQ.style.cssText="pointer-events:all;cursor:move;touch-action:none";
+    const hq=crop.q.map(()=>{const e=mk("circle",{r:px(10),fill:"#2563eb",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;touch-action:none;cursor:pointer";return e;});
+    const placeQ=()=>{const q=crop.q;shadeQ.setAttribute("d",`M0 0H${VW}V${VH}H0Z M${q.map(a=>a[0]+" "+a[1]).join("L")}Z`);bodyQ.setAttribute("points",poly());hq.forEach((e,i)=>{e.setAttribute("cx",q[i][0]);e.setAttribute("cy",q[i][1]);});};
+    placeQ();
+    const dragQ=(el,hi)=>el.addEventListener("pointerdown",e=>{
+      e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+      const kk=K(),sx=e.clientX,sy=e.clientY,q0=crop.q.map(a=>a.slice());
+      const mv=ev=>{const dx=(ev.clientX-sx)/kk,dy=(ev.clientY-sy)/kk;let q;
+        if(hi<0){const mnx=Math.min(...q0.map(a=>a[0])),mxx=Math.max(...q0.map(a=>a[0])),mny=Math.min(...q0.map(a=>a[1])),mxy=Math.max(...q0.map(a=>a[1])),ddx=Math.max(-mnx,Math.min(VW-mxx,dx)),ddy=Math.max(-mny,Math.min(VH-mxy,dy));q=q0.map(a=>[a[0]+ddx,a[1]+ddy]);}
+        else{q=q0.map(a=>a.slice());q[hi]=[Math.max(0,Math.min(VW,q0[hi][0]+dx)),Math.max(0,Math.min(VH,q0[hi][1]+dy))];}
+        cropSetQuad(q);placeQ();};
+      const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);};
+      el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+    });
+    dragQ(bodyQ,-1);hq.forEach((e,i)=>dragQ(e,i));
+    ov.appendChild(svg);cropSvg=svg;return;
+  }
   const c=crop,shade=mk("path",{d:`M0 0H${VW}V${VH}H0Z M${c.x} ${c.y}V${c.y+c.h}H${c.x+c.w}V${c.y}Z`,"fill-rule":"evenodd",fill:"rgba(0,0,0,.45)"});
   const body=mk("rect",{x:c.x,y:c.y,width:c.w,height:c.h,fill:"transparent",stroke:"#2563eb","stroke-width":px(2)});body.style.cssText="pointer-events:all;cursor:move;touch-action:none";
   const H=[[0,0,-1,-1],[.5,0,0,-1],[1,0,1,-1],[1,.5,1,0],[1,1,1,1],[.5,1,0,1],[0,1,-1,1],[0,.5,-1,0]];   // 8つの持ち手: 位置の割合と、動かす辺(-1=左/上、1=右/下、0=動かさない)
@@ -3436,20 +3458,48 @@ async function cropApply(){
   const c=crop;if(!c||c.w<10||c.h<10){status("切り抜く範囲が小さすぎます。");return;}
   await commit();status("切り抜いています…");
   const WS=shapeScale(c.w,c.h),cv=await renderRegion(c.x,c.y,c.w,c.h,WS);
+  if(c.q){const g=cv.getContext("2d");g.save();g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);g.moveTo(0,0);cropPoly(g,c.q,WS,c.x,c.y);g.fill("evenodd");g.restore();}   // 四隅の形の外は白
   await replacePageImage(cv,c.w,c.h,"切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
 }
 async function cropKeep(){   // ページの大きさはそのまま、範囲の外を白抜きにする
   const c=crop;if(!c||c.w<10||c.h<10){status("残す範囲が小さすぎます。");return;}
   await commit();status("範囲のまわりを白くしています…");
   const WS=shapeScale(VW,VH),cv=await renderRegion(0,0,VW,VH,WS),g=cv.getContext("2d"),k=cv.width/VW;
-  g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);g.rect(c.x*k,c.y*k,c.w*k,c.h*k);g.fill("evenodd");   // 外側だけ塗る(穴あきの四角)
+  g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);if(c.q)cropPoly(g,c.q,k,0,0);else g.rect(c.x*k,c.y*k,c.w*k,c.h*k);g.fill("evenodd");   // 外側だけ塗る(穴あきの図形)
   await replacePageImage(cv,VW,VH,"範囲のまわりを白くしました(ページの大きさはそのまま・このページは画像になりました)。元に戻すで戻せます。");
 }
 $("shCropKeep").onclick=busy(cropKeep);
+async function cropStraight(){   // 四隅の形を、まっすぐな長方形に直して切り抜く
+  const c=crop;if(!c||!c.q){return;}
+  await commit();status("まっすぐに直して切り抜いています…");
+  const q=c.q,d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]),W=(d(q[0],q[1])+d(q[3],q[2]))/2,H=(d(q[0],q[3])+d(q[1],q[2]))/2;
+  if(W<10||H<10){status("範囲が小さすぎます。");return;}
+  const WS=shapeScale(W,H),pg=await renderRegion(0,0,VW,VH,WS),sw=pg.width,sh=pg.height,sd=pg.getContext("2d",{willReadFrequently:true}).getImageData(0,0,sw,sh).data;
+  const ow=Math.max(1,Math.round(W*WS)),oh=Math.max(1,Math.round(H*WS)),out=document.createElement("canvas");out.width=ow;out.height=oh;
+  const og=out.getContext("2d"),od=og.createImageData(ow,oh),o=od.data,F=squareToQuad(q[0],q[1],q[2],q[3]),kx=sw/VW,ky=sh/VH;
+  for(let y=0;y<oh;y++)for(let x=0;x<ow;x++){
+    const [px,py]=F((x+.5)/ow,(y+.5)/oh),X=px*kx-.5,Y=py*ky-.5,x0=Math.floor(X),y0=Math.floor(Y),fx=X-x0,fy=Y-y0,k=(y*ow+x)*4;
+    const xa=Math.max(0,Math.min(sw-1,x0)),xb=Math.max(0,Math.min(sw-1,x0+1)),ya=Math.max(0,Math.min(sh-1,y0)),yb=Math.max(0,Math.min(sh-1,y0+1));
+    const i00=(ya*sw+xa)*4,i10=(ya*sw+xb)*4,i01=(yb*sw+xa)*4,i11=(yb*sw+xb)*4;
+    for(let ch=0;ch<3;ch++)o[k+ch]=sd[i00+ch]*(1-fx)*(1-fy)+sd[i10+ch]*fx*(1-fy)+sd[i01+ch]*(1-fx)*fy+sd[i11+ch]*fx*fy;
+    o[k+3]=255;}
+  og.putImageData(od,0,0);
+  await replacePageImage(out,W,H,"四隅の形を、まっすぐに直して切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
+}
+$("shCropStraight").onclick=busy(cropStraight);
+$("shCropFree").onclick=()=>{if(!crop)cropInit();if(crop.q){crop={b:bytes,x:crop.x,y:crop.y,w:crop.w,h:crop.h};cropUi();}else{const c=crop;cropSetQuad([[c.x,c.y],[c.x+c.w,c.y],[c.x+c.w,c.y+c.h],[c.x,c.y+c.h]]);}renderCrop();
+  status(crop.q?"四隅の青い丸を、好きな位置に動かしてください(斜めや台形でもOK)。":"四角形の範囲に戻しました。");};
+$("shCropQuad").onclick=busy(async()=>{   // 紙の四隅を探して、その形を範囲にする
+  status("四隅を探しています…");const Sd=500/Math.max(VW,VH),cv=await renderRegion(0,0,VW,VH,Sd),q=findPaperQuad(cv);
+  if(!q){status("四隅を見つけられませんでした。「四隅を自由に動かす」で手で合わせてください。");return;}
+  const sc=a=>[a[0]/Sd,a[1]/Sd];cropSetQuad([sc(q.tl),sc(q.tr),sc(q.br),sc(q.bl)]);renderCrop();
+  status("四隅を提案しました。ずれていれば青い丸を動かして、「まっすぐに直して切り抜く」「この範囲で切り抜く」などを押してください。");
+});
 $("shCropMove").onclick=()=>{   // 切り抜く範囲を、歪み補正の「部分」に渡す。緑の枠(置く場所)を動かす・角で変形して貼る
   const c=crop;if(!c||c.w<10||c.h<10){status("動かす範囲が小さすぎます。");return;}
   setMode("warp");warpKind="part";updateWarpUi();$("wPrevBox").classList.add("hidden");
   createPartWarp(c.x,c.y,c.w,c.h);
+  if(c.q){warp.G[0][0]=c.q[0].slice();warp.G[0][GN-1]=c.q[1].slice();warp.G[GN-1][GN-1]=c.q[2].slice();warp.G[GN-1][0]=c.q[3].slice();gridFromQuad(warp);warp.dst=c.q.map(a=>a.slice());updateWarpSvg();warpPreviewSoon();}   // 四隅が自由な範囲は、その形のまま
   status("切り抜いた範囲に、緑の枠が出ました。緑の枠の中をドラッグして動かし、緑の角で形・大きさを変えて、「補正する」を押すと貼れます。元の場所を残すときは「元の場所は消す」のチェックを外してください。");
 };
 $("shCropAuto").onclick=busy(cropAuto);$("shCropAll").onclick=()=>{cropInit();renderCrop();};$("shCropApply").onclick=busy(cropApply);
@@ -3935,7 +3985,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={cropQuad:q=>{cropSetQuad(q);renderCrop();},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

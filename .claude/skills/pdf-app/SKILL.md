@@ -417,3 +417,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 
 ## v115: 整形 1.04
 - 緑の枠(部分補正の置く場所)に回転のつまみ(白い丸+線、上の辺の外側。`circle[data-h=rot]`、`dragRot`)。真ん中のまわりに4つの角を回す(Shiftで15度刻み)。「切り抜いて動かす」と歪み補正「部分」の両方で使える。テスト: test-studio-croprot.js(45度)。
+
+## v116: 整形 1.05 / ページ編集 2.92
+- 編集画面の `.stage` の余白を 8px → clamp(28px,5vw,52px)(ページの外に出る回転つまみなどに触れるように)。回転つまみの距離は 30px。
+- 切り抜きの範囲を「四隅が自由な形」に: `crop.q`(4点)。「四隅を自由に動かす」(`#shCropFree`)で切替、「四隅を自動で探す」(`#shCropQuad`、findPaperQuad)。`cropSetQuad(q)` は外枠 x,y,w,h も一緒に持つので、既存の切り抜き/残す/動かすは q があれば形で動く(外は白)。「まっすぐに直して切り抜く」(`#shCropStraight`、`cropStraight`、squareToQuad で長方形へ射影)。「動かす」は warp.G の四隅を q にして gridFromQuad。
+- 落とし穴: `cropPoly` に beginPath を入れると evenodd の外側塗りが全部消える(path がリセットされる)。テストでは、ページの位置がステータス文の長さで動くので、操作の直前に `#ov` の位置を取り直す。
+- テスト: test-studio-cropquad.js(回した長方形→まっすぐ/形のまま/自動)、croprot 更新。
