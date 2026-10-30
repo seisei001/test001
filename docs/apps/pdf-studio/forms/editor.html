@@ -3229,17 +3229,20 @@ function inkDilate(m,W,H,r){   // マスクを r 画素ぶん太らせる(縦横
 }
 // cv: 枠のまわりを含めて描いた画像。box: 消したい枠(cv の画素)。S: 画素/pt。fl:{keepRule,keepFigure}
 // 返り値: {ok,cv(パッチの画像),px,py(パッチの左上=cv の画素),nMask}。ok=false なら、四角で塗るほうに切り替える(文字を見つけられない・広すぎる)
-function inkErase(cv,box,S,fl){
+async function inkErase(cv,box,S,fl){
   fl=Object.assign({keepRule:true,keepFigure:true,T:40},fl||{});
+  const tick=async f=>{if(fl.onPhase)fl.onPhase(f);await new Promise(r=>setTimeout(r,0));};   // 段ごとに、画面に制御を返して、処理のバーを動かす(大きな枠でも、固まって見えない)
   const W=cv.width,H=cv.height,n=W*H,ctx=cv.getContext("2d",{willReadFrequently:true}),img=ctx.getImageData(0,0,W,H),d=img.data;
   const g=new Float32Array(n);for(let i=0;i<n;i++)g[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
   const bh=Math.max(6,box.h),r=Math.max(2,Math.round(bh*0.6)),bgG=inkBlur(inkMax(g,W,H,r),W,H,Math.max(1,r>>1));
+  await tick(0.2);
   const ink=new Uint8Array(n);for(let i=0;i<n;i++)if(bgG[i]-g[i]>fl.T)ink[i]=1;
   // 罫線: 長く続くインク(水平・垂直。1画素の途切れは許す)
   const L=Math.max(24,Math.round(bh*2)),rule=new Uint8Array(n);
   for(let y=0;y<H;y++){let s=-1,gap=0,x=0;for(;x<=W;x++){const on=x<W&&ink[y*W+x];if(on){if(s<0)s=x;gap=0;}else if(s>=0){gap++;if(gap>1||x>=W){const e=x-gap;if(e-s+1>=L)for(let k=s;k<=e;k++)rule[y*W+k]=1;s=-1;gap=0;}}}}
   for(let x=0;x<W;x++){let s=-1,gap=0,y=0;for(;y<=H;y++){const on=y<H&&ink[y*W+x];if(on){if(s<0)s=y;gap=0;}else if(s>=0){gap++;if(gap>1||y>=H){const e=y-gap;if(e-s+1>=L)for(let k=s;k<=e;k++)rule[k*W+x]=1;s=-1;gap=0;}}}}
   const ruleD=inkDilate(rule,W,H,1);
+  await tick(0.4);
   // 文字: 罫線を除いたインクの塊(連結成分)のうち、枠(+0.15×高さ)に収まり、高さが枠の高さ以下のもの
   const e=bh*0.15,bx0=box.x-e,by0=box.y-e,bx1=box.x+box.w+e,by1=box.y+box.h+e,lab=new Int32Array(n),mask=new Uint8Array(n);
   let nMask=0;const st=[];
@@ -3252,6 +3255,7 @@ function inkErase(cv,box,S,fl){
     const touches=!(x1<box.x||x0>box.x+box.w||y1<box.y||y0>box.y+box.h);
     if(inBox||(!fl.keepFigure&&touches))for(const i of px){mask[i]=1;nMask++;}
   }
+  await tick(0.65);
   if(!fl.keepRule){for(let y=Math.max(0,Math.floor(box.y));y<Math.min(H,Math.ceil(box.y+box.h));y++)for(let x=Math.max(0,Math.floor(box.x));x<Math.min(W,Math.ceil(box.x+box.w));x++)if(ruleD[y*W+x]&&!mask[y*W+x]){mask[y*W+x]=1;nMask++;}}
   // 背景が、紙のように平らでないとき(写真の木目・模様、机と紙のまたがり)は、文字だけを消せない → 四角に戻す。枠の中の明るさの、70%点と95%点の差(文字のインクは暗い側に出るので、字が詰まっていても、平らな背景なら、小さい)
   {const xa=Math.max(0,Math.floor(box.x)),xb=Math.min(W,Math.ceil(box.x+box.w)),ya=Math.max(0,Math.floor(box.y)),yb=Math.min(H,Math.ceil(box.y+box.h)),vs=[];
@@ -3260,6 +3264,7 @@ function inkErase(cv,box,S,fl){
    if(vs.length>30){vs.sort((p,q)=>p-q);const spread=vs[Math.floor(vs.length*0.95)]-vs[Math.floor(vs.length*0.70)];if(spread>30)return{ok:false,nMask,why:"背景が平らでない("+Math.round(spread)+")"};}}
   if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
   const rd=S>=3?3:2;let mk=inkDilate(mask,W,H,rd);
+  await tick(0.8);
   if(fl.keepRule)for(let i=0;i<n;i++)if(ruleD[i])mk[i]=0;   // 罫線は、そのまま
   // 埋める: インクでなく・マスクでもない画素の、周りの平均(重み付き)。2回ぼかして、山の形(ガウスに近い)にする。パッチの範囲とそのまわりだけで計算する(ページ全体は要らない)
   const inkD=inkDilate(ink,W,H,1),rb=Math.max(2,Math.round(bh*0.35)),pad=rd+3,qx0=Math.max(0,Math.floor(box.x-e-pad)),qy0=Math.max(0,Math.floor(box.y-e-pad)),qx1=Math.min(W,Math.ceil(box.x+box.w+e+pad)),qy1=Math.min(H,Math.ceil(box.y+box.h+e+pad)),pw=qx1-qx0,ph=qy1-qy0;
@@ -3285,12 +3290,23 @@ async function inkPage(S){   // ページ全体を、倍率 S で描いたもの
   const rec={b:bytes,cur,S,p:null};rec.p=renderRegion(0,0,VW,VH,S).catch(e=>{if(inkPg===rec)inkPg=null;throw e;});inkPg=rec;return rec.p;
 }
 let inkQ=Promise.resolve();   // 画像の処理は、1つずつ順に行い、間で画面に制御を返す(枠が多いページでも、アプリが固まらない)
-const inkRun=fn=>{const p=inkQ.then(()=>new Promise(r=>setTimeout(r,0))).then(fn);inkQ=p.catch(()=>{});return p;};
+// 処理のバー: 0.3秒以上かかるとき(大きな枠は、すぐ)、画面の下に「下の画像を整えています(n/N)」を出す
+const inkBatch={n:0,done:0,part:0,shown:false,tm:null};
+function inkJobStep(){if(inkBatch.shown)job.step(`下の画像を整えています(${Math.min(inkBatch.done+1,inkBatch.n)}/${inkBatch.n})`,inkBatch.n?(inkBatch.done+inkBatch.part)*100/inkBatch.n:0);}
+function inkJobShow(){if(inkBatch.shown||ocrRunning)return;inkBatch.shown=true;job.start("下の画像を整えています…");inkJobStep();}
+const inkRun=(fn,big)=>{
+  if(!inkBatch.n){inkBatch.done=0;inkBatch.part=0;inkBatch.shown=false;}
+  inkBatch.n++;
+  if(big)inkJobShow();else if(!inkBatch.tm&&!inkBatch.shown)inkBatch.tm=setTimeout(()=>{inkBatch.tm=null;inkJobShow();},300);
+  const p=inkQ.then(()=>new Promise(r=>setTimeout(r,0))).then(fn);inkQ=p.catch(()=>{});
+  p.then(()=>{},()=>{}).then(()=>{inkBatch.done++;inkBatch.part=0;inkJobStep();if(inkBatch.done>=inkBatch.n){clearTimeout(inkBatch.tm);inkBatch.tm=null;if(inkBatch.shown)job.hide();inkBatch.n=0;inkBatch.done=0;inkBatch.shown=false;}});
+  return p;};
 async function inkCompute(it){
   const rects=(it.type==="text"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:(it.covers||[it.cover])).filter(Boolean),key=JSON.stringify([cur,bytes.length,rects.map(c=>[c.x,c.y,c.w,c.h].map(v=>Math.round(v*10)/10)),partKeep("rule"),partKeep("figure")]);
   if(it._ink&&it._ink.key===key)return it._ink.p;
   const st={key,patches:[],failed:false,busy:true};it._ink=st;
   if(it.page!==cur){st.failed=true;st.busy=false;st.p=Promise.resolve(st);return st.p;}   // いま開いているページの枠だけ
+  const S0=inkScale(),bigPx=Math.max(0,...rects.map(c=>{const hh=Math.max(c.h,4),m=Math.max(6,hh*3);return(c.w+2*m)*(hh+2*m)*S0*S0;}));   // 画素の数の見積もり
   st.p=inkRun(async()=>{
     try{
       const S=inkScale();
@@ -3299,7 +3315,7 @@ async function inkCompute(it){
         const pg=await inkPage(S),ox=Math.max(0,Math.round(x0*S)),oy=Math.max(0,Math.round(y0*S)),ow=Math.min(pg.width-ox,Math.round((x1-x0)*S)),oh=Math.min(pg.height-oy,Math.round((y1-y0)*S));
         if(ow<4||oh<4){st.failed=true;break;}
         const cv=document.createElement("canvas");cv.width=ow;cv.height=oh;cv.getContext("2d").drawImage(pg,ox,oy,ow,oh,0,0,ow,oh);   // ページ全体を、1回だけ描いて、そこから切り出す(枠ごとに、画像を読み直さない)
-        const r=inkErase(cv,{x:c.x*S-ox,y:c.y*S-oy,w:c.w*S,h:c.h*S},S,{keepRule:partKeep("rule"),keepFigure:partKeep("figure"),maxH:it.type==="text"?Math.max(12,(it.size||12)*S*2.5):0});   // 新しい枠では、入れる文字の大きさの2.5倍までの塊だけを、文字として消す(大きな絵・模様は残す)
+        const r=await inkErase(cv,{x:c.x*S-ox,y:c.y*S-oy,w:c.w*S,h:c.h*S},S,{onPhase:f=>{inkBatch.part=f;inkJobStep();},keepRule:partKeep("rule"),keepFigure:partKeep("figure"),maxH:it.type==="text"?Math.max(12,(it.size||12)*S*2.5):0});   // 新しい枠では、入れる文字の大きさの2.5倍までの塊だけを、文字として消す(大きな絵・模様は残す)
         if(!r.ok){st.failed=true;st.why=r.why;break;}
         st.patches.push({x:(ox+r.px)/S,y:(oy+r.py)/S,w:r.cv.width/S,h:r.cv.height/S,cv:r.cv});
       }
@@ -3307,7 +3323,7 @@ async function inkCompute(it){
       if(bytes.length!==Number(key.match(/^\[\d+,(\d+)/)[1])||/sendWithPromise|Cancelled/.test(String(err))){if(it._ink===st)it._ink=null;st.failed=false;st.busy=false;st.patches=[];setTimeout(()=>{if(items.includes(it))renderCovers(it);},50);return st;}   // 表示を作り直している途中で止まった: 失敗ではないので、あとで、もう一度作る
       st.failed=true;console.warn("文字だけ消す処理に失敗",err);}
     st.busy=false;if(it._ink===st)renderCovers(it);return st;
-  });
+  },bigPx>250000);
   return st.p;
 }
 // ===== 整形(ページの形を整える道具): 歪み補正(上の warp)・傾き補正・切り抜き・回転/反転 =====
