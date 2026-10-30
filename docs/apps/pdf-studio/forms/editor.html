@@ -3096,7 +3096,8 @@ async function commit(only){
     const Ux=under.get(it.page),noPatch=it.type==="text"&&bgModeOf(it)!=="all"&&Ux&&Ux.hasText&&[...Ux.ex.values()].every(e=>e.done);
     if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&fixChanged(it)){   // 文字のインクだけを消したパッチを、元の画像の上に重ねる(画像そのものは変えない)。できなかったら、下の四角
       let st=await inkCompute(it);
-      for(let t=0;t<4&&!st.failed&&!st.patches.length;t++){await new Promise(r=>setTimeout(r,150));st=await inkCompute(it);}   // 表示の作り直しで中断されたときは、もう一度
+      for(let t=0;t<4&&!st.failed&&!st.empty&&!st.patches.length;t++){await new Promise(r=>setTimeout(r,150));st=await inkCompute(it);}   // 表示の作り直しで中断されたときは、もう一度
+      if(st.empty)continue;   // 消す文字が無い: 何も塗らない(罫線などを残す)
       if(!st.failed&&!st.patches.length)it._ink={failed:true,patches:[],busy:false,key:"x"};   // それでもできなければ、四角に戻す
       if(!st.failed&&st.patches.length){
         const pg=doc.getPage(it.page),{width:W0,height:H0}=pg.getSize(),r0=((pg.getRotation().angle%360)+360)%360;
@@ -3293,7 +3294,7 @@ async function inkErase(cv,box,S,fl){
    const stp=Math.max(1,Math.floor(Math.sqrt((xb-xa)*(yb-ya)/20000)));
    for(let y=ya;y<yb;y+=stp)for(let x=xa;x<xb;x+=stp)vs.push(g[y*W+x]);
    if(vs.length>30){vs.sort((p,q)=>p-q);const spread=vs[Math.floor(vs.length*0.95)]-vs[Math.floor(vs.length*0.70)];if(spread>30)return{ok:false,nMask,why:"背景が平らでない("+Math.round(spread)+")"};}}
-  if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
+  if(nMask<10||nMask>box.w*box.h*0.6)return{ok:false,nMask,empty:nMask<10,why:"文字が見つからない/広すぎる"};   // 文字を見つけられない/広すぎる(塗りつぶしなど)→ 四角で塗る
   const rd=S>=3?3:2;let mk=inkDilate(mask,W,H,rd);
   await tick(0.8);
   if(fl.keepRule)for(let i=0;i<n;i++)if(ruleD[i])mk[i]=0;   // 罫線は、そのまま
@@ -3347,12 +3348,14 @@ async function inkCompute(it){
         if(ow<4||oh<4){st.failed=true;break;}
         const cv=document.createElement("canvas");cv.width=ow;cv.height=oh;cv.getContext("2d").drawImage(pg,ox,oy,ow,oh,0,0,ow,oh);   // ページ全体を、1回だけ描いて、そこから切り出す(枠ごとに、画像を読み直さない)
         const r=await inkErase(cv,{x:c.x*S-ox,y:c.y*S-oy,w:c.w*S,h:c.h*S},S,{onPhase:f=>{inkBatch.part=f;inkJobStep();},keepRule:partKeep("rule"),keepFigure:partKeep("figure"),maxH:it.type==="text"?Math.max(12,(it.size||12)*S*2.5):0});   // 新しい枠では、入れる文字の大きさの2.5倍までの塊だけを、文字として消す(大きな絵・模様は残す)
+        if(!r.ok&&r.empty&&it.type==="text"){st.why="消す文字がない";st.emptyN=(st.emptyN||0)+1;continue;}   // 新しい枠の下に、消す文字が無い(空白や罫線だけ)ときは、何も塗らない(四角で塗ると、罫線まで消える)
         if(!r.ok){st.failed=true;st.why=r.why;break;}
         st.patches.push({x:(ox+r.px)/S,y:(oy+r.py)/S,w:r.cv.width/S,h:r.cv.height/S,cv:r.cv});
       }
     }catch(err){
       if(bytes.length!==Number(key.match(/^\[\d+,(\d+)/)[1])||/sendWithPromise|Cancelled/.test(String(err))){if(it._ink===st)it._ink=null;st.failed=false;st.busy=false;st.patches=[];setTimeout(()=>{if(items.includes(it))renderCovers(it);},50);return st;}   // 表示を作り直している途中で止まった: 失敗ではないので、あとで、もう一度作る
       st.failed=true;console.warn("文字だけ消す処理に失敗",err);}
+    st.empty=!st.failed&&st.emptyN>0&&st.emptyN===rects.length;   // 消す文字が、どの範囲にも無かった
     st.busy=false;if(it._ink===st)renderCovers(it);return st;
   },bigPx>250000);
   return st.p;
