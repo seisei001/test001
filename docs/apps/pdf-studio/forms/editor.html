@@ -624,6 +624,10 @@ async function pasteImage(blob){
   items.push(it);renderOverlay();select(it,true);syncPanel();
   status("スクリーンショットを貼りました。✥でドラッグして動かし、⇲で拡大・縮小できます(縦横比はそのまま)。");
 }
+document.addEventListener("paste",e=>{   // 右クリックの「貼り付け」など、キーを押さずに、文字を貼ったとき: PDFに近い枠を選んでいれば、入力用の枠に変えて、貼る
+  const cd=e.clipboardData;if(!cd||!cs||!faithOn(cs)||cs._editing)return;if([...(cd.files||[])].some(x=>/^image\//.test(x.type)))return;
+  const tx=cd.getData("text/plain");if(!tx)return;e.preventDefault();startEdit(cs,null,null);document.execCommand("insertText",false,tx.replace(/\r/g,""));
+},true);
 document.addEventListener("paste",e=>{   // Ctrl+V(スマホは、長押しの「ペースト」): クリップボードに画像があれば貼る。文字だけのときは、何もしない(入力中の文字の貼り付けは、そのまま)
   if(mode==="rule"||mode==="warp")return;
   const cd=e.clipboardData;if(!cd)return;
@@ -1137,7 +1141,7 @@ function startEdit(it,x,y){   // iPhone: 長押し・「✎ 入力」で入力�
 document.addEventListener("keydown",e=>{
   if(!cs||!faithOn(cs)||e.isComposing||e.altKey)return;const a=document.activeElement;if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return;
   const mod=e.ctrlKey||e.metaKey,k=e.key;
-  const typing=(!mod&&(k.length===1||k==="Backspace"||k==="Delete"||k==="Enter"||k==="Home"||k==="End"))||(mod&&/^[avx]$/i.test(k))||(mod&&(k==="Home"||k==="End"));
+  const typing=(!mod&&(k.length===1||k==="Process"||e.keyCode===229||k==="Backspace"||k==="Delete"||k==="Enter"||k==="Home"||k==="End"))||(mod&&/^[avx]$/i.test(k))||(mod&&(k==="Home"||k==="End"));
   if(typing)startEdit(cs,null,null);
 },true);
 function renderOverlay(){
