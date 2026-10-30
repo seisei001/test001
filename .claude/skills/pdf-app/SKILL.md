@@ -423,3 +423,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 切り抜きの範囲を「四隅が自由な形」に: `crop.q`(4点)。「四隅を自由に動かす」(`#shCropFree`)で切替、「四隅を自動で探す」(`#shCropQuad`、findPaperQuad)。`cropSetQuad(q)` は外枠 x,y,w,h も一緒に持つので、既存の切り抜き/残す/動かすは q があれば形で動く(外は白)。「まっすぐに直して切り抜く」(`#shCropStraight`、`cropStraight`、squareToQuad で長方形へ射影)。「動かす」は warp.G の四隅を q にして gridFromQuad。
 - 落とし穴: `cropPoly` に beginPath を入れると evenodd の外側塗りが全部消える(path がリセットされる)。テストでは、ページの位置がステータス文の長さで動くので、操作の直前に `#ov` の位置を取り直す。
 - テスト: test-studio-cropquad.js(回した長方形→まっすぐ/形のまま/自動)、croprot 更新。
+
+## v117: 製本デスク 2.22
+- 読み込みを拒否するのは意図した制限ではなく、メモリ不足・壊れたファイル・読み取り失敗のとき。以前は下のひとこと欄にだけ出て見落としやすかった → 開けなかったファイルは `fails` に集めて、最後に目立つ画面(`showLoadFails`)で「ファイル名+理由+対処」を出す。理由は `failWhy`(メモリ/PDFとして読めない/読み取れない)。
+- 30MB超のファイルが先頭4つにあるときは、先回り読み込みを1つずつにする(メモリのピークを抑える)。
+- 回帰の修正: 2.18 で、ページ数をpdf.jsで数えるようにしたため、編集制限つき(鍵つき)PDFの「鍵を外すか」の質問が出なくなっていた → `hasEncrypt(bytes)`("/Encrypt" を走査)で、鍵の印があるときだけpdf-libで確かめる。壊れたファイルは、鍵の質問ではなく理由を知らせる。
+- test-studio-encrypted.js は古い前提(質問なしで束になる)で失敗する(バージョン前から)。test-studio-locked.js は通る。テスト: test-studio-loadfail.js。

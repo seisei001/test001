@@ -144,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.21"},
+  desk:{name:"製本デスク",ver:"2.22"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"2.92",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.05",src:"forms/editor.html?form=shape"},
@@ -278,21 +278,25 @@ async function addFiles(files){
   let added=0,lastNote="";
   const list=files.filter(it=>{const f=it.f||it;return /\.pdf$/i.test(f.name)||f.type==="application/pdf";});
   // 読み込みと、ページ数の確認(軽いpdf.js)は、数個ずつ先回りして並行で進める(多数のファイルで、1つずつ待つと遅い)。この文書はサムネイルにも使い回す
-  const prep=[],prepOne=async it=>{const f=it.f||it,bytes=new Uint8Array(await f.arrayBuffer());let pre=null,n=0;
-    try{pre=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;n=pre.numPages;}catch{if(pre){try{pre.destroy();}catch{}}pre=null;}
-    return{bytes,pre,n};};
-  const AHEAD=4,kick=i=>{for(let k=i;k<Math.min(list.length,i+AHEAD);k++)if(!prep[k])prep[k]=prepOne(list[k]).catch(()=>null);};
+  const fails=[];   // 開けなかったファイルと、その理由(最後にまとめて、目立つ画面で知らせる)
+  const prep=[],prepOne=async it=>{const f=it.f||it,bytes=new Uint8Array(await f.arrayBuffer());let pre=null,n=0,err=null;
+    try{pre=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;n=pre.numPages;}catch(e){err=e;if(pre){try{pre.destroy();}catch{}}pre=null;}
+    return{bytes,pre,n,err};};
+  const BIG=30*1048576,AHEAD_N=i=>list.slice(i,i+4).some(x=>((x.f||x).size||0)>BIG)?1:4;   // 大きいファイルがあるときは、先回りをやめて1つずつ(メモリを使いすぎて、まとめて失敗するのを避ける)
+  const kick=i=>{for(let k=i;k<Math.min(list.length,i+AHEAD_N(i));k++)if(!prep[k])prep[k]=prepOne(list[k]).catch(e=>({fail:e}));};
   for(let i=0;i<list.length;i++){
     const it=list[i],f=it.f||it,fh=it.h||null;
-    kick(i);const r0=await prep[i];
-    if(!r0){status(`「${f.name}」を開けませんでした(読み込みに失敗)。`);continue;}
+    kick(i);const r0=await prep[i];prep[i]=null;
+    if(!r0||r0.fail){fails.push({name:f.name,why:failWhy(r0&&r0.fail,f)});continue;}
     let bytes=r0.bytes;
     try{
       let n=r0.n,note="",pre=r0.pre;
       try{
-        if(!pre)n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();   // pdf.jsで開けないとき(鍵付きなど)は、pdf-libで確かめる
+        if(!pre||hasEncrypt(bytes))n=(await PDFDocument.load(bytes,{ignoreEncryption:false})).getPageCount();   // pdf.jsで開けないとき・鍵(暗号化)の印があるときだけ、pdf-libで確かめる(鍵付きは、編集用に開けない)
       }
       catch(e){   // 鍵(暗号化)などで、そのままでは編集用に開けないPDF
+        const locked=(r0.err&&r0.err.name==="PasswordException")||/encrypt|password/i.test((e&&e.message)||"");
+        if(!locked){fails.push({name:f.name,why:failWhy(e,f)});continue;}   // 鍵ではない(こわれている・重すぎる)ときは、鍵の質問ではなく、理由を知らせる
         const ch=await askLocked(f.name);
         if(ch==="cancel")throw new Error("取り込みをやめました");
         let ok=false;
@@ -308,9 +312,31 @@ async function addFiles(files){
         }
       }
       if(!added)snap();const nb0=mk(f.name,bytes,n,0,null,note?null:fh,!!note);if(pre&&!note)nb0.doc=pre;else if(pre){try{pre.destroy();}catch{}}bundles.push(nb0);added++;if(note){status(`「${f.name}」${note}`);lastNote=note;}
-    }catch(e){status(`「${f.name}」を開けませんでした(${e&&e.message?e.message:"読み込みに失敗"})。`);}
+    }catch(e){if(e&&e.message==="取り込みをやめました")status(`「${f.name}」の取り込みをやめました。`);else fails.push({name:f.name,why:failWhy(e,f)});}
   }
   if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
+  if(fails.length)showLoadFails(fails,added);
+}
+function hasEncrypt(b){   // 「/Encrypt」の印があるか(鍵付きPDFは、辞書にこの名前が入る)。全体を読み込まずに、バイト列を走査するだけ
+  const t=[47,69,110,99,114,121,112,116],n=b.length-t.length;   // "/Encrypt"
+  for(let i=0;i<=n;i++){if(b[i]===47&&b[i+1]===69){let k=2;while(k<8&&b[i+k]===t[k])k++;if(k===8)return true;}}return false;}
+function failWhy(e,f){   // 開けなかった理由を、わかりやすい言葉にする
+  const m=String((e&&e.message)||e||""),mb=Math.round(((f&&f.size)||0)/1048576);
+  if(e&&(e.name==="RangeError"||/memory|allocation|array buffer|quota/i.test(m)))return`ブラウザのメモリが足りず、読み込めませんでした${mb?`(${mb}MB)`:""}。`;
+  if(/invalid pdf|missing pdf|not a pdf|no pdf header|format error|failed to parse|unexpected/i.test(m))return"PDFとして読めませんでした(ファイルがこわれているか、PDFではありません)。";
+  if(/NotReadable|NotFound|permission/i.test(m)||(e&&/NotReadable|NotFound/.test(e.name||"")))return"ファイルを読み取れませんでした(別のアプリで開いている・移動された・権限がない、など)。";
+  return`読み込みに失敗しました${mb?`(${mb}MB)`:""}${m?`: ${m.slice(0,80)}`:""}`;
+}
+function showLoadFails(fails,added){   // 開けなかったファイルを、目立つ画面で知らせる(下のひとこと欄だけだと見落とすため)
+  const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+  const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:480px;width:100%;max-height:80vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4)";
+  const h=document.createElement("p");h.style.cssText="margin:0 0 10px;font-weight:600";h.textContent=`${fails.length}個のファイルを開けませんでした${added?`(${added}個は開けました)`:""}`;box.appendChild(h);
+  const ul=document.createElement("ul");ul.style.cssText="margin:0 0 12px;padding-left:1.2em;font-size:.9rem;line-height:1.6";
+  fails.forEach(x=>{const li=document.createElement("li");const b=document.createElement("b");b.textContent=`「${x.name}」`;li.appendChild(b);li.appendChild(document.createTextNode(" "+x.why));ul.appendChild(li);});box.appendChild(ul);
+  const tip=document.createElement("p");tip.style.cssText="margin:0 0 14px;font-size:.85rem;opacity:.85;line-height:1.6";
+  tip.textContent="対処: ①一度に開くファイルを減らして、数個ずつ開く ②ほかのタブやアプリを閉じてから、もう一度開く ③とても大きいファイルは、別のソフトでページを分けてから開く(元のファイルは何も変わっていません)。";box.appendChild(tip);
+  const ok=document.createElement("button");ok.textContent="閉じる";ok.style.minHeight="44px";ok.onclick=()=>o.remove();box.appendChild(ok);
+  o.appendChild(box);document.body.appendChild(o);status(`${fails.length}個のファイルを開けませんでした。`);
 }
 $("bNew").onclick=async()=>{   // 白紙のPDF(A4・1ページ)を、「新規作成ファイル」という名前の束として作る
   const d=await PDFDocument.create();d.addPage([595.28,841.89]);const bytes=new Uint8Array(await d.save());
