@@ -36,7 +36,8 @@ button:disabled{opacity:.4;cursor:default;}
 .formhead{display:flex;align-items:center;gap:8px;padding:10px 16px 4px;}
 .formhead h1{margin:0;font-size:1.25rem;}
 .back-link{color:var(--muted);text-decoration:none;font-size:.85rem;margin-left:auto;}
-.menubar{display:flex;align-items:center;gap:2px;padding:4px 12px;border-bottom:1px solid var(--border);position:relative;z-index:40;}
+.menubar .mtop:disabled{opacity:.4;pointer-events:none;}
+.menubar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:4px 12px;border-bottom:1px solid var(--border);position:relative;z-index:40;}
 .menubar .mg{position:relative;}
 .menubar .mtop{background:transparent;color:var(--text);border:0;min-height:38px;padding:4px 10px;white-space:nowrap;border-radius:6px;font-size:.95rem;}
 .menubar .mtop.on,.menubar .mtop:hover{background:var(--hover,rgba(37,99,235,.12));}
@@ -102,11 +103,8 @@ button:disabled{opacity:.4;cursor:default;}
     <div class="mg"><button class="mtop" data-d="mdEdit">編集</button><div class="mdrop hidden" id="mdEdit">
       <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button><button id="bPrintPg" disabled title="表示しているページだけを、印刷">このページを印刷</button>
     </div></div>
-    <div class="mg"><button class="mtop" data-d="mdBind">製本</button><div class="mdrop hidden" id="mdBind">
-      <button id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button id="bMerge" disabled>結合</button>
-    </div></div>
     <div class="mg"><button class="mtop" id="bHelp">ヘルプ</button></div>
-    <div class="mg selbtns"><button class="mtop" id="bAll">全選択</button><button class="mtop" id="bNone">全解除</button></div>
+    <div class="mg selbtns"><button class="mtop" id="bAll">全選択</button><button class="mtop" id="bNone">全解除</button><button class="mtop" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button class="mtop" id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button class="mtop" id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button class="mtop" id="bMerge" disabled title="選んでいる束を、1つにまとめる">結合</button></div>
     <label class="msz">大きさ <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
@@ -121,7 +119,7 @@ button:disabled{opacity:.4;cursor:default;}
   <p><b>束</b>: 開いたPDF1つが1つの束です。複数ページの束は重なって見え、下の「＜ ＞」でページをめくれます。ドラッグで並べ替えられます。</p>
   <p><b>ファイル</b>: 新規作成(白紙)/ PDFを開く / 閉じる / 保存 / 印刷 / 元に戻す</p>
   <p><b>編集</b>(選んだ束の、表示しているページ): 回転 / 前に移動 / 後に移動 / 切り離し(別の束として外に出す)/ このページを印刷</p>
-  <p><b>メニューの右の「全選択」「全解除」</b>: 束をすべて選ぶ / すべての選択を外す(いつでも押せます)。<br><b>製本</b>(束の操作): 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
+  <p><b>メニューの右の束の操作</b>(いつでも見えます): 全選択 / 全解除 / 回転(束の全ページ)/ 全部バラす / 分割(表示ページの前で2つに)/ 結合(選んだ束を1つに)</p>
   <p>束を1つだけ選ぶと右上に「⋮」が出ます。そこから「ページ編集」「整形」「罫線編集」を開けます。</p>
   </div>
   <div style="margin-top:10px;text-align:right"><button class="sub" id="deskHelpClose">閉じる</button></div>
@@ -146,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.19"},
+  desk:{name:"製本デスク",ver:"2.20"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"2.90",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.01",src:"forms/editor.html?form=shape"},
@@ -563,7 +561,7 @@ $("bPgNext").onclick=()=>movePage(1).catch(e=>status("失敗: "+e.message));
 $("bPgOut").onclick=()=>pageOut().catch(e=>status("失敗: "+e.message));
 $("bBurst").onclick=async()=>{for(const b of bundles.filter(x=>x.sel&&x.n>1))await burst(b).catch(e=>status("失敗: "+e.message));};
 $("bSplit").onclick=()=>{const b=bundles.find(x=>x.sel);if(b)splitAt(b).catch(e=>status("失敗: "+e.message));};
-// ===== 上のメニュー(ファイル・編集・製本・ヘルプ) =====
+// ===== 上のメニュー(ファイル・編集・ヘルプ) =====
 {const drops=[...document.querySelectorAll(".mdrop")],tops=[...document.querySelectorAll(".mtop[data-d]")];
   const closeAll=()=>{drops.forEach(d=>d.classList.add("hidden"));tops.forEach(t=>t.classList.remove("on"));};
   tops.forEach(t=>t.addEventListener("click",e=>{e.stopPropagation();const d=$(t.dataset.d),was=!d.classList.contains("hidden");closeAll();if(!was){d.classList.remove("hidden");t.classList.add("on");}}));
