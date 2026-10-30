@@ -189,7 +189,7 @@ const T={
 const UNIT_ORDER=['soldier','archer','mage','healer','golem'];
 const SK={soldier:'まもりのたて',archer:'矢の雨',mage:'ファイアボール',healer:'きらきらの祈り',golem:'地ならし'};
 const SP={meteor:{name:'メテオ',cost:5,r:48},heal:{name:'いやしの雨',cost:4,r:58},freeze:{name:'こおりの嵐',cost:4,r:60}};
-const DIFF={easy:{regen:.7,think:1.5,spell:.25,pow:.6},normal:{regen:.95,think:1.05,spell:.5,pow:.85},hard:{regen:1.2,think:.85,spell:.8,pow:1}};
+const DIFF={easy:{regen:.8,think:1.5,spell:.25,pow:.6},normal:{regen:1,think:1,spell:.5,pow:.85},hard:{regen:1.1,think:.75,spell:.75,pow:1}};
 const COL={k:'#2F72BC',d:'#C24A2D'};
 
 /* ---------- 描画ヘルパ ---------- */
@@ -323,7 +323,7 @@ let G=null;
 function blank(){
   return {state:'idle',t:0,units:[],projs:[],parts:[],texts:[],timers:[],zones:[],warns:[],shake:0,
     mana:6,deployX:180,armed:null,aim:null,stance:'adv',speed:1,paused:false,diff:'normal',kills:0,losses:0,uid:1,
-    castles:[mkCastle(0),mkCastle(1)],ai:{mana:5,timer:3,stance:'adv'},front:[null,null]};
+    castles:[mkCastle(0),mkCastle(1)],ai:{mana:4,timer:6,stance:'adv'},front:[null,null]};
 }
 function mkCastle(team){return {isCastle:true,team,x:W/2,y:team===0?H-50:50,hp:CASTLE_HP,max:CASTLE_HP,r:CASTLE_R,cd:1,flash:0};}
 function makeUnit(team,type,x,y){const S=T[type];return {id:G.uid++,team,type,x,y,hp:S.hp,max:S.hp,r:S.r,cd:rnd(0,S.cd),skillCd:rnd(2,6),tgt:null,tt:rnd(0,.3),freeze:0,stun:0,guard:0,hitFlash:0,atkAnim:0,phase:rnd(0,6.28),sv:rnd(.92,1.08),moving:false,dead:false};}
@@ -585,8 +585,9 @@ function separate(){
 function castSpell(team,key,x,y){
   const nm=SP[key].name,col=team?COL.d:COL.k;
   if(key==='meteor'){
-    G.warns.push({x,y,r:SP.meteor.r,t:0,dur:.95,team});
-    G.timers.push({t:.95,fn:()=>meteorHit(team,x,y)});
+    const dur=team===1?1.6:.95;
+    G.warns.push({x,y,r:SP.meteor.r,t:0,dur,team});
+    G.timers.push({t:dur,fn:()=>meteorHit(team,x,y)});
   }else if(key==='heal'){
     G.zones.push({team,x,y,r:SP.heal.r,t:4.2,tick:0});ring(x,y,SP.heal.r,'#8DE0B0');
   }else{
@@ -625,13 +626,13 @@ function aiStep(dt){
   const A=G.ai,D=DIFF[G.diff];
   A.mana=Math.min(10,A.mana+dt*MANA_REGEN*D.regen);
   A.timer-=dt;if(A.timer>0)return;
-  A.timer=rnd(.8,1.6)*D.think;
+  A.timer=rnd(1.8,3.2)*D.think;
   const pw=power(0),ew=power(1);
   if(G.t<10||ew>pw*1.1)A.stance='adv';else if(ew<pw*.65)A.stance='hold';
   const mine=G.units.filter(u=>u.team===1&&!u.dead),foes=G.units.filter(u=>u.team===0&&!u.dead);
   if(foes.length>=6){
     const c=findCluster(foes,46);
-    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x,c.y);return;}
+    if(A.mana>=5&&c.n>=8&&Math.random()<D.spell){A.mana-=5;castSpell(1,'meteor',c.x+rnd(-26,26),c.y+rnd(-26,26));return;}
     if(A.mana>=4&&c.n>=11&&Math.random()<D.spell*.4){A.mana-=4;castSpell(1,'freeze',c.x,c.y);return;}
   }
   if(mine.length>=5&&A.mana>=4){
@@ -864,7 +865,7 @@ function arm(k){
   if(G.state!=='play'||G.paused)return;
   if(G.armed===k){setArmed(null);return;}
   if(G.mana<SP[k].cost){poorFeedback(k);return;}
-  setArmed(k);toast('ゆび先でねらって、はなすと発動！',2200);
+  setArmed(k);toast('時間がゆっくり。ゆび先でねらって、はなすと発動！',2400);
 }
 function setArmed(k){
   G.armed=k;G.aim=null;
@@ -972,7 +973,7 @@ H=computeH();demo();fit();showRec();
 let last=performance.now();
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
-  if(G.state==='play'){if(!G.paused)for(let i=0;i<G.speed;i++)step(dt);}
+  if(G.state==='play'){if(!G.paused)for(let i=0;i<G.speed;i++)step(dt*(G.armed?.25:1));}
   else if(G.state==='over')fx(dt);
   else for(const u of G.units){u.phase+=dt*9;u.moving=true;}
   render();ui();
