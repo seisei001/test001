@@ -105,7 +105,7 @@ button:disabled{opacity:.4;cursor:default;}
     </div></div>
     <div class="mg"><button class="mtop" id="bHelp">ヘルプ</button></div>
     <div class="mg selbtns"><button class="mtop" id="bAll">全選択</button><button class="mtop" id="bNone">全解除</button><button class="mtop" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button class="mtop" id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button class="mtop" id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button class="mtop" id="bMerge" disabled title="選んでいる束を、1つにまとめる">結合</button></div>
-    <label class="msz">大きさ <input id="rSize" type="range" min="90" max="320" step="10" value="170"></label>
+    <label class="msz">大きさ <input id="rSize" type="range" min="40" max="800" step="10" value="170"></label>
   </div>
   <div id="deskWrap"><div id="desk"></div><div id="empty">PDFを開くと、ここに「束」として並びます。<br>複数ページのPDFは、重なった束で表示され、下の「＜ ＞」でページをめくれます。<br>束を1つだけ選ぶと、右上に「⋮」が出て、機能メニューが開きます(マウスはダブルクリックでも)。</div></div>
   <div id="status"></div>
@@ -144,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.22"},
+  desk:{name:"製本デスク",ver:"2.23"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"2.95",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.06",src:"forms/editor.html?form=shape"},
@@ -368,9 +368,9 @@ $("fAdd").onchange=async e=>{await addFiles([...e.target.files]);e.target.value=
 
 // ===== サムネイル =====
 let tw=170;
-try{tw=+localStorage.getItem("pdfStudioTw")||170;}catch{}
+try{tw=Math.max(40,Math.min(800,+localStorage.getItem("pdfStudioTw")||170));}catch{}
 function applySize(){document.documentElement.style.setProperty("--tw",tw+"px");$("rSize").value=tw;}
-function setTw(v){tw=Math.max(90,Math.min(320,Math.round(v)));applySize();try{localStorage.setItem("pdfStudioTw",tw);}catch{}clearTimeout(applySize.t);applySize.t=setTimeout(()=>bundles.forEach(b=>thumb(b)),180);}
+function setTw(v){tw=Math.max(40,Math.min(800,Math.round(v)));applySize();try{localStorage.setItem("pdfStudioTw",tw);}catch{}clearTimeout(applySize.t);applySize.t=setTimeout(()=>bundles.forEach(b=>thumb(b)),180);}
 $("rSize").oninput=()=>setTw(+$("rSize").value);
 // 束の一覧だけの拡大・縮小(ブラウザの拡大にしない): Ctrl+ホイール(トラックパッドのピンチも)/ 2本指のピンチ。サムネイルの大きさ(見出しの「大きさ」)が変わる
 {const w=$("deskWrap");w.style.touchAction="pan-x pan-y";   // この一覧の上では、ブラウザの拡大は止めて、下の処理で束の大きさを変える
