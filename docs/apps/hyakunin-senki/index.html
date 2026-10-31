@@ -45,6 +45,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 #hero .bar{flex-basis:100%;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
 #hero .bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd35a,#fff3b0)}
 #hero small{color:#ffe9a8;font-size:11px}
+#hnow{margin-top:4px;display:inline-block;padding:4px 10px;border-radius:12px;background:rgba(18,14,30,.8);border:1px solid #ffd35a;font-size:12.5px;font-weight:800;color:#fff3c4;max-width:255px}
+#hlog{margin-top:4px;max-width:255px;background:rgba(18,14,30,.55);border-radius:10px;padding:3px 8px;font-size:11px;line-height:1.45;color:#fff;text-shadow:0 1px 2px #000,0 0 6px #000}
+#hlog:empty{display:none}#hlog div{opacity:.92}#hlog div:first-child{opacity:1;font-weight:700}
+#hlog b{color:#ffd35a;font-weight:700;margin-right:5px;font-variant-numeric:tabular-nums}
+#mm{position:absolute;right:calc(8px + env(safe-area-inset-right,0px));top:calc(118px + env(safe-area-inset-top,0px));width:74px;height:111px;z-index:4;border-radius:8px;border:1px solid rgba(255,255,255,.55);background:#232238;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.5)}
 #card{position:absolute;left:0;right:0;top:34%;z-index:4;text-align:center;pointer-events:none;opacity:0;transition:opacity .8s;font-family:var(--f-title)}
 #card.show{opacity:1}
 #card .k{font-size:15px;letter-spacing:.5em;color:var(--gold);font-weight:800;text-shadow:0 2px 6px #000}
@@ -68,7 +73,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 <div id="app">
   <canvas id="cv"></canvas>
   <a class="back" href="../../">‹ ハブ</a>
-  <div id="hud"><div id="chap"></div><div id="chips"></div><div id="hero" hidden></div></div>
+  <div id="hud"><div id="chap"></div><div id="chips"></div><div id="hero" hidden></div><div id="hnow" hidden></div><div id="hlog"></div></div>
+  <canvas id="mm" aria-hidden="true"></canvas>
   <div id="card"><div class="k"></div><div class="n"></div><div class="l"></div></div>
   <div id="ctl">
     <div id="sub" class="off"></div>
@@ -77,8 +83,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
       <button class="b" id="bPrev" aria-label="前の章">⏮</button>
       <button class="b big" id="bPlay" aria-label="再生・一時停止">⏸</button>
       <button class="b" id="bNext" aria-label="次の章">⏭</button>
-      <button class="b" id="bSpd">×4</button>
-      <button class="b on" id="bCam">🎥自動</button>
+      <button class="b" id="bSpd">自動</button>
+      <button class="b on" id="bCam">🎯追尾</button>
       <button class="b" id="bLod">兵:自動</button>
       <button class="b" id="bChap">章</button>
     </div>
@@ -87,6 +93,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
   <div id="title" class="ov" hidden>
     <h1>百人隊長戦記</h1>
     <div class="tag">— 六万の軍に、ひとりの百人隊長がいた —</div>
+    <div class="tag" id="seedtag" style="margin-top:2px;font-size:12px"></div>
     <p>百人の隊が数百、AIの隊長たちに動かされる戦争シミュレーションを「観戦」します。土地は広く、時間はゆっくり。成功するとは限らず、🎲で別の人生も見られます。<br>臆病な隊長、勇敢な隊長、そしてひとりの変人——百人隊長・灯真は、千人隊長になれるか。<br>ドラッグで移動、ピンチで拡大。章ジャンプ・倍速もできます。</p>
     <button class="go" id="bStart">戦記をはじめる</button>
   </div>
@@ -102,6 +109,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 <script>
 'use strict';
 /* ============ 基本 ============ */
+const TL=15;                    /* 画面の1秒=物語の何秒か(基準): 小さいほどゆっくり */
+let RT=0;                       /* 実時間の経過(演出用) */
 const K=5.5, TK=5.5;            /* K=土地の広がり(縦横) TK=時間のゆったり度 */
 const WW=1600*K, WH=2400*K;
 const P2=a=>[a[0]*K,a[1]*K];
@@ -113,6 +122,7 @@ const lerp=(a,b,u)=>a+(b-a)*u;
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function fh(a,b){const s=Math.sin(a*127.1+b*311.7)*43758.5453;return s-Math.floor(s);}
 const fmtN=n=>n>=10000?(Math.round(n/1000)/10).toString().replace(/\.0$/,'')+'万':Math.round(n/100)*100>=1000?(Math.round(n/100)*100).toLocaleString('en-US'):String(Math.round(n/100)*100);
+const fmtClock=t=>{const s=Math.floor(t*TL),d=Math.floor(s/86400)+1,m=Math.floor(((6*3600+s)%86400)/60);return d+'日目 '+String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 const fmtT=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
 
 /* ============ 勢力 ============ */
@@ -349,7 +359,7 @@ function mkSlots(){
   for(let b=-30;b<=30;b++)for(let a=-46;a<=46;a++){const aa=a+((b&1)?.5:0);arr.push({a:aa,b,d:(aa/1.6)*(aa/1.6)+b*b+ih(a,b)*.3});}
   arr.sort((p,q)=>p.d-q.d);SLOTS=arr.slice(0,1500);
 }
-let rngS=1,SEED_RUN=(+new URLSearchParams(location.search).get('seed'))||20261031;
+let rngS=1,SEED_RUN=(+new URLSearchParams(location.search).get('seed'))||(1+Math.floor(Math.random()*899999));
 function rnd(){rngS|=0;rngS=rngS+0x6D2B79F5|0;let t=Math.imul(rngS^rngS>>>15,1|rngS);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
 
 /* ---- 隊長の人物像(性格カード)と、効用+ゆらぎで選ぶ判断 ---- */
@@ -402,20 +412,20 @@ const UW=18;
 function simInit(){
   simTerrain();if(!SLOTS)mkSlots();
   rngS=SEED_RUN;
-  S={t:0,tick:0,units:[],legs:[],bands:[],chap:0,chapT:[0,75*TK,-1],sub:null,pops:[],fx:[],hero:null,gh:new Int32Array(GW*GH),gn:null,promoted:0,endT:-1,volN:0,flags:{},lastPop:-9,envoy:null,stat:{},empK:.8};
+  S={t:0,tick:0,units:[],legs:[],bands:[],chap:0,chapT:[0,75*TK,-1],sub:null,pops:[],fx:[],hero:null,gh:new Int32Array(GW*GH),gn:null,promoted:0,endT:-1,volN:0,flags:{},lastPop:-9,envoy:null,stat:{},empK:.72+rnd()*.16};
   S.gn=new Int32Array(4000);
-  S.fell=0;
+  S.fell=0;S.hlog=[];S.hw={st:-1,act:-1,bst:'',k:0,dead:0};S.hid=HID.map(h=>[h[0]+(rnd()-.5)*260,h[1]+(rnd()-.5)*180]);
   /* 帝国軍 12万 */
   const E=mkLegion('emp','黒曜帝国軍','kok',1,800*K,330*K,.45,.0,1200,true,P2([800,330]));
-  E.wp=[[800,700],[640,950],[470,1150],[470,1215],[540,1330],[560,1450]].map(P2);E.speed=12;E.mode=0;
+  E.wp=[[800,700],[640,950],[470,1150],[470,1215],[540,1330],[560,1450]].map(P2);{const j=(rnd()-.5)*2;E.wp=E.wp.map((q,i)=>i<5?[q[0]+j*120*(i%2?1:-1)*(1+i*.2),q[1]+(rnd()-.5)*100]:q);}E.speed=12;E.mode=0;
   /* 暁軍 2万 + 豪族 3万 */
   const A=mkLegion('aka','暁軍','aka',0,800*K,1860*K,.4,.72,200,true,P2([800,1860]));A.rally=P2([900,1175]);
   for(const c of CLANS){
     const L=mkLegion(c[0],c[1],'rengo',0,c[2],c[3],.68,.66,c[4],true,[c[2],c[3]]);
-    L.rally=HID[c[5]];
+    L.rally=S.hid[c[5]];
   }
   /* 主人公 */
-  let best=null,bd=1e9;for(const u of A.units){const d=Math.hypot(u.sx-40,u.sy+10);if(d<bd&&u.type===0){bd=d;best=u;}}
+  const cands=A.units.filter(u=>u.type===0&&Math.abs(u.sx)<300&&u.sy<120);let best=cands[(rnd()*cands.length)|0];
   best.fear=0;best.hero=1;best.arch='hero';S.hero=best;best.morale=1;
   /* 使者 */
   const ev=mkLegion('env','使者','rengo',0,160*K,1650*K,.1,0,1,false);ev.units[0].noc=1;ev.units[0].men=3;ev.units[0].men0=3;ev.units[0].type=4;ev.speed=26;ev.wp=[P2([800,1850])];
@@ -459,6 +469,7 @@ function step(){
   const U=S.units;
   for(let i=0;i<U.length;i++){const u=U[i];if(u.alive)unitTick(u);}
   for(let i=0;i<U.length;i++){const u=U[i];if(u.alive&&u.dmg>0)hurt(u);}
+  heroWatch();
   if(S.tick%2===0)bandsTick();
   if(S.tick%4===0)legDecide();
   /* 古い演出を捨てる */
@@ -487,14 +498,14 @@ function legDecide(){
     }
   }
 }
-function pop2(x,y,txt,kind,dur){S.pops.push({t:S.t,x,y,txt,kind:kind||'n',dur:(dur||3)*3});if(S.pops.length>40)S.pops.shift();}
-function say(txt,dur){S.sub={txt,until:S.t+(dur||6)*TK};}
+function pop2(x,y,txt,kind,dur){S.pops.push({t:RT,x,y,txt,kind:kind||'n',dur:dur||3});if(S.pops.length>40)S.pops.shift();}
+function say(txt,dur){S.sub={txt,rt:RT,dur:dur||6};}
 function hurt(u){
   const d=u.dmg;u.dmg=0;
   const frac=Math.min(1,d/Math.max(u.men,1));
   u.men-=d;
   u.morale-=frac*(1.0+u.fear*1.6)*(1.35-u.stake*.7);
-  if(u.men<=.5){u.alive=0;u.men=0;S.fx.push({t:S.t,x:u.x,y:u.y,k:0});if(u.hero&&!S.fell){S.fell=1;S.endT=S.t;say('——'+HERO_NAME+'、戦死。変人の理屈は、ここで途切れた',12);pop2(u.x,u.y-40,'百人隊長、討死','b',6);}return;}
+  if(u.men<=.5){u.alive=0;u.men=0;S.fx.push({t:RT,x:u.x,y:u.y,k:0});if(u.hero&&!S.fell){S.fell=1;S.endT=S.t;say('——'+HERO_NAME+'、戦死。変人の理屈は、ここで途切れた',12);pop2(u.x,u.y-40,'百人隊長、討死','b',6);}return;}
   if(u.state!==ROUT&&u.state!==WITHDRAW&&u.state!==REST){
     const brk=u.hero?.06:.1+(1-u.stake)*.42+u.fear*.08;
     if(u.morale<brk||(u.hero&&u.men<22)){
@@ -508,7 +519,7 @@ function unitTick(u){
   u.px=u.x;u.py=u.y;
   if(u.cd>0)u.cd-=DT;
   /* 使者 */
-  if(u.noc){const w=L.wp[0],dx=w[0]-u.x,dy=w[1]-u.y,d=Math.hypot(dx,dy);if(S.t>=20&&d>6){u.x+=dx/d*L.speed*DT;u.y+=dy/d*L.speed*DT;u.face=dx>0?1:-1;}else if(S.t>=46){u.alive=0;}return;}
+  if(u.noc){const w=L.wp[0],dx=w[0]-u.x,dy=w[1]-u.y,d=Math.hypot(dx,dy);if(S.t>=20*TK&&d>6){u.x+=dx/d*L.speed*DT;u.y+=dy/d*L.speed*DT;u.face=dx>0?1:-1;}else if(S.t>=46*TK){u.alive=0;}return;}
   const heavy=(u.id+S.tick)%2===0;
   if(heavy){scan(u,u.fear<.3?170:115);if(u.sightE||u.near)u.act=decide(u,L);const dh=Math.hypot(u.x-u.hx,u.y-u.hy);u.stake=u.hero?.5:u.side?clamp(.42-dh/6000,.2,.42):clamp(.88-dh/2600,.45,.88);}
   let sightE=u.sightE&&u.sightE.alive?u.sightE:null;
@@ -619,11 +630,48 @@ function unitTick(u){
     if(!tgt&&u.nearE===0)u.morale=Math.min(1,u.morale+.03);
   }
 }
+/* ---- 主人公の行動記録 ---- */
+function hlog(txt){S.hlog.push({t:S.t,txt});if(S.hlog.length>80)S.hlog.shift();}
+function heroWatch(){
+  const h=S.hero;if(!h||S.chap<1)return;const w=S.hw;
+  if(!h.alive){if(!w.dead){w.dead=1;hlog('倒れた(兵 0)');}return;}
+  if(S.tick%2)return;
+  const B=h.band>=0?S.bands[h.band]:null;
+  if(B&&S.chap===2){
+    if(B.state!==w.bst){
+      w.bst=B.state;
+      if(B.state==='moving')hlog('ねぐらを出て、敵縦隊の脇の遮蔽地へ移る');
+      else if(B.state==='hidden')hlog('身を潜め、敵の縦隊が近づくのを待つ');
+      else if(B.state==='strike')hlog('好機。敵のもっとも支えの薄い所へ一斉に襲いかかる');
+      else if(B.state==='rest'&&w.k>0)hlog('一撃して離脱。ねぐらへ戻り、兵を休める');
+      if(B.state==='strike')w.k=1;
+    }
+  }else if(h.state!==w.st){
+    const c='(周囲 味方'+h.near+' 敵'+h.nearE+')';
+    const m={0:w.st===2||w.st===5?'隊列へ戻り、前進する':'隊を率いて前進する',1:'敵と接触。交戦に入る'+c,2:'隊が崩れ、退く(兵 '+Math.round(h.men)+')',3:'遮蔽物に身を隠す',4:'奇襲へ移る',5:'無理な戦いを避け、後退する(兵 '+Math.round(h.men)+')',6:'休息して立て直す(兵 '+Math.round(h.men)+')'};
+    hlog(m[h.state]);
+  }
+  w.st=h.state;
+  if(h.nearE>0&&h.act!==w.act&&(h.state===0||h.state===1)&&S.t-(w.actT||-999)>60){w.actT=S.t;
+    const m=['無駄に突っ込まず、陣を保つ','数の優位を確かめ、正面から押す','敵の弱い一点へ回り込む(その支え '+Math.max(0,Math.round(h.weakS))+')'];
+    hlog(m[h.act]);
+  }
+  w.act=h.act;
+  const km=Math.floor(heroMerit()/50);if(km>(w.km||0)){w.km=km;hlog('戦功 '+km*50+' に到達');}
+}
+function heroNow(){
+  const h=S.hero;if(!h)return '';if(!h.alive)return '戦死';if(S.promoted)return '千人隊長として采配をふるう';
+  const B=h.band>=0?S.bands[h.band]:null;
+  if(B&&S.chap===2){return {rest:'ねぐらで休み、兵を立て直す',moving:'待ち伏せ地点へ移動中',hidden:'身を潜め、敵縦隊を待つ',strike:'奇襲を実行中',dead:'—'}[B.state]||'';}
+  let t=['前進中','敵と交戦中','敗走中','身を隠している','奇襲中','後退中','休息中'][h.state];
+  if(h.state<=1&&h.weakE&&h.weakE.alive&&h.act===2)t+=' / 狙い:敵の弱い一点';
+  return t;
+}
 /* ---- 遊撃隊 ---- */
 function mkBands(){
   S.bands=[];
   /* 豪族の残兵 */
-  for(let b=0;b<6;b++)S.bands.push({id:b,name:'豪族遊撃隊',clan:1,units:[],hx:HID[b][0],hy:HID[b][1],state:'rest',timer:10+b*5,px:0,py:0,fear:.6,leg:-1,t0:0,men0:0,kills:0,cnt:0});
+  for(let b=0;b<6;b++)S.bands.push({id:b,name:'豪族遊撃隊',clan:1,units:[],hx:S.hid[b][0],hy:S.hid[b][1],state:'rest',timer:10+b*5,px:0,py:0,fear:.6,leg:-1,t0:0,men0:0,kills:0,cnt:0});
   for(let b=0;b<10;b++){const a=b/10*TAU;S.bands.push({id:6+b,name:b===0?'灯真の隊':'暁軍遊撃隊',clan:0,units:[],hx:900*K+Math.cos(a)*(90+rnd()*150)*K*.6,hy:1060*K-Math.abs(Math.sin(a))*(30+rnd()*70)*K*.6,state:'rest',timer:14+b*3,px:0,py:0,fear:.38,leg:-1,t0:0,men0:0,kills:0,cnt:0});}
 }
 function startCh3(){
@@ -735,7 +783,7 @@ const CH1_SUBS=[[0,6,'辺境の小国・暁。軍勢はわずか二万。まわ�
 function director(){
   const t=S.t;
   if(S.endT<0){
-    for(const s of CH1_SUBS)if(t>=s[0]&&t-DT<s[0])say(s[2],s[1]-s[0]);
+    for(const s of CH1_SUBS)if(t>=s[0]&&t-DT<s[0])say(s[2],Math.max(4,(s[1]-s[0])/5));
   }
   if(t>=14*TK&&!S.flags.empGo){S.flags.empGo=1;const E=S.legs[0];E.mode=1;pop2(800*K,300*K,'黒曜帝国 十二万','b',6);}
   if(t>=20*TK&&!S.flags.env){S.flags.env=1;pop2(160*K,1620*K,'助けてくだされ！','g',6);}
@@ -796,7 +844,7 @@ function runTo(t){
 /* ============ 描画 ============ */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let W=0,Hh=0,DPR=1,Z=.25,CX=800*K,CY=1200*K,Wref=390;
-let T=0,playing=false,speed=4,manual=false,lodMode=0,started=false,reach=0;
+let T=0,playing=false,spdIdx=0,camMode='hero',endRT=-1,autoM=60,manual=false,lodMode=0,started=false,reach=0;
 const camM={x:800*K,y:1200*K,z:.1};
 const camF={x:800*K,y:1200*K,vw:WW,init:false};
 function resize(){
@@ -807,6 +855,12 @@ const wx2s=x=>(x-CX)*Z+W/2, wy2s=y=>(y-CY)*Z+Hh/2;
 const CHN=[['序章','迫りくる十二万'],['第二章','灰原の合戦'],['第三章','山脈のゲリラ戦']];
 let focusCache={x:WW/2,y:WH/2,vw:WW},focusAt=-9;
 function computeFocus(){
+  if(camMode==='hero'&&S.chap>=1&&S.hero){
+    const h=S.hero;let vw=720;
+    const se=h.sightE&&h.sightE.alive?Math.hypot(h.sightE.x-h.x,h.sightE.y-h.y):0;
+    if(!h.alive)vw=900;else if(se>0)vw=clamp(se*2.4,680,1300);else if(h.state===5||h.state===6)vw=900;
+    focusCache={x:h.x,y:h.y,vw};return;
+  }
   const t=S.t;let x=800*K,y=1300*K,vw=WW;
   if(S.chap===0){
     const E=S.legs[0];
@@ -934,7 +988,7 @@ function drawFX(t){
   }
   /* 倒れた兵の魂 */
   for(const f of S.fx){
-    const age=(t-f.t)/3;if(age<0||age>1.8)continue;
+    const age=t-f.t;if(age<0||age>1.8)continue;
     const px=f.x,py=f.y-age*26*fs;
     ctx.globalAlpha=(1-age/1.8)*.8;ctx.fillStyle='#e8f0ff';ctx.beginPath();ctx.arc(px,py,2.6*fs,0,TAU);ctx.fill();
     ctx.beginPath();ctx.moveTo(px-2*fs,py+1.2*fs);ctx.quadraticCurveTo(px,py+8*fs,px+2*fs,py+1.2*fs);ctx.fill();
@@ -968,7 +1022,7 @@ function drawPops(t){
   for(const p of S.pops){
     const age=t-p.t;if(age<0||age>p.dur)continue;
     const a=Math.min(1,age/.25,(p.dur-age)/.6);
-    const sx=wx2s(p.x),sy=wy2s(p.y)-age*2.4;
+    const sx=wx2s(p.x),sy=wy2s(p.y)-age*7;
     if(sx<-120||sx>W+120||sy<-40||sy>Hh+40)continue;
     const big=1+.25*Math.max(0,1-age*3.5);
     ctx.globalAlpha=a;ctx.font='900 '+Math.round(17*big)+'px "Shippori Mincho",serif';ctx.lineJoin='round';
@@ -981,7 +1035,7 @@ let lastFrameT=0;
 function render(dt){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle='#232238';ctx.fillRect(0,0,W,Hh);
-  const t=T,al=clamp((T-(S.t-DT))/DT,0,1);
+  const t=RT,al=clamp((T-(S.t-DT))/DT,0,1);
   if(performance.now()-focusAt>350){focusAt=performance.now();computeFocus();}
   const f=focusCache,k=camF.init?1-Math.exp(-dt*1.7):1;camF.init=true;
   camF.x+=(f.x-camF.x)*k;camF.y+=(f.y-camF.y)*k;camF.vw*=Math.exp(Math.log(f.vw/camF.vw)*k);
@@ -1002,15 +1056,15 @@ function render(dt){
 /* ============ UI ============ */
 const $=id=>document.getElementById(id);
 const elSub=$('sub'),elChap=$('chap'),elChips=$('chips'),elCard=$('card'),elSeek=$('seek'),elTm=$('tm'),elHero=$('hero');
-let lastChap=-1,lastSubTxt=null,lastChip=0;
+let lastChap=-1,lastSubTxt=null,lastChip=0,cardUntil=0;
 function updateUI(force){
   const ci=S.chap;
   if(ci!==lastChap||force){
-    lastChap=ci;elChap.innerHTML='<small>'+CHN[ci][0]+'</small>'+CHN[ci][1];
+    lastChap=ci;cardUntil=RT+4.8;elChap.innerHTML='<small>'+CHN[ci][0]+'</small>'+CHN[ci][1];
     elCard.querySelector('.k').textContent=CHN[ci][0];elCard.querySelector('.n').textContent=CHN[ci][1];
   }
-  elCard.classList.toggle('show',started&&T-S.chapT[ci]<5*speed&&S.chapT[ci]>=0);
-  const sb=S.sub&&S.t<=S.sub.until?S.sub.txt:null;
+  elCard.classList.toggle('show',started&&RT<cardUntil);
+  const sb=S.sub&&RT-S.sub.rt<S.sub.dur?S.sub.txt:null;
   if(sb!==lastSubTxt){lastSubTxt=sb;if(sb){elSub.textContent=sb;elSub.classList.remove('off');}else elSub.classList.add('off');}
   const now=performance.now();
   if(force||now-lastChip>200){
@@ -1022,23 +1076,38 @@ function updateUI(force){
     if(hi){
       const pct=clamp(hi.kills/MERIT_GOAL,0,1)*100;
       elHero.innerHTML='<b>'+(S.promoted?'千人隊長 ':'百人隊長 ')+HERO_NAME+'</b><span>兵 '+hi.men+'</span><div class="bar"><i style="width:'+pct+'%"></i></div><small>戦功 '+Math.min(hi.kills,MERIT_GOAL)+' / '+MERIT_GOAL+'</small>';
-      elHero.hidden=S.chap===0&&T<46;
+      elHero.hidden=false;
     }
+    {const hn=$('hnow');hn.hidden=S.chap<1;hn.textContent='いま: '+heroNow();
+     const L=S.hlog.slice(-5).reverse();$('hlog').innerHTML=L.map(e=>'<div><b>'+fmtClock(e.t).replace('日目 ','日 ')+'</b>'+e.txt+'</div>').join('');}
     reach=Math.max(reach,S.t);
-    elSeek.max=Math.max(60,Math.ceil(reach));
+    elSeek.max=Math.max(60,Math.ceil(reach));drawMM();
     if(document.activeElement!==elSeek)elSeek.value=Math.min(T,reach);
-    elTm.textContent=fmtT(T)+' / '+fmtT(reach);
+    elTm.textContent=fmtClock(T);
   }
   if(S.endT>=0&&!$('end').dataset.k){}
   const ek=S.promoted?'p':S.fell?'f':'t';
   if($('end').dataset.k!==ek){$('end').dataset.k=ek;$('end').querySelector('h1').textContent=ek==='p'?'昇進':ek==='f'?'戦死':'つづく';$('end').querySelector('.tag').textContent=ek==='p'?'— 百人隊長は、千人隊長となった —':ek==='f'?'— 理屈で動いた変人は、戦場に倒れた —':'— 昇進はならず。それでも戦は続く —';}
-  $('end').hidden=!(S.endT>=0&&T-S.endT>30&&$('sheet').hidden);
+  $('end').hidden=!(S.endT>=0&&endRT>=0&&RT-endRT>9&&$('sheet').hidden);
+}
+const mm=$('mm'),mx=mm.getContext('2d');let mmAt=0;
+function drawMM(){
+  const w=74,h=111,d=Math.min(window.devicePixelRatio||1,2);
+  if(mm.width!==w*d){mm.width=w*d;mm.height=h*d;}
+  mx.setTransform(d,0,0,d,0,0);
+  if(TERR)mx.drawImage(TERR,0,0,w,h);else{mx.fillStyle='#4a6a40';mx.fillRect(0,0,w,h);}
+  const k=w/WW;
+  for(const c of CITY){mx.fillStyle='#fff';mx.fillRect(c.x*K*k-1,c.y*K*k-1,2,2);}
+  for(const u of S.units){if(!u.alive||u.noc||u.type===3)continue;mx.fillStyle=FAC[u.fac].col;mx.fillRect(u.x*k-.6,u.y*k-.6,1.4,1.4);}
+  const hh=S.hero;
+  if(hh){const bl=(Math.floor(RT*3)%2)===0;mx.beginPath();mx.arc(hh.x*k,hh.y*k,bl?3.4:2.4,0,TAU);mx.fillStyle=hh.alive?'#ffd35a':'#888';mx.fill();mx.lineWidth=1;mx.strokeStyle='#000';mx.stroke();}
+  mx.strokeStyle='#fff';mx.lineWidth=1;mx.strokeRect((CX-W/2/Z)*k,(CY-Hh/2/Z)*k,W/Z*k,Hh/Z*k);
 }
 function withBusy(fn){const w=$('load');w.querySelector('.tag').textContent='戦場を計算しています…';w.hidden=false;setTimeout(()=>{try{fn();}finally{w.hidden=true;}},30);}
 function setPlaying(p){playing=p;$('bPlay').textContent=p?'⏸':'▶';}
 function seek(t){
   t=Math.max(0,t);
-  runTo(t);T=t;camF.init=false;manual=false;$('bCam').classList.add('on');$('bCam').textContent='🎥自動';computeFocus();updateUI(true);
+  runTo(t);T=t;camF.init=false;manual=false;setCamBtn();S.pops=[];S.fx=[];endRT=-1;computeFocus();updateUI(true);
 }
 function gotoChap(i){
   i=clamp(i,0,2);
@@ -1053,9 +1122,19 @@ function gotoChap(i){
 $('bPlay').onclick=()=>{setPlaying(!playing);};
 $('bPrev').onclick=()=>{const ci=S.chap;withBusy(()=>gotoChap(T-S.chapT[ci]>5?ci:ci-1));};
 $('bNext').onclick=()=>withBusy(()=>gotoChap(S.chap+1));
-const SPDS=[1,2,4,8,16,32,64];
-$('bSpd').onclick=()=>{speed=SPDS[(SPDS.indexOf(speed)+1)%SPDS.length];$('bSpd').textContent='×'+speed;};
-$('bCam').onclick=()=>{manual=false;$('bCam').classList.add('on');$('bCam').textContent='🎥自動';};
+const SPDM=['auto',1,5,15,60,240];
+$('bSpd').onclick=()=>{spdIdx=(spdIdx+1)%SPDM.length;$('bSpd').textContent=spdIdx?'×'+SPDM[spdIdx]:'自動';};
+function targetM(){
+  if(!S)return 60;if(S.chap===0)return 75;
+  const h=S.hero;if(S.endT>=0)return 4;if(!h||!h.alive)return 20;
+  const se=h.sightE&&h.sightE.alive?Math.hypot(h.sightE.x-h.x,h.sightE.y-h.y):1e9;
+  if(h.hit||h.state===1||h.state===4||h.state===2)return 3;
+  if(se<300)return 6;
+  const B=h.band>=0?S.bands[h.band]:null;
+  if(S.chap===2&&B){if(B.state==='hidden')return 40;if(B.state==='rest')return 90;return 25;}
+  return se<1200?15:40;
+}
+$('bCam').onclick=()=>{if(manual)manual=false;else camMode=camMode==='hero'?'world':'hero';camF.init=false;computeFocus();setCamBtn();};
 $('bLod').onclick=()=>{lodMode=(lodMode+1)%3;$('bLod').textContent=['兵:自動','兵:小','兵:普通'][lodMode];$('bLod').classList.toggle('on',lodMode!==0);};
 $('bChap').onclick=()=>{buildSheet();$('sheet').hidden=false;};
 $('bClose').onclick=()=>{$('sheet').hidden=true;};
@@ -1072,7 +1151,8 @@ function buildSheet(){
 }
 /* ジェスチャ */
 const ptrs=new Map();let pinch0=null;
-function goManual(){if(!manual){manual=true;$('bCam').classList.remove('on');$('bCam').textContent='🎥手動';}}
+function setCamBtn(){const b=$('bCam');b.classList.toggle('on',!manual);b.textContent=manual?'✋手動':camMode==='hero'?'🎯追尾':'🌍全体';}
+function goManual(){if(!manual){manual=true;setCamBtn();}}
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===2){const [p,q]=[...ptrs.values()];pinch0={d:Math.hypot(p.x-q.x,p.y-q.y),z:camM.z};}});
 cv.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
@@ -1087,10 +1167,11 @@ cv.addEventListener('wheel',e=>{e.preventDefault();goManual();const f=Math.exp(-
 /* ============ メインループ ============ */
 let lastNow=0;
 function frame(now){
-  const dt=Math.min(.1,(now-lastNow)/1000||0);lastNow=now;
+  const dt=Math.min(.1,(now-lastNow)/1000||0);lastNow=now;RT+=dt;
   if(playing){
-    T+=dt*speed;
-    if(S.endT>=0&&T>S.endT+30){T=S.endT+30;setPlaying(false);}
+    const m=spdIdx?SPDM[spdIdx]:(autoM*=Math.exp(Math.log(targetM()/autoM)*(1-Math.exp(-dt*1.2))));
+    T+=dt*m/TL;
+    if(S.endT>=0){if(endRT<0)endRT=RT;if(RT-endRT>24){setPlaying(false);}}
   }
   let guard=0;while(S.t<=T&&guard++<400)step();
   if(S.t<=T)T=S.t-DT*.5;
@@ -1101,7 +1182,7 @@ function boot(){
   resize();
   setTimeout(()=>{
     try{mkSprites();genTerrain();simInit();}catch(err){console.error(err);}
-    $('load').hidden=true;$('title').hidden=false;computeFocus();updateUI(true);
+    $('seedtag').textContent='この戦記は、世界No.'+SEED_RUN+'。毎回ちがう展開です';$('load').hidden=true;$('title').hidden=false;computeFocus();updateUI(true);
     requestAnimationFrame(frame);
   },30);
 }
