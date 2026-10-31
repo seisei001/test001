@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1a2b">
+<title>地図ラボ</title>
+<style>
+:root{--bg:#1b1a2b;--ink:#f4efe3;--soft:#c9c2ad;--gold:#f2c14e;--panel:rgba(255,255,255,.07);--line:rgba(255,255,255,.16)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Hiragino Sans','Yu Gothic',sans-serif}
+#wrap{max-width:560px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.back{display:flex;align-items:center;min-height:44px;min-width:44px;padding:0 12px;border-radius:22px;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:14px;font-weight:700}
+h1{font-size:19px;margin:0;letter-spacing:.08em}
+.sub{font-size:12px;color:var(--soft);margin:0 0 8px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+button.b{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:14px;font-weight:700;white-space:nowrap}
+button.b.on{background:var(--gold);color:#2a1d00;border-color:var(--gold)}
+#map{position:relative;width:100%;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#12111d}
+canvas{display:block;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--soft);margin:8px 0}
+.leg i{display:inline-block;width:11px;height:11px;margin-right:4px;vertical-align:-1px;border:1px solid rgba(255,255,255,.6)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13px;line-height:1.65}
+.card b{color:var(--gold)}
+.card ul{margin:4px 0 0;padding-left:18px}
+.ok{color:#9be7a8}.ng{color:#ff9d9d}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="top"><a class="back" href="../../">‹ ハブ</a><h1>地図ラボ</h1></div>
+  <p class="sub">約300km×450kmの世界を乱数から作ります。大軍が通れる所は少なく、そこに砦がある地形を目指す試作です。</p>
+  <div class="row">
+    <button class="b" id="bNew">🎲 新しい世界</button>
+    <button class="b on" data-l="terrain">地形</button>
+    <button class="b" data-l="pass">大軍の通れる所</button>
+    <button class="b" data-l="fert">肥沃度</button>
+  </div>
+  <div id="map"><canvas id="cv"></canvas></div>
+  <div class="leg">
+    <span><i style="background:#c0392b"></i>砦・関</span><span><i style="background:#f39c12;border-radius:50%"></i>山の拠点</span>
+    <span><i style="background:#fff;border-radius:50%"></i>町</span><span><i style="background:#8a5a2b"></i>街道</span><span><i style="background:#e8e0c8"></i>山道(小部隊用)</span>
+  </div>
+  <div class="card" id="stat"></div>
+  <div class="card" id="rule"><b>この地図のきまり</b>
+    <ul>
+      <li>山脈は、ほぼ切れ目なく東西にのびる壁。大軍(荷車つき)は山を越えられない。</li>
+      <li>大軍が通れるのは「峠」だけ。峠は少なく、狭く、関(砦)がある。</li>
+      <li>大きな川は、橋のある所しか渡れない。橋にも砦を置く。</li>
+      <li>山の中には、小部隊だけが通れる山道と、隠し拠点・補給庫がある。</li>
+    </ul>
+  </div>
+</div>
+<script>
+'use strict';
+const W=240,H=360,CELL=1.25,S=3;           // 1マス=1.25km、画面は3倍
+const N=W*H;
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const sm=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let SEED=1;
+function ih(x,y){let h=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul(SEED,2246822519);h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;}
+function vn(x,y){const x0=Math.floor(x),y0=Math.floor(y),fx=x-x0,fy=y-y0,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);const a=ih(x0,y0),b=ih(x0+1,y0),c=ih(x0,y0+1),d=ih(x0+1,y0+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+function fbm(x,y,o){let s=0,a=.5,f=1,n=0;for(let i=0;i<o;i++){s+=a*vn(x*f,y*f);n+=a;a*=.5;f*=2.03;}return s/n;}
+
+/* 地形の種類 */
+const SEA=0,PLAIN=1,FOREST=2,HILL=3,MTN=4,MARSH=5;
+const NAMES_T=['蒼海','暁都','白鷺','青嵐','紫苑','翠川','琥珀','紅葉','銀嶺','金波','常盤','朝霧','夕凪','千草','橘','浅茅'];
+const NAMES_N=['黒曜城','北嶺','霜原','鉄見','雪渡','氷川'];
+const NAMES_P=['天嶺関','双牙関','鳥返関','雲居関'];
+let M=null;     // 生成結果
+
+function generate(seed){
+  SEED=seed;const R=mulberry(seed*2654435761>>>0);
+  const h=new Float32Array(N),cls=new Uint8Array(N),pass=new Uint8Array(N);
+  const rw=H*.045;                                         // 山脈の半幅
+  const yc=H*(.38+.08*R());
+  const ridge=new Float32Array(W);
+  for(let x=0;x<W;x++)ridge[x]=yc+(fbm(x/70+seed%89,4.7,3)-.5)*2*H*.05;
+  /* 標高 */
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x,n=fbm(x/55,y/55,5);
+    let v=.40+(n-.5)*.40;
+    const dy=y-ridge[x],band=Math.exp(-(dy/rw)*(dy/rw));
+    const rid=1-Math.abs(2*fbm(x/22+30,y/22,4)-1);
+    v+=band*(.28+.40*rid);
+    v+=sm(yc,0,y)*.04;
+    const ed=Math.min(x,W-1-x,H-1-y),coast=H*.035+(fbm(x/14,y/14,3)-.5)*H*.05;
+    const sea=sm(coast+3,coast-2,ed)*sm(H*.58,H*.70,y);
+    v=v*(1-sea)+.2*sea;
+    h[i]=v;
+  }
+  /* 峠をえらぶ(少なく、離して) */
+  const k=2+Math.floor(R()*3),px=[];
+  for(let tries=0;px.length<k&&tries<200;tries++){const x=Math.floor(W*(.12+.76*R()));if(px.every(q=>Math.abs(q-x)>W/6))px.push(x);}
+  px.sort((a,b)=>a-b);
+  const pw=px.map(()=>1.0+R()*1.0);
+  const wallT=[2];
+  const carve=()=>{
+    for(let x=0;x<W;x++)for(let y=Math.floor(ridge[x]-wallT[0]);y<=Math.ceil(ridge[x]+wallT[0]);y++){if(y<0||y>=H)continue;const i=y*W+x;h[i]=Math.max(h[i],.82);}
+    px.forEach((x0,pi)=>{
+      const yA=ridge[x0]-rw*1.9,yB=ridge[x0]+rw*1.9,ph=R()*6;
+      for(let y=Math.floor(yA);y<=Math.ceil(yB);y++){
+        const wig=Math.sin(y/9+ph)*3.2+(fbm(y/16+pi*9,2.2,2)-.5)*5;
+        const cx=x0+wig;
+        for(let dx=-4;dx<=4;dx++){const xx=Math.round(cx)+dx;if(xx<0||xx>=W||y<0||y>=H)continue;
+          const d=Math.abs(xx-cx);if(d<=pw[pi]){const i=y*W+xx;h[i]=Math.min(h[i],.56);pass[i]=pi+1;}}
+      }
+    });
+  };
+  /* 山脈の壁に漏れがないか確認(漏れがあれば壁を厚くする) */
+  const classify=()=>{
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const i=y*W+x,v=h[i];let c;
+      if(v<.30)c=SEA;else if(v>.74)c=MTN;else if(v>.60)c=HILL;
+      else if(v<.38&&fbm(x/12+9,y/12,3)>.63)c=MARSH;
+      else if(v>.36&&fbm(x/16+50,y/16,3)>.60)c=FOREST;else c=PLAIN;
+      cls[i]=c;
+    }
+  };
+  carve();classify();
+  /* 川(流れの集まり) */
+  const flowH=new Float32Array(N);for(let y=0;y<H;y++)for(let x=0;x<W;x++)flowH[y*W+x]=h[y*W+x]-y/H*.14;
+  const order=Array.from({length:N},(_,i)=>i).sort((a,b)=>flowH[b]-flowH[a]);
+  const acc=new Float32Array(N).fill(1),dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+  for(const i of order){
+    if(cls[i]===SEA)continue;
+    const x=i%W,y=(i/W)|0;let bi=-1,bv=flowH[i];
+    for(const [dx,dy] of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const j=ny*W+nx;if(flowH[j]<bv){bv=flowH[j];bi=j;}}
+    if(bi>=0)acc[bi]+=acc[i];
+  }
+  const river=new Uint8Array(N);                            // 1=小川(渡れる) 2=大河(橋のみ)
+  for(let i=0;i<N;i++){if(cls[i]===SEA||cls[i]===MTN)continue;if(acc[i]>150)river[i]=2;else if(acc[i]>55)river[i]=1;}
+  return {h,cls,pass,river,acc,ridge,rw,px,pw,wallT,R,carve,classify};
+}
+
+/* 速度(1日あたりkm)。大軍=荷車つき。 */
+function bigMult(m,i){
+  const c=m.cls[i];if(c===SEA||c===MTN)return 0;
+  let v=c===PLAIN?.7:c===FOREST?.4:c===HILL?.5:.3;
+  if(m.road[i])v=1;
+  if(m.river[i]===2&&!m.bridge[i])return 0;
+  if(m.river[i]===1&&!m.road[i])v*=.5;
+  return v;
+}
+function smallMult(m,i){
+  const c=m.cls[i];if(c===SEA)return 0;
+  let v=c===PLAIN?1:c===FOREST?.7:c===HILL?.8:c===MTN?.4:.5;
+  if(m.trail&&m.trail[i])v=Math.max(v,1);if(m.road[i])v=1;
+  if(m.river[i]===2)v*=.4;else if(m.river[i]===1)v*=.7;
+  return v;
+}
+/* 最短経路(ダイクストラ法)。移動にかかる日数を返す */
+function dijkstra(m,src,multFn,speed,targets){
+  const dist=new Float32Array(N).fill(Infinity),prev=new Int32Array(N).fill(-1),done=new Uint8Array(N);
+  let cap=1<<16,hd=new Float32Array(cap),hi=new Int32Array(cap),hn=0;
+  const push=(d,i)=>{if(hn>=cap){cap*=2;const a=new Float32Array(cap);a.set(hd);hd=a;const b=new Int32Array(cap);b.set(hi);hi=b;}let c=hn++;while(c>0){const p=(c-1)>>1;if(hd[p]<=d)break;hd[c]=hd[p];hi[c]=hi[p];c=p;}hd[c]=d;hi[c]=i;};
+  let rem=targets?new Set(targets):null;
+  dist[src]=0;push(0,src);
+  const DX=[-1,1,0,0,-1,1,-1,1],DY=[0,0,-1,1,-1,-1,1,1],DW=[1,1,1,1,1.414,1.414,1.414,1.414];
+  while(hn>0){
+    const d=hd[0],i=hi[0];hn--;
+    if(hn>0){const ld=hd[hn],li=hi[hn];let c=0;for(;;){let l=c*2+1;if(l>=hn)break;if(l+1<hn&&hd[l+1]<hd[l])l++;if(hd[l]>=ld)break;hd[c]=hd[l];hi[c]=hi[l];c=l;}hd[c]=ld;hi[c]=li;}
+    if(done[i])continue;done[i]=1;
+    if(rem){rem.delete(i);if(!rem.size)break;}
+    const x=i%W,y=(i/W)|0;
+    for(let k=0;k<8;k++){
+      const nx=x+DX[k],ny=y+DY[k];if(nx<0||ny<0||nx>=W||ny>=H)continue;
+      const j=ny*W+nx;if(done[j])continue;const mu=multFn(m,j);if(mu<=0)continue;
+      const nd=d+DW[k]*CELL/(speed*mu);
+      if(nd<dist[j]){dist[j]=nd;prev[j]=i;push(nd,j);}
+    }
+  }
+  return {dist,prev};
+}
+function pathTo(prev,t){const p=[];for(let i=t;i>=0;i=prev[i])p.push(i);return p.reverse();}
+
+function build(seed){
+  let m=generate(seed);
+  /* 壁に漏れがないか。峠を閉じても北から南へ大軍が抜けられるなら壁を厚くする */
+  const leaks=()=>{
+    const seen=new Uint8Array(N),st=[];const y0=Math.max(2,Math.floor(m.ridge[(W/2)|0]-m.rw*3));
+    for(let x=0;x<W;x++){const i=y0*W+x;const c=m.cls[i];if(c!==SEA&&c!==MTN&&!m.pass[i]){seen[i]=1;st.push(i);}}
+    const yS=Math.ceil(Math.max(...m.ridge)+m.rw*2.2);
+    while(st.length){const i=st.pop(),x=i%W,y=(i/W)|0;if(y>=yS)return true;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const j=ny*W+nx;if(seen[j])continue;
+        const c=m.cls[j];if(c===SEA||c===MTN||m.pass[j]||m.river[j]===2)continue;seen[j]=1;st.push(j);}}
+    return false;
+  };
+  for(let t=0;t<4&&leaks();t++){m.wallT[0]+=1;m.carve();m.classify();}
+  m.leak=leaks();
+  m.road=new Uint8Array(N);m.bridge=new Uint8Array(N);m.trail=new Uint8Array(N);
+  const R=m.R,{cls,h,river,ridge,rw}=m;
+  /* 肥沃度と町 */
+  const fert=new Float32Array(N);
+  const nearRiver=i=>{const x=i%W,y=(i/W)|0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;if(river[ny*W+nx])return 1;}return 0;};
+  for(let i=0;i<N;i++){
+    const c=cls[i];if(c!==PLAIN&&c!==FOREST&&c!==MARSH)continue;
+    const y=(i/W)|0;let f=(c===PLAIN?1:c===FOREST?.35:.4)*(1-Math.min(1,Math.abs(h[i]-.42)*2.2));
+    f*=(.65+.35*nearRiver(i));f*=y>ridge[i%W]?1:.55;fert[i]=f;
+  }
+  m.fert=fert;
+  const towns=[],far=(i,d)=>towns.every(t=>Math.hypot((t.i%W)-(i%W),((t.i/W)|0)-((i/W)|0))>=d);
+  const cand=[];for(let i=0;i<N;i++)if(fert[i]>.35&&cls[i]===PLAIN&&!river[i])cand.push(i);
+  cand.sort((a,b)=>fert[b]-fert[a]);
+  const pickIn=(pred,kind,name)=>{let best=-1,bs=-1;for(const i of cand){if(!pred(i))continue;if(!far(i,20))continue;const s=fert[i]+R()*.15;if(s>bs){bs=s;best=i;}if(best>=0&&cand.indexOf(i)>600)break;}if(best>=0)towns.push({i:best,kind,name});};
+  const midX=i=>Math.abs((i%W)-W/2)<W*.3,north=i=>(i/W)<ridge[i%W]-rw*2.4,south=i=>(i/W)>ridge[i%W]+rw*2.8&&(i/W)<H*.62;
+  pickIn(i=>north(i)&&midX(i),'cap',NAMES_N[0]);
+  pickIn(i=>south(i)&&midX(i),'cap',NAMES_T[1]);
+  for(let k=0;k<5;k++)pickIn(north,'town',NAMES_N[1+k]);
+  for(let k=0;k<11;k++)pickIn(south,'town',NAMES_T[2+k]);
+  const capN=towns.find(t=>t.name===NAMES_N[0]),capS=towns.find(t=>t.name===NAMES_T[1]);
+  /* 街道:町どうしを結ぶ(大軍にとって最も楽な道。川は橋で渡るので高くつく) */
+  const roadMult=(mm,i)=>{const c=mm.cls[i];if(c===SEA||c===MTN)return 0;let v=c===PLAIN?.7:c===FOREST?.4:c===HILL?.5:.3;if(mm.road[i])v=1;if(mm.river[i]===2)v=mm.bridge[i]?1:.05;else if(mm.river[i]===1)v*=.6;return v;};
+  const edges=new Set(),key=(a,b)=>a<b?a+'-'+b:b+'-'+a;
+  const dTown=(a,b)=>Math.hypot((towns[a].i%W)-(towns[b].i%W),((towns[a].i/W)|0)-((towns[b].i/W)|0));
+  /* 最小全域木+近隣 */
+  const inT=[0],rest=[...Array(towns.length).keys()].slice(1);
+  while(rest.length){let bb=1e9,ba=-1,br=-1;for(const a of inT)for(const r of rest){const d=dTown(a,r);if(d<bb){bb=d;ba=a;br=r;}}edges.add(key(ba,br));inT.push(br);rest.splice(rest.indexOf(br),1);}
+  towns.forEach((t,a)=>{const ds=towns.map((u,b)=>[dTown(a,b),b]).filter(x=>x[1]!==a).sort((p,q)=>p[0]-q[0]);for(let j=0;j<1;j++)if(ds[j][0]<48)edges.add(key(a,ds[j][1]));});
+  /* 北と南を必ず結ぶ */
+  edges.add(key(towns.indexOf(capN),towns.indexOf(capS)));
+  const bySrc={};for(const e of edges){const [a,b]=e.split('-').map(Number);(bySrc[a]=bySrc[a]||[]).push(b);}
+  for(const a of Object.keys(bySrc)){
+    const {prev,dist}=dijkstra(m,towns[a].i,roadMult,12,bySrc[a].map(b=>towns[b].i));
+    for(const b of bySrc[a]){if(!isFinite(dist[towns[b].i]))continue;for(const i of pathTo(prev,towns[b].i)){m.road[i]=1;if(river[i]===2)m.bridge[i]=1;}}
+  }
+  m.towns=towns;
+  /* 関(砦):峠のもっとも狭い所と両端、大きな橋 */
+  const forts=[];
+  const passOpen=(i)=>{const c=cls[i];return c!==SEA&&c!==MTN&&!(river[i]===2&&!m.bridge[i]);};
+  m.px.forEach((x0,pi)=>{
+    const cells=[];for(let i=0;i<N;i++)if(m.pass[i]===pi+1)cells.push(i);
+    if(!cells.length)return;cells.sort((a,b)=>a-b);
+    let best=cells[0],bw=1e9;
+    for(const i of cells.slice(Math.floor(cells.length*.2),Math.ceil(cells.length*.8))){
+      const x=i%W,y=(i/W)|0;let n=0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;if(passOpen(ny*W+nx))n++;}
+      if(n<bw){bw=n;best=i;}
+    }
+    let wc=0;{const fy=(best/W)|0;for(let xx=0;xx<W;xx++)if(m.pass[fy*W+xx]===pi+1)wc++;}
+    forts.push({i:best,kind:'pass',name:NAMES_P[pi],w:Math.round(wc*CELL*10)/10});
+    forts.push({i:cells[Math.floor(cells.length*.08)],kind:'gate',name:'北の門'});
+    forts.push({i:cells[Math.floor(cells.length*.92)],kind:'gate',name:'南の門'});
+  });
+  let nb=0;
+  for(let i=0;i<N&&nb<3;i++){if(m.bridge[i]&&forts.every(f=>Math.hypot((f.i%W)-(i%W),((f.i/W)|0)-((i/W)|0))>18)){forts.push({i,kind:'bridge',name:'橋の砦'});nb++;}}
+  m.forts=forts;
+  /* 山の拠点:守りやすい高所。街道から離れ、峠の砦から歩ける距離 */
+  const bases=[];
+  const passF=forts.filter(f=>f.kind==='pass');
+  const roadNear=(i,r)=>{const x=i%W,y=(i/W)|0;for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;if(m.road[ny*W+nx])return 1;}return 0;};
+  const bc=[];
+  for(let y=Math.floor(ridge[W/2|0]-rw*1.6);y<ridge[W/2|0]+rw*1.6;y+=1)for(let x=4;x<W-4;x+=1){
+    const i=y*W+x;if(cls[i]!==MTN&&cls[i]!==HILL)continue;if(m.pass[i])continue;
+    let mt=0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)if(cls[(y+dy)*W+x+dx]===MTN)mt++;
+    if(roadNear(i,5))continue;
+    const d=passF.length?Math.min(...passF.map(f=>Math.hypot((f.i%W)-x,((f.i/W)|0)-y))):99;
+    if(d<5||d>40)continue;
+    bc.push({i,s:h[i]*.5+mt/49+R()*.2});
+  }
+  bc.sort((a,b)=>b.s-a.s);
+  for(const c of bc){if(bases.length>=9)break;if(bases.every(b=>Math.hypot((b.i%W)-(c.i%W),((b.i/W)|0)-((c.i/W)|0))>=11))bases.push({i:c.i,kind:bases.length<6?'base':'depot',name:bases.length<6?'山砦':'隠し倉'});}
+  m.bases=bases;
+  /* 山道:小部隊が通る道(拠点どうし、峠の砦、南の谷の町へ) */
+  const links=[];
+  bases.forEach((b,a)=>{const others=[...bases.filter((_,j)=>j!==a),...passF];let bd=1e9,bo=null;for(const o of others){const d=Math.hypot((o.i%W)-(b.i%W),((o.i/W)|0)-((b.i/W)|0));if(d<bd){bd=d;bo=o;}}if(bo)links.push([b.i,bo.i]);});
+  const sT=towns.filter(t=>(t.i/W)>ridge[t.i%W]+rw*2);
+  bases.slice(0,3).forEach(b=>{let bd=1e9,bt=null;for(const t of sT){const d=Math.hypot((t.i%W)-(b.i%W),((t.i/W)|0)-((b.i/W)|0));if(d<bd){bd=d;bt=t;}}if(bt)links.push([b.i,bt.i]);});
+  for(const [a,b] of links){const {prev,dist}=dijkstra(m,a,smallMult,20,[b]);if(!isFinite(dist[b]))continue;for(const i of pathTo(prev,b))if(!m.road[i])m.trail[i]=1;}
+  /* 統計 */
+  const r=dijkstra(m,capN.i,bigMult,12,[capS.i]);
+  m.routeDays=r.dist[capS.i];
+  m.routePath=isFinite(r.dist[capS.i])?pathTo(r.prev,capS.i):[];
+  let bigOK=0,land=0;for(let i=0;i<N;i++){if(cls[i]!==SEA){land++;if(bigMult(m,i)>0)bigOK++;}}
+  m.bigPct=bigOK/land;
+  return m;
+}
+
+/* ---------- 描画 ---------- */
+const cv=document.getElementById('cv');cv.width=W*S;cv.height=H*S;const ctx=cv.getContext('2d');
+const base=document.createElement('canvas');base.width=W;base.height=H;
+let layer='terrain';
+const COL={[SEA]:[56,104,150],[PLAIN]:[146,200,108],[FOREST]:[70,128,78],[HILL]:[170,152,104],[MTN]:[150,146,140],[MARSH]:[112,150,112]};
+function paintBase(){
+  const bx=base.getContext('2d'),img=bx.createImageData(W,H),d=img.data,{h,cls,river,fert,pass}=M;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x;let c=COL[cls[i]].slice();
+    if(cls[i]===MTN&&h[i]>.86)c=[236,238,244];
+    if(cls[i]!==SEA){const gx=(h[Math.min(W-1,x+1)+y*W]-h[Math.max(0,x-1)+y*W]),gy=(h[x+Math.min(H-1,y+1)*W]-h[x+Math.max(0,y-1)*W]);const s=1+clamp((-gx-gy)*5,-.4,.4);c=c.map(v=>clamp(v*s,0,255));}
+    if(river[i]===2)c=[58,120,190];else if(river[i]===1)c=[110,170,215];
+    if(layer==='fert'&&cls[i]!==SEA){const f=fert[i];c=f>0?[clamp(80+f*60,0,255),clamp(60+f*180,0,255),50]:[70,70,80];if(river[i])c=[58,120,190];}
+    if(layer==='pass'&&cls[i]!==SEA){
+      const ok=bigMult(M,i)>0;const g=(c[0]+c[1]+c[2])/3;
+      c=ok?[clamp(g*.5+40,0,255),clamp(g*.9+60,0,255),clamp(g*.5+40,0,255)]:[clamp(g*.9+60,0,255),clamp(g*.35,0,255),clamp(g*.35,0,255)];
+      if(pass[i])c=[255,230,80];
+    }
+    const p=i*4;d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2];d[p+3]=255;
+  }
+  bx.putImageData(img,0,0);
+}
+function label(t,x,y,sz){ctx.font='700 '+sz+'px system-ui,sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='rgba(20,12,30,.9)';ctx.strokeText(t,x,y);ctx.fillStyle='#fff';ctx.fillText(t,x,y);}
+function draw(){
+  paintBase();ctx.imageSmoothingEnabled=true;ctx.drawImage(base,0,0,W*S,H*S);
+  const {road,bridge,trail}=M;
+  for(let i=0;i<N;i++){const x=i%W,y=(i/W)|0;
+    if(trail[i]){ctx.fillStyle='rgba(240,232,200,.9)';ctx.fillRect(x*S+1,y*S+1,S-1.5,S-1.5);}
+    if(road[i]){ctx.fillStyle=bridge[i]?'#fff':'#8a5a2b';ctx.fillRect(x*S,y*S,S,S);}
+  }
+  for(const t of M.towns){const x=(t.i%W+.5)*S,y=(((t.i/W)|0)+.5)*S;ctx.beginPath();ctx.arc(x,y,t.kind==='cap'?7:4.5,0,7);ctx.fillStyle=t.kind==='cap'?'#ffd35a':'#fff';ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle='#222';ctx.stroke();label(t.name,x,y-9,t.kind==='cap'?13:11);}
+  for(const f of M.forts){const x=(f.i%W+.5)*S,y=(((f.i/W)|0)+.5)*S,s=f.kind==='pass'?9:6;ctx.fillStyle='#c0392b';ctx.fillRect(x-s/2,y-s/2,s,s);ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.strokeRect(x-s/2,y-s/2,s,s);if(f.kind==='pass'||f.kind==='bridge')label(f.name,x,y-8,11);}
+  for(const b of M.bases){const x=(b.i%W+.5)*S,y=(((b.i/W)|0)+.5)*S;ctx.beginPath();ctx.moveTo(x,y-6);ctx.lineTo(x+5.5,y+4);ctx.lineTo(x-5.5,y+4);ctx.closePath();ctx.fillStyle=b.kind==='base'?'#f39c12':'#8e44ad';ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.stroke();}
+  if(layer==='pass'&&M.routePath.length){ctx.beginPath();M.routePath.forEach((i,k)=>{const x=(i%W+.5)*S,y=((i/W|0)+.5)*S;k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);}
+}
+function stats(){
+  const ps=M.px.length,wid=M.forts.filter(f=>f.kind==='pass').map(f=>f.w);
+  const days=M.routeDays,ok=isFinite(days);
+  document.getElementById('stat').innerHTML=
+   '<b>世界 No.'+SEED+'</b>(縦横 約300km×450km)<ul>'+
+   '<li>大軍が越えられる峠: <b>'+ps+'つ</b>(いちばん狭い所の道幅: '+wid.map(w=>'約'+w+'km').join('、')+')</li>'+
+   '<li>山脈の壁: '+(M.leak?'<span class="ng">漏れあり(峠以外から抜けられる)</span>':'<span class="ok">漏れなし</span>')+'</li>'+
+   '<li>北の都→南の都 大軍の行軍: '+(ok?'<b>約'+Math.round(days)+'日</b>(1日12km基準)':'<span class="ng">たどり着けない</span>')+'</li>'+
+   '<li>大軍が通れる土地: 陸地の約'+Math.round(M.bigPct*100)+'%</li>'+
+   '<li>町 '+M.towns.length+'、関と砦 '+M.forts.length+'、山の拠点 '+M.bases.length+'、橋 '+countBridges()+'か所</li></ul>';
+}
+function countBridges(){let n=0;const s=new Set();for(let i=0;i<N;i++)if(M.bridge[i]){const k=((i%W)/6|0)+','+((i/W/6)|0);if(!s.has(k)){s.add(k);n++;}}return n;}
+function newWorld(seed){const t0=performance.now();M=build(seed);draw();stats();window.__ms=Math.round(performance.now()-t0);}
+document.getElementById('bNew').onclick=()=>{const s=1+Math.floor(Math.random()*900000);history.replaceState(null,'','?seed='+s);newWorld(s);};
+document.querySelectorAll('button[data-l]').forEach(b=>b.onclick=()=>{layer=b.dataset.l;document.querySelectorAll('button[data-l]').forEach(x=>x.classList.toggle('on',x===b));draw();});
+const q=+new URLSearchParams(location.search).get('seed');
+newWorld(q||(1+Math.floor(Math.random()*900000)));
+window.__M=()=>M;window.__build=build;window.__setSeed=s=>{newWorld(s);};
+</script>
+</body>
+</html>
