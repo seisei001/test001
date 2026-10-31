@@ -340,9 +340,33 @@ function mkSlots(){
 let rngS=1;
 function rnd(){rngS|=0;rngS=rngS+0x6D2B79F5|0;let t=Math.imul(rngS^rngS>>>15,1|rngS);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
 
+/* ---- 隊長の人物像(性格カード)と、効用+ゆらぎで選ぶ判断 ---- */
+const ARCH={
+  timid:{n:'臆病な守り手',lose:.8,glory:.1,obey:.5,cun:.1,temp:.3},
+  steady:{n:'堅実な古参',lose:.45,glory:.3,obey:.8,cun:.2,temp:.22},
+  hothead:{n:'功名心の猪武者',lose:.2,glory:.9,obey:.4,cun:.1,temp:.4},
+  sly:{n:'計算高い日和見',lose:.55,glory:.4,obey:.3,cun:.7,temp:.28},
+  hero:{n:'変人の英雄',lose:.05,glory:.2,obey:.3,cun:1,temp:.08}
+};
+const MIX={rengo:[['timid',.35],['steady',.25],['hothead',.15],['sly',.25]],aka:[['steady',.45],['hothead',.2],['sly',.2],['timid',.15]],kok:[['steady',.4],['hothead',.35],['sly',.1],['timid',.15]]};
+function pickArch(fac){
+  if(rnd()<.02)return 'hero';
+  let r=rnd();for(const [k,p] of MIX[fac]){if(r<p)return k;r-=p;}return 'steady';
+}
+function decide(u,L){
+  const w=ARCH[u.arch],odds=clamp((u.near+1)/(u.nearE+.3),0,4);
+  const weak=u.weakE&&u.weakE.alive&&u.weakS<=3;
+  const push=L.mode===1?1:.3;
+  const uh=.5*w.lose+.25*(1-w.glory)+.35*clamp(1.2-odds,0,1.2)*(.5+w.lose)+.15*u.stake;
+  const uc=.9*w.glory+.55*(odds-1)*(1-.5*w.lose)+.45*w.obey*push+.2*u.stake*(u.nearE>0?1:0)-w.cun*.5*(weak?0:1);
+  const uf=weak?1.3*w.cun+.2*w.glory+(odds>.6?.06:0):-9;
+  const g=()=>-Math.log(-Math.log(rnd()+1e-9)+1e-9);
+  const a0=uh+w.temp*g(),a1=uc+w.temp*g(),a2=uf+w.temp*g();
+  return a0>=a1&&a0>=a2?0:a1>=a2?1:2;
+}
 /* ---- 生成 ---- */
 function mkUnit(side,fac,leg,type,x,y,fear,sx,sy){
-  const u={id:S.units.length,side,fac,leg,type,x,y,px:x,py:y,men:100,men0:100,morale:1,fear,state:MARCH,sx,sy,tgt:-1,timer:0,face:side?-1:1,kills:0,band:-1,alive:1,dmg:0,fx:0,fy:1,hid:0,near:0,nearE:0,pol:0,ex:0,ey:0,eid:-1,cd:0,rest:0,sup:0,sightE:null,weakE:null,weakS:0,hit:0,hero:0,noc:0,gx:0,gy:0,aft:0,stake:.6,hx:0,hy:0};
+  const u={id:S.units.length,side,fac,leg,type,x,y,px:x,py:y,men:100,men0:100,morale:1,fear,state:MARCH,sx,sy,tgt:-1,timer:0,face:side?-1:1,kills:0,band:-1,alive:1,dmg:0,fx:0,fy:1,hid:0,near:0,nearE:0,pol:0,ex:0,ey:0,eid:-1,cd:0,rest:0,sup:0,sightE:null,weakE:null,weakS:0,hit:0,hero:0,noc:0,gx:0,gy:0,aft:0,stake:.6,hx:0,hy:0,arch:'steady',act:1};
   S.units.push(u);return u;
 }
 function mkLegion(id,name,fac,side,cx,cy,fear,ret,n,major,home){
@@ -352,8 +376,10 @@ function mkLegion(id,name,fac,side,cx,cy,fear,ret,n,major,home){
   for(let i=0;i<n;i++){
     const sl=SLOTS[i],sx=sl.a*UW,sy=sl.b*UW*.8;
     const type=side===1&&i>=n*.95?3:(i%10===0?2:i%5===1?1:0);
-    const fr=clamp(fear+(rnd()-.5)*.4,.04,.95);
+    const ar=pickArch(fac);
+    const fr=clamp(ARCH[ar].lose+(rnd()-.5)*.1,.04,.95);
     const u=mkUnit(side,fac,L.idx,type,cx+sx,cy+sy,fr,sx,sy);
+    u.arch=ar;
     if(type===3)u.sup=1;
     u.hx=home[0];u.hy=home[1];
     L.units.push(u);
@@ -377,7 +403,7 @@ function simInit(){
   }
   /* 主人公 */
   let best=null,bd=1e9;for(const u of A.units){const d=Math.hypot(u.sx-40,u.sy+10);if(d<bd&&u.type===0){bd=d;best=u;}}
-  best.fear=.05;best.hero=1;S.hero=best;best.morale=1;
+  best.fear=.05;best.hero=1;best.arch='hero';S.hero=best;best.morale=1;
   /* 使者 */
   const ev=mkLegion('env','使者','rengo',0,160,1650,.1,0,1,false);ev.units[0].noc=1;ev.units[0].men=3;ev.units[0].men0=3;ev.units[0].type=4;ev.speed=26;ev.wp=[[800,1850]];
   ev.mode=0;S.envoy=ev;
@@ -471,7 +497,7 @@ function unitTick(u){
   /* 使者 */
   if(u.noc){const w=L.wp[0],dx=w[0]-u.x,dy=w[1]-u.y,d=Math.hypot(dx,dy);if(S.t>=20&&d>6){u.x+=dx/d*L.speed*DT;u.y+=dy/d*L.speed*DT;u.face=dx>0?1:-1;}else if(S.t>=46){u.alive=0;}return;}
   const heavy=(u.id+S.tick)%4===0;
-  if(heavy){scan(u,u.fear<.3?170:115);const dh=Math.hypot(u.x-u.hx,u.y-u.hy);u.stake=u.side?clamp(.42-dh/6000,.2,.42):clamp(.88-dh/2600,.45,.88);}
+  if(heavy){scan(u,u.fear<.3?170:115);if(u.sightE||u.near)u.act=decide(u,L);const dh=Math.hypot(u.x-u.hx,u.y-u.hy);u.stake=u.side?clamp(.42-dh/6000,.2,.42):clamp(.88-dh/2600,.45,.88);}
   let sightE=u.sightE&&u.sightE.alive?u.sightE:null;
   /* 近接の相手と密集の押し合い */
   const U=S.units,cx=u.x/40|0,cy=u.y/40|0;let ce=null,cd2=1e9,px=0,py=0;
@@ -530,12 +556,12 @@ function unitTick(u){
         const ed=Math.sqrt((e.x-u.x)**2+(e.y-u.y)**2);
         const odds=(u.near+1)/(u.nearE+.3),need=.4+u.fear*1.5;
         const ranged=u.type===1||u.type===2;
-        if(u.hero||u.fear<.25){e=(u.weakE&&u.weakE.alive?u.weakE:e);}
+        if(u.act===2&&u.weakE&&u.weakE.alive)e=u.weakE;
         if(fightNow){u.state=FIGHT;u.tgt=e.id;}
         else if(ranged&&ed<(u.type===1?80:62)&&odds>.4){u.state=FIGHT;u.tgt=e.id;}
-        else if(u.fear<.25?(u.weakE&&u.weakE.alive&&u.weakS<=3):odds>=need){
+        else if(u.act!==0){
           const dx=e.x-u.x,dy=e.y-u.y,d=Math.hypot(dx,dy)||1;
-          if(ed<(u.fear<.25?240:160)){mx=dx/d;my=dy/d;sp=20;u.state=FIGHT;u.tgt=e.id;}
+          if(ed<(u.act===2?240:160)){mx=dx/d;my=dy/d;sp=20;u.state=FIGHT;u.tgt=e.id;}
         }else{
           u.state=MARCH;
           if(ed<40){u.state=FIGHT;u.tgt=e.id;}
