@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="世界ハニカム">
+<title>🌐 世界ハニカム</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel-bg:#fff;--border:#d5dbe6;--text:#1c2330;--muted:#5d6878;--accent:#2563eb;--hud:rgba(255,255,255,.88)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel-bg:#19212e;--border:#2c3748;--text:#e8edf5;--muted:#9aa6b8;--accent:#6ea0ff;--hud:rgba(20,28,40,.86)}}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:8px;padding:4px 10px;min-height:44px;background:var(--panel-bg);border-bottom:1px solid var(--border)}
+.back-link{color:var(--accent);text-decoration:none;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap}
+h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ver{font-size:11px;color:var(--muted)}
+main{position:relative;flex:1;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.hud{position:absolute;left:8px;top:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;line-height:1.4;pointer-events:none;max-width:70%}
+.hud b{font-size:15px}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px calc(6px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.card{background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:auto}
+.row{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
+button{min-height:44px;min-width:44px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--hud);color:var(--text);font-size:15px}
+button:active{background:var(--accent);color:#fff}
+.seed{font-size:12px;color:var(--muted)}
+#err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <a class="back-link" href="../../">← ハブに戻る</a>
+  <h1>🌐 世界ハニカム <span class="ver" id="ver"></span></h1>
+  <button id="dice" aria-label="新しい世界" title="新しい世界">🎲</button>
+</header>
+<main>
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hud"></div>
+  <div class="bar">
+    <div class="card" id="info" hidden></div>
+    <div class="row">
+      <button id="zin" aria-label="拡大">＋</button>
+      <button id="zout" aria-label="縮小">－</button>
+      <button id="tdn" aria-label="見下ろす">⤒</button>
+      <button id="tup" aria-label="斜めにする">⤓</button>
+      <button id="rl" aria-label="左回り">↺</button>
+      <button id="rr" aria-label="右回り">↻</button>
+      <button id="ex" aria-label="高さの強調">高さ×1</button>
+      <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
+      <button id="home" aria-label="世界全体">🌍</button>
+    </div>
+  </div>
+  <div id="err" hidden></div>
+</main>
+<script>window.APP_VER='0.10';</script>
+<script src="world.js?v=0.10"></script>
+<script src="sekai.js?v=0.10"></script>
+<script src="view.js?v=0.10"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  $('ver').textContent='v'+window.APP_VER;
+  var params=new URLSearchParams(location.search);
+  var seed=params.get('seed')?(parseInt(params.get('seed'),10)||1):((Math.random()*1e6)|0)+1;
+  var sk,view;
+  function fmtLen(m){return m>=1000?(m/1000>=100?Math.round(m/1000):(m/1000).toFixed(m>=10000?0:1))+'km':(m>=100?Math.round(m):m.toFixed(m>=10?0:1))+'m';}
+  function biomeName(b){return b===0?'海':(SekaiWorld.BIOME[b]||'?');}
+  function hudUpdate(st,mesh){
+    if(!mesh)return;
+    var L=mesh.L;
+    $('hud').innerHTML='<b>層'+L+' '+Sekai.LAYER_NAME[L]+'</b> ・ 1マス '+fmtLen(mesh.s)+'<br><span class="seed">種 '+seed+' ・ '+mesh.m+'マス ・ 生成 '+Math.round(mesh.ms)+'ms</span>';
+  }
+  function selUpdate(p){
+    var card=$('info'),dive=$('dive');
+    if(!p){card.hidden=true;dive.hidden=true;return;}
+    var w=sk.w,t='<b>層'+p.L+' '+Sekai.LAYER_NAME[p.L]+'</b> のマス ('+p.q+', '+p.r+')<br>標高 '+Math.round(p.h)+'m ・ '+biomeName(p.b);
+    if(p.L===0){
+      var c=p.q+((p.r-(p.r&1))>>1),i=p.r*w.W+c;
+      if(i>=0&&i<w.N){t+=' ・ 岩石 '+SekaiWorld.ROCK[w.rock[i]]+'<br>降水 '+Math.round(w.precip[i])+'mm ・ 気温 '+w.temp[i].toFixed(0)+'℃ ・ 肥沃度 '+w.fertility[i].toFixed(2)+(w.cont[i]?' ・ 大陸'+w.cont[i]:'');}
+    }
+    card.innerHTML=t;card.hidden=false;dive.hidden=p.L>=Sekai.NL-1;
+  }
+  function start(){
+    $('err').hidden=true;
+    var t0=performance.now();
+    sk=Sekai.create(seed);
+    var wms=Math.round(performance.now()-t0);
+    if(view){ /* 新しい世界: 画面を作り直す */ var old=$('cv'),n=old.cloneNode(false);old.parentNode.replaceChild(n,old);}
+    try{
+      view=SekaiView.create($('cv'),sk,{onFrame:hudUpdate,onSelect:selUpdate});
+    }catch(e){$('err').hidden=false;$('err').textContent='WebGL を使えない環境です: '+e.message;return;}
+    view.resize();selUpdate(null);
+    window.__sk=sk;window.__view=view;window.__worldMs=wms;
+    history.replaceState(null,'','?seed='+seed);
+  }
+  var EXV=[0.6,1,1.6,2.5],exi=1;
+  $('dice').onclick=function(){seed=((Math.random()*1e6)|0)+1;start();};
+  $('zin').onclick=function(){view.zoomTo(view.st.ppm*2.2);};
+  $('zout').onclick=function(){view.zoomTo(view.st.ppm/2.2);};
+  $('tdn').onclick=function(){view.setTilt(view.tiltDeg()-10);};
+  $('tup').onclick=function(){view.setTilt(view.tiltDeg()+10);};
+  $('rl').onclick=function(){view.rotate(-Math.PI/6);};
+  $('rr').onclick=function(){view.rotate(Math.PI/6);};
+  $('ex').onclick=function(){exi=(exi+1)%EXV.length;$('ex').textContent='高さ×'+EXV[exi];view.setExMul(EXV[exi]);};
+  $('home').onclick=function(){view.reset();view.select(null);};
+  $('dive').onclick=function(){
+    var p=view.getSel();if(!p)return;var m=view.mesh,P=[0,0];Sekai.pos(p.L,p.q,p.r,P);
+    var nextS=Sekai.spacing(Math.min(Sekai.NL-1,p.L+1));
+    view.jumpTo(P[0],P[1],Math.max(view.st.ppm*1.01,48/nextS));
+    view.select(null);
+  };
+  window.addEventListener('load',start);
+})();
+</script>
+</body>
+</html>
