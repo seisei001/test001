@@ -77,7 +77,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
       <button class="b" id="bPrev" aria-label="前の章">⏮</button>
       <button class="b big" id="bPlay" aria-label="再生・一時停止">⏸</button>
       <button class="b" id="bNext" aria-label="次の章">⏭</button>
-      <button class="b" id="bSpd">×1</button>
+      <button class="b" id="bSpd">×4</button>
       <button class="b on" id="bCam">🎥自動</button>
       <button class="b" id="bLod">兵:自動</button>
       <button class="b" id="bChap">章</button>
@@ -87,21 +87,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
   <div id="title" class="ov" hidden>
     <h1>百人隊長戦記</h1>
     <div class="tag">— 六万の軍に、ひとりの百人隊長がいた —</div>
-    <p>百人の隊が数百、AIの隊長たちに動かされる戦争シミュレーションを「観戦」します。毎回少しずつ展開が変わります。<br>臆病な隊長、勇敢な隊長、そしてひとりの変人——百人隊長・灯真は、千人隊長になれるか。<br>ドラッグで移動、ピンチで拡大。章ジャンプ・倍速もできます。</p>
+    <p>百人の隊が数百、AIの隊長たちに動かされる戦争シミュレーションを「観戦」します。土地は広く、時間はゆっくり。成功するとは限らず、🎲で別の人生も見られます。<br>臆病な隊長、勇敢な隊長、そしてひとりの変人——百人隊長・灯真は、千人隊長になれるか。<br>ドラッグで移動、ピンチで拡大。章ジャンプ・倍速もできます。</p>
     <button class="go" id="bStart">戦記をはじめる</button>
   </div>
   <div id="end" class="ov" hidden style="background:linear-gradient(rgba(10,9,20,0) 0%,rgba(10,9,20,.35) 50%,rgba(10,9,20,.7) 100%);justify-content:flex-end;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px));pointer-events:none">
-    <h1>第三章 完</h1>
+    <h1>昇進</h1>
     <div class="tag">— 百人隊長は、千人隊長となった —</div>
     <button class="go" id="bAgain" style="pointer-events:auto">もう一度みる</button>
     <button class="go alt" id="bEndChap" style="pointer-events:auto">章をえらぶ</button>
+    <button class="go alt" id="bSeed" style="pointer-events:auto">🎲 別の人生で見る</button>
   </div>
   <div id="load" class="ov"><div class="tag" style="margin:0">世界地図を描いています…</div></div>
 </div>
 <script>
 'use strict';
 /* ============ 基本 ============ */
-const WW=1600, WH=2400, T_END=775, T_MAX=800;
+const K=5.5, TK=5.5;            /* K=土地の広がり(縦横) TK=時間のゆったり度 */
+const WW=1600*K, WH=2400*K;
+const P2=a=>[a[0]*K,a[1]*K];
 const TAU=Math.PI*2;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const sm=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
@@ -135,6 +138,7 @@ const CITY=[
   {n:'天嶺砦',x:900,y:1170,kind:'fort',own:[[0,'aka']]},
   {n:'黒曜城',x:800,y:300,kind:'emp',own:[[0,'kok']]}
 ];
+for(const c of CITY){c.mx=c.x;c.my=c.y;}
 function ownerAt(c,t){let f=c.own[0][1];for(const [tt,ff] of c.own)if(t>=tt)f=ff;return f;}
 
 /* ============ 地形 ============ */
@@ -152,31 +156,33 @@ function H(x,y){
   const pass=1-.88*Math.exp(-Math.pow((x-450)/62,2))-.88*Math.exp(-Math.pow((x-1150)/62,2));
   h+=m*(.22+.5*ridge)*pass;
   h-=sm(1350,1650,y)*.03;
-  const ed=Math.min(x,WW-x,WH-y);
+  const ed=Math.min(x,1600-x,2400-y);
   const coast=64+(fbm(x/140,y/140,3)-.5)*120;
   const sea=y>1380?sm(coast+34,coast-18,ed)*sm(1380,1520,y):0;
   h=h*(1-sea)+.2*sea;
   for(const c of CITY){const dx=x-c.x,dy=y-c.y,d2=dx*dx+dy*dy;if(d2<6400){const w=sm(80,28,Math.sqrt(d2));h=h*(1-w)+.47*w;}}
   return h;
 }
+function Hw(x,y){return H(x/K,y/K)+(fbm(x/230+11,y/230+5,4)-.5)*.2;}
+const FOR_F=(x,y)=>fbm(x/260+50,y/260,3);
 let TERR=null;
 function lerpC(a,b,u){return[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u];}
 function genTerrain(){
-  const SW=800,SH=1200,hs=new Float32Array(SW*SH);
-  for(let j=0;j<SH;j++)for(let i=0;i<SW;i++)hs[j*SW+i]=H((i+.5)*2,(j+.5)*2);
+  const SW=704,SH=1056,ST=WW/SW,hs=new Float32Array(SW*SH);
+  for(let j=0;j<SH;j++)for(let i=0;i<SW;i++)hs[j*SW+i]=Hw((i+.5)*ST,(j+.5)*ST);
   const sc=document.createElement('canvas');sc.width=SW;sc.height=SH;
   const sx=sc.getContext('2d'),img=sx.createImageData(SW,SH),d=img.data;
   const DEEP=[38,84,128],SHAL=[88,156,190],BEACH=[232,217,160];
   const GS=[134,196,106],GS2=[96,164,84],GN=[190,180,112],GN2=[150,146,86],FOR=[58,118,70],FORN=[70,100,78];
   const HILL=[152,142,102],ROCK=[142,138,134],ROCK2=[188,184,178],SNOW=[246,248,252];
   for(let j=0;j<SH;j++)for(let i=0;i<SW;i++){
-    const k=j*SW+i,h=hs[k],wx=(i+.5)*2,wy=(j+.5)*2;
-    const nt=sm(1250,950,wy);
+    const k=j*SW+i,h=hs[k],wx=(i+.5)*ST,wy=(j+.5)*ST;
+    const nt=sm(1250,950,wy/K);
     let c;
     if(h<.30){c=lerpC(SHAL,DEEP,clamp((.30-h)/.1,0,1));}
     else if(h<.325){c=BEACH;}
     else{
-      const f=fbm(wx/150+50,wy/150,3);
+      const f=FOR_F(wx,wy);
       const t=clamp((h-.325)/.3,0,1);
       let g=lerpC(lerpC(GS,GS2,t),lerpC(GN,GN2,t),nt);
       const fw=sm(.57,.66,f);
@@ -196,34 +202,36 @@ function genTerrain(){
     const p=k*4;d[p]=clamp(c[0]*s+g2,0,255);d[p+1]=clamp(c[1]*s+g2,0,255);d[p+2]=clamp(c[2]*s+g2,0,255);d[p+3]=255;
   }
   sx.putImageData(img,0,0);
-  const TS=.75,big=document.createElement('canvas');big.width=WW*TS;big.height=WH*TS;
+  const TS=.2,big=document.createElement('canvas');big.width=WW*TS;big.height=WH*TS;
   const c=big.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
   c.drawImage(sc,0,0,big.width,big.height);
   c.scale(TS,TS);
-  const hAt=(x,y)=>hs[clamp(Math.floor(y/2),0,SH-1)*SW+clamp(Math.floor(x/2),0,SW-1)];
+  const hAt=(x,y)=>hs[clamp(Math.floor(y/ST),0,SH-1)*SW+clamp(Math.floor(x/ST),0,SW-1)];
   /* 川 */
-  const rivers=[[[450,1250],[430,1450],[380,1650],[300,1800],[210,1960],[110,2090],[40,2160]],[[1150,1250],[1180,1450],[1230,1650],[1180,1800],[1100,1950],[1110,2150],[1090,2420]]];
+  const rivers0=[[[450,1250],[430,1450],[380,1650],[300,1800],[210,1960],[110,2090],[40,2160]],[[1150,1250],[1180,1450],[1230,1650],[1180,1800],[1100,1950],[1110,2150],[1090,2420]]];
+  const rivers=rivers0.map(r=>r.map(P2));
   for(const pts of rivers){
     for(const pass of [0,1]){
       c.beginPath();c.moveTo(pts[0][0],pts[0][1]);
       for(let i=1;i<pts.length-1;i++){const mx=(pts[i][0]+pts[i+1][0])/2,my=(pts[i][1]+pts[i+1][1])/2;c.quadraticCurveTo(pts[i][0],pts[i][1],mx,my);}
       c.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]);
       c.lineCap='round';c.lineJoin='round';
-      c.strokeStyle=pass?'#7bb8d6':'rgba(40,80,110,.55)';c.lineWidth=pass?5:8;c.stroke();
+      c.strokeStyle=pass?'#7bb8d6':'rgba(40,80,110,.55)';c.lineWidth=pass?15:26;c.stroke();
     }
   }
   /* 山・木 */
   const rnd=mulberry(77),items=[];
-  for(let y=20;y<WH-10;y+=15)for(let x=20;x<WW-10;x+=15){
-    const jx=x+(rnd()-.5)*15,jy=y+(rnd()-.5)*15,h=hAt(jx,jy);
+  for(let y=30;y<WH-10;y+=30)for(let x=30;x<WW-10;x+=30){
+    const jx=x+(rnd()-.5)*30,jy=y+(rnd()-.5)*30,h=hAt(jx,jy);
     if(h>.7&&rnd()<.4)items.push({k:'m',x:jx,y:jy,h,s:10+rnd()*10+(h-.7)*40});
   }
-  for(let y=8;y<WH-8;y+=10)for(let x=8;x<WW-8;x+=10){
-    const jx=x+(rnd()-.5)*10,jy=y+(rnd()-.5)*10,h=hAt(jx,jy);
-    if(h>.34&&h<.62){const f=fbm(jx/150+50,jy/150,3);if(f>.6&&rnd()<.55)items.push({k:'t',x:jx,y:jy,nt:sm(1250,950,jy),s:3.6+rnd()*2});}
+  for(let y=16;y<WH-8;y+=26)for(let x=16;x<WW-8;x+=26){
+    const jx=x+(rnd()-.5)*26,jy=y+(rnd()-.5)*26,h=hAt(jx,jy);
+    if(h>.34&&h<.62){const f=FOR_F(jx,jy);if(f>.6&&rnd()<.5)items.push({k:'t',x:jx,y:jy,nt:sm(1250,950,jy/K),s:3.6+rnd()*2});}
   }
   items.sort((a,b)=>a.y-b.y);
   for(const it of items){
+    c.save();c.translate(it.x,it.y);{const q=it.k==='m'?2.1:3.2;c.scale(q,q);}c.translate(-it.x,-it.y);
     if(it.k==='m'){
       const s=it.s;
       c.beginPath();c.moveTo(it.x,it.y-s);c.lineTo(it.x-s*.85,it.y);c.lineTo(it.x,it.y+s*.12);c.closePath();c.fillStyle='#aaa59c';c.fill();
@@ -234,7 +242,9 @@ function genTerrain(){
       if(it.nt>.5){c.beginPath();c.moveTo(it.x,it.y-s*2);c.lineTo(it.x-s*.8,it.y);c.lineTo(it.x+s*.8,it.y);c.closePath();c.fill();}
       else{c.fillStyle='#4a3a2a';c.fillRect(it.x-.4,it.y-s*.5,.8,s*.6);c.fillStyle='#2f7a45';c.beginPath();c.arc(it.x,it.y-s,s*.9,0,TAU);c.fill();c.fillStyle='rgba(180,230,140,.35)';c.beginPath();c.arc(it.x-s*.25,it.y-s*1.2,s*.45,0,TAU);c.fill();}
     }
+    c.restore();
   }
+  c.save();c.scale(K,K);
   /* 地名 */
   c.textAlign='center';c.textBaseline='middle';c.fillStyle='rgba(50,36,18,.34)';
   const lab=(txt,x,y,sz,rot,sp)=>{c.save();c.translate(x,y);c.rotate(rot);c.font='800 '+sz+'px "Shippori Mincho",serif';const w=txt.length;for(let i=0;i<w;i++)c.fillText(txt[i],(i-(w-1)/2)*sp,0);c.restore();};
@@ -244,6 +254,7 @@ function genTerrain(){
   for(let i=0;i<4;i++){c.rotate(Math.PI/2);c.beginPath();c.moveTo(0,-60);c.lineTo(10,-10);c.lineTo(-10,-10);c.closePath();c.fill();}
   c.beginPath();c.arc(0,0,66,0,TAU);c.lineWidth=2;c.strokeStyle='rgba(50,36,18,.5)';c.stroke();
   c.restore();c.font='800 30px "Shippori Mincho",serif';c.fillStyle='rgba(50,36,18,.65)';c.fillText('北',1470,118);
+  c.restore();
   /* 周縁のくらみ */
   c.setTransform(1,0,0,1,0,0);
   const g=c.createRadialGradient(big.width/2,big.height/2,big.height*.34,big.width/2,big.height/2,big.height*.72);
@@ -315,19 +326,20 @@ function mkSprites(){
 
 /* ============ シミュレーション(百人隊長AI) ============ */
 let S=null;
-const DT=.2, GW=40, GH=60;
+const DT=.5, GW=Math.ceil(WW/40), GH=Math.ceil(WH/40);
 const MARCH=0,FIGHT=1,ROUT=2,HIDE=3,STRIKE=4,WITHDRAW=5,REST=6;
-const HID=[[330,1180],[610,1110],[760,1250],[1040,1110],[1260,1230],[1450,1150]];
-const STAGE={aka:[580,1460],c1:[430,1560],c2:[340,1450],c3:[800,1450],c4:[960,1500],c5:[590,1590],c6:[780,1570],c7:[210,1520],c8:[930,1600]};
-const CLANS=[['c1','白鷺軍',470,1590,40,0],['c2','青嵐軍',300,1940,35,1],['c3','紅葉軍',1180,1900,40,4],['c4','銀嶺軍',1350,1600,40,5],['c5','翠川軍',560,2160,35,2],['c6','琥珀軍',1020,2170,35,3],['c7','紫苑軍',160,1650,35,0],['c8','蒼海軍',1420,2020,40,3]];
+const HID=[[330,1180],[610,1110],[760,1250],[1040,1110],[1260,1230],[1450,1150]].map(P2);
+const STAGE=Object.fromEntries(Object.entries({aka:[580,1460],c1:[430,1560],c2:[340,1450],c3:[800,1450],c4:[960,1500],c5:[590,1590],c6:[780,1570],c7:[210,1520],c8:[930,1600]}).map(([k,v])=>[k,P2(v)]));
+const CLANS=[['c1','白鷺軍',470,1590,40,0],['c2','青嵐軍',300,1940,35,1],['c3','紅葉軍',1180,1900,40,4],['c4','銀嶺軍',1350,1600,40,5],['c5','翠川軍',560,2160,35,2],['c6','琥珀軍',1020,2170,35,3],['c7','紫苑軍',160,1650,35,0],['c8','蒼海軍',1420,2020,40,3]].map(c=>[c[0],c[1],c[2]*K,c[3]*K,c[4],c[5]]);
 const HERO_NAME='灯真';
+const DMGK=.3;   /* 戦闘のゆっくりさ(小さいほど戦いが長引く) */
 const MERIT_GOAL=400;
-const SGW=80,SGH=120;let SG=null,SF=null;
+const SGW=Math.ceil(WW/40),SGH=Math.ceil(WH/40);let SG=null,SF=null;
 function simTerrain(){
   if(SG)return;SG=new Float32Array(SGW*SGH);SF=new Float32Array(SGW*SGH);
-  for(let j=0;j<SGH;j++)for(let i=0;i<SGW;i++){const x=(i+.5)*20,y=(j+.5)*20;SG[j*SGW+i]=H(x,y);SF[j*SGW+i]=fbm(x/150+50,y/150,3);}
+  for(let j=0;j<SGH;j++)for(let i=0;i<SGW;i++){const x=(i+.5)*40,y=(j+.5)*40;SG[j*SGW+i]=Hw(x,y);SF[j*SGW+i]=FOR_F(x,y);}
 }
-const gi=(x,y)=>clamp(y/20|0,0,SGH-1)*SGW+clamp(x/20|0,0,SGW-1);
+const gi=(x,y)=>clamp(y/40|0,0,SGH-1)*SGW+clamp(x/40|0,0,SGW-1);
 const hAt=(x,y)=>SG[gi(x,y)];
 const coverAt=(x,y)=>{const i=gi(x,y),h=SG[i];return h>.6||(SF[i]>.6&&h>.34&&h<.62);};
 const spdAt=(x,y)=>{const h=SG[gi(x,y)];return h<.3?.15:h>.74?.5:h>.62?.75:1;};
@@ -337,7 +349,7 @@ function mkSlots(){
   for(let b=-30;b<=30;b++)for(let a=-46;a<=46;a++){const aa=a+((b&1)?.5:0);arr.push({a:aa,b,d:(aa/1.6)*(aa/1.6)+b*b+ih(a,b)*.3});}
   arr.sort((p,q)=>p.d-q.d);SLOTS=arr.slice(0,1500);
 }
-let rngS=1;
+let rngS=1,SEED_RUN=(+new URLSearchParams(location.search).get('seed'))||20261031;
 function rnd(){rngS|=0;rngS=rngS+0x6D2B79F5|0;let t=Math.imul(rngS^rngS>>>15,1|rngS);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
 
 /* ---- 隊長の人物像(性格カード)と、効用+ゆらぎで選ぶ判断 ---- */
@@ -389,23 +401,24 @@ function mkLegion(id,name,fac,side,cx,cy,fear,ret,n,major,home){
 const UW=18;
 function simInit(){
   simTerrain();if(!SLOTS)mkSlots();
-  rngS=20261031;
-  S={t:0,tick:0,units:[],legs:[],bands:[],chap:0,chapT:[0,75,-1],sub:null,pops:[],fx:[],hero:null,gh:new Int32Array(GW*GH),gn:null,promoted:0,endT:-1,volN:0,flags:{},lastPop:-9,envoy:null,stat:{},empK:.8};
+  rngS=SEED_RUN;
+  S={t:0,tick:0,units:[],legs:[],bands:[],chap:0,chapT:[0,75*TK,-1],sub:null,pops:[],fx:[],hero:null,gh:new Int32Array(GW*GH),gn:null,promoted:0,endT:-1,volN:0,flags:{},lastPop:-9,envoy:null,stat:{},empK:.8};
   S.gn=new Int32Array(4000);
+  S.fell=0;
   /* 帝国軍 12万 */
-  const E=mkLegion('emp','黒曜帝国軍','kok',1,800,330,.45,.0,1200,true,[800,330]);
-  E.wp=[[800,700],[640,950],[470,1150],[470,1215],[540,1330],[560,1450]];E.speed=12;E.mode=0;
+  const E=mkLegion('emp','黒曜帝国軍','kok',1,800*K,330*K,.45,.0,1200,true,P2([800,330]));
+  E.wp=[[800,700],[640,950],[470,1150],[470,1215],[540,1330],[560,1450]].map(P2);E.speed=12;E.mode=0;
   /* 暁軍 2万 + 豪族 3万 */
-  const A=mkLegion('aka','暁軍','aka',0,800,1860,.4,.72,200,true,[800,1860]);A.rally=[900,1175];
+  const A=mkLegion('aka','暁軍','aka',0,800*K,1860*K,.4,.72,200,true,P2([800,1860]));A.rally=P2([900,1175]);
   for(const c of CLANS){
     const L=mkLegion(c[0],c[1],'rengo',0,c[2],c[3],.68,.66,c[4],true,[c[2],c[3]]);
     L.rally=HID[c[5]];
   }
   /* 主人公 */
   let best=null,bd=1e9;for(const u of A.units){const d=Math.hypot(u.sx-40,u.sy+10);if(d<bd&&u.type===0){bd=d;best=u;}}
-  best.fear=.05;best.hero=1;best.arch='hero';S.hero=best;best.morale=1;
+  best.fear=0;best.hero=1;best.arch='hero';S.hero=best;best.morale=1;
   /* 使者 */
-  const ev=mkLegion('env','使者','rengo',0,160,1650,.1,0,1,false);ev.units[0].noc=1;ev.units[0].men=3;ev.units[0].men0=3;ev.units[0].type=4;ev.speed=26;ev.wp=[[800,1850]];
+  const ev=mkLegion('env','使者','rengo',0,160*K,1650*K,.1,0,1,false);ev.units[0].noc=1;ev.units[0].men=3;ev.units[0].men0=3;ev.units[0].type=4;ev.speed=26;ev.wp=[P2([800,1850])];
   ev.mode=0;S.envoy=ev;
   S.tick=0;
 }
@@ -446,14 +459,14 @@ function step(){
   const U=S.units;
   for(let i=0;i<U.length;i++){const u=U[i];if(u.alive)unitTick(u);}
   for(let i=0;i<U.length;i++){const u=U[i];if(u.alive&&u.dmg>0)hurt(u);}
-  if(S.tick%5===0)bandsTick();
-  if(S.tick%10===0)legDecide();
+  if(S.tick%2===0)bandsTick();
+  if(S.tick%4===0)legDecide();
   /* 古い演出を捨てる */
   if(S.fx.length>250)S.fx.splice(0,S.fx.length-250);
 }
 function legTick(L){
   if(L.mode!==1||L.wi>=L.wp.length)return;
-  if(S.tick%5===0){let ok=0,n=0;for(const u of L.units){if(!u.alive||u.band>=0||u.state===ROUT)continue;n++;if(Math.abs(u.x-(L.cx+u.sx))+Math.abs(u.y-(L.cy+u.sy))<110)ok++;}L.coh=n?ok/n:1;}
+  if(S.tick%2===0){let ok=0,n=0;for(const u of L.units){if(!u.alive||u.band>=0||u.state===ROUT)continue;n++;if(Math.abs(u.x-(L.cx+u.sx))+Math.abs(u.y-(L.cy+u.sy))<110)ok++;}L.coh=n?ok/n:1;}
   const w=L.wp[L.wi],dx=w[0]-L.cx,dy=w[1]-L.cy,d=Math.hypot(dx,dy);
   if(d<18){L.wi++;return;}
   const sp=L.speed*spdAt(L.cx,L.cy)*(.25+.75*L.coh)*DT;
@@ -466,7 +479,7 @@ function legDecide(){
     if(L.side===0&&!L.retreat&&L.ret>0&&S.chap<2){
       let thr=L.ret;
       for(const K of S.legs)if(K!==L&&K.side===0&&K.retreat&&Math.hypot(K.cx-L.cx,K.cy-L.cy)<700)thr+=.09;
-      if(S.t>95&&m/L.men0<thr){
+      if(S.t>95*TK&&m/L.men0<thr){
         L.retreat=true;L.retT=S.t;L.mode=1;L.wp=[L.rally];L.wi=0;L.speed=18;
         if(S.t-S.lastPop>1){pop2(L.cx,L.cy-40,L.id==='aka'?'暁軍、退却':L.name+'、撤退','b');S.lastPop=S.t;}
         if(L.id!=='aka'&&!S.flags.clanRet){S.flags.clanRet=1;say('豪族の軍が、自領を守ろうと先に退いた——連合に亀裂が走る',7);}
@@ -474,17 +487,17 @@ function legDecide(){
     }
   }
 }
-function pop2(x,y,txt,kind,dur){S.pops.push({t:S.t,x,y,txt,kind:kind||'n',dur:dur||3});if(S.pops.length>40)S.pops.shift();}
-function say(txt,dur){S.sub={txt,until:S.t+(dur||6)};}
+function pop2(x,y,txt,kind,dur){S.pops.push({t:S.t,x,y,txt,kind:kind||'n',dur:(dur||3)*3});if(S.pops.length>40)S.pops.shift();}
+function say(txt,dur){S.sub={txt,until:S.t+(dur||6)*TK};}
 function hurt(u){
-  const d=u.hero?u.dmg*.45:u.dmg;u.dmg=0;
+  const d=u.dmg;u.dmg=0;
   const frac=Math.min(1,d/Math.max(u.men,1));
   u.men-=d;
   u.morale-=frac*(1.0+u.fear*1.6)*(1.35-u.stake*.7);
-  if(u.men<=.5){u.alive=0;u.men=0;S.fx.push({t:S.t,x:u.x,y:u.y,k:0});return;}
+  if(u.men<=.5){u.alive=0;u.men=0;S.fx.push({t:S.t,x:u.x,y:u.y,k:0});if(u.hero&&!S.fell){S.fell=1;S.endT=S.t;say('——'+HERO_NAME+'、戦死。変人の理屈は、ここで途切れた',12);pop2(u.x,u.y-40,'百人隊長、討死','b',6);}return;}
   if(u.state!==ROUT&&u.state!==WITHDRAW&&u.state!==REST){
-    const brk=.1+(1-u.stake)*.42+u.fear*.08;
-    if(u.morale<brk||(u.hero&&u.men<55)){
+    const brk=u.hero?.06:.1+(1-u.stake)*.42+u.fear*.08;
+    if(u.morale<brk||(u.hero&&u.men<22)){
       if(u.band>=0||u.hero){sendHome(u);u.tgt=-1;}
       else{u.state=ROUT;u.timer=26+rnd()*18;if(S.t-S.lastPop>2.5&&S.chap===1){pop2(u.x,u.y-24,'崩れた！','b',2.4);S.lastPop=S.t;}}
     }
@@ -496,8 +509,8 @@ function unitTick(u){
   if(u.cd>0)u.cd-=DT;
   /* 使者 */
   if(u.noc){const w=L.wp[0],dx=w[0]-u.x,dy=w[1]-u.y,d=Math.hypot(dx,dy);if(S.t>=20&&d>6){u.x+=dx/d*L.speed*DT;u.y+=dy/d*L.speed*DT;u.face=dx>0?1:-1;}else if(S.t>=46){u.alive=0;}return;}
-  const heavy=(u.id+S.tick)%4===0;
-  if(heavy){scan(u,u.fear<.3?170:115);if(u.sightE||u.near)u.act=decide(u,L);const dh=Math.hypot(u.x-u.hx,u.y-u.hy);u.stake=u.side?clamp(.42-dh/6000,.2,.42):clamp(.88-dh/2600,.45,.88);}
+  const heavy=(u.id+S.tick)%2===0;
+  if(heavy){scan(u,u.fear<.3?170:115);if(u.sightE||u.near)u.act=decide(u,L);const dh=Math.hypot(u.x-u.hx,u.y-u.hy);u.stake=u.hero?.5:u.side?clamp(.42-dh/6000,.2,.42):clamp(.88-dh/2600,.45,.88);}
   let sightE=u.sightE&&u.sightE.alive?u.sightE:null;
   /* 近接の相手と密集の押し合い */
   const U=S.units,cx=u.x/40|0,cy=u.y/40|0;let ce=null,cd2=1e9,px=0,py=0;
@@ -506,7 +519,7 @@ function unitTick(u){
     while(i>=0){
       const v=U[i];i=S.gn[i];if(v===u||v.noc)continue;
       const dx=v.x-u.x,dy=v.y-u.y,d2=dx*dx+dy*dy;
-      if(v.side===u.side){if(d2<100&&d2>.01){const d=Math.sqrt(d2),k=(10-d)*.12/d;px-=dx*k;py-=dy*k;}}
+      if(v.side===u.side){if(d2<100&&d2>.01){const d=Math.sqrt(d2),k=(10-d)*.3/d;px-=dx*k;py-=dy*k;}}
       else if(!(v.hid&&d2>2025)&&d2<cd2){cd2=d2;ce=v;}
     }
   }
@@ -595,7 +608,7 @@ function unitTick(u){
     if(tgt.sup)m*=1.6;
     if(tgt.state===ROUT)m*=1.15;
     const fm=.55+.45*u.morale;
-    let dm=u.men*.0125*DT*m*dmgK*fm*(1+u.stake*.25)*(u.sup?.3:1)*(u.side===1?S.empK:1);
+    let dm=u.men*.0125*DT*DMGK*m*dmgK*fm*(1+u.stake*.25)*(u.sup?.3:1)*(u.side===1?S.empK:1);
     dm=Math.min(dm,tgt.men-tgt.dmg+.3);
     if(dm>0){tgt.dmg+=dm;u.kills+=dm;if(u.hit!==2)u.hit=1;u.face=tgt.x>=u.x?1:-1;if(tgt.hid)tgt.hid=0;}
   }
@@ -611,7 +624,7 @@ function mkBands(){
   S.bands=[];
   /* 豪族の残兵 */
   for(let b=0;b<6;b++)S.bands.push({id:b,name:'豪族遊撃隊',clan:1,units:[],hx:HID[b][0],hy:HID[b][1],state:'rest',timer:10+b*5,px:0,py:0,fear:.6,leg:-1,t0:0,men0:0,kills:0,cnt:0});
-  for(let b=0;b<10;b++){const a=b/10*TAU;S.bands.push({id:6+b,name:b===0?'灯真の隊':'暁軍遊撃隊',clan:0,units:[],hx:900+Math.cos(a)*(90+rnd()*150),hy:1060-Math.abs(Math.sin(a))*(30+rnd()*70),state:'rest',timer:14+b*3,px:0,py:0,fear:.38,leg:-1,t0:0,men0:0,kills:0,cnt:0});}
+  for(let b=0;b<10;b++){const a=b/10*TAU;S.bands.push({id:6+b,name:b===0?'灯真の隊':'暁軍遊撃隊',clan:0,units:[],hx:900*K+Math.cos(a)*(90+rnd()*150)*K*.6,hy:1060*K-Math.abs(Math.sin(a))*(30+rnd()*70)*K*.6,state:'rest',timer:14+b*3,px:0,py:0,fear:.38,leg:-1,t0:0,men0:0,kills:0,cnt:0});}
 }
 function startCh3(){
   S.chap=2;S.chapT[2]=S.t;S.flags.ch3=1;
@@ -636,20 +649,20 @@ function startCh3(){
   S.bands[6].fear=.42;
   /* 帝国軍を三つの縦隊に */
   const E=S.legs[0];const alive=E.units.filter(u=>u.alive).sort((a,b)=>a.x-b.x);
-  const cols=[[[600,1330],[650,1250]],[[720,1400],[800,1290]],[[900,1440],[1000,1290]]];
+  const cols=[[[600,1330],[650,1250]],[[720,1400],[800,1290]],[[900,1440],[1000,1290]]].map(c=>c.map(P2));
   const names=['帝国軍(西)','帝国軍(中)','帝国軍(東)'];
   const ids=['e1','e2','e3'];
   const cut=[0,Math.floor(alive.length/3),Math.floor(alive.length*2/3),alive.length];
   for(let c=0;c<3;c++){
     const grp=alive.slice(cut[c],cut[c+1]);let sx=0,sy=0;for(const u of grp){sx+=u.x;sy+=u.y;}
     const cxx=sx/grp.length,cyy=sy/grp.length;
-    const L={id:ids[c],name:names[c],fac:'kok',side:1,cx:cxx,cy:cyy,fear:.45,ret:0,wp:cols[c],wi:0,speed:8,mode:1,retreat:false,units:grp,men0:grp.length*100,men:grp.length*100,rally:[800,330],coh:1,major:true,retT:-1,idx:S.legs.length};
+    const L={id:ids[c],name:names[c],fac:'kok',side:1,cx:cxx,cy:cyy,fear:.45,ret:0,wp:cols[c],wi:0,speed:8,mode:1,retreat:false,units:grp,men0:grp.length*100,men:grp.length*100,rally:P2([800,330]),coh:1,major:true,retT:-1,idx:S.legs.length};
     S.legs.push(L);
     for(const u of grp){u.leg=L.idx;u.sx=u.x-cxx;u.sy=u.y-cyy;if(u.state===ROUT)u.state=MARCH;}
   }
   E.mode=0;E.units=[];E.men0=0;
   say('帝国軍は三つの縦隊に分かれ、山狩りへ。——だが、分かれたということは、弱い所を各個に叩けるということでもある',9);
-  pop2(900,1130,'天嶺砦','g',3.5);
+  pop2(900*K,1130*K,'天嶺砦','g',6);
 }
 function bandsTick(){
   if(S.chap<2)return;
@@ -710,7 +723,7 @@ function chooseAmbush(B,alive){
     const sc=(coverAt(x,y)?100:0)+(hAt(x,y)>.34?30:-200)-Math.hypot(x-B.cx,y-B.cy)*.05+rnd()*20;
     if(sc>bs){bs=sc;bp=[x,y];}
   }
-  B.px=bp[0];B.py=bp[1];B.state='moving';B.timer=40;
+  B.px=bp[0];B.py=bp[1];B.state='moving';B.timer=40+Math.hypot(B.px-B.cx,B.py-B.cy)/14;
   alive.forEach((u,k)=>{u.gx=B.px+((k%6)-2.5)*12;u.gy=B.py+(Math.floor(k/6)-1)*10;u.aft=1;u.state=WITHDRAW;u.band=B.id;});
 }
 function sendHome(u){
@@ -718,26 +731,26 @@ function sendHome(u){
   const k=u.id%7;u.gx=B.hx+((k%4)-1.5)*14;u.gy=B.hy+(Math.floor(k/4)-.5)*12;u.aft=0;u.state=WITHDRAW;u.tgt=-1;
 }
 /* ---- 司令(時間とできごと) ---- */
-const CH1_SUBS=[[0,6,'辺境の小国・暁。軍勢はわずか二万。まわりは小さな豪族ばかり'],[6.5,17,'豪族たちとは、同盟を結んで穏やかに暮らしていた'],[17.5,29,'——そこへ、北の黒曜帝国が十二万の大軍で攻めてきた'],[30,43,'豪族のひとりが、はるばる遠くから助けを求めて駆けてくる'],[44,53,'暁は決断した。豪族たちによびかけ、連合軍をつくる'],[54,74,'八つの豪族が応じ、暁軍も志願兵を加えて、六万の連合軍に'],[76,100,'連合軍は灰原に集結。十二万の帝国軍を迎え撃つ']];
+const CH1_SUBS=[[0,6,'辺境の小国・暁。軍勢はわずか二万。まわりは小さな豪族ばかり'],[6.5,17,'豪族たちとは、同盟を結んで穏やかに暮らしていた'],[17.5,29,'——そこへ、北の黒曜帝国が十二万の大軍で攻めてきた'],[30,43,'豪族のひとりが、はるばる遠くから助けを求めて駆けてくる'],[44,53,'暁は決断した。豪族たちによびかけ、連合軍をつくる'],[54,74,'八つの豪族が応じ、暁軍も志願兵を加えて、六万の連合軍に'],[76,100,'連合軍は灰原に集結。十二万の帝国軍を迎え撃つ']].map(a=>[a[0]*TK,a[1]*TK,a[2]]);
 function director(){
   const t=S.t;
   if(S.endT<0){
     for(const s of CH1_SUBS)if(t>=s[0]&&t-DT<s[0])say(s[2],s[1]-s[0]);
   }
-  if(t>=14&&!S.flags.empGo){S.flags.empGo=1;const E=S.legs[0];E.mode=1;pop2(800,300,'黒曜帝国 十二万','b',4);}
-  if(t>=20&&!S.flags.env){S.flags.env=1;pop2(160,1620,'助けてくだされ！','g',3.5);}
-  if(t>=46&&!S.flags.call){
-    S.flags.call=1;pop2(800,1830,'承知した！','g',3);
+  if(t>=14*TK&&!S.flags.empGo){S.flags.empGo=1;const E=S.legs[0];E.mode=1;pop2(800*K,300*K,'黒曜帝国 十二万','b',6);}
+  if(t>=20*TK&&!S.flags.env){S.flags.env=1;pop2(160*K,1620*K,'助けてくだされ！','g',6);}
+  if(t>=46*TK&&!S.flags.call){
+    S.flags.call=1;pop2(800*K,1830*K,'承知した！','g',6);
     for(const L of S.legs){if(L.side!==0||L.id==='env'||!STAGE[L.id])continue;L.wp=[STAGE[L.id]];L.wi=0;L.mode=1;L.speed=L.id==='aka'?12:15;}
   }
   /* 志願兵 */
-  if(t>=50&&t<70&&S.volN<100&&S.tick%2===0){
+  if(t>=50*TK&&t<70*TK&&S.volN<100&&S.tick%2===0){
     const A=S.legs[1];const sl=SLOTS[A.units.length],sx=sl.a*UW,sy=sl.b*UW*.8;
-    const u=mkUnit(0,'aka',A.idx,A.units.length%5===1?1:0,800+(rnd()-.5)*40,1880+(rnd()-.5)*20,clamp(.4+(rnd()-.5)*.4,.05,.9),sx,sy);
+    const u=mkUnit(0,'aka',A.idx,A.units.length%5===1?1:0,800*K+(rnd()-.5)*40,1880*K+(rnd()-.5)*20,clamp(.4+(rnd()-.5)*.4,.05,.9),sx,sy);
     A.units.push(u);A.men0+=100;S.volN++;
   }
-  if(t>=58&&!S.flags.out){S.flags.out=1;pop2(800,1810,'連合軍、出陣','g',3);}
-  if(t>=75&&S.chap===0){S.chap=1;}
+  if(t>=58*TK&&!S.flags.out){S.flags.out=1;pop2(800*K,1810*K,'連合軍、出陣','g',6);}
+  if(t>=75*TK&&S.chap===0){S.chap=1;}
   /* 接触 */
   if(S.chap===1&&!S.flags.contact&&t%1<DT){
     let n=0;for(const u of S.units)if(u.alive&&u.state===FIGHT&&u.side===1)n++;
@@ -748,15 +761,16 @@ function director(){
   if(S.chap===1&&!S.flags.ch3){
     const A=S.legs[1];
     if(A.retreat&&t-A.retT>5){startCh3();}
-    else if(t>260){startCh3();}
+    else if(t>260*TK){startCh3();}
   }
   if(S.chap===2){
     const dt=t-S.chapT[2];
-    if(dt>3&&!S.flags.s1){S.flags.s1=1;say('暁軍は山脈の砦へ。散った豪族たちも、それぞれの隠れ家で息を殺す',7);}
-    if(dt>22&&!S.flags.s2){S.flags.s2=1;say('地形が味方につく。谷間で、森で、崖の上で——伏兵の時間だ',7);}
+    if(dt>6&&!S.flags.s1){S.flags.s1=1;say('暁軍は山脈の砦へ。散った豪族たちも、それぞれの隠れ家で息を殺す',7);}
+    if(dt>60&&!S.flags.s2){S.flags.s2=1;say('地形が味方につく。谷間で、森で、崖の上で——伏兵の時間だ',7);}
+    if(S.endT<0&&dt>2600){S.endT=t;say('——戦はなお続く。百人隊長は百人隊長のまま、山の戦いの先へ',12);}
     /* 昇進判定 */
     const h=S.hero;
-    if(h&&!S.promoted&&dt>45&&heroMerit()>=MERIT_GOAL&&h.alive){
+    if(h&&!S.promoted&&S.endT<0&&dt>45&&heroMerit()>=MERIT_GOAL&&h.alive){
       S.promoted=1;S.endT=t;say('——'+HERO_NAME+'、千人隊長に昇進。山の戦いが、ひとりの百人隊長を将へと変えた',12);
       pop2(h.x,h.y-50,'千人隊長へ昇進！','g',6);
     }
@@ -781,38 +795,38 @@ function runTo(t){
 
 /* ============ 描画 ============ */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-let W=0,Hh=0,DPR=1,Z=.25,CX=800,CY=1200,Wref=390;
-let T=0,playing=false,speed=1,manual=false,lodMode=0,started=false,reach=0;
-const camM={x:800,y:1200,z:.25};
-const camF={x:800,y:1200,vw:1600,init:false};
+let W=0,Hh=0,DPR=1,Z=.25,CX=800*K,CY=1200*K,Wref=390;
+let T=0,playing=false,speed=4,manual=false,lodMode=0,started=false,reach=0;
+const camM={x:800*K,y:1200*K,z:.1};
+const camF={x:800*K,y:1200*K,vw:WW,init:false};
 function resize(){
   DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;Hh=cv.clientHeight;
   cv.width=Math.round(W*DPR);cv.height=Math.round(Hh*DPR);Wref=Math.min(W,Hh*.6);
 }
 const wx2s=x=>(x-CX)*Z+W/2, wy2s=y=>(y-CY)*Z+Hh/2;
 const CHN=[['序章','迫りくる十二万'],['第二章','灰原の合戦'],['第三章','山脈のゲリラ戦']];
-let focusCache={x:800,y:1200,vw:1600},focusAt=-9;
+let focusCache={x:WW/2,y:WH/2,vw:WW},focusAt=-9;
 function computeFocus(){
-  const t=S.t;let x=800,y=1300,vw=1600;
+  const t=S.t;let x=800*K,y=1300*K,vw=WW;
   if(S.chap===0){
     const E=S.legs[0];
-    if(t<17){x=E.cx;y=E.cy+140;vw=1000;}
-    else if(t<30){x=800;y=1050;vw=1600;}
-    else if(t<48){const e=S.envoy.units[0];if(t>40||!e.alive){x=800;y=1830;vw=520;}else{x=e.x;y=e.y;vw=760;}}
-    else{x=600;y=1550;vw=1300;}
+    if(t<17*TK){x=E.cx;y=E.cy+140;vw=1000;if(t>3*TK){vw=3000;}}
+    else if(t<30*TK){x=E.cx;y=E.cy+400;vw=2400;}
+    else if(t<48*TK){const e=S.envoy.units[0];if(t>43*TK||!e.alive){x=800*K;y=1830*K;vw=900;}else{x=e.x;y=e.y;vw=1500;}}
+    else{x=(S.legs[0].cx+800*K)/2;y=(S.legs[0].cy+1500*K)/2;vw=Math.min(WW,Math.max(1800,Math.abs(S.legs[0].cy-1500*K)*0.9));}
   }else if(S.chap===1){
     let n=0,sx=0,sy=0;
     for(const u of S.units)if(u.alive&&u.hit){n++;sx+=u.x;sy+=u.y;}
-    if(n>8){x=sx/n;y=sy/n;let v=0;for(const u of S.units)if(u.alive&&u.hit)v+=Math.abs(u.x-x)+Math.abs(u.y-y);v/=n;vw=clamp(v*5,620,1300);}
-    else{const E=S.legs[0],A=S.legs[1];x=(E.cx+A.cx)/2;y=(E.cy+A.cy)/2;vw=1150;}
+    if(n>8){x=sx/n;y=sy/n;let v=0;for(const u of S.units)if(u.alive&&u.hit)v+=Math.abs(u.x-x)+Math.abs(u.y-y);v/=n;vw=clamp(v*5,620,1500);}
+    else{const E=S.legs[0],A=S.legs[1];x=(E.cx+A.cx)/2;y=(E.cy+A.cy)/2;vw=Math.max(1500,Math.hypot(E.cx-A.cx,E.cy-A.cy)*1.3);}
   }else{
     const h=S.hero,B=S.bands[6];const dt=t-S.chapT[2];
-    if(dt<7){x=900;y=1300;vw=1500;}
+    if(dt<20){x=900*K;y=1250*K;vw=4200;}
     else if(S.promoted&&h){x=h.x;y=h.y;vw=460;}
     else if(h&&h.alive&&B){
       if(B.state==='strike'){let sx=0,sy=0,n=0;for(const u of B.units)if(u.alive){sx+=u.x;sy+=u.y;n++;}x=sx/n;y=sy/n;vw=520;}
       else{x=h.x;y=h.y;vw=B.state==='moving'?900:760;}
-    }else{x=900;y=1200;vw=1200;}
+    }else{x=900*K;y=1200*K;vw=3000;}
   }
   focusCache={x,y,vw};
 }
@@ -826,11 +840,12 @@ function drawBanner(x,y,fac,bs,t,seed){
   ctx.beginPath();ctx.arc(x+6*bs,y-h+4.5*bs+Math.sin(t*5+2+seed)*1.2*bs,1.7*bs,0,TAU);ctx.fillStyle=F.trim;ctx.fill();
 }
 function drawCities(t){
-  const cs=clamp(.5/Z,1,2.4);
+  const cs=clamp(.5/Z,1,8);
   for(const c of CITY){
-    if(c.x<CX-W/2/Z-60||c.x>CX+W/2/Z+60||c.y<CY-Hh/2/Z-60||c.y>CY+Hh/2/Z+60)continue;
+    const cX=c.x*K,cY=c.y*K;
+    if(cX<CX-W/2/Z-60||cX>CX+W/2/Z+60||cY<CY-Hh/2/Z-60||cY>CY+Hh/2/Z+60)continue;
     const own=FAC[c.own[0][1]],big=c.kind==='cap'||c.kind==='emp'?1.45:c.kind==='fort'?1.1:1;
-    ctx.save();ctx.translate(c.x,c.y);ctx.scale(cs*big,cs*big);
+    ctx.save();ctx.translate(cX,cY);ctx.scale(cs*big,cs*big);
     ctx.lineJoin='round';ctx.lineWidth=.9;ctx.strokeStyle=OL;
     ell(ctx,0,1,18,5,'rgba(0,0,0,.3)');
     const wall=c.kind==='emp'?'#6a5a85':c.kind==='fort'?'#a8a49a':'#efe6d0',roof=c.kind==='emp'?'#3b2563':own.col;
@@ -848,7 +863,7 @@ function drawCities(t){
 function drawCityLabels(){
   ctx.font='800 '+(Z<.4?12:13)+'px "Shippori Mincho",serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.lineJoin='round';
   for(const c of CITY){
-    const sx=wx2s(c.x),sy=wy2s(c.y);if(sx<-60||sx>W+60||sy<-60||sy>Hh+60)continue;
+    const sx=wx2s(c.x*K),sy=wy2s(c.y*K);if(sx<-60||sx>W+60||sy<-60||sy>Hh+60)continue;
     ctx.lineWidth=4;ctx.strokeStyle='rgba(20,12,30,.85)';ctx.strokeText(c.n,sx,sy+8);ctx.fillStyle='#fff6dd';ctx.fillText(c.n,sx,sy+8);
   }
 }
@@ -919,7 +934,7 @@ function drawFX(t){
   }
   /* 倒れた兵の魂 */
   for(const f of S.fx){
-    const age=t-f.t;if(age<0||age>1.8)continue;
+    const age=(t-f.t)/3;if(age<0||age>1.8)continue;
     const px=f.x,py=f.y-age*26*fs;
     ctx.globalAlpha=(1-age/1.8)*.8;ctx.fillStyle='#e8f0ff';ctx.beginPath();ctx.arc(px,py,2.6*fs,0,TAU);ctx.fill();
     ctx.beginPath();ctx.moveTo(px-2*fs,py+1.2*fs);ctx.quadraticCurveTo(px,py+8*fs,px+2*fs,py+1.2*fs);ctx.fill();
@@ -953,7 +968,7 @@ function drawPops(t){
   for(const p of S.pops){
     const age=t-p.t;if(age<0||age>p.dur)continue;
     const a=Math.min(1,age/.25,(p.dur-age)/.6);
-    const sx=wx2s(p.x),sy=wy2s(p.y)-age*7;
+    const sx=wx2s(p.x),sy=wy2s(p.y)-age*2.4;
     if(sx<-120||sx>W+120||sy<-40||sy>Hh+40)continue;
     const big=1+.25*Math.max(0,1-age*3.5);
     ctx.globalAlpha=a;ctx.font='900 '+Math.round(17*big)+'px "Shippori Mincho",serif';ctx.lineJoin='round';
@@ -972,7 +987,7 @@ function render(dt){
   camF.x+=(f.x-camF.x)*k;camF.y+=(f.y-camF.y)*k;camF.vw*=Math.exp(Math.log(f.vw/camF.vw)*k);
   if(!manual){CX=camF.x;CY=camF.y;Z=Wref/camF.vw;camM.x=CX;camM.y=CY;camM.z=Z;}
   else{CX=camM.x;CY=camM.y;Z=camM.z;}
-  Z=clamp(Z,Math.max(W/1600,.12),2.6);
+  Z=clamp(Z,Math.max(W/WW,.03),2.6);
   {const hx=W/2/Z,hy=Hh/2/Z;CX=hx*2>=WW?WW/2:clamp(CX,hx,WW-hx);CY=hy*2>=WH?WH/2:clamp(CY,hy,WH-hy);}
   ctx.save();
   ctx.translate(W/2,Hh/2);ctx.scale(Z,Z);ctx.translate(-CX,-CY);
@@ -994,7 +1009,7 @@ function updateUI(force){
     lastChap=ci;elChap.innerHTML='<small>'+CHN[ci][0]+'</small>'+CHN[ci][1];
     elCard.querySelector('.k').textContent=CHN[ci][0];elCard.querySelector('.n').textContent=CHN[ci][1];
   }
-  elCard.classList.toggle('show',started&&T-S.chapT[ci]<4.8&&S.chapT[ci]>=0);
+  elCard.classList.toggle('show',started&&T-S.chapT[ci]<5*speed&&S.chapT[ci]>=0);
   const sb=S.sub&&S.t<=S.sub.until?S.sub.txt:null;
   if(sb!==lastSubTxt){lastSubTxt=sb;if(sb){elSub.textContent=sb;elSub.classList.remove('off');}else elSub.classList.add('off');}
   const now=performance.now();
@@ -1014,7 +1029,10 @@ function updateUI(force){
     if(document.activeElement!==elSeek)elSeek.value=Math.min(T,reach);
     elTm.textContent=fmtT(T)+' / '+fmtT(reach);
   }
-  $('end').hidden=!(S.endT>=0&&T-S.endT>9&&$('sheet').hidden);
+  if(S.endT>=0&&!$('end').dataset.k){}
+  const ek=S.promoted?'p':S.fell?'f':'t';
+  if($('end').dataset.k!==ek){$('end').dataset.k=ek;$('end').querySelector('h1').textContent=ek==='p'?'昇進':ek==='f'?'戦死':'つづく';$('end').querySelector('.tag').textContent=ek==='p'?'— 百人隊長は、千人隊長となった —':ek==='f'?'— 理屈で動いた変人は、戦場に倒れた —':'— 昇進はならず。それでも戦は続く —';}
+  $('end').hidden=!(S.endT>=0&&T-S.endT>30&&$('sheet').hidden);
 }
 function withBusy(fn){const w=$('load');w.querySelector('.tag').textContent='戦場を計算しています…';w.hidden=false;setTimeout(()=>{try{fn();}finally{w.hidden=true;}},30);}
 function setPlaying(p){playing=p;$('bPlay').textContent=p?'⏸':'▶';}
@@ -1035,12 +1053,14 @@ function gotoChap(i){
 $('bPlay').onclick=()=>{setPlaying(!playing);};
 $('bPrev').onclick=()=>{const ci=S.chap;withBusy(()=>gotoChap(T-S.chapT[ci]>5?ci:ci-1));};
 $('bNext').onclick=()=>withBusy(()=>gotoChap(S.chap+1));
-$('bSpd').onclick=()=>{speed=speed===1?2:speed===2?4:speed===4?8:1;$('bSpd').textContent='×'+speed;};
+const SPDS=[1,2,4,8,16,32,64];
+$('bSpd').onclick=()=>{speed=SPDS[(SPDS.indexOf(speed)+1)%SPDS.length];$('bSpd').textContent='×'+speed;};
 $('bCam').onclick=()=>{manual=false;$('bCam').classList.add('on');$('bCam').textContent='🎥自動';};
 $('bLod').onclick=()=>{lodMode=(lodMode+1)%3;$('bLod').textContent=['兵:自動','兵:小','兵:普通'][lodMode];$('bLod').classList.toggle('on',lodMode!==0);};
 $('bChap').onclick=()=>{buildSheet();$('sheet').hidden=false;};
 $('bClose').onclick=()=>{$('sheet').hidden=true;};
 $('bEndChap').onclick=()=>{buildSheet();$('sheet').hidden=false;};
+$('bSeed').onclick=()=>{location.search='?seed='+(1+Math.floor(Math.random()*900000));};
 $('bAgain').onclick=()=>{seek(.1);setPlaying(true);};
 elSeek.addEventListener('change',()=>{const v=parseFloat(elSeek.value);withBusy(()=>seek(v));});
 $('bStart').onclick=()=>{$('title').hidden=true;started=true;seek(.1);setPlaying(true);};
@@ -1058,11 +1078,11 @@ cv.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
   if(ptrs.size===1){if(Math.abs(dx)+Math.abs(dy)>0){goManual();camM.x-=dx/Z;camM.y-=dy/Z;}}
-  else if(ptrs.size===2&&pinch0){goManual();const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);camM.z=clamp(pinch0.z*d/pinch0.d,Math.max(W/1600,.12),2.6);}
+  else if(ptrs.size===2&&pinch0){goManual();const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);camM.z=clamp(pinch0.z*d/pinch0.d,Math.max(W/WW,.03),2.6);}
 });
 const endp=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;};
 cv.addEventListener('pointerup',endp);cv.addEventListener('pointercancel',endp);
-cv.addEventListener('wheel',e=>{e.preventDefault();goManual();const f=Math.exp(-e.deltaY*.0015);camM.z=clamp(camM.z*f,Math.max(W/1600,.12),2.6);},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();goManual();const f=Math.exp(-e.deltaY*.0015);camM.z=clamp(camM.z*f,Math.max(W/WW,.03),2.6);},{passive:false});
 
 /* ============ メインループ ============ */
 let lastNow=0;
@@ -1070,9 +1090,9 @@ function frame(now){
   const dt=Math.min(.1,(now-lastNow)/1000||0);lastNow=now;
   if(playing){
     T+=dt*speed;
-    if(S.endT>=0&&T>S.endT+16){T=S.endT+16;setPlaying(false);}
+    if(S.endT>=0&&T>S.endT+30){T=S.endT+30;setPlaying(false);}
   }
-  let guard=0;while(S.t<=T&&guard++<80)step();
+  let guard=0;while(S.t<=T&&guard++<400)step();
   if(S.t<=T)T=S.t-DT*.5;
   render(dt);updateUI(false);
   requestAnimationFrame(frame);
