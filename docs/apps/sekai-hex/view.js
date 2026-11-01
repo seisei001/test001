@@ -89,10 +89,11 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🐑'], 5: ['🐪', '🌵', '🦂'], 6: ['🐄', '🐑', '🦘'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🐿️', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🦅', '🏔️'] };
-  const SEA_STAMPS = ['🐋', '🚢', '🐙', '🦈', '⛵', '🐬'];
+  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🏰'], 5: ['🐪', '🌵', '🐉'], 6: ['🐄', '🏰', '🐑'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🧚', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🐉', '🏔️'] };
+  const SEA_STAMPS = ['🐋', '🚢', '🐙', '🦈', '⛵', '🐬'], DEEP_STAMPS = ['🐉', '🦑', '🧜', '🐋'];   // 深い海には「ここにドラゴンあり」の怪物
   function stampFor(b, h, coast, r) {
     if (h > 4200) return '🏔️';
+    if (h < -3500) return DEEP_STAMPS[Math.min(DEEP_STAMPS.length - 1, (r * DEEP_STAMPS.length) | 0)];
     if (h <= 0) return SEA_STAMPS[Math.min(SEA_STAMPS.length - 1, (r * SEA_STAMPS.length) | 0)];
     if (coast && b !== 1) return r < 0.5 ? '⚓' : '🏝️';
     const a = STAMPS[b] || STAMPS[8]; return a[Math.min(a.length - 1, (r * a.length) | 0)];

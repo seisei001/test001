@@ -22,7 +22,7 @@ h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overfl
 .ver{font-size:11px;color:var(--muted)}
 main{position:relative;flex:1;min-height:0}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-.hud{position:absolute;left:8px;top:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;line-height:1.4;pointer-events:none;max-width:70%}
+.hud{position:absolute;left:8px;top:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;line-height:1.4;pointer-events:none;max-width:calc(100% - 150px)}
 .hud b{font-size:15px}
 .bar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px calc(6px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .card{background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:auto}
@@ -60,12 +60,13 @@ button:active{background:var(--accent);color:#fff}
       <button id="home" aria-label="世界全体">🌍</button>
     </div>
   </div>
+  <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.15';</script>
-<script src="world.js?v=0.15"></script>
-<script src="sekai.js?v=0.15"></script>
-<script src="view.js?v=0.15"></script>
+<script>window.APP_VER='0.16';</script>
+<script src="world.js?v=0.16"></script>
+<script src="sekai.js?v=0.16"></script>
+<script src="view.js?v=0.16"></script>
 <script>
 (function(){
   'use strict';
@@ -78,6 +79,7 @@ button:active{background:var(--accent);color:#fff}
   function biomeName(b){return b===0?'海':(SekaiWorld.BIOME[b]||'?');}
   function hudUpdate(st,mesh){
     if(!mesh)return;
+    miniMark(st);
     var L=mesh.L;
     $('hud').innerHTML='<b>層'+L+' '+Sekai.LAYER_NAME[L]+'</b> ・ 1マス '+fmtLen(mesh.s)+'<br><span class="seed">種 '+seed+' ・ '+mesh.m+'マス ・ 生成 '+Math.round(mesh.ms)+'ms</span>';
   }
@@ -91,6 +93,28 @@ button:active{background:var(--accent);color:#fff}
     }
     card.innerHTML=t;card.hidden=false;dive.hidden=p.L>=Sekai.NL-1;
   }
+  // 小さな世界の地図(絵本の「小さな地球儀」のように、いまどこを見ているかを示す)。押すとそこへ移動する
+  var mini={ox:0,oy:0,sx:1,sy:1,ready:false};
+  function miniBuild(){
+    var c=$('mini'),w=sk.w,dp=Math.min(window.devicePixelRatio||1,2),cw=120,ch=64,x=c.getContext('2d'),P=[0,0],q,r,i,col,bc=SekaiView.BIOME_COL;
+    c.width=cw*dp;c.height=ch*dp;x.setTransform(dp,0,0,dp,0,0);x.fillStyle='#16324f';x.fillRect(0,0,cw,ch);
+    var s0=Sekai.spacing(0),W=(w.W+0.5)*s0,H=(w.H-1)*s0*Math.sqrt(3)/2;mini.sx=cw/W;mini.sy=ch/H;mini.ready=true;
+    for(r=0;r<w.H;r++)for(var cc=0;cc<w.W;cc++){i=r*w.W+cc;q=cc-((r-(r&1))>>1);Sekai.pos(0,q,r,P);
+      if(w.land[i]){col=bc[w.biome[i]]||[79,138,69];if(w.elev[i]>4200)col=[240,244,248];x.fillStyle='rgb('+col[0]+','+col[1]+','+col[2]+')';}
+      else x.fillStyle=w.elev[i]>-200?'#3b7fa8':'#16324f';
+      x.fillRect(P[0]*mini.sx-1.5,P[1]*mini.sy-1.5,3.2,3.2);}
+    mini.img=x.getImageData(0,0,c.width,c.height);
+  }
+  function miniMark(st){
+    if(!mini.ready)return;var c=$('mini'),x=c.getContext('2d'),dp=c.width/120;
+    x.putImageData(mini.img,0,0);x.setTransform(dp,0,0,dp,0,0);
+    var mx=st.fx*mini.sx,my=st.fy*mini.sy;x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();x.arc(mx,my,5,0,6.2832);x.stroke();
+    x.fillStyle='#e0392b';x.beginPath();x.arc(mx,my,3,0,6.2832);x.fill();
+  }
+  $('mini').addEventListener('click',function(e){
+    var r=this.getBoundingClientRect(),fx=(e.clientX-r.left)/r.width*120/mini.sx,fy=(e.clientY-r.top)/r.height*64/mini.sy;
+    view.jumpTo(fx,fy,view.st.ppm);
+  });
   function start(){
     $('err').hidden=true;
     var t0=performance.now();
@@ -100,7 +124,7 @@ button:active{background:var(--accent);color:#fff}
     try{
       view=SekaiView.create($('cv'),sk,{onFrame:hudUpdate,onSelect:selUpdate,overlay:$('ov')});
     }catch(e){$('err').hidden=false;$('err').textContent='WebGL を使えない環境です: '+e.message;return;}
-    view.resize();selUpdate(null);
+    view.resize();selUpdate(null);miniBuild();
     window.__sk=sk;window.__view=view;window.__worldMs=wms;
     history.replaceState(null,'','?seed='+seed);
   }
