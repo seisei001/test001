@@ -53,15 +53,16 @@ button:active{background:var(--accent);color:#fff}
       <button id="rr" aria-label="右回り">↻</button>
       <button id="ex" aria-label="高さの強調">高さ×1</button>
       <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
+      <button id="boom" aria-label="選んだマスで噴火" title="選んだマスで噴火(層1以下)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
     </div>
   </div>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.10';</script>
-<script src="world.js?v=0.10"></script>
-<script src="sekai.js?v=0.10"></script>
-<script src="view.js?v=0.10"></script>
+<script>window.APP_VER='0.11';</script>
+<script src="world.js?v=0.11"></script>
+<script src="sekai.js?v=0.11"></script>
+<script src="view.js?v=0.11"></script>
 <script>
 (function(){
   'use strict';
@@ -115,6 +116,14 @@ button:active{background:var(--accent);color:#fff}
     var nextS=Sekai.spacing(Math.min(Sekai.NL-1,p.L+1));
     view.jumpTo(P[0],P[1],Math.max(view.st.ppm*1.01,48/nextS));
     view.select(null);
+  };
+  $('boom').onclick=function(){ // 選んだマスで噴火: 中心が盛り上がる。差分は下の層にも伝わる
+    var p=view.getSel();
+    if(!p||p.L<1){$('info').innerHTML='層1より細かい層でマスを選んでから 🌋 を押してください';$('info').hidden=false;return;}
+    var P=[0,0],s=Sekai.spacing(p.L),R=6,qs=new Int32Array(400),rs=new Int32Array(400),n,i,d,peak=Math.max(s*0.05,8);
+    Sekai.pos(p.L,p.q,p.r,P);n=sk.cellsIn(p.L,P[0],P[1],R*s,qs,rs);
+    for(i=0;i<n;i++){var Q=[0,0];Sekai.pos(p.L,qs[i],rs[i],Q);d=Math.hypot(Q[0]-P[0],Q[1]-P[1])/(R*s*1.15);if(d<1)sk.applyDiff(p.L,qs[i],rs[i],peak*Math.pow(1-d,1.5));}
+    sk.invalidateBelow(p.L);view.refresh();
   };
   window.addEventListener('load',start);
 })();

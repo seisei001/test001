@@ -294,6 +294,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       zoomTo(ppm) { st.ppm = ppm; clampPpm(); changed(); },
       jumpTo(fx, fy, ppm) { st.fx = fx; st.fy = fy; if (ppm) { st.ppm = ppm; clampPpm(); } changed(); },
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
+      refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
       select: setSel, pickAt, fitPpm, getSel: () => sel,
     };
   }

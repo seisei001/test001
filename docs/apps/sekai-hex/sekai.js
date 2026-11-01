@@ -48,6 +48,7 @@ const Sekai = (function () {
     const blocks = new Map(); const MAXB = 9000;
     const bkey = (L, S, T) => (L * 4194304 + (S + 2097152)) * 4194304 + (T + 2097152);
     const tmpP = [0, 0, 0];
+    const diffs = new Map();   // 地変による標高の差分: ブロックの鍵 → マスごとの差(m)。世界の「元の姿」は変えず、差分だけを積む
 
     function worldCell(q, r, o) {
       const c = q + ((r - (r & 1)) >> 1);
@@ -86,7 +87,21 @@ const Sekai = (function () {
         if (hh > 0 && bio === 0) bio = 8;
         h[k] = hh; b[k] = hh > 0 ? bio : 0; rel[k] = rr * 0.45;
       }
+      const df = diffs.get(bkey(L, S, T));
+      if (df) for (let k = 0; k < NB; k++) if (df[k] !== 0) { h[k] += df[k]; if (h[k] > 0 && b[k] === 0) b[k] = 8; if (h[k] <= 0) b[k] = 0; }
       return { h, b, rel };
+    }
+    // 地変の差分を1マスに足す(層L、軸座標q,r、dhメートル)。それより下の層のブロックは作り直しになる(次に見たとき計算される)。
+    function applyDiff(L, q, r, dh) {
+      if (L < 1) return false;
+      parentOf(q, r, tmpP); const S = tmpP[0], T = tmpP[1], k = tmpP[2], key = bkey(L, S, T);
+      let df = diffs.get(key); if (!df) { df = new Float32Array(NB); diffs.set(key, df); }
+      df[k] += dh;
+      const bl = blocks.get(key); if (bl) { bl.h[k] += dh; if (bl.h[k] > 0 && bl.b[k] === 0) bl.b[k] = 8; if (bl.h[k] <= 0) bl.b[k] = 0; }
+      return true;
+    }
+    function invalidateBelow(L) { // 層Lより細かい層のブロックを捨てる(差分を取り込んで作り直すため)
+      for (const key of Array.from(blocks.keys())) { if (Math.floor(key / 17592186044416) > L) blocks.delete(key); }
     }
 
     // 円の中にある層Lのマスを列挙
@@ -100,7 +115,7 @@ const Sekai = (function () {
       }
       return n;
     }
-    return { seed, w, cell, block, cellsIn, blockCount: () => blocks.size };
+    return { seed, w, cell, block, cellsIn, applyDiff, invalidateBelow, diffCount: () => diffs.size, blockCount: () => blocks.size };
   }
   return { create, spacing, angle, pos, locate, roundAxial, parentOf, hexDist, latQ, latR, OFF, NB, RAD, NL, RATIO, THETA, S0, LAYER_NAME, SQ3 };
 })();
