@@ -53,16 +53,17 @@ button:active{background:var(--accent);color:#fff}
       <button id="rr" aria-label="右回り">↻</button>
       <button id="ex" aria-label="高さの強調">高さ×1</button>
       <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
+      <button id="smooth" aria-label="地面の見た目を切り替え">なめらか</button>
       <button id="boom" aria-label="選んだマスで噴火" title="選んだマスで噴火(層1以下)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
     </div>
   </div>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.13';</script>
-<script src="world.js?v=0.13"></script>
-<script src="sekai.js?v=0.13"></script>
-<script src="view.js?v=0.13"></script>
+<script>window.APP_VER='0.14';</script>
+<script src="world.js?v=0.14"></script>
+<script src="sekai.js?v=0.14"></script>
+<script src="view.js?v=0.14"></script>
 <script>
 (function(){
   'use strict';
@@ -117,6 +118,8 @@ button:active{background:var(--accent);color:#fff}
     view.jumpTo(P[0],P[1],Math.max(view.st.ppm*1.01,48/nextS));
     view.select(null);
   };
+  var smoothOn=true;
+  $('smooth').onclick=function(){smoothOn=!smoothOn;$('smooth').textContent=smoothOn?'なめらか':'ブロック';view.setSmooth(smoothOn);};
   $('boom').onclick=function(){ // 選んだマスで噴火: 中心が盛り上がる。差分は下の層にも伝わる
     var p=view.getSel();
     if(!p||p.L<1){$('info').innerHTML='層1より細かい層でマスを選んでから 🌋 を押してください';$('info').hidden=false;return;}

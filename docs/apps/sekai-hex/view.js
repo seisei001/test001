@@ -174,7 +174,9 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const o = nv * 4; f32[o] = x; f32[o + 1] = y; f32[o + 2] = z;
         const ob = nv * 16 + 12; u8[ob] = Math.min(255, r * shade); u8[ob + 1] = Math.min(255, g * shade); u8[ob + 2] = Math.min(255, b * shade); u8[ob + 3] = 255; nv++;
       }
-      for (let i = 0; i < m; i++) {
+      // なめらか表示: 六角形は計算の格子にすぎない。見た目は、3マスが集まる角の高さ・色・明るさを3マスの平均にして連続した地面にする
+      const SM = st.smooth !== false, COL = new Float32Array(m * 3), SHD = new Float32Array(m);
+      for (let pass = SM ? 1 : 2; pass <= 2; pass++) for (let i = 0; i < m; i++) {
         const q = qs[i], r = rs[i], h = hs[i], z = zOf(h);
         SK.pos(L, q, r, P); const cxl = P[0] - ox, cyl = P[1] - oy;
         cpos[i * 3] = P[0]; cpos[i * 3 + 1] = P[1]; cpos[i * 3 + 2] = z;
@@ -195,7 +197,25 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const slope = drop / s, nzs = s * 6, nzA = vnoise(P[0] / nzs, P[1] / nzs, L * 7 + 1), nzB = vnoise(P[0] / (nzs * 0.45) + 17, P[1] / (nzs * 0.45) + 31, L * 7 + 2), rnd = hash2(q, r, L + 5);
         const col = h > 0 ? landColor(bs[i], h, slope, coast, nzA, nzB, rnd) : seaColor(h, nearB, rnd, Math.min(1, shoreN / 3));
         const shade = h > 0 ? Math.min(1.18, Math.max(0.55, 0.58 + 0.62 * nd)) : 1.0;
-        // 上面(6枚の三角形)
+        COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
+        if (pass === 1) continue;
+        if (SM) {
+          const cz = [0, 0, 0, 0, 0, 0], cR = [0, 0, 0, 0, 0, 0], cG = [0, 0, 0, 0, 0, 0], cB = [0, 0, 0, 0, 0, 0], cS = [0, 0, 0, 0, 0, 0];
+          for (let k = 0; k < 6; k++) {
+            const ka = k, kb = (k + 1) % 6;
+            const ja = idx.get(key(q + DIRS[ka][0], r + DIRS[ka][1])), jb = idx.get(key(q + DIRS[kb][0], r + DIRS[kb][1]));
+            const ia = ja === undefined ? i : ja, ib = jb === undefined ? i : jb;
+            cz[k] = (h <= 0 || nbH[ka] <= 0 || nbH[kb] <= 0) ? 0 : (z + nbH[ka] + nbH[kb]) / 3;   // 海に接する角は海面の高さ(海岸はなだらかに海へ下る)
+            cR[k] = (COL[i * 3] + COL[ia * 3] + COL[ib * 3]) / 3; cG[k] = (COL[i * 3 + 1] + COL[ia * 3 + 1] + COL[ib * 3 + 1]) / 3; cB[k] = (COL[i * 3 + 2] + COL[ia * 3 + 2] + COL[ib * 3 + 2]) / 3;
+            cS[k] = (SHD[i] + SHD[ia] + SHD[ib]) / 3;
+          }
+          for (let k = 0; k < 6; k++) {
+            const k1 = (k + 1) % 6, c0 = corner[k], c1 = corner[k1];
+            vert(cxl, cyl, z, col[0], col[1], col[2], shade);
+            vert(cxl + c0[0], cyl + c0[1], cz[k], cR[k], cG[k], cB[k], cS[k]);
+            vert(cxl + c1[0], cyl + c1[1], cz[k1], cR[k1], cG[k1], cB[k1], cS[k1]);
+          }
+        } else
         for (let k = 0; k < 6; k++) {
           const c0 = corner[k], c1 = corner[(k + 1) % 6];
           vert(cxl, cyl, z, col[0], col[1], col[2], shade);
@@ -220,7 +240,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
           }
         }
         // 側面: 隣より高いところだけ
-        for (let k = 0; k < 6; k++) {
+        if (!SM) for (let k = 0; k < 6; k++) {
           if (nbH[k] >= z) continue;
           // 辺 k は角 (k-1) と k の間
           const c0 = corner[(k + 5) % 6], c1 = corner[k], zn = nbH[k];
@@ -372,6 +392,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       jumpTo(fx, fy, ppm) { st.fx = fx; st.fy = fy; if (ppm) { st.ppm = ppm; clampPpm(); } changed(); },
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
       refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
+      setSmooth(v) { st.smooth = v; mesh = null; changed(); },
       select: setSel, pickAt, fitPpm, getSel: () => sel,
     };
   }
