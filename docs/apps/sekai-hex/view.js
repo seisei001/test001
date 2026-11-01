@@ -207,6 +207,7 @@ void main(){
         const mean = cnt ? sum / cnt : 0;
         exByLayer[L] = Math.min(40, Math.max(1, 0.42 * s / Math.max(mean, 0.02 * s)));
         if (L >= 3) exByLayer[L] = Math.min(exByLayer[L], 6);
+        if (typeof location !== 'undefined' && /[?&]ex=1/.test(location.search)) exByLayer[L] = 1;   // 実験: 強調なし(実寸)
       }
       const ex = exByLayer[L] * st.exMul;
       // 頂点: 位置3 float + 色4 byte = 16byte
@@ -253,9 +254,10 @@ void main(){
           if (FV.has(L + ',' + q + ',' + r)) spec = { k: 'volcano', b: b0, seed: sr };
           else if (h > 0) {
             let peak = true; for (let k = 0; k < 6; k++) if (nbH[k] > z) { peak = false; break; }
+            let ridge = true; { let hi = 0; for (let k = 0; k < 6; k++) if (nbH[k] > z) hi++; ridge = hi <= 1; }   // 尾根(隣に高い所が1つ以下)
             if (h > 1800 && peak && sr2 < 0.1 * sprK) spec = { k: 'volcano', b: b0, seed: sr };
-            else if (h > 2200 && sr < 0.4 * sprK) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr };
-            else if (h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr };
+            else if (h > 2200 && (sr < 0.04 * sprK || (sr < 0.5 * sprK && ridge))) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr, hr: Math.max(0.25, Math.min(1, (h - 1500) / 3500)) };
+            else if (h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr, hr: Math.max(0.2, Math.min(0.6, (h - 800) / 3000)) };
             else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
             else if (isTown(L, q, r)) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
           }
@@ -415,13 +417,13 @@ void main(){
         }
       }
       list.sort((a, b) => a[0] - b[0]);
-      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.4, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
         if (typeof sp0 === 'string') {
           c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
-          const an = sp0.k === 'animal', size = Math.max(an ? 26 : 30, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7))) * st.dpr;
+          const an = sp0.k === 'animal', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = Math.max(an ? 26 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7) * hk)) * st.dpr;
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }

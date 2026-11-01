@@ -26,22 +26,29 @@ const SekaiSprites = (function () {
   }
   const ROOF = ['#e5533d', '#3f7fd6', '#e8a02e', '#7a52c7', '#3aa57a'];
 
-  // 山: 左が明るく右が影。雪の冠はぎざぎざ。後ろに小さな山をもう1つ添える(山脈っぽく)
+  // 山: 1つ1つ形を変える。主峰の位置・幅・高さ・左右の非対称・副峰の数を乱数(seed)で変え、高さ比(hr)で大きさを変える。
+  // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
+  function frac(x) { return x - Math.floor(x); }
   function mountain(c, o) {
-    const P = pal(o.b), snow = o.snow;
-    c.save(); groundShadow(c, 0.5);
-    // 奥の小さな山
-    poly(c, [[0.15, 0], [0.42, -0.5], [0.7, 0]], P[1], true);
-    // 主峰
-    poly(c, [[-0.58, 0], [-0.12, -0.92], [0.1, -0.5], [0.34, -0.66 + 0.5 * 0], [0.12, 0]], P[0], true);
-    poly(c, [[-0.12, -0.92], [0.1, -0.5], [0.12, 0], [-0.06, 0], [-0.1, -0.46]], P[1], false);   // 影の面
-    poly(c, [[-0.58, 0], [-0.12, -0.92], [0.1, -0.5], [0.12, 0]], null, true);                       // 輪郭
-    if (snow) {
-      poly(c, [[-0.12, -0.92], [-0.27, -0.6], [-0.2, -0.54], [-0.12, -0.62], [-0.03, -0.5], [0.04, -0.58], [0.1, -0.5]], '#ffffff', false);
-      poly(c, [[-0.12, -0.92], [0.1, -0.5], [0.04, -0.58], [-0.03, -0.5], [-0.1, -0.62]], '#d4e4ff', false);
-      poly(c, [[-0.12, -0.92], [-0.27, -0.6], [-0.2, -0.54], [-0.12, -0.62], [-0.03, -0.5], [0.04, -0.58], [0.1, -0.5]], null, true);
+    const P = pal(o.b), sd = o.seed || 0.5, hr = o.hr == null ? 0.7 : o.hr;
+    const px = (frac(sd * 7.3) - 0.5) * 0.36, hh = (0.5 + 0.55 * hr) * (0.85 + 0.3 * frac(sd * 3.1)), wl = 0.28 + 0.2 * frac(sd * 5.7), wr = 0.28 + 0.2 * frac(sd * 11.3);
+    const n = 1 + (frac(sd * 13.7) * 3 | 0), lw = LW * (0.5 + 0.4 * hr);
+    c.save(); groundShadow(c, 0.45);
+    const peaks = [[px, hh, wl, wr]];
+    for (let k = 1; k < n; k++) { const sg = k % 2 ? 1 : -1, f = 0.4 + 0.3 * frac(sd * (17 + k * 5)); peaks.push([px + sg * (0.22 + 0.12 * k), hh * f, 0.16 + 0.1 * frac(sd * (3 + k)), 0.16 + 0.1 * frac(sd * (9 + k))]); }
+    peaks.sort((u, v) => u[1] - v[1]);   // 低い峰を先(奥)に描く
+    const L2 = (col, a) => { c.fillStyle = col; c.strokeStyle = LINE; c.lineWidth = lw; c.lineJoin = 'round'; };
+    for (const [x, h, wl2, wr2] of peaks) {
+      const kink = x + (frac(x * 31 + h * 17) - 0.5) * 0.08, mid = h * (0.5 + 0.1 * frac(x * 13));
+      // 明るい面(左)と影の面(右)
+      poly(c, [[x - wl2, 0], [x - wl2 * 0.45, -mid * 0.8], [x, -h], [kink, -mid * 0.6], [kink - 0.03, 0]], P[0], false);
+      poly(c, [[x, -h], [x + wr2 * 0.5, -mid * 0.75], [x + wr2, 0], [kink - 0.03, 0], [kink, -mid * 0.6]], P[1], false);
+      // 稜線と輪郭(山裾は引かない)
+      c.save(); c.strokeStyle = LINE; c.lineWidth = lw; c.lineJoin = 'round'; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - wl2, 0); c.lineTo(x - wl2 * 0.45, -mid * 0.8); c.lineTo(x, -h); c.lineTo(x + wr2 * 0.5, -mid * 0.75); c.lineTo(x + wr2, 0); c.stroke();
+      c.lineWidth = lw * 0.55; c.globalAlpha = 0.6; c.beginPath(); c.moveTo(x, -h); c.lineTo(kink, -mid * 0.6); c.lineTo(kink - 0.03, -0.01); c.stroke(); c.restore();
+      if (o.snow && h > 0.55) { const sy = -h * 0.72; poly(c, [[x, -h], [x - wl2 * 0.45 - (h + sy) * 0.2, sy + 0.04], [x - 0.05, sy - 0.02], [x + 0.02, sy + 0.05], [x + wr2 * 0.3, sy - 0.01], [x + wr2 * 0.45, -mid * 0.75]], '#f7fbff', false); }
+      c.save(); c.globalAlpha = 0.5; c.strokeStyle = P[2]; c.lineWidth = lw * 0.5; c.beginPath(); c.moveTo(x - wl2 * 0.55, -h * 0.28); c.lineTo(x - wl2 * 0.28, -h * 0.5); c.stroke(); c.restore();
     }
-    c.lineWidth = LW * 0.5; c.strokeStyle = P[2]; c.beginPath(); c.moveTo(-0.32, -0.3); c.lineTo(-0.2, -0.46); c.stroke();   // ハイライト
     c.restore();
   }
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
