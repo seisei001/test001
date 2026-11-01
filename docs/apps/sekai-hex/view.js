@@ -140,6 +140,13 @@ void main(){
 
     const FV = new Set();   // 噴火で生まれた火山(層,q,r)
     const fv = FV;
+    // 街は「親のマスが街なら、子の層でも真ん中の子が街」で層をまたいで同じ場所に出る(新しく生まれる街は層ごとに少しだけ)
+    const K0 = SK.OFF.findIndex(o => o[0] === 0 && o[1] === 0), tcell = { h: 0, b: 0, rel: 0 };
+    function townOwn(L, q, r) { sk.cell(L, q, r, tcell); return tcell.h > 0 && tcell.h < 900 && tcell.b >= 6 && tcell.b <= 10 && hash2(q, r, L + 62) < (L === 0 ? 0.02 : 0.003); }
+    function isTown(L, q, r) {
+      if (townOwn(L, q, r)) return true; if (L < 1) return false;
+      const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return false; return isTown(L - 1, pt[0], pt[1]);
+    }
     const w = sk.w;
     const worldW = (w.W + 0.5) * SK.spacing(0);
     const st = {
@@ -250,7 +257,7 @@ void main(){
             else if (h > 2200 && sr < 0.4 * sprK) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr };
             else if (h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr };
             else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
-            else if (!LK && slope < 0.05 && h < 900 && b0 >= 6 && b0 <= 10 && sr2 < 0.025 * sprT) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
+            else if (isTown(L, q, r)) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
           }
           if (spec) STP.push(i, spec);
           else { const sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(b0, h, coast, hash2(q, r, L + 61))); }
@@ -307,10 +314,37 @@ void main(){
           vert(cxl + c0[0], cyl + c0[1], z, sc[0], sc[1], sc[2], sd); vert(cxl + c1[0], cyl + c1[1], zn, sc[0], sc[1], sc[2], sd); vert(cxl + c0[0], cyl + c0[1], zn, sc[0], sc[1], sc[2], sd);
         }
       }
+      // 街と街をつなぐ道: 近い街2つへ。海は渡らず、急な坂を避け、すでにある道には乗り入れる
+      const roads = [], onRoad = new Uint8Array(m);
+      function roadPath(a, b) {
+        const hd = (i, j) => { const dq = qs[i] - qs[j], dr = rs[i] - rs[j]; return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2; };
+        const g = new Map([[a, 0]]), from = new Map(), heap = [[hd(a, b), a]], done = new Set();
+        const push = (it) => { heap.push(it); let c = heap.length - 1; while (c > 0) { const p2 = (c - 1) >> 1; if (heap[p2][0] <= heap[c][0]) break; [heap[p2], heap[c]] = [heap[c], heap[p2]]; c = p2; } };
+        const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { let l = 2 * c + 1, r2 = l + 1, mn = c; if (l < heap.length && heap[l][0] < heap[mn][0]) mn = l; if (r2 < heap.length && heap[r2][0] < heap[mn][0]) mn = r2; if (mn === c) break; [heap[mn], heap[c]] = [heap[c], heap[mn]]; c = mn; } } return top; };
+        let n = 0;
+        while (heap.length && n++ < 4000) {
+          const [, i] = pop(); if (done.has(i)) continue; done.add(i);
+          if (i === b) { const pth = [b]; let c = b; while (c !== a) { c = from.get(c); pth.push(c); } return pth.reverse(); }
+          for (let k = 0; k < 6; k++) {
+            const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || hs[j] <= 0) continue;
+            const cost = g.get(i) + (onRoad[j] ? 0.35 : 1 + 8 * Math.abs(hs[j] - hs[i]) / s + (hs[j] > 2500 ? 3 : 0));
+            if (g.has(j) && g.get(j) <= cost) continue; g.set(j, cost); from.set(j, i); push([cost + hd(j, b), j]);
+          }
+        }
+        return null;
+      }
+      if (L > 0) {
+        const T = []; for (let k = 0; k < STP.length; k += 2) if (typeof STP[k + 1] === 'object' && STP[k + 1].k === 'town') T.push(STP[k]);
+        const es = new Set();
+        for (const a of T) {
+          const near = T.filter(b => b !== a).map(b => [Math.hypot(cpos[a * 3] - cpos[b * 3], cpos[a * 3 + 1] - cpos[b * 3 + 1]), b]).filter(x => x[0] < s * 16).sort((x, y) => x[0] - y[0]).slice(0, 2);
+          for (const [, b] of near) { const kk = a < b ? a + ',' + b : b + ',' + a; if (es.has(kk)) continue; es.add(kk); const pth = roadPath(a, b); if (pth) { for (const i of pth) onRoad[i] = 1; roads.push(pth); } }
+        }
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, buf.slice(0, nv * 16), gl.STATIC_DRAW);
       let hmx = 1; for (let i = 0; i < m; i++) if (hs[i] > hmx) hmx = hs[i];
       const raw = Math.max(2, hmx / 12), pw = Math.pow(10, Math.floor(Math.log10(raw))), nm = raw / pw, cstep = pw * (nm < 1.5 ? 1 : nm < 3.5 ? 2 : nm < 7.5 ? 5 : 10);
-      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, ms: performance.now() - t0, tilt: st.tilt };
+      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, roads, ms: performance.now() - t0, tilt: st.tilt };
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
     }
@@ -355,7 +389,7 @@ void main(){
       const ov = hooks.overlay; if (!ov || !mesh) return;
       if (ov.width !== canvas.width || ov.height !== canvas.height) { ov.width = canvas.width; ov.height = canvas.height; }
       const c2 = ov.getContext('2d'); c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, ov.width, ov.height);
-      if (st.stamps === false || !mesh.stamps.length) return;
+      if (st.stamps === false || (!mesh.stamps.length && !(mesh.roads && mesh.roads.length))) return;
       const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt), list = [], st2 = mesh.stamps, tm = performance.now();
       for (let k = 0; k < st2.length; k += 2) {
         const i = st2[k], gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
@@ -363,6 +397,22 @@ void main(){
         if (X < -60 || X > st.W + 60 || Y < -60 || Y > st.H + 160) continue;
         const fd = Math.hypot(gx, gy); if (mesh.L > 0 && fd > mesh.rad * 0.9) continue;   // 霞の向こうは描かない
         list.push([Y, X, st2[k + 1]]);
+      }
+      if (mesh.roads && mesh.roads.length) { // 道(絵の下に)。2本の線を重ねて縁取りする
+        const cellpx = mesh.s * st.ppm, wd = Math.max(2, Math.min(10, cellpx * 0.16)) * st.dpr; c2.lineCap = 'round'; c2.lineJoin = 'round';
+        for (const [col, w] of [['#5b4030', wd * 1.5], ['#e7cf9a', wd]]) {
+          c2.strokeStyle = col; c2.lineWidth = w;
+          for (const pth of mesh.roads) {
+            c2.beginPath(); let on = false;
+            for (const i of pth) {
+              const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
+              const X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr;
+              if (Math.hypot(gx, gy) > mesh.rad * 0.9) { on = false; continue; }
+              if (!on) { c2.moveTo(X, Y); on = true; } else c2.lineTo(X, Y);
+            }
+            c2.stroke();
+          }
+        }
       }
       list.sort((a, b) => a[0] - b[0]);
       const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.4, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
