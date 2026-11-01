@@ -64,10 +64,11 @@ button:active{background:var(--accent);color:#fff}
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.17';</script>
-<script src="world.js?v=0.17"></script>
-<script src="sekai.js?v=0.17"></script>
-<script src="view.js?v=0.17"></script>
+<script>window.APP_VER='0.18';</script>
+<script src="world.js?v=0.18"></script>
+<script src="sekai.js?v=0.18"></script>
+<script src="sprites.js?v=0.18"></script>
+<script src="view.js?v=0.18"></script>
 <script>
 (function(){
   'use strict';
@@ -157,7 +158,7 @@ button:active{background:var(--accent);color:#fff}
     var P=[0,0],s=Sekai.spacing(p.L),R=6,qs=new Int32Array(400),rs=new Int32Array(400),n,i,d,peak=Math.max(s*0.05,8);
     Sekai.pos(p.L,p.q,p.r,P);n=sk.cellsIn(p.L,P[0],P[1],R*s,qs,rs);
     for(i=0;i<n;i++){var Q=[0,0];Sekai.pos(p.L,qs[i],rs[i],Q);d=Math.hypot(Q[0]-P[0],Q[1]-P[1])/(R*s*1.15);if(d<1)sk.applyDiff(p.L,qs[i],rs[i],peak*Math.pow(1-d,1.5));}
-    sk.invalidateBelow(p.L);view.refresh();
+    sk.invalidateBelow(p.L);view.addVolcano(p.L,p.q,p.r);
   };
   window.addEventListener('load',start);
 })();

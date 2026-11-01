@@ -115,10 +115,9 @@ void main(){
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🏰'], 5: ['🐪', '🌵', '🐉'], 6: ['🐄', '🏰', '🐑'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🧚', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🐉', '🏔️'] };
+  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🐑'], 5: ['🐪', '🌵', '🐉'], 6: ['🐄', '🦬', '🐑'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🧚', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🐉', '🏔️'] };
   const SEA_STAMPS = ['🐋', '🚢', '🐙', '🦈', '⛵', '🐬'], DEEP_STAMPS = ['🐉', '🦑', '🧜', '🐋'];   // 深い海には「ここにドラゴンあり」の怪物
   function stampFor(b, h, coast, r) {
-    if (h > 4200) return '🏔️';
     if (h < -3500) return DEEP_STAMPS[Math.min(DEEP_STAMPS.length - 1, (r * DEEP_STAMPS.length) | 0)];
     if (h <= 0) return SEA_STAMPS[Math.min(SEA_STAMPS.length - 1, (r * SEA_STAMPS.length) | 0)];
     if (coast && b !== 1) return r < 0.5 ? '⚓' : '🏝️';
@@ -137,6 +136,8 @@ void main(){
     const vbo = gl.createBuffer(), selBuf = gl.createBuffer();
     gl.enable(gl.DEPTH_TEST); gl.clearColor(0.05, 0.1, 0.16, 1); const FOGC = [0.05, 0.1, 0.16];
 
+    const FV = new Set();   // 噴火で生まれた火山(層,q,r)
+    const fv = FV;
     const w = sk.w;
     const worldW = (w.W + 0.5) * SK.spacing(0);
     const st = {
@@ -212,7 +213,7 @@ void main(){
         const ob = nv * 16 + 12; u8[ob] = Math.min(255, r * shade); u8[ob + 1] = Math.min(255, g * shade); u8[ob + 2] = Math.min(255, b * shade); u8[ob + 3] = PID * 20; nv++;
       }
       // なめらか表示: 六角形は計算の格子にすぎない。見た目は、3マスが集まる角の高さ・色・明るさを3マスの平均にして連続した地面にする
-      const STP = [], stampP = Math.min(0.2, 90 / Math.max(1, m));
+      const STP = [], FV = fv, sprK = Math.min(1, 1500 / Math.max(1, m)), sprT = Math.min(1, 2000 / Math.max(1, m)), stampP = Math.min(0.2, 90 / Math.max(1, m));
       const SM = st.smooth !== false, COL = new Float32Array(m * 3), SHD = new Float32Array(m);
       for (let pass = SM ? 1 : 2; pass <= 2; pass++) for (let i = 0; i < m; i++) {
         const q = qs[i], r = rs[i], h = hs[i], z = zOf(h);
@@ -238,7 +239,20 @@ void main(){
         const pk = PK; COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
         PID = h > 0 ? pk : 1;
-        { const sr = hash2(q, r, L + 60), sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(bs[i], h, coast, hash2(q, r, L + 61))); }
+        { // アニメ風の絵(山・火山・街・城・目印)を選ぶ。選ばれなければ生き物の絵記号
+          const sr = hash2(q, r, L + 60), sr2 = hash2(q, r, L + 62), sr3 = hash2(q, r, L + 63), b0 = bs[i]; let spec = null;
+          if (FV.has(L + ',' + q + ',' + r)) spec = { k: 'volcano', b: b0, seed: sr };
+          else if (h > 0) {
+            let peak = true; for (let k = 0; k < 6; k++) if (nbH[k] > z) { peak = false; break; }
+            if (h > 1800 && peak && sr2 < 0.1 * sprK) spec = { k: 'volcano', b: b0, seed: sr };
+            else if (h > 2200 && sr < 0.4 * sprK) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr };
+            else if (h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr };
+            else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
+            else if (!LK && slope < 0.05 && h < 900 && b0 >= 6 && b0 <= 10 && sr2 < 0.025 * sprT) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
+          }
+          if (spec) STP.push(i, spec);
+          else { const sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(b0, h, coast, hash2(q, r, L + 61))); }
+        }
         if (SM) {
           const cz = [0, 0, 0, 0, 0, 0], cR = [0, 0, 0, 0, 0, 0], cG = [0, 0, 0, 0, 0, 0], cB = [0, 0, 0, 0, 0, 0], cS = [0, 0, 0, 0, 0, 0];
           for (let k = 0; k < 6; k++) {
@@ -335,24 +349,35 @@ void main(){
       if (sel && sel.L === mesh.L) drawSel();
       drawStamps();
     }
-    function drawStamps() { // 絵記号を、地面の上に重ねた2D画像として描く(3Dの位置を画面へ投影)
-      const ov = hooks.overlay; if (!ov) return;
+    function drawStamps() { // 絵を、地面の上に重ねた2D画像として描く(3Dの位置を画面へ投影)。アニメ風の絵は動く(煙・旗・光)
+      const ov = hooks.overlay; if (!ov || !mesh) return;
       if (ov.width !== canvas.width || ov.height !== canvas.height) { ov.width = canvas.width; ov.height = canvas.height; }
-      const c2 = ov.getContext('2d'); c2.clearRect(0, 0, ov.width, ov.height);
+      const c2 = ov.getContext('2d'); c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, ov.width, ov.height);
       if (st.stamps === false || !mesh.stamps.length) return;
-      const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt), list = [], st2 = mesh.stamps;
+      const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt), list = [], st2 = mesh.stamps, tm = performance.now();
       for (let k = 0; k < st2.length; k += 2) {
         const i = st2[k], gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
         const X = st.W / 2 + (cy * gx + sy * gy) * st.ppm, Y = st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm;
-        if (X < -40 || X > st.W + 40 || Y < -40 || Y > st.H + 40) continue; list.push([Y, X, st2[k + 1]]);
+        if (X < -60 || X > st.W + 60 || Y < -60 || Y > st.H + 160) continue;
+        const fd = Math.hypot(gx, gy); if (mesh.L > 0 && fd > mesh.rad * 0.9) continue;   // 霞の向こうは描かない
+        list.push([Y, X, st2[k + 1]]);
       }
       list.sort((a, b) => a[0] - b[0]);
-      const px = Math.max(13, Math.min(34, mesh.s * st.ppm * 0.8)) * st.dpr;
-      c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-      c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr;
-      for (const [Y, X, ch] of list) c2.fillText(ch, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr);
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.4, volcano: 2.8, town: 1.6, castle: 1.9 };
+      for (const [Y, X, sp0] of list) {
+        if (typeof sp0 === 'string') {
+          c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+          c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
+        } else {
+          const size = Math.max(30, Math.min(mesh.L === 0 ? 62 : 130, cell * (MUL[sp0.k] || 1.7))) * st.dpr;
+          c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
+        }
+      }
     }
-
+    (function loop(t) { // 煙・旗・光を動かすため、絵の層だけを定期的に描き直す(地面は描き直さない)
+      if (!document.hidden && mesh && mesh.stamps && mesh.stamps.length && st.stamps !== false && (!loop.t || t - loop.t > 45)) { loop.t = t; drawStamps(); }
+      requestAnimationFrame(loop);
+    })(0);
     function drawSel() {
       const i = sel.i; if (i === undefined) return;
       const s = mesh.s, a = SK.angle(mesh.L), ca = Math.cos(a), sa = Math.sin(a), Rc = mesh.Rc;
@@ -457,6 +482,7 @@ void main(){
       jumpTo(fx, fy, ppm) { st.fx = fx; st.fy = fy; if (ppm) { st.ppm = ppm; clampPpm(); } changed(); },
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
       refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
+      addVolcano(L, q, r) { FV.add(L + ',' + q + ',' + r); mesh = null; changed(); },
       setPattern(v) { st.pattern = v; changed(); },
       setStamps(v) { st.stamps = v; changed(); },
       setSmooth(v) { st.smooth = v; mesh = null; changed(); },
