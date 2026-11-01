@@ -43,9 +43,10 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
     return c;
   }
   // b=気候区分, h=標高, slope=傾き, coast=海に接するか, nz=広い範囲のむら, nz2=別のむら, rnd=マスごとの乱数
+  let LK = 0;   // 1=耕地・湿地・海辺・岩・雪など、木が生えない地表になった
   function landColor(b, h, slope, coast, nz, nz2, rnd) {
     const hh = Math.max(0, h);
-    let c;
+    let c; LK = 0;
     switch (b) {
       case 1: c = nz > 0.55 ? mixc([238, 244, 250], [200, 224, 240], (nz - 0.55) * 2) : [238, 244, 250]; if (slope > 0.12) c = mixc(c, [176, 204, 226], 0.5); break;   // 雪原・氷河・クレバス
       case 2: { const k = nz; c = k < 0.3 ? [150, 158, 130] : k < 0.55 ? [128, 140, 110] : k < 0.75 ? [186, 184, 140] : [100, 130, 120]; if (nz2 > 0.7) c = [140, 136, 128]; break; }   // ツンドラ: 苔・地衣類・凍土の裸地・湿地
@@ -64,21 +65,23 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       default: c = [79, 138, 69];
     }
     // 耕地: 平らで低い、人が住みやすい気候のところにパッチ状に広がる
-    if ((b === 6 || b === 7 || b === 8 || b === 4 || b === 9 || b === 10) && slope < 0.05 && hh < 700 && nz2 > 0.5 && nz2 < 0.72) c = pick(CROP, hash2((nz * 4000) | 0, (nz2 * 4000) | 0, 91));
+    if ((b === 6 || b === 7 || b === 8 || b === 4 || b === 9 || b === 10) && slope < 0.05 && hh < 700 && nz2 > 0.5 && nz2 < 0.72) { LK = 1; c = pick(CROP, hash2((nz * 4000) | 0, (nz2 * 4000) | 0, 91)); }
     // 湿地: 低くて平らで雨の多い所
-    if ((b === 3 || b === 8 || b === 9 || b === 11 || b === 2 || b === 4) && slope < 0.03 && hh < 90 && !coast && nz2 > 0.88) c = nz > 0.5 ? [96, 140, 120] : [80, 140, 140];
+    if ((b === 3 || b === 8 || b === 9 || b === 11 || b === 2 || b === 4) && slope < 0.03 && hh < 90 && !coast && nz2 > 0.88) { LK = 1; c = nz > 0.5 ? [96, 140, 120] : [80, 140, 140]; }
     // 海辺: 砂浜・マングローブ・岩礁
     if (coast) {
+      LK = 1;
       if (slope > 0.15) c = mixc(c, [120, 112, 104], 0.7);
       else if ((b === 11 || b === 10) && hh < 12) c = nz > 0.4 ? [60, 110, 80] : [40, 120, 100];
       else if (hh < 40 && b !== 1) c = mixc(c, b === 11 || b === 10 || b === 5 ? [242, 230, 188] : [226, 210, 160], 0.8);
     }
     // 急斜面は岩肌(ガレ場)
+    if (b !== 1 && b !== 5 && slope > 0.14) LK = 1;
     if (b !== 1 && b !== 5 && slope > 0.14) c = mixc(c, ROCK[((rnd * 4) | 0) & 3], sstep(0.14, 0.3, slope));
     // 森林限界: 高いほど岩へ。さらに高いと雪
     if (b !== 1 && b !== 5) {
       c = mixc(c, ROCK[((nz2 * 4) | 0) & 3], sstep(2400, 3400, hh) * 0.85);
-      const snow = sstep(3300 + 800 * (nz - 0.5), 5200, hh);
+      const snow = sstep(3300 + 800 * (nz - 0.5), 5200, hh); if (snow > 0.05 || hh > 2500) LK = 1;
       c = mixc(c, [246, 248, 252], snow);
     } else if (b === 5) { c = mixc(c, [190, 170, 150], sstep(2600, 4200, hh) * 0.5); c = mixc(c, [246, 248, 252], sstep(5000, 6000, hh)); }
     const j = 0.93 + 0.14 * rnd; // マスごとのわずかな明暗
@@ -160,7 +163,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       }
       const ex = exByLayer[L] * st.exMul;
       // 頂点: 位置3 float + 色4 byte = 16byte
-      const maxV = m * 54;
+      const maxV = m * 54 + m * 52;
       const buf = new ArrayBuffer(maxV * 16), f32 = new Float32Array(buf), u8 = new Uint8Array(buf);
       let nv = 0, zmax = 1;
       const ox = st.fx, oy = st.fy, ca = Math.cos(a), sa = Math.sin(a), Rc = s / SQ3;
@@ -175,7 +178,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const q = qs[i], r = rs[i], h = hs[i], z = zOf(h);
         SK.pos(L, q, r, P); const cxl = P[0] - ox, cyl = P[1] - oy;
         cpos[i * 3] = P[0]; cpos[i * 3 + 1] = P[1]; cpos[i * 3 + 2] = z;
-        if (z > zmax) zmax = z;
+        if (z + 0.25 * s / ex > zmax) zmax = z + 0.25 * s / ex;
         // 隣の高さ
         let gx = 0, gy = 0;
         for (let k = 0; k < 6; k++) {
@@ -198,6 +201,23 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
           vert(cxl, cyl, z, col[0], col[1], col[2], shade);
           vert(cxl + c0[0], cyl + c0[1], z, col[0], col[1], col[2], shade);
           vert(cxl + c1[0], cyl + c1[1], z, col[0], col[1], col[2], shade);
+        }
+        // 木: 森のマスに、円すい形の木を数本立てる(層が細かくなっても大きさはマスに合わせて変わる)
+        if (h > 0 && !LK) {
+          const bb = bs[i], cnt = bb === 3 ? 4 : bb === 11 ? 4 : bb === 8 ? 3 : bb === 9 ? 3 : bb === 10 ? 1 : bb === 7 ? 1 : 0;
+          for (let t = 0; t < cnt; t++) {
+            const hr = hash2(q * 7 + t, r * 13 - t, L + 40), ha = hash2(q * 5 - t, r * 11 + t, L + 41), hs3 = hash2(q + t * 3, r + t * 5, L + 42);
+            const ang = hr * 6.2832, rad = (0.15 + 0.38 * Math.sqrt(ha)) * Rc, tx = cxl + Math.cos(ang) * rad, ty = cyl + Math.sin(ang) * rad;
+            const tall = (bb === 11 ? 0.2 : bb === 3 ? 0.24 : 0.17) * s * (0.7 + 0.6 * hs3) / ex, rb = (bb === 8 || bb === 9 ? 0.085 : 0.06) * s * (0.8 + 0.4 * hs3);
+            const tc = bb === 3 ? [30, 76, 52] : bb === 11 ? [20, 100, 44] : bb === 8 ? [58, 124, 54] : bb === 9 ? [44, 108, 66] : bb === 10 ? [110, 136, 56] : [112, 130, 70];
+            const tj = 0.85 + 0.3 * hs3;
+            for (let k = 0; k < 4; k++) {
+              const a0 = k * Math.PI / 2 + 0.785, a1 = a0 + Math.PI / 2, am = (a0 + a1) / 2, nx = Math.cos(am), ny = Math.sin(am), sd2 = Math.min(1.15, Math.max(0.5, 0.78 - 0.4 * (nx * LIGHT[0] + ny * LIGHT[1])));
+              vert(tx, ty, z + tall, tc[0] * tj * 1.15, tc[1] * tj * 1.15, tc[2] * tj * 1.15, sd2);
+              vert(tx + Math.cos(a0) * rb, ty + Math.sin(a0) * rb, z, tc[0] * tj, tc[1] * tj, tc[2] * tj, sd2);
+              vert(tx + Math.cos(a1) * rb, ty + Math.sin(a1) * rb, z, tc[0] * tj, tc[1] * tj, tc[2] * tj, sd2);
+            }
+          }
         }
         // 側面: 隣より高いところだけ
         for (let k = 0; k < 6; k++) {
