@@ -115,13 +115,15 @@ void main(){
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🐑'], 5: ['🐪', '🌵', '🐉'], 6: ['🐄', '🦬', '🐑'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🧚', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🐉', '🏔️'] };
-  const SEA_STAMPS = ['🐋', '🚢', '🐙', '🦈', '⛵', '🐬'], DEEP_STAMPS = ['🐉', '🦑', '🧜', '🐋'];   // 深い海には「ここにドラゴンあり」の怪物
-  function stampFor(b, h, coast, r) {
-    if (h < -3500) return DEEP_STAMPS[Math.min(DEEP_STAMPS.length - 1, (r * DEEP_STAMPS.length) | 0)];
-    if (h <= 0) return SEA_STAMPS[Math.min(SEA_STAMPS.length - 1, (r * SEA_STAMPS.length) | 0)];
-    if (coast && b !== 1) return r < 0.5 ? '⚓' : '🏝️';
-    const a = STAMPS[b] || STAMPS[8]; return a[Math.min(a.length - 1, (r * a.length) | 0)];
+  const STAMPS = { 1: ['penguin', 'seal', 'polar'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'deer', 'fox'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'cactus', 'dragon'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar'], 9: ['owl', 'fairy', 'deer'], 10: ['lion', 'elephant', 'giraffe'], 11: ['parrot', 'monkey', 'tiger'], 12: ['goat', 'dragon', 'eagle'] };
+  const SEA_STAMPS = ['whale', 'ship', 'octopus', 'shark', 'sail', 'dolphin'], DEEP_STAMPS = ['serpent', 'squid', 'mermaid', 'whale'];   // 深い海には「ここにドラゴンあり」の怪物
+  function stampFor(b, h, coast, r) { // 生き物もアニメ風の絵(sprites.js の animal)
+    let a;
+    if (h < -3500) a = DEEP_STAMPS[Math.min(DEEP_STAMPS.length - 1, (r * DEEP_STAMPS.length) | 0)];
+    else if (h <= 0) a = SEA_STAMPS[Math.min(SEA_STAMPS.length - 1, (r * SEA_STAMPS.length) | 0)];
+    else if (coast && b !== 1) a = r < 0.5 ? 'anchor' : 'island';
+    else { const l = STAMPS[b] || STAMPS[8]; a = l[Math.min(l.length - 1, (r * l.length) | 0)]; }
+    return { k: 'animal', a, seed: (r * 977) % 1 };
   }
   function create(canvas, sk, hooks) {
     hooks = hooks || {};
@@ -363,13 +365,13 @@ void main(){
         list.push([Y, X, st2[k + 1]]);
       }
       list.sort((a, b) => a[0] - b[0]);
-      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.4, volcano: 2.8, town: 1.6, castle: 1.9 };
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.4, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
         if (typeof sp0 === 'string') {
           c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
-          const size = Math.max(30, Math.min(mesh.L === 0 ? 62 : 130, cell * (MUL[sp0.k] || 1.7))) * st.dpr;
+          const an = sp0.k === 'animal', size = Math.max(an ? 26 : 30, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7))) * st.dpr;
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }
