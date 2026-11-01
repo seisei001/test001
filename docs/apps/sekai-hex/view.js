@@ -17,20 +17,72 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
  gl_Position=vec4(sx/uHalf.x,-sy/uHalf.y,-dp/uD,1.0); vCol=aCol.rgb; }`;
   const FS = `precision mediump float; varying vec3 vCol; void main(){ gl_FragColor=vec4(vCol,1.0); }`;
 
+  // ---- 地表の色: 気候(12区分)×標高×傾き×水辺×場所ごとのむら で、実際の世界地図のような多様さを出す ----
+  // 参考にした実世界の分類: 土地被覆(樹木・低木・草地・耕地・裸地・雪氷・水域・湿地・マングローブ・コケ地衣類)、ケッペンの気候区分、地形(山・台地・平野・谷・カルスト・砂丘・メサ・氷河ほか)
   function mix(a, b, t) { return a + (b - a) * t; }
-  function seaColor(h) { // 深さで色を変える(0〜-6000m)
-    const t = Math.min(1, Math.max(0, -h / 6000)), s = Math.sqrt(t);
-    return [mix(70, 14, s), mix(150, 40, s), mix(200, 98, s)];
+  function mixc(c1, c2, t) { return [mix(c1[0], c2[0], t), mix(c1[1], c2[1], t), mix(c1[2], c2[2], t)]; }
+  function sstep(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+  function hash2(x, y, sd) { let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(sd | 0, 1274126177)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+  function vnoise(x, y, sd) { // なめらかな値ノイズ(0〜1)。広い範囲で色が連続して変わる
+    const x0 = Math.floor(x), y0 = Math.floor(y), u = x - x0, v = y - y0, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    const a = hash2(x0, y0, sd), b = hash2(x0 + 1, y0, sd), c = hash2(x0, y0 + 1, sd), d = hash2(x0 + 1, y0 + 1, sd);
+    return mix(mix(a, b, su), mix(c, d, su), sv);
   }
-  function landColor(b, h) {
-    const c = BIOME_COL[b] || BIOME_COL[8];
-    let r = c[0], g = c[1], bl = c[2];
+  const ROCK = [[132, 126, 116], [150, 140, 126], [118, 112, 106], [160, 150, 138]];
+  const CROP = [[226, 204, 110], [196, 214, 96], [170, 130, 80], [120, 170, 70], [214, 176, 96], [150, 190, 110]];
+  function pick(arr, r) { return arr[Math.min(arr.length - 1, (r * arr.length) | 0)]; }
+  function seaColor(h, nearBiome, cellR, shoreN) { // 深さと岸の様子で色を変える
+    const t = Math.min(1, Math.max(0, -h / 6000)), s = Math.sqrt(t);
+    let c = [mix(70, 14, s), mix(150, 40, s), mix(200, 98, s)];
+    if (h > -250) { // 大陸棚: 浅いほど明るく
+      const k = sstep(-250, -2, h); c = mixc(c, [92, 176, 204], k * 0.85);
+      if (nearBiome === 10 || nearBiome === 11 || nearBiome === 5 || nearBiome === 7) c = mixc(c, [64, 200, 196], k * (0.5 + 0.4 * shoreN)); // 暖かい浅瀬: ターコイズ
+      if (h > -40 && (nearBiome === 10 || nearBiome === 11) && cellR > 0.55) c = mixc(c, [92, 198, 170], 0.5); // サンゴ礁
+    }
+    if (nearBiome === 1 || nearBiome === 2 && cellR > 0.4) c = mixc(c, [214, 232, 242], nearBiome === 1 ? 0.85 : 0.45); // 氷雪の岸辺は海氷
+    return c;
+  }
+  // b=気候区分, h=標高, slope=傾き, coast=海に接するか, nz=広い範囲のむら, nz2=別のむら, rnd=マスごとの乱数
+  function landColor(b, h, slope, coast, nz, nz2, rnd) {
     const hh = Math.max(0, h);
-    const lift = Math.min(1, hh / 3500);               // 高いほど少し明るく乾いた色へ
-    r = mix(r, 205, lift * 0.35); g = mix(g, 198, lift * 0.35); bl = mix(bl, 185, lift * 0.35);
-    const snow = Math.min(1, Math.max(0, (hh - 4200) / 1800));
-    r = mix(r, 245, snow); g = mix(g, 247, snow); bl = mix(bl, 250, snow);
-    return [r, g, bl];
+    let c;
+    switch (b) {
+      case 1: c = nz > 0.55 ? mixc([238, 244, 250], [200, 224, 240], (nz - 0.55) * 2) : [238, 244, 250]; if (slope > 0.12) c = mixc(c, [176, 204, 226], 0.5); break;   // 雪原・氷河・クレバス
+      case 2: { const k = nz; c = k < 0.3 ? [150, 158, 130] : k < 0.55 ? [128, 140, 110] : k < 0.75 ? [186, 184, 140] : [100, 130, 120]; if (nz2 > 0.7) c = [140, 136, 128]; break; }   // ツンドラ: 苔・地衣類・凍土の裸地・湿地
+      case 3: c = nz < 0.4 ? [44, 86, 62] : nz < 0.75 ? [58, 100, 70] : [90, 105, 70]; if (nz2 > 0.82) c = [110, 125, 90]; break;   // 針葉樹林(タイガ)と湿原
+      case 4: c = nz < 0.4 ? [176, 184, 106] : nz < 0.75 ? [150, 170, 100] : [200, 186, 120]; break;   // ステップ
+      case 5: { // 砂漠: 砂・赤い岩・礫・塩湖
+        c = nz < 0.35 ? [220, 190, 128] : nz < 0.6 ? [206, 168, 104] : nz < 0.8 ? [190, 120, 80] : [170, 160, 145];
+        if (nz2 > 0.88 && slope < 0.04 && hh < 900) c = [238, 234, 224]; else if (nz2 > 0.45 && nz2 < 0.55 && slope < 0.08) c = mixc(c, [232, 204, 140], 0.5); break; }
+      case 6: c = nz < 0.5 ? [150, 184, 76] : [180, 190, 90]; break;
+      case 7: c = nz < 0.4 ? [150, 170, 84] : nz < 0.7 ? [196, 170, 100] : [128, 150, 84]; break;   // オリーブ・乾いた低木
+      case 8: c = nz < 0.35 ? [74, 132, 66] : nz < 0.7 ? [96, 148, 70] : [120, 140, 60]; if (nz2 > 0.84) c = [176, 120, 50]; break;   // 落葉樹・黄葉
+      case 9: c = nz < 0.5 ? [52, 114, 72] : [70, 128, 88]; break;
+      case 10: c = nz < 0.4 ? [196, 176, 84] : nz < 0.75 ? [170, 160, 70] : [120, 146, 62]; break;   // サバナ: 枯れ草と木立
+      case 11: c = nz < 0.4 ? [24, 112, 52] : nz < 0.7 ? [18, 92, 48] : [44, 130, 60]; break;
+      case 12: c = slope < 0.15 && hh < 3000 ? [128, 150, 96] : ROCK[((nz * 4) | 0) & 3]; break;   // 高山草原・岩
+      default: c = [79, 138, 69];
+    }
+    // 耕地: 平らで低い、人が住みやすい気候のところにパッチ状に広がる
+    if ((b === 6 || b === 7 || b === 8 || b === 4 || b === 9 || b === 10) && slope < 0.05 && hh < 700 && nz2 > 0.5 && nz2 < 0.72) c = pick(CROP, hash2((nz * 4000) | 0, (nz2 * 4000) | 0, 91));
+    // 湿地: 低くて平らで雨の多い所
+    if ((b === 3 || b === 8 || b === 9 || b === 11 || b === 2 || b === 4) && slope < 0.03 && hh < 90 && !coast && nz2 > 0.88) c = nz > 0.5 ? [96, 140, 120] : [80, 140, 140];
+    // 海辺: 砂浜・マングローブ・岩礁
+    if (coast) {
+      if (slope > 0.15) c = mixc(c, [120, 112, 104], 0.7);
+      else if ((b === 11 || b === 10) && hh < 12) c = nz > 0.4 ? [60, 110, 80] : [40, 120, 100];
+      else if (hh < 40 && b !== 1) c = mixc(c, b === 11 || b === 10 || b === 5 ? [242, 230, 188] : [226, 210, 160], 0.8);
+    }
+    // 急斜面は岩肌(ガレ場)
+    if (b !== 1 && b !== 5 && slope > 0.14) c = mixc(c, ROCK[((rnd * 4) | 0) & 3], sstep(0.14, 0.3, slope));
+    // 森林限界: 高いほど岩へ。さらに高いと雪
+    if (b !== 1 && b !== 5) {
+      c = mixc(c, ROCK[((nz2 * 4) | 0) & 3], sstep(2400, 3400, hh) * 0.85);
+      const snow = sstep(3300 + 800 * (nz - 0.5), 5200, hh);
+      c = mixc(c, [246, 248, 252], snow);
+    } else if (b === 5) { c = mixc(c, [190, 170, 150], sstep(2600, 4200, hh) * 0.5); c = mixc(c, [246, 248, 252], sstep(5000, 6000, hh)); }
+    const j = 0.93 + 0.14 * rnd; // マスごとのわずかな明暗
+    return [c[0] * j, c[1] * j, c[2] * j];
   }
 
   function create(canvas, sk, hooks) {
@@ -133,7 +185,12 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         }
         gx = gx / (3 * s) * ex; gy = gy / (3 * s) * ex;           // 見かけの傾き
         const nl = Math.hypot(gx, gy, 1), nd = (-gx * LIGHT[0] - gy * LIGHT[1] + LIGHT[2]) / nl;
-        const col = h > 0 ? landColor(bs[i], h) : seaColor(h);
+        let drop = 0, coast = false, nearB = 0, shoreN = 0;
+        for (let k = 0; k < 6; k++) { const dd = Math.abs(nbH[k] - z); if (dd > drop) drop = dd; }
+        for (let k = 0; k < 6; k++) { const j = idx.get(key(q + DIRS[k][0], r + DIRS[k][1])); let hn2, bn2; if (j !== undefined) { hn2 = hs[j]; bn2 = bs[j]; } else { sk.cell(L, q + DIRS[k][0], r + DIRS[k][1], tmp); hn2 = tmp.h; bn2 = tmp.b; }
+          if (h > 0 && hn2 <= 0) coast = true; if (h <= 0 && hn2 > 0 && bn2 > 0) { nearB = bn2; shoreN++; } }
+        const slope = drop / s, nzs = s * 6, nzA = vnoise(P[0] / nzs, P[1] / nzs, L * 7 + 1), nzB = vnoise(P[0] / (nzs * 0.45) + 17, P[1] / (nzs * 0.45) + 31, L * 7 + 2), rnd = hash2(q, r, L + 5);
+        const col = h > 0 ? landColor(bs[i], h, slope, coast, nzA, nzB, rnd) : seaColor(h, nearB, rnd, Math.min(1, shoreN / 3));
         const shade = h > 0 ? Math.min(1.18, Math.max(0.55, 0.58 + 0.62 * nd)) : 1.0;
         // 上面(6枚の三角形)
         for (let k = 0; k < 6; k++) {
