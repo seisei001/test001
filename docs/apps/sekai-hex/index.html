@@ -54,6 +54,7 @@ button:active{background:var(--accent);color:#fff}
       <button id="rr" aria-label="右回り">↻</button>
       <button id="ex" aria-label="高さの強調">高さ×1</button>
       <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
+      <button id="pat" aria-label="模様の表示切替">模様</button>
       <button id="stamp" aria-label="絵記号の表示切替">絵記号</button>
       <button id="smooth" aria-label="地面の見た目を切り替え">なめらか</button>
       <button id="boom" aria-label="選んだマスで噴火" title="選んだマスで噴火(層1以下)">🌋</button>
@@ -63,10 +64,10 @@ button:active{background:var(--accent);color:#fff}
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.16';</script>
-<script src="world.js?v=0.16"></script>
-<script src="sekai.js?v=0.16"></script>
-<script src="view.js?v=0.16"></script>
+<script>window.APP_VER='0.17';</script>
+<script src="world.js?v=0.17"></script>
+<script src="sekai.js?v=0.17"></script>
+<script src="view.js?v=0.17"></script>
 <script>
 (function(){
   'use strict';
@@ -144,6 +145,8 @@ button:active{background:var(--accent);color:#fff}
     view.jumpTo(P[0],P[1],Math.max(view.st.ppm*1.01,48/nextS));
     view.select(null);
   };
+  var patOn=true;
+  $('pat').onclick=function(){patOn=!patOn;$('pat').style.opacity=patOn?1:.5;view.setPattern(patOn);};
   var stampOn=true;
   $('stamp').onclick=function(){stampOn=!stampOn;$('stamp').style.opacity=stampOn?1:.5;view.setStamps(stampOn);};
   var smoothOn=true;

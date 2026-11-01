@@ -11,11 +11,37 @@ const SekaiView = (function () {
 
   const VS = `attribute vec3 aPos; attribute vec4 aCol;
 uniform vec2 uOff; uniform vec2 uYaw; uniform vec2 uHalf;
-uniform float uPpm, uCosP, uSinP, uEx, uD, uZ0; varying vec3 vCol;
+uniform float uPpm, uCosP, uSinP, uEx, uD, uZ0; varying vec3 vCol; varying vec3 vP; varying vec2 vG; varying float vId;
 void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y*g.x+uYaw.x*g.y; float zz=(aPos.z-uZ0)*uEx;
  float sx=u*uPpm; float sy=(v*uCosP-zz*uSinP)*uPpm; float dp=v*uSinP+zz*uCosP;
- gl_Position=vec4(sx/uHalf.x,-sy/uHalf.y,-dp/uD,1.0); vCol=aCol.rgb; }`;
-  const FS = `precision mediump float; varying vec3 vCol; void main(){ gl_FragColor=vec4(vCol,1.0); }`;
+ gl_Position=vec4(sx/uHalf.x,-sy/uHalf.y,-dp/uD,1.0); vCol=aCol.rgb; vP=aPos; vG=g; vId=aCol.a*255.0/20.0; }`;
+  // 地図帳・地形模型の流儀: 等高線(段になった模型の縁)、海の波線、砂漠の点描、湿地の横線、畑の畝。遠くは霞に溶ける(観察していない所は見えない)
+  const FS_BODY = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec3 vCol; varying vec3 vP; varying vec2 vG; varying float vId;
+uniform float uPer, uCont, uPat, uFogR; uniform vec2 uPh; uniform vec3 uFogC;
+float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+void main(){
+  vec3 c=vCol; float id=floor(vId+0.5);
+  if(uPat>0.5){
+    vec2 w=(vP.xy+uPh)/uPer;
+    if(id<0.5||id>1.5){ // 陸: 等高線(5本ごとに太い線)
+      if(vP.z>0.5){ float k=vP.z/uCont; float d=abs(fract(k)-0.5); float fw=FW(k)*1.4+0.002; float ln=1.0-smoothstep(0.5-fw*2.0,0.5-fw*0.3,d);
+        float idx=step(abs(mod(floor(k+0.5),5.0)),0.5); c*=1.0-ln*(0.07+0.13*idx); }
+    }
+    if(id>0.5&&id<1.5){ float y=w.y*0.9+0.35*sin(w.x*1.6); float f=abs(fract(y)-0.5); float l=smoothstep(0.43,0.47,f); c=mix(c,c*1.12+vec3(0.02,0.03,0.04),l*0.6); }
+    else if(id>1.5&&id<2.5){ vec2 q=w*2.2; vec2 g=floor(q); vec2 f=fract(q)-0.5; vec2 off=(vec2(hs(g+3.1),hs(g+7.7))-0.5)*0.5; float d2=length(f-off); float dt=(hs(g)>0.5)?(1.0-smoothstep(0.07,0.12,d2)):0.0; c*=1.0-0.2*dt; }
+    else if(id>2.5&&id<3.5){ float yy=w.y*1.4; float row=fract(yy); float seg=fract(w.x*0.6+floor(yy)*0.37); float l=smoothstep(0.0,0.06,row)*(1.0-smoothstep(0.1,0.16,row))*step(seg,0.55); c=mix(c,c*vec3(0.6,0.8,0.95),l*0.6); }
+    else if(id>3.5&&id<4.5){ float s2=fract(w.x*0.9); float l=smoothstep(0.35,0.4,s2)*(1.0-smoothstep(0.5,0.55,s2)); c*=1.0-0.1*l; }
+  }
+  float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); c=mix(c,uFogC,fg);
+  gl_FragColor=vec4(c,1.0);
+}`;
+
 
   // ---- 地表の色: 気候(12区分)×標高×傾き×水辺×場所ごとのむら で、実際の世界地図のような多様さを出す ----
   // 参考にした実世界の分類: 土地被覆(樹木・低木・草地・耕地・裸地・雪氷・水域・湿地・マングローブ・コケ地衣類)、ケッペンの気候区分、地形(山・台地・平野・谷・カルスト・砂丘・メサ・氷河ほか)
@@ -43,16 +69,16 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
     return c;
   }
   // b=気候区分, h=標高, slope=傾き, coast=海に接するか, nz=広い範囲のむら, nz2=別のむら, rnd=マスごとの乱数
-  let LK = 0;   // 1=耕地・湿地・海辺・岩・雪など、木が生えない地表になった
+  let LK = 0, PK = 0;   // PK: 模様の種類 0なし 2砂漠の点描 3湿地の線 4畑の畝   // 1=耕地・湿地・海辺・岩・雪など、木が生えない地表になった
   function landColor(b, h, slope, coast, nz, nz2, rnd) {
     const hh = Math.max(0, h);
-    let c; LK = 0;
+    let c; LK = 0; PK = 0;
     switch (b) {
       case 1: c = nz > 0.55 ? mixc([238, 244, 250], [200, 224, 240], (nz - 0.55) * 2) : [238, 244, 250]; if (slope > 0.12) c = mixc(c, [176, 204, 226], 0.5); break;   // 雪原・氷河・クレバス
-      case 2: { const k = nz; c = k < 0.3 ? [150, 158, 130] : k < 0.55 ? [128, 140, 110] : k < 0.75 ? [186, 184, 140] : [100, 130, 120]; if (nz2 > 0.7) c = [140, 136, 128]; break; }   // ツンドラ: 苔・地衣類・凍土の裸地・湿地
+      case 2: { PK = nz > 0.75 ? 3 : 0; const k = nz; c = k < 0.3 ? [150, 158, 130] : k < 0.55 ? [128, 140, 110] : k < 0.75 ? [186, 184, 140] : [100, 130, 120]; if (nz2 > 0.7) c = [140, 136, 128]; break; }   // ツンドラ: 苔・地衣類・凍土の裸地・湿地
       case 3: c = nz < 0.4 ? [44, 86, 62] : nz < 0.75 ? [58, 100, 70] : [90, 105, 70]; if (nz2 > 0.82) c = [110, 125, 90]; break;   // 針葉樹林(タイガ)と湿原
       case 4: c = nz < 0.4 ? [176, 184, 106] : nz < 0.75 ? [150, 170, 100] : [200, 186, 120]; break;   // ステップ
-      case 5: { // 砂漠: 砂・赤い岩・礫・塩湖
+      case 5: { PK = 2; // 砂漠: 砂・赤い岩・礫・塩湖
         c = nz < 0.35 ? [220, 190, 128] : nz < 0.6 ? [206, 168, 104] : nz < 0.8 ? [190, 120, 80] : [170, 160, 145];
         if (nz2 > 0.88 && slope < 0.04 && hh < 900) c = [238, 234, 224]; else if (nz2 > 0.45 && nz2 < 0.55 && slope < 0.08) c = mixc(c, [232, 204, 140], 0.5); break; }
       case 6: c = nz < 0.5 ? [150, 184, 76] : [180, 190, 90]; break;
@@ -65,23 +91,23 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       default: c = [79, 138, 69];
     }
     // 耕地: 平らで低い、人が住みやすい気候のところにパッチ状に広がる
-    if ((b === 6 || b === 7 || b === 8 || b === 4 || b === 9 || b === 10) && slope < 0.05 && hh < 700 && nz2 > 0.5 && nz2 < 0.72) { LK = 1; c = pick(CROP, hash2((nz * 4000) | 0, (nz2 * 4000) | 0, 91)); }
+    if ((b === 6 || b === 7 || b === 8 || b === 4 || b === 9 || b === 10) && slope < 0.05 && hh < 700 && nz2 > 0.5 && nz2 < 0.72) { LK = 1; PK = 4; c = pick(CROP, hash2((nz * 4000) | 0, (nz2 * 4000) | 0, 91)); }
     // 湿地: 低くて平らで雨の多い所
-    if ((b === 3 || b === 8 || b === 9 || b === 11 || b === 2 || b === 4) && slope < 0.03 && hh < 90 && !coast && nz2 > 0.88) { LK = 1; c = nz > 0.5 ? [96, 140, 120] : [80, 140, 140]; }
+    if ((b === 3 || b === 8 || b === 9 || b === 11 || b === 2 || b === 4) && slope < 0.03 && hh < 90 && !coast && nz2 > 0.88) { LK = 1; PK = 3; c = nz > 0.5 ? [96, 140, 120] : [80, 140, 140]; }
     // 海辺: 砂浜・マングローブ・岩礁
     if (coast) {
-      LK = 1;
+      LK = 1; PK = 0;
       if (slope > 0.15) c = mixc(c, [120, 112, 104], 0.7);
       else if ((b === 11 || b === 10) && hh < 12) c = nz > 0.4 ? [60, 110, 80] : [40, 120, 100];
       else if (hh < 40 && b !== 1) c = mixc(c, b === 11 || b === 10 || b === 5 ? [242, 230, 188] : [226, 210, 160], 0.8);
     }
     // 急斜面は岩肌(ガレ場)
-    if (b !== 1 && b !== 5 && slope > 0.14) LK = 1;
+    if (b !== 1 && b !== 5 && slope > 0.14) { LK = 1; PK = 0; }
     if (b !== 1 && b !== 5 && slope > 0.14) c = mixc(c, ROCK[((rnd * 4) | 0) & 3], sstep(0.14, 0.3, slope));
     // 森林限界: 高いほど岩へ。さらに高いと雪
     if (b !== 1 && b !== 5) {
       c = mixc(c, ROCK[((nz2 * 4) | 0) & 3], sstep(2400, 3400, hh) * 0.85);
-      const snow = sstep(3300 + 800 * (nz - 0.5), 5200, hh); if (snow > 0.05 || hh > 2500) LK = 1;
+      const snow = sstep(3300 + 800 * (nz - 0.5), 5200, hh); if (snow > 0.05 || hh > 2500) { LK = 1; PK = 0; }
       c = mixc(c, [246, 248, 252], snow);
     } else if (b === 5) { c = mixc(c, [190, 170, 150], sstep(2600, 4200, hh) * 0.5); c = mixc(c, [246, 248, 252], sstep(5000, 6000, hh)); }
     const j = 0.93 + 0.14 * rnd; // マスごとのわずかな明暗
@@ -103,13 +129,13 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
     const gl = canvas.getContext('webgl', { antialias: true, alpha: false, depth: true });
     if (!gl) throw new Error('WebGL unavailable');
     function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
-    const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+    const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); const dext = gl.getExtension('OES_standard_derivatives'); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, (dext ? '#extension GL_OES_standard_derivatives : enable\n#define FW(x) fwidth(x)\n' : '#define FW(x) 0.03\n') + FS_BODY)); gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
     gl.useProgram(prog);
-    const U = {}; ['uOff', 'uYaw', 'uHalf', 'uPpm', 'uCosP', 'uSinP', 'uEx', 'uD', 'uZ0'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+    const U = {}; ['uOff', 'uYaw', 'uHalf', 'uPpm', 'uCosP', 'uSinP', 'uEx', 'uD', 'uZ0', 'uPer', 'uCont', 'uPat', 'uFogR', 'uPh', 'uFogC'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
     const aPos = gl.getAttribLocation(prog, 'aPos'), aCol = gl.getAttribLocation(prog, 'aCol');
     const vbo = gl.createBuffer(), selBuf = gl.createBuffer();
-    gl.enable(gl.DEPTH_TEST); gl.clearColor(0.05, 0.1, 0.16, 1);
+    gl.enable(gl.DEPTH_TEST); gl.clearColor(0.05, 0.1, 0.16, 1); const FOGC = [0.05, 0.1, 0.16];
 
     const w = sk.w;
     const worldW = (w.W + 0.5) * SK.spacing(0);
@@ -139,6 +165,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       return 0.56 * Math.hypot(st.W / st.ppm, st.H / (st.ppm * cp));
     }
 
+    let PID = 0;
     function build() {
       const t0 = performance.now();
       const L = st.L = chooseLayer(), s = SK.spacing(L), a = SK.angle(L);
@@ -182,7 +209,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       const P = [0, 0]; const cpos = new Float64Array(m * 3);
       function vert(x, y, z, r, g, b, shade) {
         const o = nv * 4; f32[o] = x; f32[o + 1] = y; f32[o + 2] = z;
-        const ob = nv * 16 + 12; u8[ob] = Math.min(255, r * shade); u8[ob + 1] = Math.min(255, g * shade); u8[ob + 2] = Math.min(255, b * shade); u8[ob + 3] = 255; nv++;
+        const ob = nv * 16 + 12; u8[ob] = Math.min(255, r * shade); u8[ob + 1] = Math.min(255, g * shade); u8[ob + 2] = Math.min(255, b * shade); u8[ob + 3] = PID * 20; nv++;
       }
       // なめらか表示: 六角形は計算の格子にすぎない。見た目は、3マスが集まる角の高さ・色・明るさを3マスの平均にして連続した地面にする
       const STP = [], stampP = Math.min(0.2, 90 / Math.max(1, m));
@@ -208,8 +235,9 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const slope = drop / s, nzs = s * 6, nzA = vnoise(P[0] / nzs, P[1] / nzs, L * 7 + 1), nzB = vnoise(P[0] / (nzs * 0.45) + 17, P[1] / (nzs * 0.45) + 31, L * 7 + 2), rnd = hash2(q, r, L + 5);
         const col = h > 0 ? landColor(bs[i], h, slope, coast, nzA, nzB, rnd) : seaColor(h, nearB, rnd, Math.min(1, shoreN / 3));
         const shade = h > 0 ? Math.min(1.18, Math.max(0.55, 0.58 + 0.62 * nd)) : 1.0;
-        COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
+        const pk = PK; COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
+        PID = h > 0 ? pk : 1;
         { const sr = hash2(q, r, L + 60), sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(bs[i], h, coast, hash2(q, r, L + 61))); }
         if (SM) {
           const cz = [0, 0, 0, 0, 0, 0], cR = [0, 0, 0, 0, 0, 0], cG = [0, 0, 0, 0, 0, 0], cB = [0, 0, 0, 0, 0, 0], cS = [0, 0, 0, 0, 0, 0];
@@ -234,6 +262,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
           vert(cxl + c0[0], cyl + c0[1], z, col[0], col[1], col[2], shade);
           vert(cxl + c1[0], cyl + c1[1], z, col[0], col[1], col[2], shade);
         }
+        PID = 0;
         // 木: 森のマスに、円すい形の木を数本立てる(層が細かくなっても大きさはマスに合わせて変わる)
         if (h > 0 && !LK) {
           const bb = bs[i], cnt = bb === 3 ? 4 : bb === 11 ? 4 : bb === 8 ? 3 : bb === 9 ? 3 : bb === 10 ? 1 : bb === 7 ? 1 : 0;
@@ -263,7 +292,9 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         }
       }
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, buf.slice(0, nv * 16), gl.STATIC_DRAW);
-      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, qs, rs, hs, bs, cpos, Rc, stamps: STP, ms: performance.now() - t0, tilt: st.tilt };
+      let hmx = 1; for (let i = 0; i < m; i++) if (hs[i] > hmx) hmx = hs[i];
+      const raw = Math.max(2, hmx / 12), pw = Math.pow(10, Math.floor(Math.log10(raw))), nm = raw / pw, cstep = pw * (nm < 1.5 ? 1 : nm < 3.5 ? 2 : nm < 7.5 ? 5 : 10);
+      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, ms: performance.now() - t0, tilt: st.tilt };
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
     }
@@ -294,6 +325,9 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       gl.uniform2f(U.uHalf, st.W / 2, st.H / 2);
       gl.uniform1f(U.uPpm, st.ppm); gl.uniform1f(U.uCosP, Math.cos(st.tilt)); gl.uniform1f(U.uSinP, Math.sin(st.tilt));
       gl.uniform1f(U.uEx, mesh.ex); gl.uniform1f(U.uD, mesh.D); gl.uniform1f(U.uZ0, st.z0);
+      const per = mesh.s * 0.28; gl.uniform1f(U.uPer, per); gl.uniform1f(U.uCont, mesh.cstep); gl.uniform1f(U.uPat, st.pattern === false ? 0 : 1);
+      gl.uniform2f(U.uPh, ((mesh.ox % (per * 40)) + per * 40) % (per * 40), ((mesh.oy % (per * 40)) + per * 40) % (per * 40));
+      gl.uniform1f(U.uFogR, mesh.L === 0 ? 1e12 : mesh.rad * 0.92); gl.uniform3f(U.uFogC, FOGC[0], FOGC[1], FOGC[2]);
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 16, 0);
       gl.enableVertexAttribArray(aCol); gl.vertexAttribPointer(aCol, 4, gl.UNSIGNED_BYTE, true, 16, 12);
@@ -423,6 +457,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       jumpTo(fx, fy, ppm) { st.fx = fx; st.fy = fy; if (ppm) { st.ppm = ppm; clampPpm(); } changed(); },
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
       refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
+      setPattern(v) { st.pattern = v; changed(); },
       setStamps(v) { st.stamps = v; changed(); },
       setSmooth(v) { st.smooth = v; mesh = null; changed(); },
       select: setSel, pickAt, fitPpm, getSel: () => sel,
