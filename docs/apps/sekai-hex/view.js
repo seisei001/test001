@@ -88,6 +88,15 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
     return [c[0] * j, c[1] * j, c[2] * j];
   }
 
+  // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
+  const STAMPS = { 1: ['🐧', '🦭', '🐻'], 2: ['🦌', '🐺', '🦉'], 3: ['🐻', '🦌', '🦊'], 4: ['🐎', '🦅', '🐑'], 5: ['🐪', '🌵', '🦂'], 6: ['🐄', '🐑', '🦘'], 7: ['🐑', '🐐', '🌿'], 8: ['🦊', '🍄', '🐗'], 9: ['🦉', '🐿️', '🦌'], 10: ['🦁', '🐘', '🦒'], 11: ['🦜', '🐒', '🐅'], 12: ['🐐', '🦅', '🏔️'] };
+  const SEA_STAMPS = ['🐋', '🚢', '🐙', '🦈', '⛵', '🐬'];
+  function stampFor(b, h, coast, r) {
+    if (h > 4200) return '🏔️';
+    if (h <= 0) return SEA_STAMPS[Math.min(SEA_STAMPS.length - 1, (r * SEA_STAMPS.length) | 0)];
+    if (coast && b !== 1) return r < 0.5 ? '⚓' : '🏝️';
+    const a = STAMPS[b] || STAMPS[8]; return a[Math.min(a.length - 1, (r * a.length) | 0)];
+  }
   function create(canvas, sk, hooks) {
     hooks = hooks || {};
     const gl = canvas.getContext('webgl', { antialias: true, alpha: false, depth: true });
@@ -175,6 +184,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const ob = nv * 16 + 12; u8[ob] = Math.min(255, r * shade); u8[ob + 1] = Math.min(255, g * shade); u8[ob + 2] = Math.min(255, b * shade); u8[ob + 3] = 255; nv++;
       }
       // なめらか表示: 六角形は計算の格子にすぎない。見た目は、3マスが集まる角の高さ・色・明るさを3マスの平均にして連続した地面にする
+      const STP = [], stampP = Math.min(0.2, 90 / Math.max(1, m));
       const SM = st.smooth !== false, COL = new Float32Array(m * 3), SHD = new Float32Array(m);
       for (let pass = SM ? 1 : 2; pass <= 2; pass++) for (let i = 0; i < m; i++) {
         const q = qs[i], r = rs[i], h = hs[i], z = zOf(h);
@@ -199,6 +209,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         const shade = h > 0 ? Math.min(1.18, Math.max(0.55, 0.58 + 0.62 * nd)) : 1.0;
         COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
+        { const sr = hash2(q, r, L + 60), sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(bs[i], h, coast, hash2(q, r, L + 61))); }
         if (SM) {
           const cz = [0, 0, 0, 0, 0, 0], cR = [0, 0, 0, 0, 0, 0], cG = [0, 0, 0, 0, 0, 0], cB = [0, 0, 0, 0, 0, 0], cS = [0, 0, 0, 0, 0, 0];
           for (let k = 0; k < 6; k++) {
@@ -251,7 +262,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
         }
       }
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, buf.slice(0, nv * 16), gl.STATIC_DRAW);
-      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, qs, rs, hs, bs, cpos, Rc, ms: performance.now() - t0, tilt: st.tilt };
+      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, qs, rs, hs, bs, cpos, Rc, stamps: STP, ms: performance.now() - t0, tilt: st.tilt };
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
     }
@@ -287,7 +298,26 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       gl.enableVertexAttribArray(aCol); gl.vertexAttribPointer(aCol, 4, gl.UNSIGNED_BYTE, true, 16, 12);
       gl.drawArrays(gl.TRIANGLES, 0, mesh.nv);
       if (sel && sel.L === mesh.L) drawSel();
+      drawStamps();
     }
+    function drawStamps() { // 絵記号を、地面の上に重ねた2D画像として描く(3Dの位置を画面へ投影)
+      const ov = hooks.overlay; if (!ov) return;
+      if (ov.width !== canvas.width || ov.height !== canvas.height) { ov.width = canvas.width; ov.height = canvas.height; }
+      const c2 = ov.getContext('2d'); c2.clearRect(0, 0, ov.width, ov.height);
+      if (st.stamps === false || !mesh.stamps.length) return;
+      const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt), list = [], st2 = mesh.stamps;
+      for (let k = 0; k < st2.length; k += 2) {
+        const i = st2[k], gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
+        const X = st.W / 2 + (cy * gx + sy * gy) * st.ppm, Y = st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm;
+        if (X < -40 || X > st.W + 40 || Y < -40 || Y > st.H + 40) continue; list.push([Y, X, st2[k + 1]]);
+      }
+      list.sort((a, b) => a[0] - b[0]);
+      const px = Math.max(13, Math.min(34, mesh.s * st.ppm * 0.8)) * st.dpr;
+      c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr;
+      for (const [Y, X, ch] of list) c2.fillText(ch, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr);
+    }
+
     function drawSel() {
       const i = sel.i; if (i === undefined) return;
       const s = mesh.s, a = SK.angle(mesh.L), ca = Math.cos(a), sa = Math.sin(a), Rc = mesh.Rc;
@@ -392,6 +422,7 @@ void main(){ vec2 g=aPos.xy+uOff; float u=uYaw.x*g.x+uYaw.y*g.y; float v=-uYaw.y
       jumpTo(fx, fy, ppm) { st.fx = fx; st.fy = fy; if (ppm) { st.ppm = ppm; clampPpm(); } changed(); },
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
       refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
+      setStamps(v) { st.stamps = v; changed(); },
       setSmooth(v) { st.smooth = v; mesh = null; changed(); },
       select: setSel, pickAt, fitPpm, getSel: () => sel,
     };

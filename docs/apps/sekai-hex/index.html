@@ -41,6 +41,7 @@ button:active{background:var(--accent);color:#fff}
 </header>
 <main>
   <canvas id="cv"></canvas>
+  <canvas id="ov" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
   <div class="hud" id="hud"></div>
   <div class="bar">
     <div class="card" id="info" hidden></div>
@@ -53,6 +54,7 @@ button:active{background:var(--accent);color:#fff}
       <button id="rr" aria-label="右回り">↻</button>
       <button id="ex" aria-label="高さの強調">高さ×1</button>
       <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
+      <button id="stamp" aria-label="絵記号の表示切替">絵記号</button>
       <button id="smooth" aria-label="地面の見た目を切り替え">なめらか</button>
       <button id="boom" aria-label="選んだマスで噴火" title="選んだマスで噴火(層1以下)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
@@ -60,10 +62,10 @@ button:active{background:var(--accent);color:#fff}
   </div>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.14';</script>
-<script src="world.js?v=0.14"></script>
-<script src="sekai.js?v=0.14"></script>
-<script src="view.js?v=0.14"></script>
+<script>window.APP_VER='0.15';</script>
+<script src="world.js?v=0.15"></script>
+<script src="sekai.js?v=0.15"></script>
+<script src="view.js?v=0.15"></script>
 <script>
 (function(){
   'use strict';
@@ -96,7 +98,7 @@ button:active{background:var(--accent);color:#fff}
     var wms=Math.round(performance.now()-t0);
     if(view){ /* 新しい世界: 画面を作り直す */ var old=$('cv'),n=old.cloneNode(false);old.parentNode.replaceChild(n,old);}
     try{
-      view=SekaiView.create($('cv'),sk,{onFrame:hudUpdate,onSelect:selUpdate});
+      view=SekaiView.create($('cv'),sk,{onFrame:hudUpdate,onSelect:selUpdate,overlay:$('ov')});
     }catch(e){$('err').hidden=false;$('err').textContent='WebGL を使えない環境です: '+e.message;return;}
     view.resize();selUpdate(null);
     window.__sk=sk;window.__view=view;window.__worldMs=wms;
@@ -118,6 +120,8 @@ button:active{background:var(--accent);color:#fff}
     view.jumpTo(P[0],P[1],Math.max(view.st.ppm*1.01,48/nextS));
     view.select(null);
   };
+  var stampOn=true;
+  $('stamp').onclick=function(){stampOn=!stampOn;$('stamp').style.opacity=stampOn?1:.5;view.setStamps(stampOn);};
   var smoothOn=true;
   $('smooth').onclick=function(){smoothOn=!smoothOn;$('smooth').textContent=smoothOn?'なめらか':'ブロック';view.setSmooth(smoothOn);};
   $('boom').onclick=function(){ // 選んだマスで噴火: 中心が盛り上がる。差分は下の層にも伝わる
