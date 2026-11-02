@@ -478,11 +478,11 @@ void main(){
         if (mesh.lakes && mesh.lakes.length) { const rx = cellpx * 0.62 * st.dpr; for (const [col, k] of [['#2f6fbf', 1.18], ['#5aaeee', 1]]) { c2.fillStyle = col; for (const i of mesh.lakes) { const [X, Y, d] = proj(i); if (d > fogR || X < -60 || X > ov.width + 60 || Y < -60 || Y > ov.height + 60) continue; c2.beginPath(); c2.ellipse(X, Y, rx * k, rx * k * cp, 0, 0, 6.2832); c2.fill(); } } }
         if (mesh.rivers && mesh.rivers.length) {
           c2.lineCap = 'round'; const R = mesh.rivers, TH = mesh.riverTH;
-          for (const [col, add] of [['#1f5fae', 2.2], ['#58b4ff', 0]]) {
+          for (const [col, add] of [['#1f5fae', 1.6], ['#58b4ff', 0]]) {
             c2.strokeStyle = col;
             for (let k = 0; k < R.length; k += 4) {
               const a = proj(R[k]), b = proj(R[k + 1]), e = proj(R[k + 2]); if (a[2] > fogR || b[2] > fogR) continue;
-              c2.lineWidth = (Math.max(2.5, Math.min(40, SekaiTransport.riverWidthM(R[k + 3], mesh.s) * st.ppm)) + add) * st.dpr;
+              c2.lineWidth = (SekaiTransport.riverPx(R[k + 3], mesh.s, cellpx) + add) * st.dpr;
               c2.beginPath(); c2.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); c2.quadraticCurveTo(b[0], b[1], (b[0] + e[0]) / 2, (b[1] + e[1]) / 2); c2.stroke();
             }
           }

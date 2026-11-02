@@ -126,6 +126,11 @@ const SekaiTransport = (function () {
   // 川幅(m): 集まった水の量(上流のマス数×1マスの面積)から。水量が4倍で幅が約2倍。
   function riverWidthM(acc, cellWidthM) { const areaKm2 = acc * (cellWidthM / 1000) * (cellWidthM / 1000) * 0.866; return Math.max(1, 3.2 * Math.sqrt(areaKm2)); }
 
-  return { MOVERS, CARRIERS, haul, roads, water, riverWidthM };
+  // 画面での川の太さ(px): 集水面積が小さいほど細く、大きな川でも1マスの幅の3割まで(深い層で川が画面を覆わないように)
+  function riverPx(acc, s, cellpx) {
+    const area = acc * 0.866 * (s / 1000) * (s / 1000), f = Math.max(0, Math.min(1, Math.log2(Math.max(1, area / 3000)) / 6)), cap = Math.max(3, Math.min(22, cellpx * 0.3));
+    return 2 + (cap - 2) * f;
+  }
+  return { MOVERS, CARRIERS, haul, roads, water, riverWidthM, riverPx };
 })();
 if (typeof module !== 'undefined') module.exports = SekaiTransport;
