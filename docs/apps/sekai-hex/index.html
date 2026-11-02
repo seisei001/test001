@@ -14,20 +14,22 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel-bg:#19212e;--border:#2c3748;--text:#e8edf5;--muted:#9aa6b8;--accent:#6ea0ff;--hud:rgba(20,28,40,.86)}}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
+html,body{margin:0;height:100%;width:100%;overflow:hidden;-webkit-text-size-adjust:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
 body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 header{display:flex;align-items:center;gap:8px;padding:4px 10px;min-height:44px;background:var(--panel-bg);border-bottom:1px solid var(--border)}
 .back-link{color:var(--accent);text-decoration:none;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap}
 h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ver{font-size:11px;color:var(--muted)}
-main{position:relative;flex:1;min-height:0}
+main{position:relative;flex:1;min-height:0;overflow:hidden}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 .hud{position:absolute;left:8px;top:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;line-height:1.4;pointer-events:none;max-width:calc(100% - 150px)}
 .hud b{font-size:15px}
 .bar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px calc(6px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .card{background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:auto}
-.row{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
-button{min-height:44px;min-width:44px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--hud);color:var(--text);font-size:15px}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;pointer-events:auto;width:100%}
+button{min-height:44px;min-width:0;padding:0 2px;white-space:nowrap;overflow:hidden;border-radius:10px;border:1px solid var(--border);background:var(--hud);color:var(--text);font-size:13px}
+#ex{grid-column:span 2}
+header button{min-width:44px;padding:0 10px}
 button:active{background:var(--accent);color:#fff}
 .seed{font-size:12px;color:var(--muted)}
 #err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
@@ -52,11 +54,11 @@ button:active{background:var(--accent);color:#fff}
       <button id="tup" aria-label="斜めにする">⤓</button>
       <button id="rl" aria-label="左回り">↺</button>
       <button id="rr" aria-label="右回り">↻</button>
-      <button id="ex" aria-label="高さの強調">高さ×1</button>
+      <button id="ex" aria-label="高さの倍率">高×1</button>
       <button id="dive" aria-label="選んだマスへ降りる" hidden>🔍 降りる</button>
       <button id="pat" aria-label="模様の表示切替">模様</button>
       <button id="stamp" aria-label="絵記号の表示切替">絵記号</button>
-      <button id="smooth" aria-label="地面の見た目を切り替え">なめらか</button>
+      <button id="smooth" aria-label="地面の見た目を切り替え">滑らか</button>
       <button id="boom" aria-label="選んだ火山が噴火" title="選んだ火山が噴火(火山の絵のあるマスを選ぶ)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
     </div>
@@ -64,11 +66,11 @@ button:active{background:var(--accent);color:#fff}
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.27';</script>
-<script src="world.js?v=0.27"></script>
-<script src="sekai.js?v=0.27"></script>
-<script src="sprites.js?v=0.27"></script>
-<script src="view.js?v=0.27"></script>
+<script>window.APP_VER='0.28';</script>
+<script src="world.js?v=0.28"></script>
+<script src="sekai.js?v=0.28"></script>
+<script src="sprites.js?v=0.28"></script>
+<script src="view.js?v=0.28"></script>
 <script>
 (function(){
   'use strict';
@@ -138,7 +140,7 @@ button:active{background:var(--accent);color:#fff}
   $('tup').onclick=function(){view.setTilt(view.tiltDeg()+10);};
   $('rl').onclick=function(){view.rotate(-Math.PI/6);};
   $('rr').onclick=function(){view.rotate(Math.PI/6);};
-  $('ex').onclick=function(){exi=(exi+1)%EXV.length;$('ex').textContent='高さ×'+EXV[exi];view.setExMul(EXV[exi]);};
+  $('ex').onclick=function(){exi=(exi+1)%EXV.length;$('ex').textContent='高×'+EXV[exi];view.setExMul(EXV[exi]);};
   $('home').onclick=function(){view.reset();view.select(null);};
   $('dive').onclick=function(){
     var p=view.getSel();if(!p)return;var m=view.mesh,P=[0,0];Sekai.pos(p.L,p.q,p.r,P);
@@ -151,7 +153,7 @@ button:active{background:var(--accent);color:#fff}
   var stampOn=true;
   $('stamp').onclick=function(){stampOn=!stampOn;$('stamp').style.opacity=stampOn?1:.5;view.setStamps(stampOn);};
   var smoothOn=true;
-  $('smooth').onclick=function(){smoothOn=!smoothOn;$('smooth').textContent=smoothOn?'なめらか':'ブロック';view.setSmooth(smoothOn);};
+  $('smooth').onclick=function(){smoothOn=!smoothOn;$('smooth').textContent=smoothOn?'滑らか':'角ばり';view.setSmooth(smoothOn);};
   $('boom').onclick=function(){ // 噴火: もともと火山のある所だけが噴火する。山の高さが少し増し、噴煙が増える(差分は下の層にも伝わる)
     var p=view.getSel();
     if(!p){$('info').innerHTML='火山の絵があるマスを選んでから 🌋 を押してください';$('info').hidden=false;return;}

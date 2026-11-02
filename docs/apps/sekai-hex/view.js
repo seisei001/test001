@@ -384,7 +384,7 @@ void main(){
         const isR = new Uint8Array(m), hasUp = new Uint8Array(m);
         for (let i = 0; i < m; i++) {
           if (hs[i] <= 0) continue;
-          if (fill[i] - hs[i] > 0.03 * s) lakes.push(i);
+          if (fill[i] - hs[i] > 0.07 * s) lakes.push(i);
           else if (down[i] >= 0 && acc[i] >= TH) { isR[i] = 1; hasUp[down[i]] = 1; }
         }
         // なめらかな曲線にするため、各マスで「上流側の辺の中点 → このマス → 下流側の辺の中点」をつなぐ(a,b,c,水量)
@@ -484,14 +484,14 @@ void main(){
       }
       if (st.stamps === false) return;
       list.sort((a, b) => a[0] - b[0]);
-      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 2.4, castle: 1.9, animal: 1.1 };
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 3.0, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
         if (sp0.k === 'town') { sp0.sx = cy * sp0.nx + sy * sp0.ny; sp0.sy = -sy * sp0.nx + cy * sp0.ny; }   // 海岸の向きを画面の向きに直す
         if (typeof sp0 === 'string') {
           c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
-          const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 64 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
+          const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 80 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }
