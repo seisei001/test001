@@ -57,18 +57,18 @@ button:active{background:var(--accent);color:#fff}
       <button id="pat" aria-label="模様の表示切替">模様</button>
       <button id="stamp" aria-label="絵記号の表示切替">絵記号</button>
       <button id="smooth" aria-label="地面の見た目を切り替え">なめらか</button>
-      <button id="boom" aria-label="選んだマスで噴火" title="選んだマスで噴火(層1以下)">🌋</button>
+      <button id="boom" aria-label="選んだ火山が噴火" title="選んだ火山が噴火(火山の絵のあるマスを選ぶ)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
     </div>
   </div>
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.23';</script>
-<script src="world.js?v=0.23"></script>
-<script src="sekai.js?v=0.23"></script>
-<script src="sprites.js?v=0.23"></script>
-<script src="view.js?v=0.23"></script>
+<script>window.APP_VER='0.24';</script>
+<script src="world.js?v=0.24"></script>
+<script src="sekai.js?v=0.24"></script>
+<script src="sprites.js?v=0.24"></script>
+<script src="view.js?v=0.24"></script>
 <script>
 (function(){
   'use strict';
@@ -152,13 +152,16 @@ button:active{background:var(--accent);color:#fff}
   $('stamp').onclick=function(){stampOn=!stampOn;$('stamp').style.opacity=stampOn?1:.5;view.setStamps(stampOn);};
   var smoothOn=true;
   $('smooth').onclick=function(){smoothOn=!smoothOn;$('smooth').textContent=smoothOn?'なめらか':'ブロック';view.setSmooth(smoothOn);};
-  $('boom').onclick=function(){ // 選んだマスで噴火: 中心が盛り上がる。差分は下の層にも伝わる
+  $('boom').onclick=function(){ // 噴火: もともと火山のある所だけが噴火する。山の高さが少し増し、噴煙が増える(差分は下の層にも伝わる)
     var p=view.getSel();
-    if(!p||p.L<1){$('info').innerHTML='層1より細かい層でマスを選んでから 🌋 を押してください';$('info').hidden=false;return;}
-    var P=[0,0],s=Sekai.spacing(p.L),R=6,qs=new Int32Array(400),rs=new Int32Array(400),n,i,d,peak=Math.max(s*0.05,8);
-    Sekai.pos(p.L,p.q,p.r,P);n=sk.cellsIn(p.L,P[0],P[1],R*s,qs,rs);
-    for(i=0;i<n;i++){var Q=[0,0];Sekai.pos(p.L,qs[i],rs[i],Q);d=Math.hypot(Q[0]-P[0],Q[1]-P[1])/(R*s*1.15);if(d<1)sk.applyDiff(p.L,qs[i],rs[i],peak*Math.pow(1-d,1.5));}
-    sk.invalidateBelow(p.L);view.addVolcano(p.L,p.q,p.r);
+    if(!p){$('info').innerHTML='火山の絵があるマスを選んでから 🌋 を押してください';$('info').hidden=false;return;}
+    var v=view.findVolcano(p.L,p.q,p.r);
+    if(!v){$('info').innerHTML='ここは火山ではありません。火山の絵がある所を選んでください';$('info').hidden=false;return;}
+    var P=[0,0],s=Sekai.spacing(p.L),R=3,qs=new Int32Array(400),rs=new Int32Array(400),n,i,d,peak=Math.max(s*0.02,3);
+    if(p.L>=1){Sekai.pos(p.L,v[0],v[1],P);n=sk.cellsIn(p.L,P[0],P[1],R*s,qs,rs);
+      for(i=0;i<n;i++){var Q=[0,0];Sekai.pos(p.L,qs[i],rs[i],Q);d=Math.hypot(Q[0]-P[0],Q[1]-P[1])/(R*s*1.15);if(d<1)sk.applyDiff(p.L,qs[i],rs[i],peak*Math.pow(1-d,1.5));}
+      sk.invalidateBelow(p.L);}
+    view.addVolcano(p.L,v[0],v[1]);
   };
   window.addEventListener('load',start);
 })();

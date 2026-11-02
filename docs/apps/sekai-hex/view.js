@@ -143,6 +143,18 @@ void main(){
     // 街は「親のマスが街なら、子の層でも真ん中の子が街」で層をまたいで同じ場所に出る(新しく生まれる街は層ごとに少しだけ)
     const K0 = SK.OFF.findIndex(o => o[0] === 0 && o[1] === 0), tcell = { h: 0, b: 0, rel: 0 };
     function townOwn(L, q, r) { sk.cell(L, q, r, tcell); return tcell.h > 0 && tcell.h < 900 && tcell.b >= 6 && tcell.b <= 10 && hash2(q, r, L + 62) < (L === 0 ? 0.02 : 0.003); }
+    // 火山: 高い山の頂(隣に自分より高い所がない)の一部。親が火山なら子の層でも真ん中の子が火山(層をまたいで同じ場所)
+    const tc2 = { h: 0, b: 0, rel: 0 };
+    function volOwn(L, q, r) {
+      if (L > 3) return false; sk.cell(L, q, r, tcell); const h0 = tcell.h; if (h0 < 1800) return false;
+      for (let k = 0; k < 6; k++) { sk.cell(L, q + DIRS[k][0], r + DIRS[k][1], tc2); if (tc2.h > h0) return false; }
+      return hash2(q, r, L + 64) < (L === 0 ? 0.2 : 0.006);
+    }
+    function isVolcano(L, q, r) {
+      if (FV.has(L + ',' + q + ',' + r) || volOwn(L, q, r)) return true; if (L < 1 || L > 3) return false;
+      const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return false; return isVolcano(L - 1, pt[0], pt[1]);
+    }
+    function findVolcano(L, q, r) { if (isVolcano(L, q, r)) return [q, r]; for (let k = 0; k < 6; k++) if (isVolcano(L, q + DIRS[k][0], r + DIRS[k][1])) return [q + DIRS[k][0], r + DIRS[k][1]]; return null; }
     function isTown(L, q, r) {
       if (townOwn(L, q, r)) return true; if (L < 1) return false;
       const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return false; return isTown(L - 1, pt[0], pt[1]);
@@ -249,11 +261,11 @@ void main(){
         PID = h > 0 ? pk : 1;
         { // アニメ風の絵(山・火山・街・城・目印)を選ぶ。選ばれなければ生き物の絵記号
           const sr = hash2(q, r, L + 60), sr2 = hash2(q, r, L + 62), sr3 = hash2(q, r, L + 63), b0 = bs[i]; let spec = null;
-          if (FV.has(L + ',' + q + ',' + r)) spec = { k: 'volcano', b: b0, seed: sr };
+          if (FV.has(L + ',' + q + ',' + r)) spec = { k: 'volcano', b: b0, seed: sr, active: true };
           else if (h > 0) {
             let peak = true; for (let k = 0; k < 6; k++) if (nbH[k] > z) { peak = false; break; }
             let ridge = true; { let hi = 0; for (let k = 0; k < 6; k++) if (nbH[k] > z) hi++; ridge = hi <= 1; }   // 尾根(隣に高い所が1つ以下)
-            if (h > 1800 && peak && sr2 < 0.1 * sprK) spec = { k: 'volcano', b: b0, seed: sr };
+            if (L <= 3 && isVolcano(L, q, r)) spec = { k: 'volcano', b: b0, seed: sr };
             else if (L <= 3 && h > 2200 && (sr < 0.04 * sprK || (sr < 0.5 * sprK && ridge))) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr, hr: Math.max(0.25, Math.min(1, (h - 1500) / 3500)) };
             else if (L <= 2 && h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr, hr: Math.max(0.2, Math.min(0.6, (h - 800) / 3000)) };
             else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
@@ -535,6 +547,7 @@ void main(){
       reset() { st.fx = (w.W - 0.5) * SK.spacing(0) / 2; st.fy = (w.H - 1) * SK.spacing(0) * SQ3 / 4; st.ppm = fitPpm(); st.yaw = 0; st.tilt = 55 * Math.PI / 180; mesh = null; changed(); },
       refresh() { mesh = null; changed(); },   // 地形の差分を足したあとなどに、見た目を作り直す
       addVolcano(L, q, r) { FV.add(L + ',' + q + ',' + r); mesh = null; changed(); },
+      findVolcano,
       setPattern(v) { st.pattern = v; changed(); },
       setStamps(v) { st.stamps = v; changed(); },
       setSmooth(v) { st.smooth = v; mesh = null; changed(); },

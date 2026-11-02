@@ -64,7 +64,7 @@ const SekaiSprites = (function () {
     poly(c, [[-0.12, -0.62], [-0.07, -0.62], [-0.12, -0.34], [-0.18, -0.2], [-0.2, -0.3]], '#ffa63a', false);
     c.restore();
     ell(c, 0, -0.66, 0.2, 0.065, '#ff4a1c', true); ell(c, 0, -0.665, 0.12 * glow + 0.04, 0.03, '#ffe08a', false);
-    smoke(c, t + (o.seed || 0) * 3000, 0, -0.72, 5, 1.0, 0.1, '#e6e1ee');
+    smoke(c, t + (o.seed || 0) * 3000, 0, -0.72, o.active ? 10 : 5, o.active ? 1.7 : 1.0, o.active ? 0.14 : 0.1, o.active ? '#6a6070' : '#e6e1ee');
     c.restore();
   }
   // 街: 色とりどりの屋根の家が数軒と、とんがり屋根の塔。煙突から煙
