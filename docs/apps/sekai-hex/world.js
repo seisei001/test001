@@ -241,6 +241,47 @@ function judge(land) {
   return { ok: why.length === 0, why, order, comps, sizes, id };
 }
 
+
+// ---- 2b. 地政学の検査(11/2 POLICY §18): 地形を雑に乱数で作らない ----
+function geoCheck(land, h, J) {
+  const why = [], info = {};
+  const MT = 0.5, PL = 0.2; // 山(約2300m超)・平野(約700m未満)の高さ指標
+  const big = J.order.slice(0, 7);
+  const contOf = new Int8Array(N).fill(-1); big.forEach((k, r) => { for (const i of J.comps[k]) contOf[i] = r; });
+  let contacts = 0, isolated = 0;
+  big.forEach((k, r) => {
+    const cells = J.comps[k], n = cells.length; if (n < 20) return;
+    let mt = 0, coast = 0;
+    for (const i of cells) {
+      if (h[i] > MT) mt++;
+      for (let d = 0; d < 6; d++) { const j = nb(i, d); if (j >= 0 && !land[j]) { coast++; break; } }
+    }
+    // 平野の最大まとまり(食料の核)
+    const pm = new Uint8Array(N); for (const i of cells) if (h[i] < PL) pm[i] = 1;
+    const pc = components(pm).comps.reduce((a, c) => Math.max(a, c.length), 0);
+    // 山で区切られた地域の数(6マス以上のまとまり)
+    const rm = new Uint8Array(N); for (const i of cells) if (h[i] <= MT) rm[i] = 1;
+    const regs = components(rm).comps.filter(c => c.length >= 6).length;
+    info[r] = { n, mt: +(mt / n).toFixed(2), coast: +(coast / n).toFixed(2), plain: pc, regions: regs };
+    if (r < 4) {
+      if (mt / n < 0.02 || mt / n > 0.6) why.push('山の割合が偏りすぎ');
+      if (pc < Math.max(6, 0.08 * n)) why.push('食料の核になる平野がない');
+      if (r < 1 && regs < 2) why.push('地域のまとまりが1つだけ');
+      if (coast / n < 0.3) why.push('海岸が少なく港・交易が成り立たない');
+    }
+    // 接触: 海を3マス以内で他の大陸に届くか
+    const dd = new Int16Array(N).fill(-1), q = cells.slice(); for (const i of cells) dd[i] = 0;
+    const hit = new Set();
+    for (let a = 0; a < q.length; a++) { const c = q[a]; if (dd[c] >= 5) continue;
+      for (let d = 0; d < 6; d++) { const j = nb(c, d); if (j < 0 || dd[j] >= 0) continue; dd[j] = dd[c] + 1;
+        if (land[j]) { const o = contOf[j]; if (o >= 0 && o !== r) hit.add(o); else if (o < 0) { /* 島 */ } } else q.push(j); } }
+    if (hit.size) contacts++; else isolated++;
+  });
+  if (isolated > 3) why.push('孤立した大陸が多すぎる');
+  if (contacts < 3) why.push('大陸どうしの接触がなさすぎる');
+  return { why, info };
+}
+
 function buildLandSea(seed, attempt) {
   const T = buildTectonics(seed, attempt);
   const { h, tec } = buildHeight(seed, attempt, T);
@@ -255,11 +296,12 @@ function buildLandSea(seed, attempt) {
 function build(seed, attempt) {
   const L = buildLandSea(seed, attempt);
   const J = judge(L.land);
+  if (J.ok) { const G2 = geoCheck(L.land, L.h, J); if (G2.why.length) { J.ok = false; J.why.push(...G2.why); } J.geo = G2.info; }
   return { L, J };
 }
 
 function generateWorld(seed, opts = {}) {
-  const maxTry = opts.maxTry || 60;
+  const maxTry = opts.maxTry || 120;
   let tried = 0, L, J, reasons = {};
   for (let a = 0; a < maxTry; a++) {
     const r = build(seed, a); tried = a + 1; L = r.L; J = r.J;
