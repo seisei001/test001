@@ -95,6 +95,7 @@ const SekaiSprites = (function () {
   // ---- 外部素材(Kenney RTS Medieval, CC0): 家・人の絵。assets/LICENSE-kenney-rts.txt ----
   const ASSET = {};
   (function () { if (typeof Image === 'undefined') return; for (const n of ['struct0', 'struct1', 'struct2', 'struct3', 'struct4', 'unit', 'env', 'tile']) { const im = new Image(); im.src = 'assets/' + n + '.png?v=' + (window.APP_VER || '0'); ASSET[n] = im; } })();
+  const SKT = []; (function () { if (typeof Image === 'undefined') return; const L = []; for (const b of ['door', 'doorWindows', 'window', 'windows']) for (const g of ['', 'Beige']) for (const o of ['S', 'E']) L.push('building_' + b + g + '_' + o); for (const n of L) { const im = new Image(); im.src = 'assets/skt/' + n + '.png?v=' + (window.APP_VER || '0'); SKT.push(im); } })();   // Kenney Sketch Town (CC0): 立体の家
   const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
   const KHOUSE = [8, 9, 16, 17, 19, 20, 22, 2, 10, 18];
   function kimg(c, set, idx, x, y, w) {
@@ -217,6 +218,7 @@ const SekaiSprites = (function () {
   function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
   function bhouse(c, h) {
     const { x, y, w } = h, hh = h.h;
+    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0), im = SKT[(q0 >> 2) % SKT.length]; if (im && im.complete && im.naturalWidth) { const dw = w * 1.05, dh = dw * im.naturalHeight / im.naturalWidth; c.drawImage(im, x - dw / 2, y - dh * 0.9, dw, dh); return; } }
     if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.0)) return; }
     c.save(); stroke0(c, 0.35);
     const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
