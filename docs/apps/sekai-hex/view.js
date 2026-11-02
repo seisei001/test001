@@ -354,73 +354,13 @@ void main(){
           vert(cxl + c0[0], cyl + c0[1], z, sc[0], sc[1], sc[2], sd); vert(cxl + c1[0], cyl + c1[1], zn, sc[0], sc[1], sc[2], sd); vert(cxl + c0[0], cyl + c0[1], zn, sc[0], sc[1], sc[2], sd);
         }
       }
-      // 街と街をつなぐ道: 近い街2つへ。海は渡らず、急な坂を避け、すでにある道には乗り入れる
-      const roads = [], onRoad = new Uint8Array(m);
-      function roadPath(a, b) {
-        const hd = (i, j) => { const dq = qs[i] - qs[j], dr = rs[i] - rs[j]; return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2; };
-        const g = new Map([[a, 0]]), from = new Map(), heap = [[hd(a, b), a]], done = new Set();
-        const push = (it) => { heap.push(it); let c = heap.length - 1; while (c > 0) { const p2 = (c - 1) >> 1; if (heap[p2][0] <= heap[c][0]) break; [heap[p2], heap[c]] = [heap[c], heap[p2]]; c = p2; } };
-        const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { let l = 2 * c + 1, r2 = l + 1, mn = c; if (l < heap.length && heap[l][0] < heap[mn][0]) mn = l; if (r2 < heap.length && heap[r2][0] < heap[mn][0]) mn = r2; if (mn === c) break; [heap[mn], heap[c]] = [heap[c], heap[mn]]; c = mn; } } return top; };
-        let n = 0;
-        while (heap.length && n++ < 4000) {
-          const [, i] = pop(); if (done.has(i)) continue; done.add(i);
-          if (i === b) { const pth = [b]; let c = b; while (c !== a) { c = from.get(c); pth.push(c); } return pth.reverse(); }
-          for (let k = 0; k < 6; k++) {
-            const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || hs[j] <= 0) continue;
-            const cost = g.get(i) + (onRoad[j] ? 0.35 : 1 + 8 * Math.abs(hs[j] - hs[i]) / s + (hs[j] > 2500 ? 3 : 0));
-            if (g.has(j) && g.get(j) <= cost) continue; g.set(j, cost); from.set(j, i); push([cost + hd(j, b), j]);
-          }
-        }
-        return null;
-      }
+      // 道・川・湖は交通網シミュレーター(transport.js)の結果を読む
+      let roads = [], rivers = [], lakes = [];
       if (L > 0) {
+        const tctx = { L, s, m, qs, rs, hs, idx, key, DIRS, cx, cy, rad, SK, hydro0, cpos };
         const T = []; for (let k = 0; k < STP.length; k += 2) if (typeof STP[k + 1] === 'object' && STP[k + 1].k === 'town') T.push(STP[k]);
-        const es = new Set();
-        for (const a of T) {
-          const near = T.filter(b => b !== a).map(b => [Math.hypot(cpos[a * 3] - cpos[b * 3], cpos[a * 3 + 1] - cpos[b * 3 + 1]), b]).filter(x => x[0] < s * 16).sort((x, y) => x[0] - y[0]).slice(0, 2);
-          for (const [, b] of near) { const kk = a < b ? a + ',' + b : b + ',' + a; if (es.has(kk)) continue; es.add(kk); const pth = roadPath(a, b); if (pth) { for (const i of pth) onRoad[i] = 1; roads.push(pth); } }
-        }
-      }
-      // 川と湖: 水は低い方へ流れる。窪みは水を溜めて湖になり(あふれた先へ流れ出る)、集まった水の量が多い所が川になる
-      const rivers = [], lakes = [];
-      if (L > 0) {
-        const fill = new Float32Array(m).fill(Infinity), down = new Int32Array(m).fill(-1), seen = new Uint8Array(m), order = [], eps = 1e-4 * s, HH = [];
-        const hpush = it => { HH.push(it); let c = HH.length - 1; while (c > 0) { const p2 = (c - 1) >> 1; if (HH[p2][0] <= HH[c][0]) break; [HH[p2], HH[c]] = [HH[c], HH[p2]]; c = p2; } };
-        const hpop = () => { const top = HH[0], last = HH.pop(); if (HH.length) { HH[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r2 = l + 1; let mn = c; if (l < HH.length && HH[l][0] < HH[mn][0]) mn = l; if (r2 < HH.length && HH[r2][0] < HH[mn][0]) mn = r2; if (mn === c) break; [HH[mn], HH[c]] = [HH[c], HH[mn]]; c = mn; } } return top; };
-        for (let i = 0; i < m; i++) {
-          let edge = false; for (let k = 0; k < 6; k++) if (idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])) === undefined) { edge = true; break; }
-          if (hs[i] <= 0 || edge) { fill[i] = Math.max(0, hs[i]); seen[i] = 1; hpush([fill[i], i]); }
-        }
-        while (HH.length) {
-          const [, i] = hpop(); order.push(i);
-          for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(hs[j], fill[i] + eps); down[j] = i; hpush([fill[j], j]); }
-        }
-        const TH = Math.max(12, m * 0.002); mesh_TH = TH;
-        const acc = new Float32Array(m).fill(1), fq = [0, 0], rq = [0, 0];
-        for (const sg of hydro0()) {   // 世界の川が窓に入る所に水を流し込む(層をまたいだ川の一貫性)
-          const dx = sg[2] - sg[0], dy = sg[3] - sg[1], len = Math.hypot(dx, dy) || 1;
-          const t0 = Math.max(0, Math.min(1, ((cx - sg[0]) * dx + (cy - sg[1]) * dy) / (len * len))); if (Math.hypot(sg[0] + dx * t0 - cx, sg[1] + dy * t0 - cy) > rad) continue;
-          const steps = Math.max(2, Math.ceil(len / (s * 0.8))); let prevIn = false;
-          for (let k = 0; k <= steps; k++) {
-            const x = sg[0] + dx * k / steps, y = sg[1] + dy * k / steps; if (Math.hypot(x - cx, y - cy) > rad * 0.97) { prevIn = false; continue; }
-            SK.locate(L, x, y, fq); SK.roundAxial(fq[0], fq[1], rq); const j = idx.get(key(rq[0], rq[1])), inW = j !== undefined;
-            if (inW && !prevIn && hs[j] > 0 && (k > 0 || !sg[5])) acc[j] += TH * (6 + 2 * Math.log2(sg[4]));
-            prevIn = inW;
-          }
-        }
-        for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && hs[i] > 0) acc[down[i]] += acc[i]; }
-        const isR = new Uint8Array(m), hasUp = new Uint8Array(m);
-        for (let i = 0; i < m; i++) {
-          if (hs[i] <= 0) continue;
-          if (fill[i] - hs[i] > 0.07 * s) lakes.push(i);
-          else if (down[i] >= 0 && acc[i] >= TH) { isR[i] = 1; hasUp[down[i]] = 1; }
-        }
-        // なめらかな曲線にするため、各マスで「上流側の辺の中点 → このマス → 下流側の辺の中点」をつなぐ(a,b,c,水量)
-        for (let i = 0; i < m; i++) if (isR[i]) {
-          const t = down[i], c = isR[t] ? down[t] : t;
-          rivers.push(i, t, c, acc[i]);
-          if (!hasUp[i]) rivers.push(i, i, t, acc[i]);
-        }
+        roads = SekaiTransport.roads(tctx, T, 'walk');
+        const wt = SekaiTransport.water(tctx); rivers = wt.rivers; lakes = wt.lakes; mesh_TH = wt.TH;
       }
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, buf.slice(0, nv * 16), gl.STATIC_DRAW);
       let hmx = 1; for (let i = 0; i < m; i++) if (hs[i] > hmx) hmx = hs[i];
