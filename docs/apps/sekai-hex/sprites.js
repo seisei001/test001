@@ -203,15 +203,6 @@ const SekaiSprites = (function () {
       else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
     wallPath(false);
-    if (o.px && o.um && o.px >= 700 && ASSET.unit && ASSET.unit.complete && ASSET.unit.naturalWidth) {   // 層5: 人は1マス(約1m)の大きさ
-      const pr = rng((o.seed || 0.5) * 31.1 + 3), cntp = Math.min(160, 30 + (o.n || 3) * 18), wm = 1.3 / o.um, tt = t * 0.0012;
-      for (let k = 0; k < cntp; k++) {
-        const a = pr() * 6.2832, rd = R * Math.pow(pr(), 0.7), sp = 0.003 + pr() * 0.004, ph = pr() * 6.2832;
-        const x = Math.cos(a) * rd, y = Math.sin(a) * rd * sq;   // 位置は固定(動きは、あとで仕事・道・目的地のあるシミュレーションから決める)
-        const rr2 = pr(), role = rr2 < 0.84 ? PEOPLE.folk : rr2 < 0.94 ? PEOPLE.soldier : PEOPLE.mage;   // 住民が多く、兵と魔術師が少し
-        kimg(c, 'unit', role[(pr() * role.length) | 0], x, y, wm * 3.0);
-      }
-    }
     if (T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
     if (T.hk === 'gable' || T.hk === 'flat') smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
