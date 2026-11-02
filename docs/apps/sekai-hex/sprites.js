@@ -459,7 +459,8 @@ const SekaiSprites = (function () {
     const F = { penguin, seal, whale, dolphin, shark, octopus, squid: octopus, ship, sail: ship, mermaid, serpent, dragon, cactus, mushroom, bush, fairy, anchor, island }[a];
     if (F) F(c, o, t);
   }
-  const TABLE = { animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
+  function flora(c, o) { kimg(c, 'env', o.idx || 0, 0, 0.45, 1); }
+  const TABLE = { flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
   function draw(c, kind, o, t) { const f = TABLE[kind]; if (f) f(c, o, t); }
   return { draw, kinds: Object.keys(TABLE) };
 })();
