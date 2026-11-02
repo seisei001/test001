@@ -434,7 +434,8 @@ void main(){
       for (let k = 0; k < st2.length; k += 2) {
         const i = st2[k], gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
         const X = st.W / 2 + (cy * gx + sy * gy) * st.ppm, Y = st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm;
-        if (X < -60 || X > st.W + 60 || Y < -60 || Y > st.H + 160) continue;
+        const spx = st2[k + 1], bigT = mesh.L >= 4 && typeof spx === 'object' && spx.k === 'town', mg = bigT ? 5000 : 60;
+        if (X < -mg || X > st.W + mg || Y < -mg || Y > st.H + (bigT ? 5000 : 160)) continue;
         const fd = Math.hypot(gx, gy); if (mesh.L > 0 && fd > mesh.rad * 0.9) continue;   // 霞の向こうは描かない
         list.push([Y, X, st2[k + 1]]);
       }
@@ -506,7 +507,9 @@ void main(){
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
           const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 80 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
-          c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
+          let sz = size;
+          if (tw) { sp0.um = 120 * ((sp0.n || 3) >= 5 ? 2 : (sp0.n || 3) >= 4 ? 1.4 : 1); if (mesh.L >= 4) sz = Math.max(size, sp0.um * st.ppm * st.dpr); sp0.px = sz / st.dpr; }   // 深い層では実際の大きさ(1マス=人1人)で描く
+          c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(sz, sz); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }
     }
