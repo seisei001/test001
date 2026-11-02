@@ -3,7 +3,7 @@
 // 見ている位置・拡大率から「どの層を描くか」を決め、その層のマスだけを遅延生成して並べる。
 const SekaiView = (function () {
   const SK = Sekai, SQ3 = Math.sqrt(3);
-  const MINPX = 18;                 // 層を細かくする条件: 1マスの幅がこれ(css px)以上
+  const MINPX = 10;                 // 層を細かくする条件: 1マスの幅がこれ(css px)以上
   const BIOME_COL = [null, [236, 242, 247], [169, 181, 154], [63, 107, 77], [181, 181, 106], [217, 187, 122], [168, 184, 74], [143, 174, 79], [79, 138, 69], [61, 122, 74], [194, 179, 71], [31, 122, 58], [139, 133, 121]];
   const DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
   const HEX_GROUND = DIRS.map(([q, r]) => [q + r / 2, r * SQ3 / 2]); // 軸座標での隣の向き(層の回転前)
@@ -254,8 +254,8 @@ void main(){
             let peak = true; for (let k = 0; k < 6; k++) if (nbH[k] > z) { peak = false; break; }
             let ridge = true; { let hi = 0; for (let k = 0; k < 6; k++) if (nbH[k] > z) hi++; ridge = hi <= 1; }   // 尾根(隣に高い所が1つ以下)
             if (h > 1800 && peak && sr2 < 0.1 * sprK) spec = { k: 'volcano', b: b0, seed: sr };
-            else if (h > 2200 && (sr < 0.04 * sprK || (sr < 0.5 * sprK && ridge))) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr, hr: Math.max(0.25, Math.min(1, (h - 1500) / 3500)) };
-            else if (h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr, hr: Math.max(0.2, Math.min(0.6, (h - 800) / 3000)) };
+            else if (L <= 3 && h > 2200 && (sr < 0.04 * sprK || (sr < 0.5 * sprK && ridge))) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr, hr: Math.max(0.25, Math.min(1, (h - 1500) / 3500)) };
+            else if (L <= 2 && h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr, hr: Math.max(0.2, Math.min(0.6, (h - 800) / 3000)) };
             else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
             else if (isTown(L, q, r)) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
           }
