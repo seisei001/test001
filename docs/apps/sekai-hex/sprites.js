@@ -187,7 +187,8 @@ const SekaiSprites = (function () {
     const pick = a => a[(r() * a.length) | 0];
     const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, flip: r() < 0.5 }, extra || {}));
     if (T.lay === 'ring' || T.lay === 'grid') {
-      const th = coast ? Math.atan2(sy, sx) + 1.5708 : Math.floor(r() * 12) * 0.2618;   // 海岸があれば海岸に平行、なければ街ごとに決める
+      const th = 0;   // 立体の絵(家のスプライト)は正面向きなので、道は画面に水平・垂直にそろえる
+         // 海岸があれば海岸に平行、なければ街ごとに決める
       const G = cityPlan(r, R, n, th); city = G; G.th = th;
       for (const q of G.lots) { const x = q.x, y = q.y * sq; if (!ok(x, y)) continue; add(x, y, Math.min(0.09, Math.max(0.03, q.w * 1.1)), 0.04 + r() * 0.035 + (q.ward === 'core' ? 0.012 : 0), { px: q.x, py: q.y, pw: q.w, pd: q.d, ang: q.ang, ward: q.ward }); }
     } else if (T.lay === 'line') {
@@ -216,7 +217,7 @@ const SekaiSprites = (function () {
   function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
   function bhouse(c, h) {
     const { x, y, w } = h, hh = h.h;
-    if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.7)) return; }
+    if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.0)) return; }
     c.save(); stroke0(c, 0.35);
     const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
     if (h.k === 'gable') { wall(); const top = y - hh, rh = w * 0.55; c.beginPath(); c.moveTo(x - w * 0.6, top); c.lineTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.lineTo(x, top); c.closePath(); c.fill(); }
@@ -278,7 +279,7 @@ const SekaiSprites = (function () {
     if (T.terr) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
     const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
     items.sort((a, b) => a.y - b.y);
-    const deep = (o.px || 0) >= 700;
+    const deep = (o.px || 0) >= 700;   // 深い層でも立体の家(スプライト)を奥から順に描く
     if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip();
       if (L.city) {   // 道(地面の色)→区画(庭・敷地)→広場、の順に塗る
         const G = L.city; c.save(); c.scale(1, sq); c.rotate(G.th);
@@ -288,7 +289,6 @@ const SekaiSprites = (function () {
         c.fillStyle = '#7d9a6a'; c.beginPath(); c.arc(0, 0, G.plazaR * 0.28, 0, 6.2832); c.fill(); c.restore();
       } }   // マスク: 街の区域の中だけに描く
     for (const it of items) {
-      if (deep) { if (it.h) planHouse(c, it.h, sq); continue; }
       if (it.h) bhouse(c, it.h);
       else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
