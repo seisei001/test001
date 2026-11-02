@@ -172,7 +172,7 @@ void main(){
     function realms() {
       if (RLM) return RLM;
       const rs = SekaiRealm.create(w, SekaiWorld.G); for (let y = 0; y < 300; y++) SekaiRealm.step(rs);
-      const res = SekaiRealm.realms(rs); res.realms.forEach(r => { r.name = realmName(r.capital); });
+      const res = SekaiRealm.realms(rs); res.realms.forEach(r => { r.name = realmName(r.capital); }); res.districts.forEach(d => { d.name = realmName(d.cell + 977); });
       return (RLM = { st: rs, res });
     }
     const PAL = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#0aa5a5', '#f032e6', '#9a6324', '#808000', '#000075', '#e8b800', '#469990'];
@@ -380,7 +380,10 @@ void main(){
       if (L <= 2) { // 各マスがどの国に属すか(世界図のマスへ引き当てる)
         const R = realms(), W0 = w.W, H0n = w.H, fq2 = [0, 0], rq2 = [0, 0]; mesh.realmOf = new Int16Array(m).fill(-1);
         for (let i = 0; i < m; i++) { SK.locate(0, cpos[i * 3], cpos[i * 3 + 1], fq2); SK.roundAxial(fq2[0], fq2[1], rq2); const r0 = rq2[1], c0 = rq2[0] + ((r0 - (r0 & 1)) >> 1); if (r0 >= 0 && r0 < H0n && c0 >= 0 && c0 < W0) mesh.realmOf[i] = R.res.owner[r0 * W0 + c0]; }
-        mesh.realms = R.res.realms;
+        mesh.realms = R.res.realms; mesh.districts = R.res.districts;
+        const bord = []; // 国境の辺(両側が別の国)
+        for (let i = 0; i < m; i++) { const o = mesh.realmOf[i]; for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || j < i) continue; const o2 = mesh.realmOf[j]; if (o !== o2 && (o >= 0 || o2 >= 0) && hs[i] > 0 && hs[j] > 0) bord.push(i, k); } }
+        mesh.bord = bord; mesh.corner = corner;
       }
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
@@ -437,15 +440,30 @@ void main(){
       }
       if (mesh.realmOf && st.realm !== false) { // 国の色(薄く)と、首都の名前
         const cellpx = mesh.s * st.ppm, fogR = mesh.rad * 0.9, rx = cellpx * 0.6 * st.dpr;
-        c2.globalAlpha = 0.22;
-        for (let i = 0; i < mesh.m; i++) { const o = mesh.realmOf[i]; if (o < 0) continue; const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; if (mesh.L > 0 && Math.hypot(gx, gy) > fogR) continue;
+        // 色は別の紙に不透明で塗り重ね、あとで薄く重ねる(円の重なりで輪がでないように)。陸だけ。
+        if (!st._tint) st._tint = document.createElement('canvas'); const tc = st._tint; if (tc.width !== ov.width || tc.height !== ov.height) { tc.width = ov.width; tc.height = ov.height; }
+        const t2 = tc.getContext('2d'); t2.clearRect(0, 0, tc.width, tc.height);
+        for (let i = 0; i < mesh.m; i++) { const o = mesh.realmOf[i]; if (o < 0 || mesh.hs[i] <= 0) continue; const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; if (mesh.L > 0 && Math.hypot(gx, gy) > fogR) continue;
           const X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr; if (X < -60 || X > ov.width + 60 || Y < -60 || Y > ov.height + 60) continue;
-          c2.fillStyle = PAL[o % PAL.length]; c2.beginPath(); c2.ellipse(X, Y, rx, rx * cp, 0, 0, 6.2832); c2.fill(); }
-        c2.globalAlpha = 1; c2.textAlign = 'center'; c2.font = 'bold ' + Math.round(13 * st.dpr) + 'px sans-serif'; c2.lineWidth = 3 * st.dpr; c2.lineJoin = 'round';
+          t2.fillStyle = PAL[o % PAL.length]; t2.beginPath(); t2.ellipse(X, Y, rx, rx * cp, 0, 0, 6.2832); t2.fill(); }
+        c2.globalAlpha = 0.24; c2.drawImage(tc, 0, 0);
+        c2.globalAlpha = 1;
+        if (mesh.bord && mesh.bord.length) { c2.strokeStyle = 'rgba(40,20,10,.75)'; c2.lineWidth = Math.max(1.5, Math.min(4, cellpx * 0.05)) * st.dpr; c2.lineCap = 'round'; c2.setLineDash([6 * st.dpr, 3 * st.dpr]); c2.beginPath();
+          for (let q = 0; q < mesh.bord.length; q += 2) { const i = mesh.bord[q], k = mesh.bord[q + 1], c0 = mesh.corner[(k + 5) % 6], c1 = mesh.corner[k]; const zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex, pj = c => { const gx = mesh.cpos[i * 3] + c[0] - st.fx, gy = mesh.cpos[i * 3 + 1] + c[1] - st.fy; return [(st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr, Math.hypot(gx, gy)]; };
+            const a = pj(c0), b = pj(c1); if (mesh.L > 0 && a[2] > fogR) continue; if (a[0] < -60 || a[0] > ov.width + 60 || a[1] < -60 || a[1] > ov.height + 60) continue; c2.moveTo(a[0], a[1]); c2.lineTo(b[0], b[1]); }
+          c2.stroke(); c2.setLineDash([]); }
+        c2.textAlign = 'center'; c2.font = 'bold ' + Math.round(13 * st.dpr) + 'px sans-serif'; c2.lineWidth = 3 * st.dpr; c2.lineJoin = 'round';
         if (mesh.L <= 1) for (const r of mesh.realms) { if (r.troops < (mesh.L === 0 ? 80000 : 5000)) continue;
           const wc = r.capital, rr = (wc / w.W) | 0, cc = wc % w.W, q = cc - ((rr - (rr & 1)) >> 1), P = [0, 0]; SK.pos(0, q, rr, P);
           const gx = P[0] - st.fx, gy = P[1] - st.fy, X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp - 0) * st.ppm) * st.dpr; if (X < -80 || X > ov.width + 80 || Y < -40 || Y > ov.height + 40) continue;
           const tx = r.name + ' ' + r.realm; c2.strokeStyle = 'rgba(255,255,255,.9)'; c2.strokeText(tx, X, Y); c2.fillStyle = PAL[r.id % PAL.length]; c2.fillText(tx, X, Y); }
+      }
+      if (mesh.districts && mesh.L === 1 && st.realm !== false) { // 層1: 都市・郡の名前
+        c2.textAlign = 'center'; c2.font = Math.round(11 * st.dpr) + 'px sans-serif'; c2.lineWidth = 3 * st.dpr; c2.lineJoin = 'round';
+        for (const d of mesh.districts) { if (d.kind === '豪族領' || d.capital) continue;
+          const rr = (d.cell / w.W) | 0, cc = d.cell % w.W, q = cc - ((rr - (rr & 1)) >> 1), P = [0, 0]; SK.pos(0, q, rr, P);
+          const gx = P[0] - st.fx, gy = P[1] - st.fy, X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp) * st.ppm) * st.dpr + 14 * st.dpr; if (X < -80 || X > ov.width + 80 || Y < -40 || Y > ov.height + 40) continue;
+          const tx = d.name + d.kind; c2.strokeStyle = 'rgba(255,255,255,.85)'; c2.strokeText(tx, X, Y); c2.fillStyle = '#333'; c2.fillText(tx, X, Y); }
       }
       { // 湖と川(道の下に)。濃い縁取りの上に明るい青を重ね、水量が多いほど太くする
         const cellpx = mesh.s * st.ppm, fogR = mesh.rad * 0.9, proj = i => { const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; return [(st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr, Math.hypot(gx, gy)]; };

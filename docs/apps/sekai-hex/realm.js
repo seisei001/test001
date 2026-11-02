@@ -99,7 +99,23 @@ const SekaiRealm = (function () {
     const R = mainCores.map((c, k) => ({ id: k, capital: c, cells: 0, pop: 0, troops: 0, ord: 0 }));
     for (let i = 0; i < N; i++) if (owner[i] >= 0) { const r = R[owner[i]]; r.cells++; r.pop += pop[i]; r.ord += st.order[i]; }
     for (const r of R) { r.ord = r.cells ? r.ord / r.cells : 0; r.troops = Math.round(r.pop * mob); Object.assign(r, rankOf(r.troops)); }
-    return { realms: R, owner, cores: mainCores };
+    // 郡・都市・豪族: 国の中の小さな人口の山。国と同じ規則で、規模に応じた称号になる
+    const districts = [], dOwn = new Int16Array(N).fill(-1);
+    const peaks = [];
+    for (let i = 0; i < N; i++) {
+      if (owner[i] < 0 || pop[i] < 25000) continue;
+      let top = true; for (let k = 0; k < 6 && top; k++) { const j = G.nb(i, k); if (j >= 0 && owner[j] === owner[i] && (pop[j] > pop[i] || (pop[j] === pop[i] && j < i))) top = false; }
+      if (top) peaks.push(i);
+    }
+    peaks.sort((a, b) => pop[b] - pop[a]);
+    for (const c of peaks) { let ok = true; for (const d of districts) if (d.realm === owner[c] && G.dist(c, d.cell) < 1.5 * G.SPAN_KM) { ok = false; break; } if (ok) districts.push({ id: districts.length, realm: owner[c], cell: c, pop: 0, troops: 0, capital: mainCores[owner[c]] === c }); }
+    for (let i = 0; i < N; i++) {
+      if (owner[i] < 0) continue; let best = -1, bd = Infinity;
+      for (const d of districts) { if (d.realm !== owner[i]) continue; const dd = G.dist(i, d.cell); if (dd < bd) { bd = dd; best = d.id; } }
+      if (best >= 0) { dOwn[i] = best; districts[best].pop += pop[i]; }
+    }
+    for (const d of districts) { d.troops = Math.round(d.pop * mob); const a = rankOf(d.troops); d.title = a.lord; d.kind = d.pop >= 1200000 ? '都市' : d.pop >= 400000 ? '郡' : '豪族領'; }
+    return { realms: R, owner, cores: mainCores, districts, dOwn };
   }
 
   return { RULES, RANKS, rankOf, taxEffect, landValues, create, step, realms };
