@@ -67,23 +67,59 @@ const SekaiSprites = (function () {
     smoke(c, t + (o.seed || 0) * 3000, 0, -0.72, o.active ? 10 : 5, o.active ? 1.7 : 1.0, o.active ? 0.14 : 0.1, o.active ? '#6a6070' : '#e6e1ee');
     c.restore();
   }
-  // 街: 色とりどりの屋根の家が数軒と、とんがり屋根の塔。煙突から煙
+  // 街: たくさんの家の集まり。中心が密で外へまばら、海側には建てず陸側へ広がる。大きな街は城壁と門・塔・中心の高い塔を持つ。
+  // 家は大きさ・向き・屋根の色を変える。形は seed と海岸の向きで決まり、描き直しても変わらない。
+  function rng(sd) { let a = Math.floor(frac(sd) * 4294967296) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const RF = ['#d9603b', '#c4482e', '#e07a4a', '#d9603b', '#c4482e', '#b8553a', '#8f6a58', '#4f7fb8'];
+  const TCACHE = new Map();
+  function townLayout(o) {
+    const sx = o.sx || 0, sy = o.sy || 0, key = (o.seed || 0).toFixed(5) + '|' + (o.n || 3) + '|' + sx.toFixed(1) + '|' + sy.toFixed(1);
+    let L = TCACHE.get(key); if (L) return L;
+    const r = rng((o.seed || 0.5) * 7.77 + 0.1), n = o.n || 3, wall = n >= 4, big = n >= 5, cnt = 14 + n * 9, R = wall ? 0.4 : 0.34, sq = 0.52, houses = [], coast = !!(sx || sy);
+    const ok = (x, y) => { if (!coast) return true; return x * sx + (y / sq) * sy >= -0.05; };   // 海側(法線の逆)には建てない
+    for (let k = 0, tries = 0; k < cnt && tries < cnt * 12; tries++) {
+      const ang = r() * 6.2832, rd = R * Math.pow(r(), 0.65), x = Math.cos(ang) * rd, y = Math.sin(ang) * rd * sq;
+      if (!ok(x, y)) continue;
+      const near = Math.hypot(x, y / sq) < 0.1, w = (near ? 0.05 : 0.05 + r() * 0.04) * (big ? 1 : 1.1), h = w * (0.55 + r() * 0.35);
+      houses.push({ x, y, w, h, rf: RF[(r() * RF.length) | 0], tall: r() < 0.12 && !near, flip: r() < 0.5 });
+      k++;
+    }
+    houses.sort((a, b) => a.y - b.y);
+    const towers = []; if (wall) for (let k = 0; k < 6; k++) { const a = k / 6 * 6.2832 + r() * 0.3, x = Math.cos(a) * (R + 0.04), y = Math.sin(a) * (R + 0.04) * sq; if (ok(x, y)) towers.push({ x, y }); }
+    const gate = coast ? Math.atan2(sy, sx) : r() * 6.2832;   // 門は陸側
+    L = { houses, towers, R, sq, wall, big, gate }; if (TCACHE.size > 400) TCACHE.clear(); TCACHE.set(key, L); return L;
+  }
+  function house(c, h) {
+    const { x, y, w } = h, hh = h.h, rh = w * 0.55 * (h.tall ? 1.4 : 1);
+    c.save(); c.lineJoin = 'round'; c.lineWidth = LW * 0.35; c.strokeStyle = LINE;
+    c.fillStyle = '#f2e3c4'; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh);
+    c.fillStyle = 'rgba(80,50,40,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh);
+    const top = y - hh; c.beginPath(); c.moveTo(x - w * 0.6, top); c.lineTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.closePath(); c.fillStyle = h.rf; c.fill(); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.lineTo(x, top); c.closePath(); c.fill();
+    c.restore();
+  }
   function town(c, o, t) {
-    const n = o.n || 3, R = ROOF; c.save(); groundShadow(c, 0.55);
-    const spots = [[-0.32, -0.02, 0.3], [0.1, 0.0, 0.34], [0.38, -0.04, 0.26], [-0.08, -0.2, 0.28], [0.22, -0.22, 0.24]];
-    for (let k = Math.min(n, 5) - 1; k >= 0; k--) {
-      const [x, y, w] = spots[k], rc = R[(o.seed * 7 + k * 3 | 0) % R.length], h = w * 0.62;
-      poly(c, [[x - w / 2, y], [x - w / 2, y - h], [x + w / 2, y - h], [x + w / 2, y]], '#fbeed2', true);
-      poly(c, [[x + w * 0.1, y], [x + w * 0.1, y - h], [x + w / 2, y - h], [x + w / 2, y]], '#d9c3a0', false);
-      poly(c, [[x - w / 2 - 0.03, y - h], [x, y - h - w * 0.5], [x + w / 2 + 0.03, y - h]], rc, true);
-      poly(c, [[x, y - h - w * 0.5], [x + w / 2 + 0.03, y - h], [x + 0.02, y - h]], 'rgba(0,0,0,0.18)', false);
-      c.fillStyle = '#6b4a3a'; c.fillRect(x - w * 0.08, y - h * 0.5, w * 0.16, h * 0.5);
+    const L = townLayout(o), sd = o.seed || 0;
+    c.save(); c.translate(0, -0.02);
+    // 地面(踏み固めた土)と広場
+    c.save(); c.globalAlpha = 0.5; ell(c, 0, 0, L.R * 1.12, L.R * 1.12 * L.sq, '#d9c49a', false); c.restore(); ell(c, 0, 0.0, 0.06, 0.06 * L.sq, '#efe0bd', false);
+    // 道: 中心から門へ
+    c.save(); c.strokeStyle = '#efe0bd'; c.lineWidth = 0.03; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(L.gate) * (L.R + 0.12), Math.sin(L.gate) * (L.R + 0.12) * L.sq); c.stroke(); c.restore();
+    // 城壁(奥側)
+    const ring = (a0, a1) => { c.beginPath(); c.ellipse(0, 0, L.R + 0.04, (L.R + 0.04) * L.sq, 0, a0, a1); c.stroke(); };
+    if (L.wall) { c.save(); c.lineCap = 'round'; c.strokeStyle = LINE; c.lineWidth = 0.05; ring(3.14159, 6.2832); c.strokeStyle = '#b9a58a'; c.lineWidth = 0.032; ring(3.14159, 6.2832); c.restore(); }
+    // 家と塔を奥から手前へ
+    const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
+    items.sort((a, b) => a.y - b.y);
+    for (const it of items) {
+      if (it.h) house(c, it.h);
+      else { const { x, y } = it.tw; c.save(); c.lineWidth = LW * 0.4; c.strokeStyle = LINE; c.fillStyle = '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], '#3f7fd6', true); c.restore(); }
     }
-    if (n >= 4) { // 塔
-      poly(c, [[-0.5, 0.0], [-0.5, -0.5], [-0.36, -0.5], [-0.36, 0.0]], '#e8e2f0', true);
-      poly(c, [[-0.54, -0.5], [-0.43, -0.82], [-0.32, -0.5]], '#3f7fd6', true);
-    }
-    smoke(c, t + (o.seed || 0) * 2000, 0.16, -0.46, 3, 0.45, 0.045, '#f3f0f8');
+    // 城壁(手前側)
+    if (L.wall) { c.save(); c.lineCap = 'round'; c.strokeStyle = LINE; c.lineWidth = 0.05; ring(0, 3.14159); c.strokeStyle = '#c9b79c'; c.lineWidth = 0.032; ring(0, 3.14159); c.restore(); }
+    // 中心の高い塔(教会・城)と旗
+    if (L.big || L.wall) { poly(c, [[-0.035, 0.01], [-0.035, -0.17], [0.035, -0.17], [0.035, 0.01]], '#efe6d6', true); poly(c, [[-0.05, -0.17], [0, -0.3], [0.05, -0.17]], '#3f7fd6', true); const w = Math.sin(t * 0.006 + sd * 9) * 0.015; poly(c, [[0, -0.3], [0.07 + w, -0.28], [0, -0.26]], '#e5533d', false); }
+    smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
   // 城: 中央の本丸と両脇の塔、はためく旗
