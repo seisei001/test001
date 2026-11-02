@@ -165,6 +165,17 @@ void main(){
     const w = sk.w;
     // 世界全体(層0)の川: 世界の全マスで水の流れを1回だけ計算する。細かい層では、この川が通る場所に水を流し込むので、層をまたいで川がだいたい同じ所に出る
     let H0 = null;
+    // 国(領主): 人口の集中から自然に生じる(realm.js)。世界を作ったあと一度だけ数百年ぶん回す
+    let RLM = null;
+    const SYL = ['ア', 'ル', 'ダ', 'ス', 'ベ', 'ロ', 'カ', 'ミ', 'ヴ', 'ラ', 'ト', 'ゼ', 'ナ', 'ハ', 'ク', 'ユ', 'シ', 'オ', 'レ', 'ン'];
+    function realmName(c) { let h = (c * 2654435761 + w.seed) >>> 0, n = 2 + (h % 2), o = ''; for (let k = 0; k < n; k++) { h = (h * 1103515245 + 12345) >>> 0; o += SYL[(h >>> 8) % SYL.length]; } return o; }
+    function realms() {
+      if (RLM) return RLM;
+      const rs = SekaiRealm.create(w, SekaiWorld.G); for (let y = 0; y < 300; y++) SekaiRealm.step(rs);
+      const res = SekaiRealm.realms(rs); res.realms.forEach(r => { r.name = realmName(r.capital); });
+      return (RLM = { st: rs, res });
+    }
+    const PAL = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#0aa5a5', '#f032e6', '#9a6324', '#808000', '#000075', '#e8b800', '#469990'];
     function hydro0() {
       if (H0) return H0;
       const W = w.W, HH = w.H, N = W * HH, fill = new Float32Array(N).fill(Infinity), down = new Int32Array(N).fill(-1), seen = new Uint8Array(N), order = [], hp = [], P = [0, 0], list = [];
@@ -366,6 +377,11 @@ void main(){
       let hmx = 1; for (let i = 0; i < m; i++) if (hs[i] > hmx) hmx = hs[i];
       const raw = Math.max(2, hmx / 12), pw = Math.pow(10, Math.floor(Math.log10(raw))), nm = raw / pw, cstep = pw * (nm < 1.5 ? 1 : nm < 3.5 ? 2 : nm < 7.5 ? 5 : 10);
       mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, roads, rivers, lakes, riverTH: mesh_TH, ms: performance.now() - t0, tilt: st.tilt };
+      if (L <= 2) { // 各マスがどの国に属すか(世界図のマスへ引き当てる)
+        const R = realms(), W0 = w.W, H0n = w.H, fq2 = [0, 0], rq2 = [0, 0]; mesh.realmOf = new Int16Array(m).fill(-1);
+        for (let i = 0; i < m; i++) { SK.locate(0, cpos[i * 3], cpos[i * 3 + 1], fq2); SK.roundAxial(fq2[0], fq2[1], rq2); const r0 = rq2[1], c0 = rq2[0] + ((r0 - (r0 & 1)) >> 1); if (r0 >= 0 && r0 < H0n && c0 >= 0 && c0 < W0) mesh.realmOf[i] = R.res.owner[r0 * W0 + c0]; }
+        mesh.realms = R.res.realms;
+      }
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
     }
@@ -418,6 +434,18 @@ void main(){
         if (X < -60 || X > st.W + 60 || Y < -60 || Y > st.H + 160) continue;
         const fd = Math.hypot(gx, gy); if (mesh.L > 0 && fd > mesh.rad * 0.9) continue;   // 霞の向こうは描かない
         list.push([Y, X, st2[k + 1]]);
+      }
+      if (mesh.realmOf && st.realm !== false) { // 国の色(薄く)と、首都の名前
+        const cellpx = mesh.s * st.ppm, fogR = mesh.rad * 0.9, rx = cellpx * 0.6 * st.dpr;
+        c2.globalAlpha = 0.22;
+        for (let i = 0; i < mesh.m; i++) { const o = mesh.realmOf[i]; if (o < 0) continue; const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; if (mesh.L > 0 && Math.hypot(gx, gy) > fogR) continue;
+          const X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr; if (X < -60 || X > ov.width + 60 || Y < -60 || Y > ov.height + 60) continue;
+          c2.fillStyle = PAL[o % PAL.length]; c2.beginPath(); c2.ellipse(X, Y, rx, rx * cp, 0, 0, 6.2832); c2.fill(); }
+        c2.globalAlpha = 1; c2.textAlign = 'center'; c2.font = 'bold ' + Math.round(13 * st.dpr) + 'px sans-serif'; c2.lineWidth = 3 * st.dpr; c2.lineJoin = 'round';
+        if (mesh.L <= 1) for (const r of mesh.realms) { if (r.troops < (mesh.L === 0 ? 80000 : 5000)) continue;
+          const wc = r.capital, rr = (wc / w.W) | 0, cc = wc % w.W, q = cc - ((rr - (rr & 1)) >> 1), P = [0, 0]; SK.pos(0, q, rr, P);
+          const gx = P[0] - st.fx, gy = P[1] - st.fy, X = (st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, Y = (st.H / 2 + ((-sy * gx + cy * gy) * cp - 0) * st.ppm) * st.dpr; if (X < -80 || X > ov.width + 80 || Y < -40 || Y > ov.height + 40) continue;
+          const tx = r.name + ' ' + r.realm; c2.strokeStyle = 'rgba(255,255,255,.9)'; c2.strokeText(tx, X, Y); c2.fillStyle = PAL[r.id % PAL.length]; c2.fillText(tx, X, Y); }
       }
       { // 湖と川(道の下に)。濃い縁取りの上に明るい青を重ね、水量が多いほど太くする
         const cellpx = mesh.s * st.ppm, fogR = mesh.rad * 0.9, proj = i => { const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; return [(st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr, Math.hypot(gx, gy)]; };

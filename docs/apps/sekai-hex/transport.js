@@ -12,6 +12,32 @@ const SekaiTransport = (function () {
     fly:   { name: '飛行', slope: 0, highAt: 1e9, high: 0, road: 1,    sea: true,  fly: true,  range: 4 },
   };
 
+
+  // ---- 運搬具の表(1行=1つの運び方)。輸送の費用=運んだ物から消える量 + 別払いの資源 ----
+  // mode: 'land'=運ぶ人の食糧(人数×2)だけ消費(荷車) / 'sea'=運んだ量の割合を消費(舟・馬車) / 'air'=運んだ量の割合を消費+別払い
+  // mover: 通れる範囲は MOVERS の行。load: 1台(1人)で運べる量。speed: 1日に進むマス数の目安。cargo: 運べる物の種類。
+  // 消費率(2026-11-02 ユーザー指定): 荷車=運ぶ人の食糧のみ、馬車・小型船=40%(6割届く)、大型船舶=30%(7割届く)、飛空艇・ドラゴン=2/3。積載・速さ・乗員は仮置き。
+  const CARGO = ['food', 'resource', 'goods', 'weapons', 'troops'];
+  const CARRIERS = {
+    cart:     { name: '荷車',     mover: 'walk',  mode: 'land', load: 40,  speed: 0.8, crew: 1, cargo: CARGO, memo: '安い・遅い。道が必要' },
+    wagon:    { name: '馬車',     mover: 'horse', mode: 'sea',  rate: 0.40, load: 10, speed: 1.6, crew: 2, cargo: CARGO, memo: '速い・道が必要' },
+    smallboat:{ name: '舟',   mover: 'boat',  mode: 'sea',  rate: 0.40, load: 30,   speed: 1.2, crew: 3, cargo: CARGO, memo: '川・沿岸向き。小回り' },
+    midship:  { name: '中型船',   mover: 'boat',  mode: 'sea',  rate: 0.35, load: 120,  speed: 1.4, crew: 10, cargo: CARGO, memo: '川・沿岸・近海。仮置き(舟と大型の中間)' },
+    bigship:  { name: '大型外洋船', mover: 'boat',  mode: 'sea',  rate: 0.30, load: 400,  speed: 1.6, crew: 30, cargo: CARGO, memo: '大量・港が必要・海向き' },
+    airship:  { name: '飛空艇',   mover: 'fly',   mode: 'air',  rate: 2 / 3, load: 60,  speed: 4,   crew: 8, cargo: CARGO, pay: { mana: 1 }, memo: '地形無視・最速・運用が高い。別に魔力などを払う' },
+    dragon:   { name: 'ドラゴン', mover: 'fly',   mode: 'air',  rate: 2 / 3, load: 20,  speed: 5,   crew: 1, cargo: ['weapons', 'troops', 'goods'], pay: { mana: 1 }, memo: '地形無視・最速・少量。別に魔力などを払う' },
+  };
+  // 運んだ時の結果: { arrive 着く量, eat 消える量, days 日数, pay 別払い }
+  function haul(carrierKey, amount, distCells) {
+    const C = CARRIERS[carrierKey]; const days = Math.max(1, Math.ceil(distCells / C.speed));
+    let eat, pay = {};
+    if (C.mode === 'land') { const men = Math.ceil(amount / C.load) * C.crew; eat = 2 * men; }  // 運ぶ人数の2倍(1回の輸送ごと)
+    else eat = amount * C.rate;
+    eat = Math.min(amount, eat);
+    if (C.pay) for (const k in C.pay) pay[k] = C.pay[k] * Math.ceil(amount / C.load) * days;
+    return { arrive: amount - eat, eat, days, pay };
+  }
+
   function heapOf() {
     const H = [];
     return {
@@ -93,6 +119,6 @@ const SekaiTransport = (function () {
   // 川幅(m): 集まった水の量(上流のマス数×1マスの面積)から。水量が4倍で幅が約2倍。
   function riverWidthM(acc, cellWidthM) { const areaKm2 = acc * (cellWidthM / 1000) * (cellWidthM / 1000) * 0.866; return Math.max(1, 3.2 * Math.sqrt(areaKm2)); }
 
-  return { MOVERS, roads, water, riverWidthM };
+  return { MOVERS, CARRIERS, haul, roads, water, riverWidthM };
 })();
 if (typeof module !== 'undefined') module.exports = SekaiTransport;
