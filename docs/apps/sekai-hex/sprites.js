@@ -154,6 +154,31 @@ const SekaiSprites = (function () {
     });
     return { lots, patches };
   }
+  // ---- 街の見取り図: 大通り(主街路)と横道で区画を切り、区画の両側に敷地を並べる。向きは街ごとに1つ。建物は敷地の中なので重ならない ----
+  function cityPlan(r, R, n, th) {
+    const lw = 0.05 - 0.002 * Math.min(n, 5) + r() * 0.006, ld = 0.052, sw = 0.022, nb = 4, bu = nb * lw, bv = 2 * ld, pu = bu + sw, pv = bv + sw;
+    const ca = Math.cos(th), sa = Math.sin(th), P = (u, v) => [u * ca - v * sa, u * sa + v * ca];
+    const lots = [], blocks = [], civic = { u: 0, v: 0 };
+    const nI = Math.ceil(R / pu) + 1, nJ = Math.ceil(R / pv) + 1;
+    for (let sI = -1; sI <= 1; sI += 2) for (let sJ = -1; sJ <= 1; sJ += 2) for (let i = 0; i < nI; i++) for (let j = 0; j < nJ; j++) {
+      const u0 = sI * (sw / 2 + i * pu), v0 = sJ * (sw / 2 + j * pv);          // 区画の、中心に近い角
+      const ua = Math.min(u0, u0 + sI * bu), va = Math.min(v0, v0 + sJ * bv), cu = ua + bu / 2, cv = va + bv / 2;
+      const far = Math.max(Math.abs(cu) + bu / 2, Math.abs(cv) + bv / 2);
+      if (Math.hypot(cu, cv) - 0.5 * Math.hypot(bu, bv) * 0.5 > R) continue;
+      const bl = { u: cu, v: cv, w: bu, d: bv, lots: 0 }; blocks.push(bl);
+      for (let row = 0; row < 2; row++) for (let k = 0; k < nb; k++) {
+        const lu = ua + (k + 0.5) * lw, lv = va + (row + 0.5) * ld, dist = Math.hypot(lu, lv) / R;
+        if (dist > 0.96 || Math.hypot(lu, lv) < 0.085) continue;             // 外壁の外・中央の広場には建てない
+        const rr = r(); if (rr < 0.04 + 0.22 * dist * dist) continue;         // 外縁ほど空き地が多い
+        const front = row === 0 ? -1 : 1, vOut = (row === 0 ? va : va + bv);  // 道に面した側(区画の外側)
+        const hd = ld * (0.58 + 0.12 * r()), hw = lw * (0.78 + 0.1 * r());
+        const lvc = (row === 0 ? va + 0.1 * ld + hd / 2 : va + bv - 0.1 * ld - hd / 2);   // 道に寄せる
+        const pt = P(lu, lvc); lots.push({ x: pt[0], y: pt[1], w: hw, d: hd, ang: th + (front > 0 ? 0 : 0), ward: dist < 0.35 ? 'core' : dist < 0.7 ? 'mid' : 'edge', u: lu, v: lvc });
+        bl.lots++;
+      }
+    }
+    return { lots, blocks, th, lw, ld, sw, plazaR: 0.07, P };
+  }
   function townLayout(o) {
     const sx = o.sx || 0, sy = o.sy || 0, ty = TT[o.ty] ? o.ty : 'medieval', T = TT[ty], key = ty + '|' + (o.seed || 0).toFixed(5) + '|' + (o.n || 3) + '|' + sx.toFixed(1) + '|' + sy.toFixed(1);
     let Lo = TCACHE.get(key); if (Lo) return Lo;
@@ -162,8 +187,9 @@ const SekaiSprites = (function () {
     const pick = a => a[(r() * a.length) | 0];
     const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, flip: r() < 0.5 }, extra || {}));
     if (T.lay === 'ring' || T.lay === 'grid') {
-      const G = cityLots(T.lay, r, R, n, T.lay === 'grid' ? 0.0042 : 0.0034 * (T.dense ? 0.8 : 1)); city = G;
-      for (const q of G.lots) { const x = q.x, y = q.y * sq; if (!ok(x, y)) continue; add(x, y, Math.min(0.09, Math.max(0.03, q.w)), 0.04 + r() * 0.035, { px: q.x, py: q.y, pw: q.w, pd: q.d, ang: q.ang, ward: q.ward }); }
+      const th = coast ? Math.atan2(sy, sx) + 1.5708 : Math.floor(r() * 12) * 0.2618;   // 海岸があれば海岸に平行、なければ街ごとに決める
+      const G = cityPlan(r, R, n, th); city = G; G.th = th;
+      for (const q of G.lots) { const x = q.x, y = q.y * sq; if (!ok(x, y)) continue; add(x, y, Math.min(0.09, Math.max(0.03, q.w * 1.1)), 0.04 + r() * 0.035 + (q.ward === 'core' ? 0.012 : 0), { px: q.x, py: q.y, pw: q.w, pd: q.d, ang: q.ang, ward: q.ward }); }
     } else if (T.lay === 'line') {
       const ax = coast ? -sy : 1, ay = coast ? sx : 0;                                  // 海岸に平行な線
       for (let row = 0; row < 3; row++) for (let t = -R; t <= R; t += 0.07) {
@@ -182,7 +208,7 @@ const SekaiSprites = (function () {
     }
     for (const h of houses) if (h.px === undefined) { h.px = h.x; h.py = h.y / sq; h.pw = h.w * 1.1; h.pd = h.w * 0.8; h.ang = 0; }
     houses.sort((a, b) => a.y - b.y);
-    const gate = coast ? Math.atan2(sy, sx) : r() * 6.2832, towers = [];
+    const gate = city ? city.th : (coast ? Math.atan2(sy, sx) : r() * 6.2832), towers = [];
     if (T.wall === 'round' || T.wall === 'star') for (let k = 0; k < 6; k++) { const a = k / 6 * 6.2832 + r() * 0.3, x = Math.cos(a) * (R + 0.04), y = Math.sin(a) * (R + 0.04) * sq; if (ok(x, y)) towers.push({ x, y }); }
     if (T.wall === 'rect') for (const [sx2, sy2] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) towers.push({ x: sx2 * (R + 0.05), y: sy2 * (R + 0.05) * sq });
     Lo = { houses, towers, R, sq, T, ty, gate, big, city }; if (TCACHE.size > 400) TCACHE.clear(); TCACHE.set(key, Lo); return Lo;
@@ -253,7 +279,14 @@ const SekaiSprites = (function () {
     const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
     items.sort((a, b) => a.y - b.y);
     const deep = (o.px || 0) >= 700;
-    if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip(); }   // マスク: 街の区域の中だけに描く
+    if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip();
+      if (L.city) {   // 道(地面の色)→区画(庭・敷地)→広場、の順に塗る
+        const G = L.city; c.save(); c.scale(1, sq); c.rotate(G.th);
+        c.fillStyle = '#cdb98e'; c.beginPath(); c.arc(0, 0, R * 1.1, 0, 6.2832); c.fill();
+        c.fillStyle = '#b4bf8e'; for (const b of G.blocks) c.fillRect(b.u - b.w / 2, b.v - b.d / 2, b.w, b.d);
+        c.fillStyle = '#e3d3a6'; c.beginPath(); c.arc(0, 0, G.plazaR, 0, 6.2832); c.fill(); c.strokeStyle = 'rgba(70,50,30,.5)'; c.lineWidth = LW * 0.3; c.stroke();
+        c.fillStyle = '#7d9a6a'; c.beginPath(); c.arc(0, 0, G.plazaR * 0.28, 0, 6.2832); c.fill(); c.restore();
+      } }   // マスク: 街の区域の中だけに描く
     for (const it of items) {
       if (deep) { if (it.h) planHouse(c, it.h, sq); continue; }
       if (it.h) bhouse(c, it.h);
