@@ -187,7 +187,7 @@ void main(){
       return 0.56 * Math.hypot(st.W / st.ppm, st.H / (st.ppm * cp));
     }
 
-    let PID = 0;
+    let PID = 0, mesh_TH = 12;
     function build() {
       const t0 = performance.now();
       const L = st.L = chooseLayer(), s = SK.spacing(L), a = SK.angle(L);
@@ -356,10 +356,40 @@ void main(){
           for (const [, b] of near) { const kk = a < b ? a + ',' + b : b + ',' + a; if (es.has(kk)) continue; es.add(kk); const pth = roadPath(a, b); if (pth) { for (const i of pth) onRoad[i] = 1; roads.push(pth); } }
         }
       }
+      // 川と湖: 水は低い方へ流れる。窪みは水を溜めて湖になり(あふれた先へ流れ出る)、集まった水の量が多い所が川になる
+      const rivers = [], lakes = [];
+      if (L > 0) {
+        const fill = new Float32Array(m).fill(Infinity), down = new Int32Array(m).fill(-1), seen = new Uint8Array(m), order = [], eps = 1e-4 * s, HH = [];
+        const hpush = it => { HH.push(it); let c = HH.length - 1; while (c > 0) { const p2 = (c - 1) >> 1; if (HH[p2][0] <= HH[c][0]) break; [HH[p2], HH[c]] = [HH[c], HH[p2]]; c = p2; } };
+        const hpop = () => { const top = HH[0], last = HH.pop(); if (HH.length) { HH[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r2 = l + 1; let mn = c; if (l < HH.length && HH[l][0] < HH[mn][0]) mn = l; if (r2 < HH.length && HH[r2][0] < HH[mn][0]) mn = r2; if (mn === c) break; [HH[mn], HH[c]] = [HH[c], HH[mn]]; c = mn; } } return top; };
+        for (let i = 0; i < m; i++) {
+          let edge = false; for (let k = 0; k < 6; k++) if (idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])) === undefined) { edge = true; break; }
+          if (hs[i] <= 0 || edge) { fill[i] = Math.max(0, hs[i]); seen[i] = 1; hpush([fill[i], i]); }
+        }
+        while (HH.length) {
+          const [, i] = hpop(); order.push(i);
+          for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(hs[j], fill[i] + eps); down[j] = i; hpush([fill[j], j]); }
+        }
+        const acc = new Float32Array(m).fill(1);
+        for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && hs[i] > 0) acc[down[i]] += acc[i]; }
+        const TH = Math.max(12, m * 0.002); mesh_TH = TH;
+        const isR = new Uint8Array(m), hasUp = new Uint8Array(m);
+        for (let i = 0; i < m; i++) {
+          if (hs[i] <= 0) continue;
+          if (fill[i] - hs[i] > 0.03 * s) lakes.push(i);
+          else if (down[i] >= 0 && acc[i] >= TH) { isR[i] = 1; hasUp[down[i]] = 1; }
+        }
+        // なめらかな曲線にするため、各マスで「上流側の辺の中点 → このマス → 下流側の辺の中点」をつなぐ(a,b,c,水量)
+        for (let i = 0; i < m; i++) if (isR[i]) {
+          const t = down[i], c = isR[t] ? down[t] : t;
+          rivers.push(i, t, c, acc[i]);
+          if (!hasUp[i]) rivers.push(i, i, t, acc[i]);
+        }
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, buf.slice(0, nv * 16), gl.STATIC_DRAW);
       let hmx = 1; for (let i = 0; i < m; i++) if (hs[i] > hmx) hmx = hs[i];
       const raw = Math.max(2, hmx / 12), pw = Math.pow(10, Math.floor(Math.log10(raw))), nm = raw / pw, cstep = pw * (nm < 1.5 ? 1 : nm < 3.5 ? 2 : nm < 7.5 ? 5 : 10);
-      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, roads, ms: performance.now() - t0, tilt: st.tilt };
+      mesh = { L, s, ox, oy, cx, cy, rad, nv, m, ex, zmax, cstep, qs, rs, hs, bs, cpos, Rc, stamps: STP, roads, rivers, lakes, riverTH: mesh_TH, ms: performance.now() - t0, tilt: st.tilt };
       mesh.D = 3 * Math.max(rad, need * 2) + 2 * zmax * ex + 10;
       if (hooks.onBuild) hooks.onBuild(mesh);
     }
@@ -404,7 +434,7 @@ void main(){
       const ov = hooks.overlay; if (!ov || !mesh) return;
       if (ov.width !== canvas.width || ov.height !== canvas.height) { ov.width = canvas.width; ov.height = canvas.height; }
       const c2 = ov.getContext('2d'); c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, ov.width, ov.height);
-      if (st.stamps === false || (!mesh.stamps.length && !(mesh.roads && mesh.roads.length))) return;
+      if (!mesh.stamps.length && !(mesh.roads && mesh.roads.length) && !(mesh.rivers && mesh.rivers.length) && !(mesh.lakes && mesh.lakes.length)) return;
       const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt), list = [], st2 = mesh.stamps, tm = performance.now();
       for (let k = 0; k < st2.length; k += 2) {
         const i = st2[k], gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex;
@@ -412,6 +442,21 @@ void main(){
         if (X < -60 || X > st.W + 60 || Y < -60 || Y > st.H + 160) continue;
         const fd = Math.hypot(gx, gy); if (mesh.L > 0 && fd > mesh.rad * 0.9) continue;   // 霞の向こうは描かない
         list.push([Y, X, st2[k + 1]]);
+      }
+      { // 湖と川(道の下に)。濃い縁取りの上に明るい青を重ね、水量が多いほど太くする
+        const cellpx = mesh.s * st.ppm, fogR = mesh.rad * 0.9, proj = i => { const gx = mesh.cpos[i * 3] - st.fx, gy = mesh.cpos[i * 3 + 1] - st.fy, zz = (mesh.cpos[i * 3 + 2] - st.z0) * mesh.ex; return [(st.W / 2 + (cy * gx + sy * gy) * st.ppm) * st.dpr, (st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm) * st.dpr, Math.hypot(gx, gy)]; };
+        if (mesh.lakes && mesh.lakes.length) { const rx = cellpx * 0.62 * st.dpr; for (const [col, k] of [['#2f6fbf', 1.18], ['#5aaeee', 1]]) { c2.fillStyle = col; for (const i of mesh.lakes) { const [X, Y, d] = proj(i); if (d > fogR || X < -60 || X > ov.width + 60 || Y < -60 || Y > ov.height + 60) continue; c2.beginPath(); c2.ellipse(X, Y, rx * k, rx * k * cp, 0, 0, 6.2832); c2.fill(); } } }
+        if (mesh.rivers && mesh.rivers.length) {
+          c2.lineCap = 'round'; const R = mesh.rivers, TH = mesh.riverTH;
+          for (const [col, add] of [['#1f5fae', 2.2], ['#58b4ff', 0]]) {
+            c2.strokeStyle = col;
+            for (let k = 0; k < R.length; k += 4) {
+              const a = proj(R[k]), b = proj(R[k + 1]), e = proj(R[k + 2]); if (a[2] > fogR || b[2] > fogR) continue;
+              c2.lineWidth = (Math.max(2.5, Math.min(22, cellpx * 0.11 * (0.7 + Math.log2(R[k + 3] / TH + 1)))) + add) * st.dpr;
+              c2.beginPath(); c2.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); c2.quadraticCurveTo(b[0], b[1], (b[0] + e[0]) / 2, (b[1] + e[1]) / 2); c2.stroke();
+            }
+          }
+        }
       }
       if (mesh.roads && mesh.roads.length) { // 道(絵の下に)。2本の線を重ねて縁取りする
         const cellpx = mesh.s * st.ppm, wd = Math.max(2, Math.min(10, cellpx * 0.16)) * st.dpr; c2.lineCap = 'round'; c2.lineJoin = 'round';
@@ -429,6 +474,7 @@ void main(){
           }
         }
       }
+      if (st.stamps === false) return;
       list.sort((a, b) => a[0] - b[0]);
       const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
