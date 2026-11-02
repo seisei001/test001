@@ -67,23 +67,129 @@ const SekaiSprites = (function () {
     smoke(c, t + (o.seed || 0) * 3000, 0, -0.72, o.active ? 10 : 5, o.active ? 1.7 : 1.0, o.active ? 0.14 : 0.1, o.active ? '#6a6070' : '#e6e1ee');
     c.restore();
   }
-  // 街: 色とりどりの屋根の家が数軒と、とんがり屋根の塔。煙突から煙
+  // ---- 街: 実在の歴史的な街をもとにした17種。様式(建物の形・色)・配置の型・城壁・目印の建物が街ごとに違う ----
+  // igloo=イヌイットのイグルー集落 turf=北欧の芝屋根の長屋 russian=ロシアの木造集落 hansa=ハンザ同盟の港町(ベルゲン) yurt=モンゴルのゲル
+  // medina=イスラムのメディナ(フェズ) djenne=西アフリカの泥の街(ジェンネ) medieval=中世欧州の城壁都市 chinese=中国の城郭都市(平遥)
+  // japan=日本の城下町(姫路) starfort=星形要塞都市 greek=ギリシャの白い丘の町(サントリーニ) roman=古代ローマ都市 kraal=円形の泥小屋の集落
+  // stilt=東南アジアの高床の村 inca=インカの段々の石の街(マチュピチュ) tibet=チベットの宮殿の街(ラサ)
+  const TT = {
+    igloo:    { lay: 'scatter', wall: null, hk: 'dome', wc: ['#f4f8ff'], rc: ['#dfeaff'], gr: '#e6eef8', lm: null, r: 0.3 },
+    turf:     { lay: 'line', wall: null, hk: 'turf', wc: ['#7a5a42'], rc: ['#6fa05a', '#5f9150'], gr: '#a8b88a', lm: null, r: 0.34 },
+    russian:  { lay: 'ring', wall: null, hk: 'gable', wc: ['#a8754a', '#9a6a42'], rc: ['#6b4a3a', '#5a4a46'], gr: '#c9bf9a', lm: 'onion', r: 0.32 },
+    hansa:    { lay: 'line', wall: null, hk: 'gable', tall: 1, wc: ['#d94f3d', '#e8b84a', '#3f86c7', '#f2eadb', '#6aa66a'], rc: ['#4a3f4a', '#5a4048'], gr: '#cdbf9c', lm: null, r: 0.36 },
+    yurt:     { lay: 'scatter', wall: null, hk: 'cone', wc: ['#f1ecdc'], rc: ['#ebe5d2', '#e0d9c4'], gr: '#c8c490', lm: null, r: 0.34 },
+    medina:   { lay: 'ring', dense: 1, wall: 'round', wcol: '#cdb089', hk: 'flat', wc: ['#d8b98a', '#c9a679', '#e0c79c'], rc: ['#b99468'], gr: '#dcc59a', lm: 'minaret', r: 0.36 },
+    djenne:   { lay: 'ring', dense: 1, wall: null, hk: 'mud', wc: ['#b98a5e', '#a97b52', '#c79a6a'], rc: ['#9a6e48'], gr: '#d6b98a', lm: 'mosque', r: 0.34 },
+    medieval: { lay: 'ring', wall: 'round', wcol: '#c9b79c', hk: 'gable', wc: ['#f2e3c4'], rc: ['#d9603b', '#c4482e', '#e07a4a', '#b8553a', '#8f6a58'], gr: '#cfc59a', lm: 'tower', r: 0.4 },
+    chinese:  { lay: 'grid', wall: 'rect', wcol: '#9a8a74', hk: 'hip', wc: ['#e9d7b4', '#d9c79e'], rc: ['#5f6b78', '#4b5563', '#6a7482'], gr: '#cfc59a', lm: 'pagoda', r: 0.4 },
+    japan:    { lay: 'grid', wall: 'moat', wcol: '#2f72c4', hk: 'hip', wc: ['#f4f0e6', '#e9e1d0'], rc: ['#4a4f5c', '#3d4250'], gr: '#c4c496', lm: 'keep', r: 0.4 },
+    starfort: { lay: 'ring', wall: 'star', wcol: '#b9a58a', hk: 'gable', wc: ['#f2e3c4'], rc: ['#d9603b', '#c4482e', '#e07a4a', '#b8553a'], gr: '#b4c48a', lm: 'tower', r: 0.38 },
+    greek:    { lay: 'terrace', wall: null, hk: 'flat', dome: 1, wc: ['#fbfbf6', '#f4f4ec'], rc: ['#2f72c4', '#fbfbf6'], gr: '#d6c8a4', lm: 'bluedome', r: 0.36 },
+    roman:    { lay: 'grid', wall: 'rect', wcol: '#d2c3a6', hk: 'hip', wc: ['#f1e2c0', '#e8d6b0'], rc: ['#cf6b43', '#c25a38', '#d97a50'], gr: '#cfc59a', lm: 'temple', r: 0.4 },
+    kraal:    { lay: 'ring', wall: null, hk: 'cone', wc: ['#a9764f', '#9a6a45'], rc: ['#c9a24d', '#b8923f'], gr: '#d2b878', lm: null, r: 0.32 },
+    stilt:    { lay: 'line', wall: null, hk: 'stilt', wc: ['#a8825a'], rc: ['#c9a24d', '#b8923f'], gr: '#7aa88a', lm: null, r: 0.34, water: 1 },
+    inca:     { lay: 'terrace', wall: null, hk: 'gable', wc: ['#a9a79b', '#9c9a8e'], rc: ['#d6bf6a', '#c9ad55'], gr: '#a9b48a', lm: null, r: 0.36, terr: '#9a9a8c' },
+    tibet:    { lay: 'terrace', wall: null, hk: 'flat', band: 1, wc: ['#f7f4ec'], rc: ['#8a3a30'], gr: '#c8bc98', lm: 'palace', r: 0.36 }
+  };
+  function rng(sd) { let a = Math.floor(frac(sd) * 4294967296) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const TCACHE = new Map();
+  function townLayout(o) {
+    const sx = o.sx || 0, sy = o.sy || 0, ty = TT[o.ty] ? o.ty : 'medieval', T = TT[ty], key = ty + '|' + (o.seed || 0).toFixed(5) + '|' + (o.n || 3) + '|' + sx.toFixed(1) + '|' + sy.toFixed(1);
+    let Lo = TCACHE.get(key); if (Lo) return Lo;
+    const r = rng((o.seed || 0.5) * 7.77 + 0.1), n = o.n || 3, big = n >= 5, sq = 0.52, R = T.r * (n >= 4 ? 1 : 0.85), cnt = 12 + n * 8, coast = !!(sx || sy), houses = [];
+    const ok = (x, y) => !coast || x * sx + (y / sq) * sy >= -0.05;       // 海側(法線の逆)には建てない
+    const pick = a => a[(r() * a.length) | 0];
+    const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, flip: r() < 0.5 }, extra || {}));
+    if (T.lay === 'ring') {
+      for (let k = 0, tr = 0; k < cnt && tr < cnt * 14; tr++) {
+        const a = r() * 6.2832, rd = R * Math.pow(r(), T.dense ? 0.85 : 0.65), x = Math.cos(a) * rd, y = Math.sin(a) * rd * sq; if (!ok(x, y)) continue;
+        const near = rd < 0.1; add(x, y, (near ? 0.05 : 0.045 + r() * 0.04), 0.05 + r() * 0.03); k++;
+      }
+    } else if (T.lay === 'grid') {
+      const sp = 0.095; for (let gx = -R; gx <= R; gx += sp) for (let gy = -R; gy <= R; gy += sp) {
+        if (r() < 0.22) continue; const x = gx + (r() - 0.5) * 0.02, y = (gy + (r() - 0.5) * 0.02) * sq; if (!ok(x, y)) continue; if (Math.abs(x) < 0.03 && Math.abs(y) < 0.03) continue;
+        add(x, y, 0.062 + r() * 0.02, 0.05 + r() * 0.025);
+      }
+    } else if (T.lay === 'line') {
+      const ax = coast ? -sy : 1, ay = coast ? sx : 0;                                  // 海岸に平行な線
+      for (let row = 0; row < 3; row++) for (let t = -R; t <= R; t += 0.07) {
+        if (r() < 0.2) continue; const off = (row - 0.2) * 0.1, x = ax * t + sx * off, y = (ay * t + sy * off) * sq; if (!ok(x, y + 0.0001) && row === 0) continue;
+        const tall = T.tall ? 0.04 + r() * 0.05 : 0; add(x, y, 0.042 + r() * 0.025, 0.045 + tall + r() * 0.02);
+      }
+    } else if (T.lay === 'scatter') {
+      for (const [rr, c0] of [[0.0, 1], [0.13, 6], [0.25, 11], [0.37, 16]]) for (let k = 0; k < c0; k++) {
+        if (rr > R + 0.02) continue; const a = k / c0 * 6.2832 + r() * 0.3, x = Math.cos(a) * rr, y = Math.sin(a) * rr * sq; if (!ok(x, y) || (n < 4 && rr > 0.26) || r() < 0.12) continue; add(x, y, 0.07, 0.05);
+      }
+    } else if (T.lay === 'terrace') {
+      const rows = 4 + (n >= 4 ? 1 : 0); for (let j = 0; j < rows; j++) {
+        const yy = -0.22 + j * 0.1, half = (0.12 + j * 0.07) * (R / 0.36);
+        for (let x = -half; x <= half; x += 0.075) { if (r() < 0.12) continue; const xx = x + (r() - 0.5) * 0.02; if (ok(xx, yy)) add(xx, yy, 0.06 + r() * 0.02, 0.05 + r() * 0.02, { row: j, dome: T.dome && r() < 0.3 }); }
+      }
+    }
+    houses.sort((a, b) => a.y - b.y);
+    const gate = coast ? Math.atan2(sy, sx) : r() * 6.2832, towers = [];
+    if (T.wall === 'round' || T.wall === 'star') for (let k = 0; k < 6; k++) { const a = k / 6 * 6.2832 + r() * 0.3, x = Math.cos(a) * (R + 0.04), y = Math.sin(a) * (R + 0.04) * sq; if (ok(x, y)) towers.push({ x, y }); }
+    if (T.wall === 'rect') for (const [sx2, sy2] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) towers.push({ x: sx2 * (R + 0.05), y: sy2 * (R + 0.05) * sq });
+    Lo = { houses, towers, R, sq, T, ty, gate, big }; if (TCACHE.size > 400) TCACHE.clear(); TCACHE.set(key, Lo); return Lo;
+  }
+  function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
+  function bhouse(c, h) {
+    const { x, y, w } = h, hh = h.h; c.save(); stroke0(c, 0.35);
+    const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
+    if (h.k === 'gable') { wall(); const top = y - hh, rh = w * 0.55; c.beginPath(); c.moveTo(x - w * 0.6, top); c.lineTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.lineTo(x, top); c.closePath(); c.fill(); }
+    else if (h.k === 'flat' || h.k === 'mud') { wall(); const top = y - hh; c.fillStyle = h.k === 'mud' ? h.wc : h.rc; if (h.dome) { c.beginPath(); c.ellipse(x, top, w * 0.4, w * 0.4, 0, Math.PI, 0); c.fill(); c.stroke(); } else { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(x - w / 2, top, w, hh * 0.14); }
+      if (h.k === 'mud') { c.strokeStyle = LINE; c.lineWidth = LW * 0.4; for (const d of [-0.3, 0, 0.3]) { c.beginPath(); c.moveTo(x + d * w, top); c.lineTo(x + d * w, top - w * 0.2); c.stroke(); } }
+      c.fillStyle = 'rgba(60,40,30,.55)'; c.fillRect(x - w * 0.08, y - hh * 0.55, w * 0.16, hh * 0.55); if (h.band) { c.fillStyle = h.rc; c.fillRect(x - w / 2, top, w, hh * 0.18); } }
+    else if (h.k === 'hip') { const wl = hh * 0.55; c.fillStyle = h.wc; c.fillRect(x - w * 0.42, y - wl, w * 0.84, wl); c.strokeRect(x - w * 0.42, y - wl, w * 0.84, wl); const top = y - wl; c.beginPath(); c.moveTo(x - w * 0.62, top + w * 0.04); c.lineTo(x - w * 0.4, top - w * 0.3); c.lineTo(x + w * 0.4, top - w * 0.3); c.lineTo(x + w * 0.62, top + w * 0.04); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(x - w * 0.4, top - w * 0.3, w * 0.8, w * 0.05); }
+    else if (h.k === 'cone') { const wl = hh * 0.5; c.fillStyle = h.wc; c.fillRect(x - w * 0.4, y - wl, w * 0.8, wl); c.strokeRect(x - w * 0.4, y - wl, w * 0.8, wl); c.beginPath(); c.moveTo(x - w * 0.5, y - wl); c.lineTo(x, y - wl - w * 0.5); c.lineTo(x + w * 0.5, y - wl); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.moveTo(x, y - wl - w * 0.5); c.lineTo(x + w * 0.5, y - wl); c.lineTo(x, y - wl); c.closePath(); c.fill(); }
+    else if (h.k === 'dome') { c.beginPath(); c.ellipse(x, y, w * 0.55, w * 0.5, 0, Math.PI, 0); c.fillStyle = h.wc; c.fill(); c.stroke(); c.strokeStyle = 'rgba(120,150,200,.5)'; c.lineWidth = LW * 0.25; for (const d of [0.3, 0.6]) { c.beginPath(); c.moveTo(x - w * 0.5, y - w * d * 0.5); c.lineTo(x + w * 0.5, y - w * d * 0.5); c.stroke(); } c.fillStyle = '#4a4458'; c.fillRect(x - w * 0.08, y - w * 0.16, w * 0.16, w * 0.16); }
+    else if (h.k === 'turf') { c.fillStyle = h.wc; c.fillRect(x - w * 0.6, y - hh * 0.5, w * 1.2, hh * 0.5); c.strokeRect(x - w * 0.6, y - hh * 0.5, w * 1.2, hh * 0.5); c.beginPath(); c.ellipse(x, y - hh * 0.5, w * 0.7, hh * 0.55, 0, Math.PI, 0); c.fillStyle = h.rc; c.fill(); c.stroke(); }
+    else if (h.k === 'stilt') { c.strokeStyle = '#6a4a30'; c.lineWidth = LW * 0.6; for (const d of [-0.35, 0.35]) { c.beginPath(); c.moveTo(x + d * w, y); c.lineTo(x + d * w, y - hh * 0.5); c.stroke(); } stroke0(c, 0.35); const by = y - hh * 0.5; c.fillStyle = h.wc; c.fillRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.strokeRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.beginPath(); c.moveTo(x - w * 0.62, by - hh * 0.6); c.lineTo(x, by - hh * 0.6 - w * 0.5); c.lineTo(x + w * 0.62, by - hh * 0.6); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); }
+    c.restore();
+  }
+  function polyThin(c, pts, fill, stroke) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.lineWidth = LW * 0.3; c.strokeStyle = LINE; c.lineJoin = 'round'; c.stroke(); } }
+  function landmark(c, L, t, sd) {
+    const poly = polyThin, lm = L.T.lm; if (!lm) return; c.save(); stroke0(c, 0.5);
+    const flag = (x, y) => { const w = Math.sin(t * 0.006 + sd * 9) * 0.015; poly(c, [[x, y], [x + 0.07 + w, y + 0.02], [x, y + 0.04]], '#e5533d', false); };
+    if (lm === 'tower') { poly(c, [[-0.035, 0.01], [-0.035, -0.17], [0.035, -0.17], [0.035, 0.01]], '#efe6d6', true); poly(c, [[-0.05, -0.17], [0, -0.3], [0.05, -0.17]], '#3f7fd6', true); flag(0, -0.3); }
+    else if (lm === 'minaret') { poly(c, [[-0.03, 0.01], [-0.025, -0.26], [0.025, -0.26], [0.03, 0.01]], '#e8d2a8', true); poly(c, [[-0.045, -0.26], [0.045, -0.26], [0.04, -0.22], [-0.04, -0.22]], '#d6bd90', true); poly(c, [[-0.03, -0.26], [0, -0.36], [0.03, -0.26]], '#3f9a6a', true); }
+    else if (lm === 'keep') { poly(c, [[-0.1, 0.01], [-0.07, -0.07], [0.07, -0.07], [0.1, 0.01]], '#9a9aa4', true); let y = -0.07, w = 0.07; for (let k = 0; k < 3; k++) { c.fillStyle = '#f4f0e6'; c.fillRect(-w, y - 0.07, w * 2, 0.07); c.strokeRect(-w, y - 0.07, w * 2, 0.07); poly(c, [[-w - 0.03, y - 0.07], [-w * 0.7, y - 0.11], [w * 0.7, y - 0.11], [w + 0.03, y - 0.07]], '#3d4250', true); y -= 0.1; w *= 0.78; } ell(c, 0, y - 0.04, 0.012, 0.012, '#e8c04a', false); }
+    else if (lm === 'onion') { poly(c, [[-0.05, 0.01], [-0.05, -0.12], [0.05, -0.12], [0.05, 0.01]], '#f4efe2', true); c.fillStyle = '#3f7fd6'; c.beginPath(); c.moveTo(-0.045, -0.12); c.quadraticCurveTo(-0.08, -0.2, 0, -0.3); c.quadraticCurveTo(0.08, -0.2, 0.045, -0.12); c.closePath(); c.fill(); c.stroke(); ell(c, 0, -0.32, 0.012, 0.012, '#e8c04a', false); }
+    else if (lm === 'mosque') { poly(c, [[-0.16, 0.01], [-0.16, -0.12], [0.16, -0.12], [0.16, 0.01]], '#b98a5e', true); for (const x of [-0.12, 0, 0.12]) { poly(c, [[x - 0.035, -0.12], [x - 0.02, -0.28], [x + 0.02, -0.28], [x + 0.035, -0.12]], '#a97b52', true); ell(c, x, -0.29, 0.012, 0.012, '#f2e3c4', false); } poly(c, [[-0.03, 0.01], [-0.03, -0.06], [0.03, -0.06], [0.03, 0.01]], '#5a3a28', false); }
+    else if (lm === 'pagoda') { let y = 0.01, w = 0.06; for (let k = 0; k < 3; k++) { c.fillStyle = '#c8553d'; c.fillRect(-w * 0.7, y - 0.07, w * 1.4, 0.07); c.strokeRect(-w * 0.7, y - 0.07, w * 1.4, 0.07); poly(c, [[-w - 0.02, y - 0.07], [-w * 0.6, y - 0.11], [w * 0.6, y - 0.11], [w + 0.02, y - 0.07]], '#4b5563', true); y -= 0.1; w *= 0.8; } }
+    else if (lm === 'temple') { poly(c, [[-0.1, 0.01], [-0.1, -0.02], [0.1, -0.02], [0.1, 0.01]], '#efe6d6', true); for (const x of [-0.08, -0.027, 0.027, 0.08]) { c.fillStyle = '#f7f1e4'; c.fillRect(x - 0.01, -0.12, 0.02, 0.1); c.strokeRect(x - 0.01, -0.12, 0.02, 0.1); } poly(c, [[-0.11, -0.12], [0, -0.19], [0.11, -0.12]], '#cf6b43', true); }
+    else if (lm === 'bluedome') { poly(c, [[-0.045, 0.01], [-0.045, -0.08], [0.045, -0.08], [0.045, 0.01]], '#fbfbf6', true); c.fillStyle = '#2f72c4'; c.beginPath(); c.ellipse(0, -0.08, 0.05, 0.06, 0, Math.PI, 0); c.fill(); c.stroke(); ell(c, 0, -0.145, 0.006, 0.014, '#fbfbf6', false); }
+    else if (lm === 'palace') { poly(c, [[-0.16, 0.01], [-0.16, -0.09], [0.16, -0.09], [0.16, 0.01]], '#f7f4ec', true); poly(c, [[-0.11, -0.09], [-0.11, -0.19], [0.11, -0.19], [0.11, -0.09]], '#8a3a30', true); poly(c, [[-0.06, -0.19], [-0.06, -0.27], [0.06, -0.27], [0.06, -0.19]], '#f7f4ec', true); for (const [x, y, w] of [[0, -0.27, 0.08], [-0.12, -0.19, 0.05], [0.12, -0.19, 0.05]]) poly(c, [[x - w, y], [x - w * 0.6, y - 0.04], [x + w * 0.6, y - 0.04], [x + w, y]], '#e8c04a', true); }
+    c.restore();
+  }
   function town(c, o, t) {
-    const n = o.n || 3, R = ROOF; c.save(); groundShadow(c, 0.55);
-    const spots = [[-0.32, -0.02, 0.3], [0.1, 0.0, 0.34], [0.38, -0.04, 0.26], [-0.08, -0.2, 0.28], [0.22, -0.22, 0.24]];
-    for (let k = Math.min(n, 5) - 1; k >= 0; k--) {
-      const [x, y, w] = spots[k], rc = R[(o.seed * 7 + k * 3 | 0) % R.length], h = w * 0.62;
-      poly(c, [[x - w / 2, y], [x - w / 2, y - h], [x + w / 2, y - h], [x + w / 2, y]], '#fbeed2', true);
-      poly(c, [[x + w * 0.1, y], [x + w * 0.1, y - h], [x + w / 2, y - h], [x + w / 2, y]], '#d9c3a0', false);
-      poly(c, [[x - w / 2 - 0.03, y - h], [x, y - h - w * 0.5], [x + w / 2 + 0.03, y - h]], rc, true);
-      poly(c, [[x, y - h - w * 0.5], [x + w / 2 + 0.03, y - h], [x + 0.02, y - h]], 'rgba(0,0,0,0.18)', false);
-      c.fillStyle = '#6b4a3a'; c.fillRect(x - w * 0.08, y - h * 0.5, w * 0.16, h * 0.5);
+    const poly = polyThin, L = townLayout(o), T = L.T, sd = o.seed || 0, R = L.R, sq = L.sq;
+    c.save(); c.translate(0, -0.02);
+    c.save(); c.globalAlpha = 0.55; ell(c, 0, 0, R * 1.15, R * 1.15 * sq, T.gr, false); c.restore();
+    if (T.water) { c.save(); c.globalAlpha = 0.7; ell(c, 0, 0.02, R * 1.0, R * 0.9 * sq, '#5aaeee', false); c.restore(); }
+    if (T.wall === 'moat') { c.save(); c.strokeStyle = '#2f72c4'; c.lineWidth = 0.05; c.beginPath(); c.ellipse(0, 0, R + 0.06, (R + 0.06) * sq, 0, 0, 6.2832); c.stroke(); c.strokeStyle = '#5aaeee'; c.lineWidth = 0.035; c.stroke(); c.restore(); }
+    c.save(); c.strokeStyle = '#efe0bd'; c.lineWidth = 0.028; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(L.gate) * (R + 0.14), Math.sin(L.gate) * (R + 0.14) * sq); c.stroke(); c.restore();
+    const wallPath = (back) => {
+      const wc = T.wcol; if (!wc || T.wall === 'moat') return; c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+      for (const [col, w] of [[LINE, 0.05], [wc, 0.032]]) {
+        c.strokeStyle = col; c.lineWidth = w; c.beginPath();
+        if (T.wall === 'round') c.ellipse(0, 0, R + 0.04, (R + 0.04) * sq, 0, back ? Math.PI : 0, back ? 6.2832 : Math.PI);
+        else if (T.wall === 'rect') { const a = R + 0.05, b = (R + 0.05) * sq; if (back) { c.moveTo(-a, 0); c.lineTo(-a, -b); c.lineTo(a, -b); c.lineTo(a, 0); } else { c.moveTo(-a, 0); c.lineTo(-a, b); c.lineTo(a, b); c.lineTo(a, 0); } }
+        else if (T.wall === 'star') { for (let k = 0; k <= 16; k++) { const a = k / 16 * 6.2832, rr = (k % 2 ? 0.8 : 1.12) * R + 0.03, x = Math.cos(a) * rr, y = Math.sin(a) * rr * sq; if (back ? y > 0.0001 : y < -0.0001) { c.moveTo(x, y); continue; } if (k === 0) c.moveTo(x, y); else c.lineTo(x, y); } }
+        c.stroke();
+      } c.restore();
+    };
+    wallPath(true);
+    if (T.terr) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
+    const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
+    items.sort((a, b) => a.y - b.y);
+    for (const it of items) {
+      if (it.h) bhouse(c, it.h);
+      else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
-    if (n >= 4) { // 塔
-      poly(c, [[-0.5, 0.0], [-0.5, -0.5], [-0.36, -0.5], [-0.36, 0.0]], '#e8e2f0', true);
-      poly(c, [[-0.54, -0.5], [-0.43, -0.82], [-0.32, -0.5]], '#3f7fd6', true);
-    }
-    smoke(c, t + (o.seed || 0) * 2000, 0.16, -0.46, 3, 0.45, 0.045, '#f3f0f8');
+    wallPath(false);
+    if (T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); landmark(c, L, t, sd); c.restore(); }
+    if (T.hk === 'gable' || T.hk === 'flat') smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
   // 城: 中央の本丸と両脇の塔、はためく旗

@@ -142,7 +142,7 @@ void main(){
     const fv = FV;
     // 街は「親のマスが街なら、子の層でも真ん中の子が街」で層をまたいで同じ場所に出る(新しく生まれる街は層ごとに少しだけ)
     const K0 = SK.OFF.findIndex(o => o[0] === 0 && o[1] === 0), tcell = { h: 0, b: 0, rel: 0 };
-    function townOwn(L, q, r) { sk.cell(L, q, r, tcell); return tcell.h > 0 && tcell.h < 900 && tcell.b >= 6 && tcell.b <= 10 && hash2(q, r, L + 62) < (L === 0 ? 0.02 : 0.003); }
+    function townOwn(L, q, r) { sk.cell(L, q, r, tcell); return tcell.h > 0 && tcell.h < (tcell.b === 12 ? 3200 : 900) && tcell.b >= 1 && tcell.b <= 12 && hash2(q, r, L + 62) < (L === 0 ? 0.02 : 0.003); }
     // 火山: 高い山の頂(隣に自分より高い所がない)の一部。親が火山なら子の層でも真ん中の子が火山(層をまたいで同じ場所)
     const tc2 = { h: 0, b: 0, rel: 0 };
     function volOwn(L, q, r) {
@@ -155,10 +155,13 @@ void main(){
       const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return false; return isVolcano(L - 1, pt[0], pt[1]);
     }
     function findVolcano(L, q, r) { if (isVolcano(L, q, r)) return [q, r]; for (let k = 0; k < 6; k++) if (isVolcano(L, q + DIRS[k][0], r + DIRS[k][1])) return [q + DIRS[k][0], r + DIRS[k][1]]; return null; }
+    // 街の「根」(最初に生まれた層と場所)を返す。子の層の街は根を引き継ぐので、街の種類・大きさは層をまたいで同じになる
     function isTown(L, q, r) {
-      if (townOwn(L, q, r)) return true; if (L < 1) return false;
-      const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return false; return isTown(L - 1, pt[0], pt[1]);
+      if (townOwn(L, q, r)) return [L, q, r]; if (L < 1) return null;
+      const pt = SK.parentOf(q, r, [0, 0, 0]); if (pt[2] !== K0) return null; return isTown(L - 1, pt[0], pt[1]);
     }
+    // 実在の歴史的な街をもとにした型(sprites.js の TT)を、気候区分から選ぶ
+    const TOWN_TYPES = { 1: ['igloo'], 2: ['turf', 'russian'], 3: ['russian', 'hansa'], 4: ['yurt'], 5: ['medina', 'djenne'], 6: ['medieval', 'chinese', 'starfort'], 7: ['greek', 'roman', 'medina'], 8: ['japan', 'medieval', 'chinese'], 9: ['hansa', 'medieval', 'starfort'], 10: ['djenne', 'kraal'], 11: ['stilt', 'kraal'], 12: ['inca', 'tibet'] };
     const w = sk.w;
     const worldW = (w.W + 0.5) * SK.spacing(0);
     const st = {
@@ -272,7 +275,12 @@ void main(){
             else if (L <= 3 && h > 2200 && (sr < 0.04 * sprK || (sr < 0.5 * sprK && ridge))) spec = { k: 'mountain', b: b0, snow: h > 3600, seed: sr, hr: Math.max(0.25, Math.min(1, (h - 1500) / 3500)) };
             else if (L <= 2 && h > 1100 && slope > 0.09 && sr < 0.1 * sprK) spec = { k: 'mountain', b: b0, snow: false, seed: sr, hr: Math.max(0.2, Math.min(0.6, (h - 800) / 3000)) };
             else if (sr3 < 0.008 * sprT * (coast && b0 !== 1 ? 0.4 : 1)) { const kd = b0 === 5 ? 'pyramid' : (b0 === 11 || b0 === 10) ? 'ziggurat' : b0 === 1 ? 'icepalace' : coast ? 'lighthouse' : (b0 === 3 || b0 === 8 || b0 === 9) ? 'worldtree' : b0 === 12 ? 'shrine' : 'castle'; spec = { k: kd, b: b0, seed: sr2 }; }
-            else if (isTown(L, q, r)) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
+            else if (isTown(L, q, r)) {
+              const rt = isTown(L, q, r), rs0 = hash2(rt[1], rt[2], rt[0] + 99), lst = TOWN_TYPES[b0] || TOWN_TYPES[6];
+              let cx = 0, cy = 0, sea = 0; for (let k = 0; k < 6; k++) if (nbH[k] <= 0) { cx -= dirU[k][0]; cy -= dirU[k][1]; sea++; }
+              const cl = Math.hypot(cx, cy) || 1;   // 海から陸へ向かう向き(海岸の街は海側に建てない)
+              spec = { k: 'town', b: b0, ty: lst[Math.min(lst.length - 1, (hash2(rt[1], rt[2], rt[0] + 98) * lst.length) | 0)], n: 2 + ((rs0 * 40) | 0) % 4, seed: rs0, nx: sea ? cx / cl : 0, ny: sea ? cy / cl : 0 };
+            }
           }
           if (spec) STP.push(i, spec);
           else { const sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (L < 4 && sr < stampP * sp * (L >= 3 ? 0.3 : 1)) STP.push(i, stampFor(b0, h, coast, hash2(q, r, L + 61))); }
@@ -476,13 +484,14 @@ void main(){
       }
       if (st.stamps === false) return;
       list.sort((a, b) => a[0] - b[0]);
-      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 1.6, castle: 1.9, animal: 1.1 };
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 2.4, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
+        if (sp0.k === 'town') { sp0.sx = cy * sp0.nx + sy * sp0.ny; sp0.sy = -sy * sp0.nx + cy * sp0.ny; }   // 海岸の向きを画面の向きに直す
         if (typeof sp0 === 'string') {
           c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
-          const an = sp0.k === 'animal', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
+          const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 64 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }
