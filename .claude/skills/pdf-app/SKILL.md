@@ -446,3 +446,12 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 
 ## v121: 製本デスク 2.23
 - サムネイルの大きさ(「大きさ」バー・ピンチ・Ctrl+ホイール)の範囲を 90〜320px → 40〜800px。保存済みの値も範囲内に収める。サムネイルは `tw*dpr` の幅で描くので、大きくすると細かくなる(画面の近くのカードだけ描く)。テスト: test-studio-deskzoom.js。
+
+## v122: 整形 1.07 — 整形を「① 範囲 → ② 補正 → ③ 置き場所 → ④ まわり」に整理
+- 上のタブは「範囲と補正(warp)/傾き補正/回転・反転」の3つ。「切り抜き」タブと切り抜きのコード(crop*)は廃止し、歪み補正に統合した。
+- ① 範囲: 「ページ全体」(`wkPage`、四隅を4%内側から)/「範囲を指定」(`wkPart`、ドラッグ)。どちらも内部は同じ `warp`(kind:"part"、`whole` フラグ)。青い四隅は自由(斜め・台形)、中の白い点で曲げられる。「四隅を自動で探す」(`wAuto`、findPaperQuad)・「余白を自動で除く」(`wAutoMargin`、旧 cropAuto)。
+- ② 補正(`warpOpt.fix`): `straight`=まっすぐに直す / `asis`=直さない。実際は「緑の枠(置き場所 dst)の初めの形」を決めるだけ(`warpInitDst`): straight=長方形(`warpNat` の自然な大きさ、ページに収まるよう縮小)、asis=範囲と同じ形。緑の枠を触る(`dstTouched`)までは、青い四隅の動きに自動で追従。
+- ③ 置き場所: 緑の枠(移動・角で変形・回転つまみ)。「初めの位置に戻す」(`wDstReset`)。「元の場所は消す」(`wErase`)は、まわり=そのまま のときだけ。
+- ④ まわり(`warpOpt.around`): `keep`=そのまま / `white`=白くする(ページ全体を白にして貼る) / `crop`=切り抜く(新しいページ=緑の枠の外枠。枠を触っていなければ自然な大きさ=旧「一括」のページ比率)。ページ全体の既定は crop、範囲指定の既定は keep。
+- `applyWarp` は1本化: 材料(`orig`=直す前のページ)を `pasteWarpToQuad(orig,出力,wp,WS)` で緑の枠へ貼る(材料と出力は同じ細かさ WS でないと貼れない → crop でも WS を使う)。旧「同じ場所に直す」分岐・page 専用の出力サイズ計算は廃止。
+- デバッグ: `pdfEditorDebug.warpSetCorners(q)`, `warpState()`。テスト: test-studio-shape2.js(A直す+切り抜く/B直さない+切り抜く/C白くする/D そのまま/E回転つまみ/F自動)。cropquad/cropmove/croprot は廃止、shape/v111 は新UIに更新。
