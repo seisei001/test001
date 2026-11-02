@@ -163,6 +163,23 @@ void main(){
     // 実在の歴史的な街をもとにした型(sprites.js の TT)を、気候区分から選ぶ
     const TOWN_TYPES = { 1: ['igloo'], 2: ['turf', 'russian'], 3: ['russian', 'hansa'], 4: ['yurt'], 5: ['medina', 'djenne'], 6: ['medieval', 'chinese', 'starfort'], 7: ['greek', 'roman', 'medina'], 8: ['japan', 'medieval', 'chinese'], 9: ['hansa', 'medieval', 'starfort'], 10: ['djenne', 'kraal'], 11: ['stilt', 'kraal'], 12: ['inca', 'tibet'] };
     const w = sk.w;
+    // 世界全体(層0)の川: 世界の全マスで水の流れを1回だけ計算する。細かい層では、この川が通る場所に水を流し込むので、層をまたいで川がだいたい同じ所に出る
+    let H0 = null;
+    function hydro0() {
+      if (H0) return H0;
+      const W = w.W, HH = w.H, N = W * HH, fill = new Float32Array(N).fill(Infinity), down = new Int32Array(N).fill(-1), seen = new Uint8Array(N), order = [], hp = [], P = [0, 0], list = [];
+      const hpush = it => { hp.push(it); let c = hp.length - 1; while (c > 0) { const p2 = (c - 1) >> 1; if (hp[p2][0] <= hp[c][0]) break; [hp[p2], hp[c]] = [hp[c], hp[p2]]; c = p2; } };
+      const hpop = () => { const top = hp[0], last = hp.pop(); if (hp.length) { hp[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r2 = l + 1; let mn = c; if (l < hp.length && hp[l][0] < hp[mn][0]) mn = l; if (r2 < hp.length && hp[r2][0] < hp[mn][0]) mn = r2; if (mn === c) break; [hp[mn], hp[c]] = [hp[c], hp[mn]]; c = mn; } } return top; };
+      const nbr = (i, k) => { const r = (i / W) | 0, c = i % W, q = c - ((r - (r & 1)) >> 1), r2 = r + DIRS[k][0 + 1], q2 = q + DIRS[k][0]; if (r2 < 0 || r2 >= HH) return -1; const c2 = q2 + ((r2 - (r2 & 1)) >> 1); return c2 < 0 || c2 >= W ? -1 : r2 * W + c2; };
+      for (let i = 0; i < N; i++) if (!w.land[i]) { fill[i] = w.elev[i]; seen[i] = 1; hpush([fill[i], i]); }
+      while (hp.length) { const [, i] = hpop(); order.push(i); for (let k = 0; k < 6; k++) { const j = nbr(i, k); if (j < 0 || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(w.elev[j], fill[i] + 1); down[j] = i; hpush([fill[j], j]); } }
+      const acc = new Float32Array(N).fill(1), hasUp = new Uint8Array(N);
+      for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && w.land[i]) acc[down[i]] += acc[i]; }
+      const isR = new Uint8Array(N); for (let i = 0; i < N; i++) if (w.land[i] && down[i] >= 0 && acc[i] >= 5) { isR[i] = 1; hasUp[down[i]] = 1; }
+      const pos = i => { const r = (i / W) | 0, c = i % W; SK.pos(0, c - ((r - (r & 1)) >> 1), r, P); return [P[0], P[1]]; };
+      for (let i = 0; i < N; i++) if (isR[i]) { const a = pos(i), b = pos(down[i]); list.push([a[0], a[1], b[0], b[1], acc[i], hasUp[i]]); }
+      return (H0 = list);
+    }
     const worldW = (w.W + 0.5) * SK.spacing(0);
     const st = {
       fx: worldW / 2 - SK.spacing(0) / 2, fy: (w.H - 1) * SK.spacing(0) * SQ3 / 4,
@@ -378,9 +395,20 @@ void main(){
           const [, i] = hpop(); order.push(i);
           for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(hs[j], fill[i] + eps); down[j] = i; hpush([fill[j], j]); }
         }
-        const acc = new Float32Array(m).fill(1);
-        for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && hs[i] > 0) acc[down[i]] += acc[i]; }
         const TH = Math.max(12, m * 0.002); mesh_TH = TH;
+        const acc = new Float32Array(m).fill(1), fq = [0, 0], rq = [0, 0];
+        for (const sg of hydro0()) {   // 世界の川が窓に入る所に水を流し込む(層をまたいだ川の一貫性)
+          const dx = sg[2] - sg[0], dy = sg[3] - sg[1], len = Math.hypot(dx, dy) || 1;
+          const t0 = Math.max(0, Math.min(1, ((cx - sg[0]) * dx + (cy - sg[1]) * dy) / (len * len))); if (Math.hypot(sg[0] + dx * t0 - cx, sg[1] + dy * t0 - cy) > rad) continue;
+          const steps = Math.max(2, Math.ceil(len / (s * 0.8))); let prevIn = false;
+          for (let k = 0; k <= steps; k++) {
+            const x = sg[0] + dx * k / steps, y = sg[1] + dy * k / steps; if (Math.hypot(x - cx, y - cy) > rad * 0.97) { prevIn = false; continue; }
+            SK.locate(L, x, y, fq); SK.roundAxial(fq[0], fq[1], rq); const j = idx.get(key(rq[0], rq[1])), inW = j !== undefined;
+            if (inW && !prevIn && hs[j] > 0 && (k > 0 || !sg[5])) acc[j] += TH * (6 + 2 * Math.log2(sg[4]));
+            prevIn = inW;
+          }
+        }
+        for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && hs[i] > 0) acc[down[i]] += acc[i]; }
         const isR = new Uint8Array(m), hasUp = new Uint8Array(m);
         for (let i = 0; i < m; i++) {
           if (hs[i] <= 0) continue;
