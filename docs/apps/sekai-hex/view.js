@@ -205,9 +205,7 @@ void main(){
           sum += Math.abs(zOf(hs[i]) - zOf(hs[j])); cnt++;
         }
         const mean = cnt ? sum / cnt : 0;
-        exByLayer[L] = Math.min(40, Math.max(1, 0.42 * s / Math.max(mean, 0.02 * s)));
-        if (L >= 3) exByLayer[L] = Math.min(exByLayer[L], 6);
-        if (typeof location !== 'undefined' && /[?&]ex=1/.test(location.search)) exByLayer[L] = 1;   // 実験: 強調なし(実寸)
+        exByLayer[L] = 1;   // 高さは実寸のまま。立体感は陰影と、各層で生成する本物の起伏で出す
       }
       const ex = exByLayer[L] * st.exMul;
       // 頂点: 位置3 float + 色4 byte = 16byte
@@ -237,7 +235,7 @@ void main(){
           let hn; if (j !== undefined) hn = hs[j]; else { sk.cell(L, q + DIRS[k][0], r + DIRS[k][1], tmp); if (L === 0 && 0) hn = 0; hn = tmp.h; }
           nbH[k] = zOf(hn); gx += (nbH[k] - z) * dirU[k][0]; gy += (nbH[k] - z) * dirU[k][1];
         }
-        gx = gx / (3 * s) * ex; gy = gy / (3 * s) * ex;           // 見かけの傾き
+        gx = gx / (3 * s) * ex * 2.5; gy = gy / (3 * s) * ex * 2.5;   // 陰影だけに使う傾き(地図の陰影起伏と同じ。形は変えない)           // 見かけの傾き
         const nl = Math.hypot(gx, gy, 1), nd = (-gx * LIGHT[0] - gy * LIGHT[1] + LIGHT[2]) / nl;
         let drop = 0, coast = false, nearB = 0, shoreN = 0;
         for (let k = 0; k < 6; k++) { const dd = Math.abs(nbH[k] - z); if (dd > drop) drop = dd; }
@@ -262,7 +260,7 @@ void main(){
             else if (isTown(L, q, r)) spec = { k: 'town', b: b0, n: 2 + ((sr * 40) | 0) % 4, seed: sr };
           }
           if (spec) STP.push(i, spec);
-          else { const sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (sr < stampP * sp) STP.push(i, stampFor(b0, h, coast, hash2(q, r, L + 61))); }
+          else { const sp = h > 0 ? 1 : (h < -300 ? 0.3 : 0); if (L < 4 && sr < stampP * sp * (L >= 3 ? 0.3 : 1)) STP.push(i, stampFor(b0, h, coast, hash2(q, r, L + 61))); }
         }
         if (SM) {
           const cz = [0, 0, 0, 0, 0, 0], cR = [0, 0, 0, 0, 0, 0], cG = [0, 0, 0, 0, 0, 0], cB = [0, 0, 0, 0, 0, 0], cS = [0, 0, 0, 0, 0, 0];
@@ -423,7 +421,7 @@ void main(){
           c2.font = px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
-          const an = sp0.k === 'animal', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = Math.max(an ? 26 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7) * hk)) * st.dpr;
+          const an = sp0.k === 'animal', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(size, size); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }
       }

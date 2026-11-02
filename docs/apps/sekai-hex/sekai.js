@@ -83,7 +83,9 @@ const Sekai = (function () {
         let bio = 0, bw = -1; // 陸の気候区分のうち重みが最大のもの
         if (A.b > 0 && wa > bw) { bio = A.b; bw = wa; } if (B.b > 0 && wb > bw) { bio = B.b; bw = wb; } if (C.b > 0 && wc > bw) { bio = C.b; bw = wc; }
         const n = (fbm(ns, X / lam, Y / lam, 3) - 0.5) * 2;
-        hh += n * Math.min(rr * (hh > 0 ? 0.55 : 0.25), 0.28 * s);   // 細部の振れ幅は、そのマスの大きさに比べて急すぎない範囲に収める
+        // 細部の起伏: 地形が平らでも、そのマスの大きさ相応の起伏(平野のなだらかな起伏)を必ず持たせる。実際の地形は縮尺が小さいほど相対的に凸凹が大きい
+        const floorA = hh > 0 ? Math.min(0.25 * Math.pow(s, 0.75), 0.28 * s) : 0;
+        hh += n * Math.max(Math.min(rr * (hh > 0 ? 0.55 : 0.25), 0.28 * s), floorA);   // 細部の振れ幅は、そのマスの大きさに比べて急すぎない範囲に収める
         if (hh > 0 && bio === 0) bio = 8;
         h[k] = hh; b[k] = hh > 0 ? bio : 0; rel[k] = rr * 0.45;
       }
