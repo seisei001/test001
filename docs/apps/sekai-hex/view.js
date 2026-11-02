@@ -514,7 +514,7 @@ void main(){
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
           const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 80 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
-          let sz = size; if (sp0.k === 'flora') sz = Math.max(9, Math.min(150, sp0.m * st.ppm)) * st.dpr;
+          let sz = size; if (sp0.k === 'field') { sz = mesh.s * st.ppm * 1.15 * st.dpr; sp0.cp = cp; } if (sp0.k === 'flora') sz = Math.max(9, Math.min(150, sp0.m * st.ppm)) * st.dpr;
           if (tw) { sp0.um = 120 * ((sp0.n || 3) >= 5 ? 2 : (sp0.n || 3) >= 4 ? 1.4 : 1); if (mesh.L >= 4) sz = Math.max(size, sp0.um * st.ppm * st.dpr); sp0.px = sz / st.dpr; }   // 深い層では実際の大きさ(1マス=人1人)で描く
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(sz, sz); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }

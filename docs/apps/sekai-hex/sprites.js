@@ -94,7 +94,8 @@ const SekaiSprites = (function () {
   function rng(sd) { let a = Math.floor(frac(sd) * 4294967296) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   // ---- 外部素材(Kenney RTS Medieval, CC0): 家・人の絵。assets/LICENSE-kenney-rts.txt ----
   const ASSET = {};
-  (function () { if (typeof Image === 'undefined') return; for (const n of ['struct0', 'struct1', 'struct2', 'struct3', 'struct4', 'unit', 'env']) { const im = new Image(); im.src = 'assets/' + n + '.png?v=' + (window.APP_VER || '0'); ASSET[n] = im; } })();
+  (function () { if (typeof Image === 'undefined') return; for (const n of ['struct0', 'struct1', 'struct2', 'struct3', 'struct4', 'unit', 'env', 'tile']) { const im = new Image(); im.src = 'assets/' + n + '.png?v=' + (window.APP_VER || '0'); ASSET[n] = im; } })();
+  const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
   const KHOUSE = [8, 9, 16, 17, 19, 20, 22, 2, 10, 18];
   function kimg(c, set, idx, x, y, w) {
     const im = ASSET[set]; if (!im || !im.complete || !im.naturalWidth) return false;
@@ -206,8 +207,9 @@ const SekaiSprites = (function () {
       const pr = rng((o.seed || 0.5) * 31.1 + 3), cntp = Math.min(160, 30 + (o.n || 3) * 18), wm = 1.3 / o.um, tt = t * 0.0012;
       for (let k = 0; k < cntp; k++) {
         const a = pr() * 6.2832, rd = R * Math.pow(pr(), 0.7), sp = 0.003 + pr() * 0.004, ph = pr() * 6.2832;
-        const x = Math.cos(a) * rd + Math.cos(ph + tt * sp * 900) * 0.012, y = (Math.sin(a) * rd * sq) + Math.sin(ph + tt * sp * 900) * 0.006;
-        kimg(c, "unit", (pr() * 24) | 0, x, y, wm * 3.0);
+        const x = Math.cos(a) * rd, y = Math.sin(a) * rd * sq;   // 位置は固定(動きは、あとで仕事・道・目的地のあるシミュレーションから決める)
+        const rr2 = pr(), role = rr2 < 0.84 ? PEOPLE.folk : rr2 < 0.94 ? PEOPLE.soldier : PEOPLE.mage;   // 住民が多く、兵と魔術師が少し
+        kimg(c, 'unit', role[(pr() * role.length) | 0], x, y, wm * 3.0);
       }
     }
     if (T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
@@ -459,8 +461,13 @@ const SekaiSprites = (function () {
     const F = { penguin, seal, whale, dolphin, shark, octopus, squid: octopus, ship, sail: ship, mermaid, serpent, dragon, cactus, mushroom, bush, fairy, anchor, island }[a];
     if (F) F(c, o, t);
   }
+  function field(c, o) {   // 畑(素材のタイル)。円形にくり抜いて、地面になじませる
+    const im = ASSET.tile; if (!im || !im.complete || !im.naturalWidth) return;
+    c.save(); c.beginPath(); c.ellipse(0, 0, 0.56, 0.56 * (o.cp || 0.7), 0, 0, 6.2832); c.clip(); c.globalAlpha = 0.92; c.imageSmoothingEnabled = false;
+    const k = o.idx || 48; c.drawImage(im, (k % 8) * 64, ((k / 8) | 0) * 64, 64, 64, -0.56, -0.56 * (o.cp || 0.7), 1.12, 1.12 * (o.cp || 0.7)); c.restore();
+  }
   function flora(c, o) { kimg(c, 'env', o.idx || 0, 0, 0.45, 1); }
-  const TABLE = { flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
+  const TABLE = { field, flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
   function draw(c, kind, o, t) { const f = TABLE[kind]; if (f) f(c, o, t); }
   return { draw, kinds: Object.keys(TABLE) };
 })();
