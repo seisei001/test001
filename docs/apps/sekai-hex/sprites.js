@@ -95,7 +95,9 @@ const SekaiSprites = (function () {
   // ---- 外部素材(Kenney RTS Medieval, CC0): 家・人の絵。assets/LICENSE-kenney-rts.txt ----
   const ASSET = {};
   (function () { if (typeof Image === 'undefined') return; for (const n of ['struct0', 'struct1', 'struct2', 'struct3', 'struct4', 'unit', 'env', 'tile']) { const im = new Image(); im.src = 'assets/' + n + '.png?v=' + (window.APP_VER || '0'); ASSET[n] = im; } })();
-  const SKT = []; (function () { if (typeof Image === 'undefined') return; const L = []; for (const b of ['door', 'doorWindows', 'window', 'windows']) for (const g of ['', 'Beige']) for (const o of ['S', 'E']) L.push('building_' + b + g + '_' + o); for (const n of L) { const im = new Image(); im.src = 'assets/skt/' + n + '.png?v=' + (window.APP_VER || '0'); SKT.push(im); } })();   // Kenney Sketch Town (CC0): 立体の家
+  const TOWNIMG = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['cottage_red', 'shop_blue', 'cottage_thatch', 'inn_green', 'church', 'windmill', 'castle']) { const im = new Image(); im.src = 'assets/town/' + n + '.png?v=' + (window.APP_VER || '0'); TOWNIMG[n] = im; } })();   // 絵師風の家(AI生成・自作素材)
+  const HOUSEIMG = ['cottage_red', 'shop_blue', 'cottage_thatch', 'inn_green', 'cottage_red', 'shop_blue'];
+  function timg(c, n, x, y, w) { const im = TOWNIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); return true; }
   const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
   const KHOUSE = [8, 9, 16, 17, 19, 20, 22, 2, 10, 18];
   function kimg(c, set, idx, x, y, w) {
@@ -157,7 +159,7 @@ const SekaiSprites = (function () {
   }
   // ---- 街の見取り図: 大通り(主街路)と横道で区画を切り、区画の両側に敷地を並べる。向きは街ごとに1つ。建物は敷地の中なので重ならない ----
   function cityPlan(r, R, n, th) {
-    const lw = 0.05 - 0.002 * Math.min(n, 5) + r() * 0.006, ld = 0.052, sw = 0.022, nb = 4, bu = nb * lw, bv = 2 * ld, pu = bu + sw, pv = bv + sw;
+    const lw = 0.072 - 0.003 * Math.min(n, 5) + r() * 0.006, ld = 0.072, sw = 0.024, nb = 3, bu = nb * lw, bv = 2 * ld, pu = bu + sw, pv = bv + sw;
     const ca = Math.cos(th), sa = Math.sin(th), P = (u, v) => [u * ca - v * sa, u * sa + v * ca];
     const lots = [], blocks = [], civic = { u: 0, v: 0 };
     const nI = Math.ceil(R / pu) + 1, nJ = Math.ceil(R / pv) + 1;
@@ -218,7 +220,7 @@ const SekaiSprites = (function () {
   function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
   function bhouse(c, h) {
     const { x, y, w } = h, hh = h.h;
-    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0), im = SKT[(q0 >> 2) % SKT.length]; if (im && im.complete && im.naturalWidth) { const dw = w * 1.05, dh = dw * im.naturalHeight / im.naturalWidth; c.drawImage(im, x - dw / 2, y - dh * 0.9, dw, dh); return; } }
+    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0); if (timg(c, HOUSEIMG[(q0 >> 2) % HOUSEIMG.length], x, y, w * 1.3)) return; }
     if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.0)) return; }
     c.save(); stroke0(c, 0.35);
     const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
@@ -279,7 +281,8 @@ const SekaiSprites = (function () {
     };
     wallPath(true);
     if (T.terr) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
-    const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
+    const civic = L.city && T.hk === 'gable';   // 街の中心に教会
+    const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw }))).concat(civic ? [{ y: 0.03, civ: true }] : []);
     items.sort((a, b) => a.y - b.y);
     const deep = (o.px || 0) >= 700;   // 深い層でも立体の家(スプライト)を奥から順に描く
     if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip();
@@ -291,12 +294,13 @@ const SekaiSprites = (function () {
         c.fillStyle = '#7d9a6a'; c.beginPath(); c.arc(0, 0, G.plazaR * 0.28, 0, 6.2832); c.fill(); c.restore();
       } }   // マスク: 街の区域の中だけに描く
     for (const it of items) {
+      if (it.civ) { timg(c, 'church', 0, 0.045, 0.17); continue; }
       if (it.h) bhouse(c, it.h);
       else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
     if (deep) c.restore();
     wallPath(false);
-    if (!deep && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
+    if (!deep && !civic && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
     if (T.hk === 'gable' || T.hk === 'flat') smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
