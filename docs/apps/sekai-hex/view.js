@@ -255,7 +255,10 @@ void main(){
           if (h > 0 && hn2 <= 0) coast = true; if (h <= 0 && hn2 > 0 && bn2 > 0) { nearB = bn2; shoreN++; } }
         const slope = drop / s, nzs = s * 6, nzA = vnoise(P[0] / nzs, P[1] / nzs, L * 7 + 1), nzB = vnoise(P[0] / (nzs * 0.45) + 17, P[1] / (nzs * 0.45) + 31, L * 7 + 2), rnd = hash2(q, r, L + 5);
         const col = h > 0 ? landColor(bs[i], h, slope, coast, nzA, nzB, rnd) : seaColor(h, nearB, rnd, Math.min(1, shoreN / 3));
-        const shade = h > 0 ? Math.min(1.18, Math.max(0.55, 0.58 + 0.62 * nd)) : 1.0;
+        // 谷と尾根の陰影(Kashmir 3D のような地図の陰影起伏): 周りの平均より高ければ明るく(尾根)、低ければ暗く(谷)。高さの強調に頼らず立体に見せる
+        let nsum = 0; for (let k = 0; k < 6; k++) nsum += nbH[k];
+        const curv = Math.max(-0.28, Math.min(0.28, ((z - nsum / 6) / s) * 5));
+        const shade = h > 0 ? Math.min(1.25, Math.max(0.5, 0.58 + 0.62 * nd + curv)) : 1.0;
         const pk = PK; COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
         PID = h > 0 ? pk : 1;
