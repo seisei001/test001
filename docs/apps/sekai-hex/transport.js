@@ -88,7 +88,8 @@ const SekaiTransport = (function () {
       const [, i] = hp.pop(); order.push(i);
       for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(hs[j], fill[i] + eps); down[j] = i; hp.push([fill[j], j]); }
     }
-    const TH = Math.max(20, m * 0.004);
+    // 川と湖は「実際の広さ」で決める(層によらず同じ基準): 川=集水面積が A_MIN 以上、湖=面積が LAKE_MIN 以上
+    const cellKm2 = 0.866 * (s / 1000) * (s / 1000), A_MIN = 3000, LAKE_MIN = 5, WORLD_KM2 = 28700, TH = A_MIN / cellKm2;
     const acc = new Float32Array(m).fill(1), fq = [0, 0], rq = [0, 0];
     for (const sg of ctx.hydro0()) {   // 世界の川が窓に入る所に水を流し込む(層をまたいだ川の一貫性)
       const dx = sg[2] - sg[0], dy = sg[3] - sg[1], len = Math.hypot(dx, dy) || 1;
@@ -97,16 +98,22 @@ const SekaiTransport = (function () {
       for (let k = 0; k <= steps; k++) {
         const x = sg[0] + dx * k / steps, y = sg[1] + dy * k / steps; if (Math.hypot(x - cx, y - cy) > rad * 0.97) { prevIn = false; continue; }
         SK.locate(L, x, y, fq); SK.roundAxial(fq[0], fq[1], rq); const j = idx.get(key(rq[0], rq[1])), inW = j !== undefined;
-        if (inW && !prevIn && hs[j] > 0 && (k > 0 || !sg[5])) acc[j] += TH * (6 + 2 * Math.log2(sg[4]));
+        if (inW && !prevIn && hs[j] > 0 && (k > 0 || !sg[5])) acc[j] += sg[4] * WORLD_KM2 / cellKm2;   // 世界の川は、その集水面積ぶんの水を持って窓に入る
         prevIn = inW;
       }
     }
     for (let o = order.length - 1; o >= 0; o--) { const i = order[o]; if (down[i] >= 0 && hs[i] > 0) acc[down[i]] += acc[i]; }
-    const isR = new Uint8Array(m), hasUp = new Uint8Array(m);
+    const isR = new Uint8Array(m), hasUp = new Uint8Array(m), lakeSet = new Set();
     for (let i = 0; i < m; i++) {
       if (hs[i] <= 0) continue;
-      if (fill[i] - hs[i] > 0.07 * s) lakes.push(i);
+      if (fill[i] - hs[i] > 0.07 * s) lakeSet.add(i);
       else if (down[i] >= 0 && acc[i] >= TH) { isR[i] = 1; hasUp[down[i]] = 1; }
+    }
+    { // 小さな水たまりは湖にしない(面積が LAKE_MIN 未満の窪みは捨てる)
+      const seenL = new Set();
+      for (const i0 of lakeSet) { if (seenL.has(i0)) continue; const comp = [i0], q = [i0]; seenL.add(i0);
+        for (let h = 0; h < q.length; h++) { const c = q[h]; for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[c] + DIRS[k][0], rs[c] + DIRS[k][1])); if (j !== undefined && lakeSet.has(j) && !seenL.has(j)) { seenL.add(j); q.push(j); comp.push(j); } } }
+        if (comp.length * cellKm2 >= LAKE_MIN) for (const j of comp) lakes.push(j); }
     }
     for (let i = 0; i < m; i++) if (isR[i]) {
       const t = down[i], c = isR[t] ? down[t] : t;
