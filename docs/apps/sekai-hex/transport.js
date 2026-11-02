@@ -62,7 +62,7 @@ const SekaiTransport = (function () {
       const [, i] = hp.pop(); order.push(i);
       for (let k = 0; k < 6; k++) { const j = idx.get(key(qs[i] + DIRS[k][0], rs[i] + DIRS[k][1])); if (j === undefined || seen[j]) continue; seen[j] = 1; fill[j] = Math.max(hs[j], fill[i] + eps); down[j] = i; hp.push([fill[j], j]); }
     }
-    const TH = Math.max(12, m * 0.002);
+    const TH = Math.max(20, m * 0.004);
     const acc = new Float32Array(m).fill(1), fq = [0, 0], rq = [0, 0];
     for (const sg of ctx.hydro0()) {   // 世界の川が窓に入る所に水を流し込む(層をまたいだ川の一貫性)
       const dx = sg[2] - sg[0], dy = sg[3] - sg[1], len = Math.hypot(dx, dy) || 1;

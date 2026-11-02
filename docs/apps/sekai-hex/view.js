@@ -428,7 +428,7 @@ void main(){
             c2.strokeStyle = col;
             for (let k = 0; k < R.length; k += 4) {
               const a = proj(R[k]), b = proj(R[k + 1]), e = proj(R[k + 2]); if (a[2] > fogR || b[2] > fogR) continue;
-              c2.lineWidth = (Math.max(2.5, Math.min(22, cellpx * 0.11 * (0.7 + Math.log2(R[k + 3] / TH + 1)))) + add) * st.dpr;
+              c2.lineWidth = (Math.max(2.5, Math.min(26, SekaiTransport.riverWidthM(R[k + 3], mesh.s) * st.ppm)) + add) * st.dpr;
               c2.beginPath(); c2.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); c2.quadraticCurveTo(b[0], b[1], (b[0] + e[0]) / 2, (b[1] + e[1]) / 2); c2.stroke();
             }
           }
