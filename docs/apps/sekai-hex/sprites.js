@@ -158,6 +158,12 @@ const SekaiSprites = (function () {
     else if (h.k === 'stilt') { c.strokeStyle = '#6a4a30'; c.lineWidth = LW * 0.6; for (const d of [-0.35, 0.35]) { c.beginPath(); c.moveTo(x + d * w, y); c.lineTo(x + d * w, y - hh * 0.5); c.stroke(); } stroke0(c, 0.35); const by = y - hh * 0.5; c.fillStyle = h.wc; c.fillRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.strokeRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.beginPath(); c.moveTo(x - w * 0.62, by - hh * 0.6); c.lineTo(x, by - hh * 0.6 - w * 0.5); c.lineTo(x + w * 0.62, by - hh * 0.6); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); }
     c.restore();
   }
+  // 層5(1マス=1m): 真上から見た屋根(正面の絵ではなく平面)。街の区域の外にはみ出さないよう、呼び出し側で切り抜く
+  function planHouse(c, h) {
+    const { x, y, w } = h, d = w * 0.62; c.save(); c.lineJoin = 'miter'; c.strokeStyle = 'rgba(40,25,20,.85)'; c.lineWidth = LW * 0.3;
+    c.fillStyle = h.rc; c.fillRect(x - w / 2, y - d / 2, w, d); c.fillStyle = 'rgba(0,0,0,.16)'; c.fillRect(x - w / 2, y, w, d / 2);
+    c.strokeRect(x - w / 2, y - d / 2, w, d); c.beginPath(); c.moveTo(x - w / 2, y); c.lineTo(x + w / 2, y); c.stroke(); c.restore();
+  }
   function polyThin(c, pts, fill, stroke) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.lineWidth = LW * 0.3; c.strokeStyle = LINE; c.lineJoin = 'round'; c.stroke(); } }
   function landmark(c, L, t, sd) {
     const poly = polyThin, lm = L.T.lm; if (!lm) return; c.save(); stroke0(c, 0.5);
@@ -198,12 +204,16 @@ const SekaiSprites = (function () {
     if (T.terr) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
     const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw })));
     items.sort((a, b) => a.y - b.y);
+    const deep = (o.px || 0) >= 700;
+    if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip(); }   // マスク: 街の区域の中だけに描く
     for (const it of items) {
+      if (deep) { if (it.h) planHouse(c, it.h); continue; }
       if (it.h) bhouse(c, it.h);
       else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
+    if (deep) c.restore();
     wallPath(false);
-    if (T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
+    if (!deep && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
     if (T.hk === 'gable' || T.hk === 'flat') smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
