@@ -107,7 +107,7 @@ const SekaiSprites = (function () {
   const WIMG = {};
   (function () {
     if (typeof Image === 'undefined') return;
-    const names = 'A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
+    const names = 'D21 D23 D25 C44 A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
   })();
   // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
@@ -125,6 +125,20 @@ const SekaiSprites = (function () {
       if (big) { if (timg(c, HOUSEIMG[(k++ + Math.floor(sd * 997)) % HOUSEIMG.length], it.p[0], it.p[1], hero ? 0.4 : 0.3)) ok = true; }
       else if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
     return ok;
+  }
+  // ---- 動物・海の生き物・船(利用者が用意した大きな絵を1匹ずつ切り出したもの。assets/animals/) ----
+  const AIMG = {};
+  (function () {
+    if (typeof Image === 'undefined') return;
+    for (const n of 'cow sheep goat horse pig duck goose dog whale shark octopus galleon sailboat liner fishingboat tuna mackerel snapper flounder clownfish angelfish turtle marlin'.split(' ')) { const im = new Image(); im.src = 'assets/animals/' + n + '.png?v=' + (window.APP_VER || '0'); AIMG[n] = im; }
+  })();
+  // 呼び名 → [絵の名前, 幅]。ここに無い生き物は、代わりの絵が用意できるまで描かない
+  const AMAP = { cow: ['cow', 0.9], bison: ['cow', 0.95], sheep: ['sheep', 0.75], goat: ['goat', 0.6], horse: ['horse', 0.8], boar: ['pig', 0.75], wolf: ['dog', 0.5], whale: ['whale', 1.0], shark: ['shark', 0.9], octopus: ['octopus', 0.8], ship: ['galleon', 1.0], sail: ['sailboat', 0.65], cactus: [null, 0.5, 'D21'], mushroom: [null, 0.45, 'D23'], bush: [null, 0.6, 'D25'], island: [null, 0.9, 'C44'] };
+  function animalImg(c, o) {
+    const m = AMAP[o.a]; if (!m) return false;
+    if (m[2]) return wimg(c, m[2], 0, 0.05, m[1]);
+    const im = AIMG[m[0]]; if (!im || !im.complete || !im.naturalWidth) return false;
+    const w = m[1], dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, -w / 2, 0.05 - dh, w, dh); c.restore(); return true;
   }
   const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
   const KHOUSE = [8, 9, 16, 17, 19, 20, 22, 2, 10, 18];
@@ -582,6 +596,7 @@ const SekaiSprites = (function () {
   function anchor(c) { c.save(); c.scale(0.55, 0.55); groundShadow(c, 0.2); c.strokeStyle = LINE; c.lineWidth = 0.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -0.7); c.lineTo(0, -0.1); c.moveTo(-0.14, -0.55); c.lineTo(0.14, -0.55); c.moveTo(-0.24, -0.24); c.quadraticCurveTo(0, 0.04, 0.24, -0.24); c.stroke(); c.strokeStyle = '#8fa0b8'; c.lineWidth = 0.06; c.stroke(); c.restore(); }
   function island(c, o, t) { c.save(); c.scale(0.7, 0.7); ell(c, 0, -0.04, 0.34, 0.1, '#f0d28a', true); poly(c, [[-0.02, -0.06], [0.0, -0.5], [0.05, -0.06]], '#9a6a4a', true); for (const [dx, dy] of [[-0.3, -0.04], [0.28, -0.06], [-0.2, 0.06], [0.2, 0.04]]) { const w = Math.sin(t * 0.003 + dx * 9) * 0.03; c.strokeStyle = LINE; c.lineWidth = 0.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(0.01, -0.5); c.quadraticCurveTo(dx * 0.6, -0.62 + w, dx, -0.42 + dy); c.stroke(); c.strokeStyle = '#4fb86a'; c.lineWidth = 0.06; c.stroke(); } wave(c, 0.4, t, 0.04); c.restore(); }
   function animal(c, o, t) {
+    animalImg(c, o); return;   // 自作の動物の絵は外した(下のコードは使わない)。用意した絵がある生き物だけ描く
     const a = o.a, A = ANI[a];
     if (A) return quad(c, o, t);
     if (BIRD[a]) return bird(c, o, t);
