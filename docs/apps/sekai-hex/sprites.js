@@ -30,6 +30,7 @@ const SekaiSprites = (function () {
   // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
   function frac(x) { return x - Math.floor(x); }
   function mountain(c, o) {
+    { const hr = o.hr == null ? 0.7 : o.hr, w = 0.75 + 0.55 * hr; if (wimg(c, o.snow || hr > 0.75 ? 'C11' : (hr < 0.3 ? 'C13' : 'C12'), 0, 0.05, w)) return; }
     const P = pal(o.b), sd = o.seed || 0.5, hr = o.hr == null ? 0.7 : o.hr;
     const px = (frac(sd * 7.3) - 0.5) * 0.36, hh = (0.5 + 0.55 * hr) * (0.85 + 0.3 * frac(sd * 3.1)), wl = 0.28 + 0.2 * frac(sd * 5.7), wr = 0.28 + 0.2 * frac(sd * 11.3);
     const n = 1 + (frac(sd * 13.7) * 3 | 0), lw = LW * (0.5 + 0.4 * hr);
@@ -53,6 +54,7 @@ const SekaiSprites = (function () {
   }
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
+    if (wimg(c, 'C15', 0, 0.05, 1.15)) return;
     const P = pal(o.b === 1 ? 5 : 12), glow = 0.65 + 0.35 * Math.sin(t * 0.004 + (o.seed || 0) * 9);
     c.save(); groundShadow(c, 0.58);
     poly(c, [[-0.64, 0], [-0.17, -0.66], [0.17, -0.66], [0.64, 0]], '#8a6a62', true);
@@ -98,6 +100,25 @@ const SekaiSprites = (function () {
   const TOWNIMG = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['cottage_red', 'shop_blue', 'cottage_thatch', 'inn_green', 'church', 'windmill', 'castle']) { const im = new Image(); im.src = 'assets/town/' + n + '.png?v=' + (window.APP_VER || '0'); TOWNIMG[n] = im; } })();   // 絵師風の家(AI生成・自作素材)
   const HOUSEIMG = ['cottage_red', 'shop_blue', 'cottage_thatch', 'inn_green', 'cottage_red', 'shop_blue'];
   function timg(c, n, x, y, w) { const im = TOWNIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); return true; }
+  // ---- 世界地図の部品(利用者が用意した部品表W01を1個ずつ切り出したもの。assets/world/) ----
+  const WIMG = {};
+  (function () {
+    if (typeof Image === 'undefined') return;
+    const names = 'A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
+    for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
+  })();
+  function wimg(c, n, x, y, w) { const im = WIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.05, w, dh); c.restore(); return true; }
+  // 街のタイプごとの家の組(先頭が主役)
+  const WFAM = { igloo: ['A11'], turf: ['A12', 'A13'], russian: ['A13', 'A12', 'B24'], hansa: ['A14', 'B15', 'B14'], yurt: ['A15'], medina: ['A21', 'A22'], djenne: ['A22', 'A21'], medieval: ['B14', 'B15', 'B21', 'B22', 'B23', 'B25'], chinese: ['A23', 'E14', 'A24'], japan: ['A24', 'A25', 'E13'], starfort: ['A42', 'A41'], greek: ['A31', 'A32'], roman: ['A32', 'E21', 'E22'], kraal: ['A33', 'A35'], stilt: ['A34', 'A35'], inca: ['A43', 'A41'], tibet: ['A41', 'A21'] };
+  const WPOS = [[0, 0.1], [-0.25, 0.02], [0.25, 0.02], [-0.14, 0.17], [0.14, 0.17], [0, -0.08]];
+  function townWorld(c, o) {   // 遠い層の街: 地面の上に、そのタイプの家を数軒並べる
+    const fam = WFAM[o.ty]; if (!fam) return false; const n = Math.max(3, Math.min(6, (o.n || 3) + 1)), sd = o.seed || 0, T = TT[o.ty] || {};
+    c.save(); c.translate(0, -0.02); c.globalAlpha = 0.6; ell(c, 0, 0.06, 0.42, 0.2, T.gr || '#cdbf9c', false); c.restore();
+    const items = []; for (let k = 0; k < n; k++) items.push({ p: WPOS[k], nm: fam[(k === 0 ? 0 : 1 + ((Math.floor(sd * 997) + k) % Math.max(1, fam.length - 1))) % fam.length] });
+    items.sort((a, b) => a.p[1] - b.p[1]); let ok = false;
+    for (const it of items) { const hero = it.p === WPOS[0]; if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
+    return ok;
+  }
   const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
   const KHOUSE = [8, 9, 16, 17, 19, 20, 22, 2, 10, 18];
   function kimg(c, set, idx, x, y, w) {
@@ -261,6 +282,7 @@ const SekaiSprites = (function () {
   function town(c, o, t) {
     const LW0 = LW; LW = 0.05 * Math.min(1, 110 / (o.px || 110));   // 大きく描くほど輪郭線は細く(画面上の太さを一定に)
     DEEP = (o.px || 0) >= 700;
+    if (!DEEP && townWorld(c, o)) { DEEP = false; LW = LW0; return; }
     try { town2(c, o, t); } finally { LW = LW0; DEEP = false; }
   }
   function town2(c, o, t) {
@@ -308,6 +330,7 @@ const SekaiSprites = (function () {
   }
   // 城: 中央の本丸と両脇の塔、はためく旗
   function castle(c, o, t) {
+    if (wimg(c, (o.seed || 0) > 0.5 ? 'A42' : 'B41', 0, 0.05, 0.95)) return;
     c.save(); groundShadow(c, 0.6);
     const wave = Math.sin(t * 0.006 + (o.seed || 0) * 5) * 0.04;
     poly(c, [[-0.55, 0], [-0.55, -0.26], [0.55, -0.26], [0.55, 0]], '#dcd8ec', true);
@@ -326,6 +349,7 @@ const SekaiSprites = (function () {
   }
   // ピラミッド(砂漠)
   function pyramid(c) {
+    if (wimg(c, 'E11', 0, 0.05, 1.0)) return;
     c.save(); groundShadow(c, 0.55);
     poly(c, [[-0.55, 0], [0, -0.72], [0.1, 0]], '#f5d98b', true);
     poly(c, [[0, -0.72], [0.55, 0], [0.1, 0]], '#c9965a', true);
@@ -335,6 +359,7 @@ const SekaiSprites = (function () {
   }
   // 神殿(熱帯): 階段状の塔と頂上の祠
   function ziggurat(c) {
+    if (wimg(c, 'C22', 0, 0.05, 0.95)) return;
     c.save(); groundShadow(c, 0.5);
     const steps = [[0.5, 0, 0.16], [0.4, -0.16, 0.16], [0.3, -0.32, 0.16], [0.2, -0.48, 0.14]];
     for (const [w, y, h] of steps) { poly(c, [[-w, y], [-w, y - h], [w, y - h], [w, y]], '#9fd0a2', true); poly(c, [[w * 0.2, y], [w * 0.2, y - h], [w, y - h], [w, y]], '#5ea27c', false); }
@@ -344,6 +369,7 @@ const SekaiSprites = (function () {
   }
   // 氷の宮殿(極地): 水晶のとげ
   function icepalace(c, o, t) {
+    if (wimg(c, 'E12', 0, 0.05, 1.0)) return;
     c.save(); groundShadow(c, 0.45); const tw = 0.5 + 0.5 * Math.sin(t * 0.005 + (o.seed || 0) * 4);
     for (const [x, h, w, col] of [[-0.3, 0.5, 0.12, '#bfe3ff'], [0.3, 0.55, 0.12, '#bfe3ff'], [0, 0.95, 0.17, '#e2f2ff'], [-0.14, 0.7, 0.1, '#d1ebff'], [0.15, 0.72, 0.1, '#d1ebff']]) {
       poly(c, [[x - w, 0], [x, -h], [x + w, 0]], col, true); poly(c, [[x, -h], [x + w, 0], [x + w * 0.1, 0]], 'rgba(120,150,230,.45)', false);
@@ -353,6 +379,7 @@ const SekaiSprites = (function () {
   }
   // 灯台(海辺): 赤白の縞と、まわる光
   function lighthouse(c, o, t) {
+    if (wimg(c, 'A44', 0, 0.05, 0.5)) return;
     c.save(); groundShadow(c, 0.3);
     poly(c, [[-0.17, 0], [-0.1, -0.78], [0.1, -0.78], [0.17, 0]], '#fff7ea', true);
     for (const [y0, y1, a, b] of [[-0.18, -0.34, 0.15, 0.13], [-0.5, -0.66, 0.11, 0.1]]) poly(c, [[-a, y0], [-b, y1], [b, y1], [a, y0]], '#e5533d', false);
@@ -364,6 +391,7 @@ const SekaiSprites = (function () {
   }
   // 世界樹(森): 大きな丸い樹冠と太い幹。葉がきらめく
   function worldtree(c, o, t) {
+    if (wimg(c, 'D24', 0, 0.05, 1.0)) return;
     c.save(); groundShadow(c, 0.4);
     poly(c, [[-0.1, 0], [-0.06, -0.4], [0.06, -0.4], [0.1, 0]], '#9a6a4a', true);
     for (const [x, y, r, col] of [[-0.24, -0.62, 0.26, '#52b86a'], [0.24, -0.62, 0.26, '#52b86a'], [0, -0.84, 0.32, '#6fd27c'], [0, -0.58, 0.3, '#63c872']]) ell(c, x, y, r, r * 0.9, col, true);
@@ -373,6 +401,7 @@ const SekaiSprites = (function () {
   }
   // 山の祠・塔(高山の目印)
   function shrine(c) {
+    if (wimg(c, 'E13', 0, 0.05, 0.8)) return;
     c.save(); groundShadow(c, 0.3);
     poly(c, [[-0.2, 0], [-0.2, -0.3], [0.2, -0.3], [0.2, 0]], '#f2e6d0', true);
     poly(c, [[-0.3, -0.3], [-0.2, -0.46], [0.2, -0.46], [0.3, -0.3]], '#e5533d', true);
