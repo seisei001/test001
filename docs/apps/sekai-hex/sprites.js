@@ -110,7 +110,8 @@ const SekaiSprites = (function () {
     const names = 'A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
   })();
-  function wimg(c, n, x, y, w) { const im = WIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.05, w, dh); c.restore(); return true; }
+  // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
+  function wimg(c, n, x, y, w) { const im = WIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; if (w * c.getTransform().a > 260) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.05, w, dh); c.restore(); return true; }
   // 街のタイプごとの家の組(先頭が主役)
   const WFAM = { igloo: ['A11'], turf: ['A12', 'A13'], russian: ['A13', 'A12', 'B24'], hansa: ['A14', 'B15', 'B14'], yurt: ['A15'], medina: ['A21', 'A22'], djenne: ['A22', 'A21'], medieval: ['B14', 'B15', 'B21', 'B22', 'B23', 'B25'], chinese: ['A23', 'E14', 'A24'], japan: ['A24', 'A25', 'E13'], starfort: ['A42', 'A41'], greek: ['A31', 'A32'], roman: ['A32', 'E21', 'E22'], kraal: ['A33', 'A35'], stilt: ['A34', 'A35'], inca: ['A43', 'A41'], tibet: ['A41', 'A21'] };
   const WPOS = [[0, 0.1], [-0.25, 0.02], [0.25, 0.02], [-0.14, 0.17], [0.14, 0.17], [0, -0.08]];
@@ -119,7 +120,10 @@ const SekaiSprites = (function () {
     c.save(); c.translate(0, -0.02); c.globalAlpha = 0.6; ell(c, 0, 0.06, 0.42, 0.2, T.gr || '#cdbf9c', false); c.restore();
     const items = []; for (let k = 0; k < n; k++) items.push({ p: WPOS[k], nm: fam[(k === 0 ? 0 : 1 + ((Math.floor(sd * 997) + k) % Math.max(1, fam.length - 1))) % fam.length] });
     items.sort((a, b) => a.p[1] - b.p[1]); let ok = false;
-    for (const it of items) { const hero = it.p === WPOS[0]; if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
+    const big = 0.3 * c.getTransform().a > 130;   // 大きく映る時は、粗くならない描き下ろしの家に切り替える
+    let k = 0; for (const it of items) { const hero = it.p === WPOS[0];
+      if (big) { if (timg(c, HOUSEIMG[(k++ + Math.floor(sd * 997)) % HOUSEIMG.length], it.p[0], it.p[1], hero ? 0.4 : 0.3)) ok = true; }
+      else if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
     return ok;
   }
   const PEOPLE = { folk: [4, 5, 10, 11, 16, 17, 22, 23], soldier: [1, 2, 7, 8, 13, 14, 19, 20], mage: [0, 6, 12, 18], king: [3, 9, 15, 21] };   // 絵の並びから(村人・兵・魔術師・王)
@@ -289,15 +293,15 @@ const SekaiSprites = (function () {
     try { town2(c, o, t); } finally { LW = LW0; DEEP = false; }
   }
   function town2(c, o, t) {
-    const poly = polyThin, L = townLayout(o), T = L.T, sd = o.seed || 0, R = L.R, sq = L.sq;
+    const poly = polyThin, L = townLayout(o), T = L.T, sd = o.seed || 0, R = L.R, sq = L.sq, DP = (o.px || 0) >= 700;   // DP: 深い層では自作の壁・塔・堀は描かない(素材の家と区画だけ)
     c.save(); c.translate(0, -0.02);
     c.save(); c.globalAlpha = 0.55; ell(c, 0, 0, R * 1.15, R * 1.15 * sq, T.gr, false); c.restore();
     if (L.city) { c.save(); c.globalAlpha = 0.85; ell(c, 0, 0, 0.045, 0.045 * sq, '#efe0bd', false); c.restore(); }   // 中央の広場
-    if (T.water) { c.save(); c.globalAlpha = 0.7; ell(c, 0, 0.02, R * 1.0, R * 0.9 * sq, '#5aaeee', false); c.restore(); }
-    if (T.wall === 'moat') { c.save(); c.strokeStyle = '#2f72c4'; c.lineWidth = 0.05; c.beginPath(); c.ellipse(0, 0, R + 0.06, (R + 0.06) * sq, 0, 0, 6.2832); c.stroke(); c.strokeStyle = '#5aaeee'; c.lineWidth = 0.035; c.stroke(); c.restore(); }
-    c.save(); c.strokeStyle = '#efe0bd'; c.lineWidth = 0.028; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(L.gate) * (R + 0.14), Math.sin(L.gate) * (R + 0.14) * sq); c.stroke(); c.restore();
+    if (T.water && !DP) { c.save(); c.globalAlpha = 0.7; ell(c, 0, 0.02, R * 1.0, R * 0.9 * sq, '#5aaeee', false); c.restore(); }
+    if (T.wall === 'moat' && !DP) { c.save(); c.strokeStyle = '#2f72c4'; c.lineWidth = 0.05; c.beginPath(); c.ellipse(0, 0, R + 0.06, (R + 0.06) * sq, 0, 0, 6.2832); c.stroke(); c.strokeStyle = '#5aaeee'; c.lineWidth = 0.035; c.stroke(); c.restore(); }
+    if (!DP) { c.save(); c.strokeStyle = '#efe0bd'; c.lineWidth = 0.028; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(L.gate) * (R + 0.14), Math.sin(L.gate) * (R + 0.14) * sq); c.stroke(); c.restore(); }
     const wallPath = (back) => {
-      const wc = T.wcol; if (!wc || T.wall === 'moat') return; c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+      const wc = T.wcol; if (!wc || T.wall === 'moat' || DP) return; c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
       for (const [col, w] of [[LINE, 0.05], [wc, 0.032]]) {
         c.strokeStyle = col; c.lineWidth = w; c.beginPath();
         if (T.wall === 'round') c.ellipse(0, 0, R + 0.04, (R + 0.04) * sq, 0, back ? Math.PI : 0, back ? 6.2832 : Math.PI);
@@ -307,9 +311,9 @@ const SekaiSprites = (function () {
       } c.restore();
     };
     wallPath(true);
-    if (T.terr) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
+    if (T.terr && !DP) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
     const civic = L.city && T.hk === 'gable';   // 街の中心に教会
-    const items = L.houses.map(h => ({ y: h.y, h })).concat(L.towers.map(tw => ({ y: tw.y + 0.001, tw }))).concat(civic ? [{ y: 0.03, civ: true }] : []);
+    const items = L.houses.map(h => ({ y: h.y, h })).concat(DP ? [] : L.towers.map(tw => ({ y: tw.y + 0.001, tw }))).concat(civic ? [{ y: 0.03, civ: true }] : []);
     items.sort((a, b) => a.y - b.y);
     const deep = (o.px || 0) >= 700;   // 深い層でも立体の家(スプライト)を奥から順に描く
     if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip();
@@ -328,12 +332,13 @@ const SekaiSprites = (function () {
     if (deep) c.restore();
     wallPath(false);
     if (!deep && !civic && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
-    if (T.hk === 'gable' || T.hk === 'flat') smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
+    if (!DP && (T.hk === 'gable' || T.hk === 'flat')) smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
   // 城: 中央の本丸と両脇の塔、はためく旗
   function castle(c, o, t) {
     if (wimg(c, (o.seed || 0) > 0.5 ? 'A42' : 'B41', 0, 0.05, 0.95)) return;
+    if (timg(c, 'castle', 0, 0.02, 1.1)) return;
     c.save(); groundShadow(c, 0.6);
     const wave = Math.sin(t * 0.006 + (o.seed || 0) * 5) * 0.04;
     poly(c, [[-0.55, 0], [-0.55, -0.26], [0.55, -0.26], [0.55, 0]], '#dcd8ec', true);
