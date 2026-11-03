@@ -31,9 +31,11 @@ const SekaiSprites = (function () {
   function frac(x) { return x - Math.floor(x); }
   function mountain(c, o) {
     { const hr = o.hr == null ? 0.7 : o.hr, sd = o.seed || 0.5;   // 高さで5段階に分け、高い山ほど大きく描く(丘→岩山→高い岩山→雪山→大雪峰)
-      const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.5, 0.75, 1.05, 1.4, 1.9][tier];
-      const nm = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
-      if (wimg(c, nm, 0, 0.05, W)) return; }
+      const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.55, 0.8, 1.05, 1.35, 1.7][tier], v2 = sd > 0.5;
+      const nm = tier === 0 ? (v2 ? 'mt_hill2' : 'mt_hill') : tier === 1 ? (v2 ? 'mt_rocklow2' : 'mt_rocklow') : tier === 2 ? (o.snow ? 'mt_snow' : 'mt_rockhigh') : tier === 3 ? 'mt_snow' : 'mt_peak';
+      if (wimg(c, nm, 0, 0.05, W)) return;
+      const nm0 = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
+      if (wimg(c, nm0, 0, 0.05, W)) return; }
     const P = pal(o.b), sd = o.seed || 0.5, hr = o.hr == null ? 0.7 : o.hr;
     const px = (frac(sd * 7.3) - 0.5) * 0.36, hh = (0.5 + 0.55 * hr) * (0.85 + 0.3 * frac(sd * 3.1)), wl = 0.28 + 0.2 * frac(sd * 5.7), wr = 0.28 + 0.2 * frac(sd * 11.3);
     const n = 1 + (frac(sd * 13.7) * 3 | 0), lw = LW * (0.5 + 0.4 * hr);
@@ -57,6 +59,7 @@ const SekaiSprites = (function () {
   }
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
+    if (wimg(c, (o.seed || 0) > 0.5 ? 'mt_volcano2' : 'mt_volcano', 0, 0.05, 1.5)) return;
     if (wimg(c, 'C15', 0, 0.05, 1.5)) return;
     const P = pal(o.b === 1 ? 5 : 12), glow = 0.65 + 0.35 * Math.sin(t * 0.004 + (o.seed || 0) * 9);
     c.save(); groundShadow(c, 0.58);
@@ -107,7 +110,7 @@ const SekaiSprites = (function () {
   const WIMG = {};
   (function () {
     if (typeof Image === 'undefined') return;
-    const names = 'K11 K12 K13 K21 K22 K23 K31 K32 K33 K41 K42 K43 D21 D23 D25 C44 A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
+    const names = 'mt_peak mt_snow mt_rockhigh mt_rocklow mt_hill mt_volcano mt_rocklow2 mt_hill2 mt_volcano2 K11 K12 K13 K21 K22 K23 K31 K32 K33 K41 K42 K43 D21 D23 D25 C44 A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
   })();
   // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
