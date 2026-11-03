@@ -38,7 +38,7 @@ void main(){
     else if(id>2.5&&id<3.5){ float yy=w.y*1.4; float row=fract(yy); float seg=fract(w.x*0.6+floor(yy)*0.37); float l=smoothstep(0.0,0.06,row)*(1.0-smoothstep(0.1,0.16,row))*step(seg,0.55); c=mix(c,c*vec3(0.6,0.8,0.95),l*0.6); }
     else if(id>3.5&&id<4.5){ float s2=fract(w.x*0.9); float l=smoothstep(0.35,0.4,s2)*(1.0-smoothstep(0.5,0.55,s2)); c*=1.0-0.1*l; }
   }
-  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m1=(vP.xy+uPh)/(uPer*30.0); vec2 m2=(vP.xy+uPh)/(uPer*47.0)+vec2(0.37,0.61);
+  if(id>4.5&&id<11.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m1=(vP.xy+uPh)/(uPer*30.0); vec2 m2=(vP.xy+uPh)/(uPer*47.0)+vec2(0.37,0.61);
     vec2 f1=clamp(fract(m1),0.004,0.996); vec2 f2=clamp(fract(m2),0.004,0.996); vec2 b=vec2(mod(tk,4.0),floor(tk/4.0));
     vec3 t1=texture2D(uTex,vec2((b.x+f1.x)*0.25,(b.y+f1.y)*0.5)).rgb*2.0; vec3 t2=texture2D(uTex,vec2((b.x+f2.x)*0.25,(b.y+f2.y)*0.5)).rgb*2.0;
     vec3 tx=(t1+t2)*0.5; c=clamp(c*mix(vec3(1.0),tx,0.5),0.0,1.0); }
@@ -298,7 +298,7 @@ void main(){
         const shade = h > 0 ? Math.min(1.25, Math.max(0.5, 0.58 + 0.62 * nd + curv)) : 1.0;
         const pk = PK; COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
-        let pid = h > 0 ? pk : 1;
+        let pid = h > 0 ? pk : (h > -6000 ? 11 : 1);
         if (h > 0 && pk !== 4) { // 地表の写真風テクスチャ 0草 1ひび割れ 2砂 3雪 4礫 5湿地
           const bb = bs[i]; let tk = 0;
           if (Math.min(col[0], col[1], col[2]) > 205 || bb === 1) tk = 3; else if (pk === 3) tk = 5; else if (pk === 2 || bb === 5) tk = (slope > 0.12 ? 4 : 2);
