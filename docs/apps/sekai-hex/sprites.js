@@ -185,7 +185,7 @@ const SekaiSprites = (function () {
   function townLayout(o) {
     const sx = o.sx || 0, sy = o.sy || 0, ty = TT[o.ty] ? o.ty : 'medieval', T = TT[ty], key = ty + '|' + (o.seed || 0).toFixed(5) + '|' + (o.n || 3) + '|' + sx.toFixed(1) + '|' + sy.toFixed(1);
     let Lo = TCACHE.get(key); if (Lo) return Lo;
-    let city = null; const r = rng((o.seed || 0.5) * 7.77 + 0.1), n = o.n || 3, big = n >= 5, sq = 0.52, R = T.r * (n >= 4 ? 1 : 0.85), cnt = 12 + n * 8, coast = !!(sx || sy), houses = [];
+    let city = null; const r = rng((o.seed || 0.5) * 7.77 + 0.1), n = o.n || 3, big = n >= 5, sq = (o.px || 0) >= 700 ? 0.85 : 0.52, R = T.r * (n >= 4 ? 1 : 0.85), cnt = 12 + n * 8, coast = !!(sx || sy), houses = [];
     const ok = (x, y) => !coast || x * sx + (y / sq) * sy >= -0.05;       // 海側(法線の逆)には建てない
     const pick = a => a[(r() * a.length) | 0];
     const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, flip: r() < 0.5 }, extra || {}));
@@ -218,9 +218,10 @@ const SekaiSprites = (function () {
     Lo = { houses, towers, R, sq, T, ty, gate, big, city }; if (TCACHE.size > 400) TCACHE.clear(); TCACHE.set(key, Lo); return Lo;
   }
   function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
+  let DEEP = false;
   function bhouse(c, h) {
     const { x, y, w } = h, hh = h.h;
-    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0); if (timg(c, HOUSEIMG[(q0 >> 2) % HOUSEIMG.length], x, y, w * 1.3)) return; }
+    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0); if (timg(c, HOUSEIMG[(q0 >> 2) % HOUSEIMG.length], x, y, w * (DEEP ? 0.8 : 1.05))) return; }
     if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.0)) return; }
     c.save(); stroke0(c, 0.35);
     const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
@@ -259,7 +260,8 @@ const SekaiSprites = (function () {
   }
   function town(c, o, t) {
     const LW0 = LW; LW = 0.05 * Math.min(1, 110 / (o.px || 110));   // 大きく描くほど輪郭線は細く(画面上の太さを一定に)
-    try { town2(c, o, t); } finally { LW = LW0; }
+    DEEP = (o.px || 0) >= 700;
+    try { town2(c, o, t); } finally { LW = LW0; DEEP = false; }
   }
   function town2(c, o, t) {
     const poly = polyThin, L = townLayout(o), T = L.T, sd = o.seed || 0, R = L.R, sq = L.sq;

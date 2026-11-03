@@ -47,6 +47,7 @@ button:active{background:var(--accent);color:#fff}
   <div class="hud" id="hud"></div>
   <div class="bar">
     <div class="card" id="info" hidden></div>
+    <div class="card" id="trp" hidden></div>
     <div class="row">
       <button id="zin" aria-label="拡大">＋</button>
       <button id="zout" aria-label="縮小">－</button>
@@ -61,18 +62,19 @@ button:active{background:var(--accent);color:#fff}
       <button id="smooth" aria-label="地面の見た目を切り替え">滑らか</button>
       <button id="boom" aria-label="選んだ火山が噴火" title="選んだ火山が噴火(火山の絵のあるマスを選ぶ)">🌋</button>
       <button id="home" aria-label="世界全体">🌍</button>
+      <button id="trn" aria-label="輸送費用の計算">🚚</button>
     </div>
   </div>
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.46';</script>
-<script src="world.js?v=0.46"></script>
-<script src="transport.js?v=0.46"></script>
-<script src="realm.js?v=0.46"></script>
-<script src="sekai.js?v=0.46"></script>
-<script src="sprites.js?v=0.46"></script>
-<script src="view.js?v=0.46"></script>
+<script>window.APP_VER='0.47';</script>
+<script src="world.js?v=0.47"></script>
+<script src="transport.js?v=0.47"></script>
+<script src="realm.js?v=0.47"></script>
+<script src="sekai.js?v=0.47"></script>
+<script src="sprites.js?v=0.47"></script>
+<script src="view.js?v=0.47"></script>
 <script>
 (function(){
   'use strict';
@@ -134,6 +136,24 @@ button:active{background:var(--accent);color:#fff}
     window.__sk=sk;window.__view=view;window.__worldMs=wms;
     history.replaceState(null,'','?seed='+seed);
   }
+  // 輸送費用の計算(POLICY §25)。量と距離を選ぶと、運び方ごとの到着量・消える量・日数・別払いを出す
+  var TR={amt:100,dist:10,open:false};
+  var PAYN={mana:'魔力'};
+  function trRender(){
+    var C=SekaiTransport.CARRIERS,t='<b>🚚 輸送の費用</b> <button id="trx" style="min-height:32px;float:right">閉じる</button><br>'
+      +'量 <select id="tra">'+[10,100,1000,10000].map(function(v){return '<option'+(v===TR.amt?' selected':'')+'>'+v+'</option>';}).join('')+'</select> ・ 距離 <select id="trd">'
+      +[2,5,10,20,50,100].map(function(v){return '<option value="'+v+'"'+(v===TR.dist?' selected':'')+'>'+v+'マス</option>';}).join('')+'</select>'
+      +'<div style="overflow:auto;max-height:42vh"><table style="border-collapse:collapse;width:100%;font-size:12px"><tr style="color:var(--muted)"><td>運び方</td><td>着く量</td><td>消える量</td><td>日数</td><td>別払い</td></tr>';
+    Object.keys(C).forEach(function(k){
+      var h=SekaiTransport.haul(k,TR.amt,TR.dist),pay=Object.keys(h.pay).map(function(p){return (PAYN[p]||p)+h.pay[p];}).join(' ')||'―';
+      t+='<tr style="border-top:1px solid var(--border)"><td>'+C[k].name+'</td><td><b>'+Math.round(h.arrive)+'</b></td><td>'+Math.round(h.eat)+'</td><td>'+h.days+'日</td><td>'+pay+'</td></tr>';
+    });
+    t+='</table></div><span class="seed">荷車=運ぶ人の食糧のみ / 馬車・小舟=4割消える / 大型船=3割 / 空=1/3だけ着き魔力も払う</span>';
+    $('trp').innerHTML=t;$('trp').hidden=false;
+    $('tra').onchange=function(){TR.amt=+this.value;trRender();};$('trd').onchange=function(){TR.dist=+this.value;trRender();};
+    $('trx').onclick=function(){$('trp').hidden=true;};
+  }
+  $('trn').onclick=function(){if($('trp').hidden)trRender();else $('trp').hidden=true;};
   var EXV=[0.6,1,1.6,2.5],exi=1;
   $('dice').onclick=function(){seed=((Math.random()*1e6)|0)+1;start();};
   $('zin').onclick=function(){view.zoomTo(view.st.ppm*2.2);};

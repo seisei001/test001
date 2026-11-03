@@ -483,7 +483,10 @@ void main(){
             for (let k = 0; k < R.length; k += 4) {
               const a = proj(R[k]), b = proj(R[k + 1]), e = proj(R[k + 2]); if (a[2] > fogR || b[2] > fogR) continue;
               c2.lineWidth = (SekaiTransport.riverPx(R[k + 3], mesh.s, cellpx) + add) * st.dpr;
-              c2.beginPath(); c2.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); c2.quadraticCurveTo(b[0], b[1], (b[0] + e[0]) / 2, (b[1] + e[1]) / 2); c2.stroke();
+              // 蛇行: 曲がり角(制御点)を、流れに直角な向きへ、マスごとに決まった量だけずらす(両端の中点は動かさないので、つながりは切れない)
+              const hh = Math.sin(R[k] * 12.9898 + 78.233) * 43758.5453, hv = (hh - Math.floor(hh)) * 2 - 1, fx2 = e[0] - a[0], fy2 = e[1] - a[1], fl = Math.hypot(fx2, fy2) || 1, mo = hv * cellpx * 0.55 * st.dpr;
+              const bx = b[0] - fy2 / fl * mo, by = b[1] + fx2 / fl * mo;
+              c2.beginPath(); c2.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); c2.quadraticCurveTo(bx, by, (b[0] + e[0]) / 2, (b[1] + e[1]) / 2); c2.stroke();
             }
           }
         }
