@@ -107,7 +107,7 @@ const SekaiSprites = (function () {
   const WIMG = {};
   (function () {
     if (typeof Image === 'undefined') return;
-    const names = 'D21 D23 D25 C44 A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
+    const names = 'K11 K12 K13 K21 K22 K23 K31 K32 K33 K41 K42 K43 D21 D23 D25 C44 A11 A12 A13 A14 A15 A21 A22 A23 A24 A25 A31 A32 A33 A34 A35 A41 A42 A43 A44 B14 B15 B21 B22 B23 B24 B25 B41 C11 C12 C13 C15 C21 C22 C32 D24 E11 E12 E13 E14 E21 E22'.split(' ');
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
   })();
   // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
@@ -351,7 +351,7 @@ const SekaiSprites = (function () {
   }
   // 城: 中央の本丸と両脇の塔、はためく旗
   function castle(c, o, t) {
-    if (wimg(c, (o.seed || 0) > 0.5 ? 'A42' : 'B41', 0, 0.05, 0.95)) return;
+    { const CS = ['B41', 'A42', 'K11', 'K12', 'K13', 'K21', 'K22', 'K23', 'K31', 'K32', 'K33', 'K41', 'K42', 'K43']; if (wimg(c, CS[Math.floor((o.seed || 0) * 997) % CS.length], 0, 0.05, 0.95)) return; }
     if (timg(c, 'castle', 0, 0.02, 1.1)) return;
     c.save(); groundShadow(c, 0.6);
     const wave = Math.sin(t * 0.006 + (o.seed || 0) * 5) * 0.04;
