@@ -38,9 +38,10 @@ void main(){
     else if(id>2.5&&id<3.5){ float yy=w.y*1.4; float row=fract(yy); float seg=fract(w.x*0.6+floor(yy)*0.37); float l=smoothstep(0.0,0.06,row)*(1.0-smoothstep(0.1,0.16,row))*step(seg,0.55); c=mix(c,c*vec3(0.6,0.8,0.95),l*0.6); }
     else if(id>3.5&&id<4.5){ float s2=fract(w.x*0.9); float l=smoothstep(0.35,0.4,s2)*(1.0-smoothstep(0.5,0.55,s2)); c*=1.0-0.1*l; }
   }
-  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m=(vP.xy+uPh)/(uPer*40.0); vec2 f=abs(fract(m*0.5)*2.0-1.0); f=clamp(f,0.004,0.996);
-    vec3 tx=texture2D(uTex,vec2((mod(tk,4.0)+f.x)*0.25,(floor(tk/4.0)+f.y)*0.5)).rgb*2.0;
-    float amt=0.6; c=clamp(c*mix(vec3(1.0),tx,amt),0.0,1.0); }
+  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m1=(vP.xy+uPh)/(uPer*30.0); vec2 m2=(vP.xy+uPh)/(uPer*47.0)+vec2(0.37,0.61);
+    vec2 f1=clamp(fract(m1),0.004,0.996); vec2 f2=clamp(fract(m2),0.004,0.996); vec2 b=vec2(mod(tk,4.0),floor(tk/4.0));
+    vec3 t1=texture2D(uTex,vec2((b.x+f1.x)*0.25,(b.y+f1.y)*0.5)).rgb*2.0; vec3 t2=texture2D(uTex,vec2((b.x+f2.x)*0.25,(b.y+f2.y)*0.5)).rgb*2.0;
+    vec3 tx=(t1+t2)*0.5; c=clamp(c*mix(vec3(1.0),tx,0.5),0.0,1.0); }
   float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); c=mix(c,uFogC,fg);
   gl_FragColor=vec4(c,1.0);
 }`;
@@ -118,7 +119,7 @@ void main(){
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['penguin', 'seal', 'polar', 'arcticfox', 'icegiant', 'snowwoman'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'deer', 'fox'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'scorpion', 'mummy', 'sandworm'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar'], 9: ['owl', 'fairy', 'deer'], 10: ['lion', 'elephant', 'giraffe'], 11: ['parrot', 'monkey', 'jaguar', 'anaconda', 'hydra'], 12: ['goat', 'dragon', 'eagle'] };
+  const STAMPS = { 1: ['penguin', 'seal', 'polar', 'arcticfox', 'icegiant', 'snowwoman'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'moose', 'gwolf', 'fox', 'forest_troll', 'dryad'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'scorpion', 'mummy', 'sandworm'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar', 'wwolf'], 9: ['owl', 'fairy', 'deer'], 10: ['slion', 'selephant', 'sgiraffe', 'manticore'], 11: ['parrot', 'monkey', 'jaguar', 'anaconda', 'hydra'], 12: ['hgoat', 'heagle', 'hwyvern', 'hgolem'] };
   const SEA_STAMPS = ['whale', 'ship', 'octopus', 'shark', 'sail', 'dolphin'], DEEP_STAMPS = ['serpent', 'squid', 'mermaid', 'whale'];   // 深い海には「ここにドラゴンあり」の怪物
   function stampFor(b, h, coast, r) { // 生き物もアニメ風の絵(sprites.js の animal)
     let a;
@@ -322,7 +323,11 @@ void main(){
               spec = { k: 'town', b: b0, ty: lst[Math.min(lst.length - 1, (hash2(rt[1], rt[2], rt[0] + 98) * lst.length) | 0)], n: 2 + ((rs0 * 40) | 0) % 4, seed: rs0, nx: sea ? cx / cl : 0, ny: sea ? cy / cl : 0 };
             }
           }
-          if (!spec && h > 0 && L <= 2 && (b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11) && slope < 0.12 && sr3 < [0.5, 0.45, 0.3][L]) spec = { k: 'flora', far: 1, b: b0, seed: sr };   // 遠景: 森の気候には森のかたまり
+          if (!spec && h > 0 && L <= 2 && slope < 0.12) { // 遠景: 気候ごとの地表のかたまり(森・熱帯雨林・砂丘とオアシス・氷・湿地)
+            const fp = [0.5, 0.45, 0.3][L], fn = (b0 === 3 || b0 === 12) ? 'f_conifer' : (b0 === 8 || b0 === 9) ? 'f_broadleaf' : b0 === 11 ? 'f_jungle' : b0 === 5 ? (sr2 < 0.15 ? 'f_oasis' : 'f_dune') : b0 === 1 ? 'f_iceberg' : null;
+            if (fn && sr3 < fp) spec = { k: 'flora', far: fn, b: b0, seed: sr };
+            else if (!fn && [2, 4].indexOf(b0) >= 0 && slope < 0.03 && sr3 < 0.15) spec = { k: 'flora', far: 'f_marsh', b: b0, seed: sr };
+          }
           if (!spec && h > 0 && L >= 3) { // 深い層の木・茂み・岩(素材の絵、実寸)。森の気候で木が多く、急な所は岩
             const forest = b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11, grass = b0 === 4 || b0 === 6 || b0 === 7 || b0 === 10, k0 = L === 3 ? 0 : L === 4 ? 1 : 2;
             const pT = forest ? [0.4, 0.6, 0.05][k0] : grass ? [0.06, 0.1, 0.008][k0] : ({ 1: 0.05, 2: 0.06, 5: 0.04, 12: 0.05 }[b0] || 0) * [1, 1.6, 0.15][k0], pR = (slope > 0.1 || h > 1800) ? [0.15, 0.2, 0.02][k0] : [0.01, 0.02, 0.002][k0];

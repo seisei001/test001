@@ -116,7 +116,11 @@ const SekaiSprites = (function () {
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
     for (const n of 'airship archer barge belltower boat_row bridge_stone campfire cmd crane depot dragon_tr e_boom e_circle e_fire e_light e_smoke e_vsmoke f_flower f_green f_orch f_rows f_veg f_wheat fisher flag fort gate_c gate_c2 gate_draw gate_town h_afr h_arab h_cn h_dutch h_fort h_greek h_igloo h_jp h_jp2 h_log h_manor h_market h_rome h_rome2 h_sahara h_sod h_sod2 h_stilt h_thatch h_thatch2 h_tibet h_tudor h_yurt handcart i_arms i_cloth i_food i_gold i_horse i_iron i_magic i_shield i_ship i_stone i_wheat i_wood inf knight_h knight_hv lamp lighthouse2 m_cyclops m_ghost m_goblin m_golem m_gryphon m_orc m_serpent m_skel m_spider m_troll m_wolfman m_wyvern mage_x medic merchant moat p_barrels p_crates p_hay p_sign p_well p_wood packhorse palisade palisade2 pier quay r_crystal r_float r_pyr r_ruins r_stones r_temple ship_coast ship_l siegetower sign spear standard supply t_autumn t_bamboo t_birch t_bush t_cactus t_dead t_fir t_mush t_oak t_palm t_snow t_world tent_cmd tents trebuchet wagon wagon_fly wagon_l wall_corner wall_low wall_mid wall_s warehouse watchtower well'.split(' ')) { const im = new Image(); im.src = 'assets/world2/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
     for (const n of 'd_cactus d_camel d_mummy d_palm d_sandworm d_scorpion i_crystal i_fox i_giant i_polar1 i_polar2 i_rimetree i_snowwoman j_anaconda j_fern j_hydra j_jaguar j_macaw j_palm'.split(' ')) { const im = new Image(); im.src = 'assets/world3/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
-    for (const n of 'f_broadleaf f_conifer f_hill f_rock f_snow f_volcano'.split(' ')) { const im = new Image(); im.src = 'assets/world4/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }   // 遠景用(輪郭の太い単純な絵)
+    for (const n of 'f_broadleaf f_castle f_conifer f_dune f_hill f_iceberg f_jungle f_marsh f_oasis f_port f_port2 f_rock f_ruins f_snow f_town_cn f_town_desert f_town_eu f_volcano f_wheat'.split(' ')) { const im = new Image(); im.src = 'assets/world4/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }   // 遠景用(輪郭の太い単純な絵)
+    for (const n of 'c_birch c_dryad c_moose c_spruce c_troll c_wolf'.split(' ')) { const im = new Image(); im.src = 'assets/world5/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
+    for (const n of 's_autumn s_deer s_spring s_summer s_werewolf s_winter'.split(' ')) { const im = new Image(); im.src = 'assets/world6/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
+    for (const n of 'a_acacia a_acacia2 a_baobab a_elephant a_elephant2 a_giraffe a_lion a_manticore a_manticore2'.split(' ')) { const im = new Image(); im.src = 'assets/world7/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
+    for (const n of 'h_eagle h_flowers h_goat h_golem h_horse h_house h_pine h_tree h_wyvern'.split(' ')) { const im = new Image(); im.src = 'assets/world8/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
   })();
   // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
   function wimg(c, n, x, y, w) { const im = WIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; if (w * c.getTransform().a > 260) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.05, w, dh); c.restore(); return true; }
@@ -142,7 +146,7 @@ const SekaiSprites = (function () {
     for (const n of 'squid serpent mermaid fairy anchor dragon deer wolf fox bear polar lion tiger elephant giraffe camel monkey penguin seal dolphin owl eagle parrot cow sheep goat horse pig duck goose dog whale shark octopus galleon sailboat liner fishingboat tuna mackerel snapper flounder clownfish angelfish turtle marlin'.split(' ')) { const im = new Image(); im.src = 'assets/animals/' + n + '.png?v=' + (window.APP_VER || '0'); AIMG[n] = im; }
   })();
   // 呼び名 → [絵の名前, 幅]。ここに無い生き物は、代わりの絵が用意できるまで描かない
-  const AMAP = { arcticfox: ['', 0.5, 'i_fox'], icegiant: ['', 0.8, 'i_giant'], snowwoman: ['', 0.55, 'i_snowwoman'], scorpion: ['', 0.45, 'd_scorpion'], mummy: ['', 0.5, 'd_mummy'], sandworm: ['', 0.8, 'd_sandworm'], jaguar: ['', 0.7, 'j_jaguar'], anaconda: ['', 0.7, 'j_anaconda'], hydra: ['', 0.85, 'j_hydra'], goblin: ['', 0.4, 'm_goblin'], orc: ['', 0.55, 'm_orc'], golem: ['', 0.7, 'm_golem'], skeleton: ['', 0.45, 'm_skel'], spider: ['', 0.55, 'm_spider'], werewolf: ['', 0.55, 'm_wolfman'], troll: ['', 0.7, 'm_troll'], cyclops: ['', 0.7, 'm_cyclops'], gryphon: ['', 0.7, 'm_gryphon'], wyvern: ['', 0.7, 'm_wyvern'], ghost: ['', 0.45, 'm_ghost'], cow: ['cow', 0.9], bison: ['cow', 0.95], sheep: ['sheep', 0.75], goat: ['goat', 0.6], horse: ['horse', 0.8], boar: ['pig', 0.75], wolf: ['wolf', 0.55], deer: ['deer', 0.7], fox: ['fox', 0.55], bear: ['bear', 0.85], polar: ['polar', 0.95], lion: ['lion', 0.9], tiger: ['tiger', 0.75], elephant: ['elephant', 1.1], giraffe: ['giraffe', 0.6], camel: ['camel', 0.85], monkey: ['monkey', 0.5], penguin: ['penguin', 0.4], seal: ['seal', 0.7], dolphin: ['dolphin', 0.7], owl: ['owl', 0.4], eagle: ['eagle', 0.45], parrot: ['parrot', 0.35], whale: ['whale', 1.0], shark: ['shark', 0.9], octopus: ['octopus', 0.8], ship: ['galleon', 1.0], sail: ['sailboat', 0.65], squid: ['squid', 0.8], serpent: ['serpent', 0.95], mermaid: ['mermaid', 0.7], fairy: ['fairy', 0.45], anchor: ['anchor', 0.4], dragon: ['dragon', 1.15], cactus: [null, 0.5, 'D21'], mushroom: [null, 0.45, 'D23'], bush: [null, 0.6, 'D25'], island: [null, 0.9, 'C44'] };
+  const AMAP = { hgoat: ['', 0.7, 'h_goat'], heagle: ['', 0.8, 'h_eagle'], hwyvern: ['', 0.85, 'h_wyvern'], hgolem: ['', 0.9, 'h_golem'], slion: ['', 0.8, 'a_lion'], selephant: ['', 1.0, 'a_elephant'], sgiraffe: ['', 0.8, 'a_giraffe'], manticore: ['', 0.85, 'a_manticore'], wwolf: ['', 0.6, 's_werewolf'], moose: ['', 0.8, 'c_moose'], gwolf: ['', 0.6, 'c_wolf'], forest_troll: ['', 0.8, 'c_troll'], dryad: ['', 0.7, 'c_dryad'], arcticfox: ['', 0.5, 'i_fox'], icegiant: ['', 0.8, 'i_giant'], snowwoman: ['', 0.55, 'i_snowwoman'], scorpion: ['', 0.45, 'd_scorpion'], mummy: ['', 0.5, 'd_mummy'], sandworm: ['', 0.8, 'd_sandworm'], jaguar: ['', 0.7, 'j_jaguar'], anaconda: ['', 0.7, 'j_anaconda'], hydra: ['', 0.85, 'j_hydra'], goblin: ['', 0.4, 'm_goblin'], orc: ['', 0.55, 'm_orc'], golem: ['', 0.7, 'm_golem'], skeleton: ['', 0.45, 'm_skel'], spider: ['', 0.55, 'm_spider'], werewolf: ['', 0.55, 'm_wolfman'], troll: ['', 0.7, 'm_troll'], cyclops: ['', 0.7, 'm_cyclops'], gryphon: ['', 0.7, 'm_gryphon'], wyvern: ['', 0.7, 'm_wyvern'], ghost: ['', 0.45, 'm_ghost'], cow: ['cow', 0.9], bison: ['cow', 0.95], sheep: ['sheep', 0.75], goat: ['goat', 0.6], horse: ['horse', 0.8], boar: ['pig', 0.75], wolf: ['wolf', 0.55], deer: ['deer', 0.7], fox: ['fox', 0.55], bear: ['bear', 0.85], polar: ['polar', 0.95], lion: ['lion', 0.9], tiger: ['tiger', 0.75], elephant: ['elephant', 1.1], giraffe: ['giraffe', 0.6], camel: ['camel', 0.85], monkey: ['monkey', 0.5], penguin: ['penguin', 0.4], seal: ['seal', 0.7], dolphin: ['dolphin', 0.7], owl: ['owl', 0.4], eagle: ['eagle', 0.45], parrot: ['parrot', 0.35], whale: ['whale', 1.0], shark: ['shark', 0.9], octopus: ['octopus', 0.8], ship: ['galleon', 1.0], sail: ['sailboat', 0.65], squid: ['squid', 0.8], serpent: ['serpent', 0.95], mermaid: ['mermaid', 0.7], fairy: ['fairy', 0.45], anchor: ['anchor', 0.4], dragon: ['dragon', 1.15], cactus: [null, 0.5, 'D21'], mushroom: [null, 0.45, 'D23'], bush: [null, 0.6, 'D25'], island: [null, 0.9, 'C44'] };
   function animalImg(c, o) {
     const m = AMAP[o.a]; if (!m) return false;
     if (m[2]) return wimg(c, m[2], 0, 0.05, m[1]);
@@ -310,6 +314,7 @@ const SekaiSprites = (function () {
     c.restore();
   }
   function town(c, o, t) {
+    if ((o.px || 0) < 110 && !(o.px >= 700)) { const T0 = o.ty, nm = (o.nx || o.ny) ? ((o.seed || 0) > 0.5 ? 'f_port' : 'f_port2') : (['chinese', 'japan', 'tibet'].indexOf(T0) >= 0) ? 'f_town_cn' : (['medina', 'djenne', 'kraal', 'inca'].indexOf(T0) >= 0) ? 'f_town_desert' : 'f_town_eu'; if (wimg(c, nm, 0, 0.12, 0.95)) return; }   // 小さく映る街は、輪郭の太い単純な絵
     const LW0 = LW; LW = 0.05 * Math.min(1, 110 / (o.px || 110));   // 大きく描くほど輪郭線は細く(画面上の太さを一定に)
     DEEP = (o.px || 0) >= 700;
     if (!DEEP && townWorld(c, o)) { DEEP = false; LW = LW0; return; }
@@ -360,6 +365,7 @@ const SekaiSprites = (function () {
   }
   // 城: 中央の本丸と両脇の塔、はためく旗
   function castle(c, o, t) {
+    if (1.9 * c.getTransform().a < 110 && wimg(c, 'f_castle', 0, 0.05, 0.95)) return;
     { const CS = ['B41', 'A42', 'K11', 'K12', 'K13', 'K21', 'K22', 'K23', 'K31', 'K32', 'K33', 'K41', 'K42', 'K43']; if (wimg(c, CS[Math.floor((o.seed || 0) * 997) % CS.length], 0, 0.05, 0.95)) return; }
     if (timg(c, 'castle', 0, 0.02, 1.1)) return;
     c.save(); groundShadow(c, 0.6);
@@ -432,6 +438,7 @@ const SekaiSprites = (function () {
   }
   // 山の祠・塔(高山の目印)
   function shrine(c) {
+    if (0.8 * c.getTransform().a < 110 && wimg(c, 'f_ruins', 0, 0.05, 0.8)) return;
     if (wimg(c, 'E13', 0, 0.05, 0.8)) return;
     c.save(); groundShadow(c, 0.3);
     poly(c, [[-0.2, 0], [-0.2, -0.3], [0.2, -0.3], [0.2, 0]], '#f2e6d0', true);
@@ -617,16 +624,17 @@ const SekaiSprites = (function () {
     c.save(); c.beginPath(); c.ellipse(0, 0, 0.56, 0.56 * (o.cp || 0.7), 0, 0, 6.2832); c.clip(); c.globalAlpha = 0.92; c.imageSmoothingEnabled = false;
     const k = o.idx || 48; c.drawImage(im, (k % 8) * 64, ((k / 8) | 0) * 64, 64, 64, -0.56, -0.56 * (o.cp || 0.7), 1.12, 1.12 * (o.cp || 0.7)); c.restore();
   }
-  const BTREE = { 1: ['i_rimetree', 'i_rimetree', 'i_crystal'], 2: ['t_dead', 't_bush', 't_snow'], 3: ['t_fir', 't_fir', 'i_rimetree'], 4: ['t_birch', 't_fir', 't_oak'], 5: ['d_cactus', 'd_cactus', 't_dead'], 6: ['t_oak', 't_birch'], 7: ['t_oak', 't_bush'], 8: ['t_oak', 't_birch', 't_autumn'], 9: ['t_oak', 't_fir', 't_oak'], 10: ['t_oak', 't_bush', 't_dead'], 11: ['j_palm', 'j_fern', 'j_palm'], 12: ['t_fir', 't_snow'] };
+  let SEASON = 1; const SEASON_TREE = ['s_spring', 's_summer', 's_autumn', 's_winter'];   // 季節(0春 1夏 2秋 3冬)。温帯の広葉樹がこれで変わる
+  const BTREE = { 1: ['i_rimetree', 'i_rimetree', 'i_crystal'], 2: ['t_dead', 't_bush', 't_snow'], 3: ['c_spruce', 'c_spruce', 'c_birch', 't_fir'], 4: ['t_birch', 't_fir', 't_oak'], 5: ['d_cactus', 'd_cactus', 't_dead'], 6: ['t_oak', 't_birch'], 7: ['t_oak', 't_bush'], 8: ['t_oak', 't_birch', 't_autumn'], 9: ['t_oak', 't_fir', 't_oak'], 10: ['a_acacia', 'a_baobab', 'a_acacia2'], 11: ['j_palm', 'j_fern', 'j_palm'], 12: ['h_pine', 'h_flowers', 'h_pine'] };
   function flora(c, o) {   // 木(idx 0-3)は気候ごとの木。岩・花などは従来の素材のまま
-    if (o.far) { const nm = (o.b === 3 || o.b === 12) ? 'f_conifer' : 'f_broadleaf'; wimg(c, nm, 0, 0.45, 0.9); return; }   // 遠景の森のかたまり
-    const i = o.idx || 0, L = BTREE[o.b];
-    if (i <= 3 && L) { if ((() => { const nm = L[Math.floor((o.seed || 0) * 997 + i) % L.length]; return wimg(c, nm, 0, 0.45, /cactus|bush|dead|crystal/.test(nm) ? 0.6 : 0.9); })()) return; }
+    if (o.far) { wimg(c, o.far, 0, 0.45, o.far === 'f_marsh' || o.far === 'f_oasis' ? 0.8 : 0.95); return; }   // 遠景の森のかたまり
+    const i = o.idx || 0, L = (o.b === 4 || o.b === 6 || o.b === 8 || o.b === 9) ? [SEASON_TREE[SEASON], SEASON_TREE[SEASON], 't_birch'].slice(0, (SEASON === 3 ? 2 : 3)) : BTREE[o.b];
+    if (i <= 3 && L) { if ((() => { const nm = L[Math.floor((o.seed || 0) * 997 + i) % L.length]; return wimg(c, nm, 0, 0.45, /cactus|bush|dead|crystal|flowers/.test(nm) ? 0.6 : 0.9); })()) return; }
     if (i <= 3 && !L) return;   // 気候に合う木が無い所には何も描かない
     kimg(c, 'env', i, 0, 0.45, 1);
   }
   const TABLE = { field, flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
   function draw(c, kind, o, t) { const f = TABLE[kind]; if (f) f(c, o, t); }
-  return { draw, kinds: Object.keys(TABLE) };
+  return { draw, kinds: Object.keys(TABLE), setSeason(v) { SEASON = ((v % 4) + 4) % 4; }, season() { return SEASON; } };
 })();
 if (typeof module !== 'undefined') module.exports = SekaiSprites;

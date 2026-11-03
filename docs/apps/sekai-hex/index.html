@@ -65,18 +65,19 @@ button:active{background:var(--accent);color:#fff}
       <button id="home" aria-label="世界全体">🌍</button>
       <button id="trn" aria-label="輸送費用の計算">🚚</button>
       <button id="arn" aria-label="兵種の一覧">⚔️</button>
+      <button id="sea" aria-label="季節">🌸</button>
     </div>
   </div>
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.63';</script>
-<script src="world.js?v=0.63"></script>
-<script src="transport.js?v=0.63"></script>
-<script src="realm.js?v=0.63"></script>
-<script src="sekai.js?v=0.63"></script>
-<script src="sprites.js?v=0.63"></script>
-<script src="view.js?v=0.63"></script>
+<script>window.APP_VER='0.68';</script>
+<script src="world.js?v=0.68"></script>
+<script src="transport.js?v=0.68"></script>
+<script src="realm.js?v=0.68"></script>
+<script src="sekai.js?v=0.68"></script>
+<script src="sprites.js?v=0.68"></script>
+<script src="view.js?v=0.68"></script>
 <script>
 (function(){
   'use strict';
@@ -161,6 +162,9 @@ button:active{background:var(--accent);color:#fff}
   function arRender(){var t='<b>⚔️ 兵種</b> <button id="arx" style="min-height:32px;float:right">閉じる</button><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
     UN.forEach(function(u){t+='<div style="width:64px;text-align:center;font-size:11px"><img src="assets/world2/'+u[0]+'.png?v='+window.APP_VER+'" style="height:64px;max-width:64px;object-fit:contain"><br>'+u[1]+'</div>';});
     t+='</div><span class="seed">軍の表示は、軍の仕組みができ次第この絵で出します</span>';$('arp').innerHTML=t;$('arp').hidden=false;$('arx').onclick=function(){$('arp').hidden=true;};}
+  var SEAI=['🌸','☀️','🍁','❄️'];
+  $('sea').onclick=function(){var n=(SekaiSprites.season()+1)%4;SekaiSprites.setSeason(n);this.textContent=SEAI[n];view.draw();};
+  $('sea').textContent=SEAI[SekaiSprites.season()];
   $('arn').onclick=function(){if($('arp').hidden)arRender();else $('arp').hidden=true;};
   $('trn').onclick=function(){if($('trp').hidden)trRender();else $('trp').hidden=true;};
   var EXV=[0.6,1,1.6,2.5],exi=1;
