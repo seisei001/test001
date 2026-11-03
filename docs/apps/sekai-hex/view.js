@@ -118,7 +118,7 @@ void main(){
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['penguin', 'seal', 'polar'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'deer', 'fox'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'cactus', 'dragon'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar'], 9: ['owl', 'fairy', 'deer'], 10: ['lion', 'elephant', 'giraffe'], 11: ['parrot', 'monkey', 'tiger'], 12: ['goat', 'dragon', 'eagle'] };
+  const STAMPS = { 1: ['penguin', 'seal', 'polar', 'arcticfox', 'icegiant', 'snowwoman'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'deer', 'fox'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'scorpion', 'mummy', 'sandworm'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar'], 9: ['owl', 'fairy', 'deer'], 10: ['lion', 'elephant', 'giraffe'], 11: ['parrot', 'monkey', 'jaguar', 'anaconda', 'hydra'], 12: ['goat', 'dragon', 'eagle'] };
   const SEA_STAMPS = ['whale', 'ship', 'octopus', 'shark', 'sail', 'dolphin'], DEEP_STAMPS = ['serpent', 'squid', 'mermaid', 'whale'];   // 深い海には「ここにドラゴンあり」の怪物
   function stampFor(b, h, coast, r) { // 生き物もアニメ風の絵(sprites.js の animal)
     let a;
