@@ -38,9 +38,9 @@ void main(){
     else if(id>2.5&&id<3.5){ float yy=w.y*1.4; float row=fract(yy); float seg=fract(w.x*0.6+floor(yy)*0.37); float l=smoothstep(0.0,0.06,row)*(1.0-smoothstep(0.1,0.16,row))*step(seg,0.55); c=mix(c,c*vec3(0.6,0.8,0.95),l*0.6); }
     else if(id>3.5&&id<4.5){ float s2=fract(w.x*0.9); float l=smoothstep(0.35,0.4,s2)*(1.0-smoothstep(0.5,0.55,s2)); c*=1.0-0.1*l; }
   }
-  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m=(vP.xy+uPh)/(uPer*20.0); vec2 f=abs(fract(m*0.5)*2.0-1.0); f=clamp(f,0.004,0.996);
+  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m=(vP.xy+uPh)/(uPer*40.0); vec2 f=abs(fract(m*0.5)*2.0-1.0); f=clamp(f,0.004,0.996);
     vec3 tx=texture2D(uTex,vec2((mod(tk,4.0)+f.x)*0.25,(floor(tk/4.0)+f.y)*0.5)).rgb*2.0;
-    float amt=0.85; c=clamp(c*mix(vec3(1.0),tx,amt),0.0,1.0); }
+    float amt=0.6; c=clamp(c*mix(vec3(1.0),tx,amt),0.0,1.0); }
   float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); c=mix(c,uFogC,fg);
   gl_FragColor=vec4(c,1.0);
 }`;
@@ -322,6 +322,7 @@ void main(){
               spec = { k: 'town', b: b0, ty: lst[Math.min(lst.length - 1, (hash2(rt[1], rt[2], rt[0] + 98) * lst.length) | 0)], n: 2 + ((rs0 * 40) | 0) % 4, seed: rs0, nx: sea ? cx / cl : 0, ny: sea ? cy / cl : 0 };
             }
           }
+          if (!spec && h > 0 && L <= 2 && (b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11) && slope < 0.12 && sr3 < [0.5, 0.45, 0.3][L]) spec = { k: 'flora', far: 1, b: b0, seed: sr };   // 遠景: 森の気候には森のかたまり
           if (!spec && h > 0 && L >= 3) { // 深い層の木・茂み・岩(素材の絵、実寸)。森の気候で木が多く、急な所は岩
             const forest = b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11, grass = b0 === 4 || b0 === 6 || b0 === 7 || b0 === 10, k0 = L === 3 ? 0 : L === 4 ? 1 : 2;
             const pT = forest ? [0.4, 0.6, 0.05][k0] : grass ? [0.06, 0.1, 0.008][k0] : ({ 1: 0.05, 2: 0.06, 5: 0.04, 12: 0.05 }[b0] || 0) * [1, 1.6, 0.15][k0], pR = (slope > 0.1 || h > 1800) ? [0.15, 0.2, 0.02][k0] : [0.01, 0.02, 0.002][k0];
@@ -435,7 +436,7 @@ void main(){
       gl.uniform1f(U.uPpm, st.ppm); gl.uniform1f(U.uCosP, Math.cos(st.tilt)); gl.uniform1f(U.uSinP, Math.sin(st.tilt));
       gl.uniform1f(U.uEx, mesh.ex); gl.uniform1f(U.uD, mesh.D); gl.uniform1f(U.uZ0, st.z0);
       const per = mesh.s * 0.28; gl.uniform1f(U.uPer, per); gl.uniform1f(U.uCont, mesh.cstep); gl.uniform1f(U.uPat, st.pattern === false ? 0 : 1);
-      gl.uniform2f(U.uPh, ((mesh.ox % (per * 40)) + per * 40) % (per * 40), ((mesh.oy % (per * 40)) + per * 40) % (per * 40));
+      gl.uniform2f(U.uPh, ((mesh.ox % (per * 80)) + per * 80) % (per * 80), ((mesh.oy % (per * 80)) + per * 80) % (per * 80));
       gl.uniform1f(U.uFogR, mesh.L === 0 ? 1e12 : mesh.rad * 0.92); gl.uniform3f(U.uFogC, FOGC[0], FOGC[1], FOGC[2]);
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 16, 0);
@@ -529,7 +530,7 @@ void main(){
           c2.shadowColor = 'rgba(255,255,255,.85)'; c2.shadowBlur = 5 * st.dpr; c2.fillText(sp0, X * st.dpr, (Y - px / st.dpr * 0.45) * st.dpr); c2.shadowBlur = 0;
         } else {
           const an = sp0.k === 'animal', tw = sp0.k === 'town', hk = sp0.k === 'mountain' ? 0.6 + 0.7 * (sp0.hr == null ? 0.7 : sp0.hr) : 1, size = (an && mesh.L >= 3 ? 20 : Math.max(an ? 26 : tw ? 80 : 24, Math.min(an ? (mesh.L === 0 ? 40 : 80) : (mesh.L === 0 ? 62 : tw ? 200 : 130), cell * (MUL[sp0.k] || 1.7) * hk))) * st.dpr;   // 下の層では生き物は小さな点景(実際の大きさに合わせて)
-          let sz = size; if (sp0.k === 'field') { sz = mesh.s * st.ppm * 1.15 * st.dpr; sp0.cp = cp; } if (sp0.k === 'flora') sz = Math.max(9, Math.min(150, sp0.m * st.ppm)) * st.dpr;
+          let sz = size; if (sp0.k === 'field') { sz = mesh.s * st.ppm * 1.15 * st.dpr; sp0.cp = cp; } if (sp0.k === 'flora') sz = sp0.far ? mesh.s * st.ppm * 0.95 * st.dpr : Math.max(9, Math.min(150, sp0.m * st.ppm)) * st.dpr;
           if (tw) { sp0.um = 120 * ((sp0.n || 3) >= 5 ? 2 : (sp0.n || 3) >= 4 ? 1.4 : 1); if (mesh.L >= 4) sz = Math.max(size, sp0.um * st.ppm * st.dpr); sp0.px = sz / st.dpr; }   // 深い層では実際の大きさ(1マス=人1人)で描く
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(sz, sz); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
         }

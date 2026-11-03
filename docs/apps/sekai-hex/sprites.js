@@ -33,6 +33,7 @@ const SekaiSprites = (function () {
     { const hr = o.hr == null ? 0.7 : o.hr, sd = o.seed || 0.5;   // 高さで5段階に分け、高い山ほど大きく描く(丘→岩山→高い岩山→雪山→大雪峰)
       const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.55, 0.8, 1.05, 1.35, 1.7][tier], v2 = sd > 0.5;
       const nm = tier === 0 ? (v2 ? 'mt_hill2' : 'mt_hill') : tier === 1 ? (v2 ? 'mt_rocklow2' : 'mt_rocklow') : tier === 2 ? (o.snow ? 'mt_snow' : 'mt_rockhigh') : tier === 3 ? 'mt_snow' : 'mt_peak';
+      if (W * c.getTransform().a < 120) { const fn = tier === 0 ? 'f_hill' : (tier === 1 || (tier === 2 && !o.snow)) ? 'f_rock' : 'f_snow'; if (wimg(c, fn, 0, 0.05, W)) return; }   // 小さく映る遠景は、輪郭の太い単純な絵
       if (wimg(c, nm, 0, 0.05, W)) return;
       const nm0 = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
       if (wimg(c, nm0, 0, 0.05, W)) return; }
@@ -59,6 +60,7 @@ const SekaiSprites = (function () {
   }
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
+    if (1.5 * c.getTransform().a < 120 && wimg(c, 'f_volcano', 0, 0.05, 1.1)) return;
     if (wimg(c, (o.seed || 0) > 0.5 ? 'mt_volcano2' : 'mt_volcano', 0, 0.05, 1.5)) return;
     if (wimg(c, 'C15', 0, 0.05, 1.5)) return;
     const P = pal(o.b === 1 ? 5 : 12), glow = 0.65 + 0.35 * Math.sin(t * 0.004 + (o.seed || 0) * 9);
@@ -114,6 +116,7 @@ const SekaiSprites = (function () {
     for (const n of names) { const im = new Image(); im.src = 'assets/world/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
     for (const n of 'airship archer barge belltower boat_row bridge_stone campfire cmd crane depot dragon_tr e_boom e_circle e_fire e_light e_smoke e_vsmoke f_flower f_green f_orch f_rows f_veg f_wheat fisher flag fort gate_c gate_c2 gate_draw gate_town h_afr h_arab h_cn h_dutch h_fort h_greek h_igloo h_jp h_jp2 h_log h_manor h_market h_rome h_rome2 h_sahara h_sod h_sod2 h_stilt h_thatch h_thatch2 h_tibet h_tudor h_yurt handcart i_arms i_cloth i_food i_gold i_horse i_iron i_magic i_shield i_ship i_stone i_wheat i_wood inf knight_h knight_hv lamp lighthouse2 m_cyclops m_ghost m_goblin m_golem m_gryphon m_orc m_serpent m_skel m_spider m_troll m_wolfman m_wyvern mage_x medic merchant moat p_barrels p_crates p_hay p_sign p_well p_wood packhorse palisade palisade2 pier quay r_crystal r_float r_pyr r_ruins r_stones r_temple ship_coast ship_l siegetower sign spear standard supply t_autumn t_bamboo t_birch t_bush t_cactus t_dead t_fir t_mush t_oak t_palm t_snow t_world tent_cmd tents trebuchet wagon wagon_fly wagon_l wall_corner wall_low wall_mid wall_s warehouse watchtower well'.split(' ')) { const im = new Image(); im.src = 'assets/world2/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
     for (const n of 'd_cactus d_camel d_mummy d_palm d_sandworm d_scorpion i_crystal i_fox i_giant i_polar1 i_polar2 i_rimetree i_snowwoman j_anaconda j_fern j_hydra j_jaguar j_macaw j_palm'.split(' ')) { const im = new Image(); im.src = 'assets/world3/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }
+    for (const n of 'f_broadleaf f_conifer f_hill f_rock f_snow f_volcano'.split(' ')) { const im = new Image(); im.src = 'assets/world4/' + n + '.png?v=' + (window.APP_VER || '0'); WIMG[n] = im; }   // 遠景用(輪郭の太い単純な絵)
   })();
   // 画面で約260pxを超えると粗くなるので、その大きさでは使わない(false を返す)
   function wimg(c, n, x, y, w) { const im = WIMG[n]; if (!im || !im.complete || !im.naturalWidth) return false; if (w * c.getTransform().a > 260) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.05, w, dh); c.restore(); return true; }
@@ -616,6 +619,7 @@ const SekaiSprites = (function () {
   }
   const BTREE = { 1: ['i_rimetree', 'i_rimetree', 'i_crystal'], 2: ['t_dead', 't_bush', 't_snow'], 3: ['t_fir', 't_fir', 'i_rimetree'], 4: ['t_birch', 't_fir', 't_oak'], 5: ['d_cactus', 'd_cactus', 't_dead'], 6: ['t_oak', 't_birch'], 7: ['t_oak', 't_bush'], 8: ['t_oak', 't_birch', 't_autumn'], 9: ['t_oak', 't_fir', 't_oak'], 10: ['t_oak', 't_bush', 't_dead'], 11: ['j_palm', 'j_fern', 'j_palm'], 12: ['t_fir', 't_snow'] };
   function flora(c, o) {   // 木(idx 0-3)は気候ごとの木。岩・花などは従来の素材のまま
+    if (o.far) { const nm = (o.b === 3 || o.b === 12) ? 'f_conifer' : 'f_broadleaf'; wimg(c, nm, 0, 0.45, 0.9); return; }   // 遠景の森のかたまり
     const i = o.idx || 0, L = BTREE[o.b];
     if (i <= 3 && L) { if ((() => { const nm = L[Math.floor((o.seed || 0) * 997 + i) % L.length]; return wimg(c, nm, 0, 0.45, /cactus|bush|dead|crystal/.test(nm) ? 0.6 : 0.9); })()) return; }
     if (i <= 3 && !L) return;   // 気候に合う木が無い所には何も描かない
