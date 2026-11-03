@@ -30,7 +30,10 @@ const SekaiSprites = (function () {
   // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
   function frac(x) { return x - Math.floor(x); }
   function mountain(c, o) {
-    { const hr = o.hr == null ? 0.7 : o.hr, w = 0.75 + 0.55 * hr; if (wimg(c, o.snow || hr > 0.75 ? 'C11' : (hr < 0.3 ? 'C13' : 'C12'), 0, 0.05, w)) return; }
+    { const hr = o.hr == null ? 0.7 : o.hr, sd = o.seed || 0.5;   // 高さで5段階に分け、高い山ほど大きく描く(丘→岩山→高い岩山→雪山→大雪峰)
+      const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.5, 0.75, 1.05, 1.4, 1.9][tier];
+      const nm = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
+      if (wimg(c, nm, 0, 0.05, W)) return; }
     const P = pal(o.b), sd = o.seed || 0.5, hr = o.hr == null ? 0.7 : o.hr;
     const px = (frac(sd * 7.3) - 0.5) * 0.36, hh = (0.5 + 0.55 * hr) * (0.85 + 0.3 * frac(sd * 3.1)), wl = 0.28 + 0.2 * frac(sd * 5.7), wr = 0.28 + 0.2 * frac(sd * 11.3);
     const n = 1 + (frac(sd * 13.7) * 3 | 0), lw = LW * (0.5 + 0.4 * hr);
@@ -54,7 +57,7 @@ const SekaiSprites = (function () {
   }
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
-    if (wimg(c, 'C15', 0, 0.05, 1.15)) return;
+    if (wimg(c, 'C15', 0, 0.05, 1.5)) return;
     const P = pal(o.b === 1 ? 5 : 12), glow = 0.65 + 0.35 * Math.sin(t * 0.004 + (o.seed || 0) * 9);
     c.save(); groundShadow(c, 0.58);
     poly(c, [[-0.64, 0], [-0.17, -0.66], [0.17, -0.66], [0.64, 0]], '#8a6a62', true);
