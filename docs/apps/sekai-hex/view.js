@@ -119,7 +119,7 @@ void main(){
   }
 
   // ---- 絵記号: 絵本・図鑑・絵地図のように、土地ごとの生き物や目印を絵で添える ----
-  const STAMPS = { 1: ['penguin', 'seal', 'polar', 'arcticfox', 'icegiant', 'snowwoman'], 2: ['deer', 'wolf', 'owl'], 3: ['bear', 'moose', 'gwolf', 'fox', 'forest_troll', 'dryad'], 4: ['horse', 'eagle', 'sheep'], 5: ['camel', 'scorpion', 'mummy', 'sandworm'], 6: ['cow', 'bison', 'sheep'], 7: ['sheep', 'goat', 'bush'], 8: ['fox', 'mushroom', 'boar', 'wwolf'], 9: ['owl', 'fairy', 'deer'], 10: ['slion', 'selephant', 'sgiraffe', 'manticore'], 11: ['parrot', 'monkey', 'jaguar', 'anaconda', 'hydra'], 12: ['hgoat', 'heagle', 'hwyvern', 'hgolem'] };
+  const STAMPS = { 1: ['penguin', 'seal', 'polar', 'arcticfox', 'icegiant', 'snowwoman'], 2: ['treindeer', 'tfox', 'mammoth', 'slime'], 3: ['bear', 'moose', 'gwolf', 'fox', 'forest_troll', 'dryad'], 4: ['chorse', 'cbison', 'ceagle', 'cwolf'], 5: ['camel', 'scorpion', 'mummy', 'sandworm'], 6: ['gcow', 'gsheep', 'ghare', 'gfairy'], 7: ['mgoat', 'mdonkey', 'mcentaur', 'gsheep'], 8: ['fox', 'mushroom', 'boar', 'wwolf'], 9: ['oowl', 'obear', 'ofairy', 'deer'], 10: ['slion', 'selephant', 'sgiraffe', 'manticore'], 11: ['parrot', 'monkey', 'jaguar', 'anaconda', 'hydra'], 12: ['hgoat', 'heagle', 'hwyvern', 'hgolem'] };
   const SEA_STAMPS = ['whale', 'ship', 'octopus', 'shark', 'sail', 'dolphin'], DEEP_STAMPS = ['serpent', 'squid', 'mermaid', 'whale'];   // 深い海には「ここにドラゴンあり」の怪物
   function stampFor(b, h, coast, r) { // 生き物もアニメ風の絵(sprites.js の animal)
     let a;
