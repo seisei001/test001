@@ -613,8 +613,13 @@ const SekaiSprites = (function () {
     c.save(); c.beginPath(); c.ellipse(0, 0, 0.56, 0.56 * (o.cp || 0.7), 0, 0, 6.2832); c.clip(); c.globalAlpha = 0.92; c.imageSmoothingEnabled = false;
     const k = o.idx || 48; c.drawImage(im, (k % 8) * 64, ((k / 8) | 0) * 64, 64, 64, -0.56, -0.56 * (o.cp || 0.7), 1.12, 1.12 * (o.cp || 0.7)); c.restore();
   }
-  const TREES = ['t_fir', 't_oak', 't_birch', 't_autumn', 't_bush', 't_oak', 't_fir', 't_birch'];
-  function flora(c, o) { const i = o.idx || 0, nm = TREES[(i * 7 + 3) % TREES.length]; if (!wimg(c, nm, 0, 0.45, 0.9)) kimg(c, 'env', i, 0, 0.45, 1); }
+  const BTREE = { 1: ['t_snow', 't_snow', 't_fir'], 2: ['t_dead', 't_bush', 't_snow'], 3: ['t_fir', 't_fir', 't_snow'], 4: ['t_birch', 't_fir', 't_oak'], 5: ['t_cactus', 't_cactus', 't_dead'], 6: ['t_oak', 't_birch'], 7: ['t_oak', 't_bush'], 8: ['t_oak', 't_birch', 't_autumn'], 9: ['t_oak', 't_fir', 't_oak'], 10: ['t_oak', 't_bush', 't_dead'], 11: ['t_palm', 't_palm', 't_bamboo'], 12: ['t_fir', 't_snow'] };
+  function flora(c, o) {   // 木(idx 0-3)は気候ごとの木。岩・花などは従来の素材のまま
+    const i = o.idx || 0, L = BTREE[o.b];
+    if (i <= 3 && L) { if ((() => { const nm = L[Math.floor((o.seed || 0) * 997 + i) % L.length]; return wimg(c, nm, 0, 0.45, /cactus|bush|dead/.test(nm) ? 0.6 : 0.9); })()) return; }
+    if (i <= 3 && !L) return;   // 気候に合う木が無い所には何も描かない
+    kimg(c, 'env', i, 0, 0.45, 1);
+  }
   const TABLE = { field, flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
   function draw(c, kind, o, t) { const f = TABLE[kind]; if (f) f(c, o, t); }
   return { draw, kinds: Object.keys(TABLE) };

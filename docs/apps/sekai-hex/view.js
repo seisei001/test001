@@ -23,7 +23,7 @@ precision highp float;
 precision mediump float;
 #endif
 varying vec3 vCol; varying vec3 vP; varying vec2 vG; varying float vId;
-uniform float uPer, uCont, uPat, uFogR; uniform vec2 uPh; uniform vec3 uFogC;
+uniform sampler2D uTex; uniform float uPer, uCont, uPat, uFogR, uTexOn; uniform vec2 uPh; uniform vec3 uFogC;
 float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 void main(){
   vec3 c=vCol; float id=floor(vId+0.5);
@@ -38,6 +38,9 @@ void main(){
     else if(id>2.5&&id<3.5){ float yy=w.y*1.4; float row=fract(yy); float seg=fract(w.x*0.6+floor(yy)*0.37); float l=smoothstep(0.0,0.06,row)*(1.0-smoothstep(0.1,0.16,row))*step(seg,0.55); c=mix(c,c*vec3(0.6,0.8,0.95),l*0.6); }
     else if(id>3.5&&id<4.5){ float s2=fract(w.x*0.9); float l=smoothstep(0.35,0.4,s2)*(1.0-smoothstep(0.5,0.55,s2)); c*=1.0-0.1*l; }
   }
+  if(id>4.5&&id<10.5&&uTexOn>0.5){ float tk=id-5.0; vec2 m=(vP.xy+uPh)/(uPer*20.0); vec2 f=abs(fract(m*0.5)*2.0-1.0); f=clamp(f,0.004,0.996);
+    vec3 tx=texture2D(uTex,vec2((mod(tk,4.0)+f.x)*0.25,(floor(tk/4.0)+f.y)*0.5)).rgb*2.0;
+    float amt=0.85; c=clamp(c*mix(vec3(1.0),tx,amt),0.0,1.0); }
   float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); c=mix(c,uFogC,fg);
   gl_FragColor=vec4(c,1.0);
 }`;
@@ -133,7 +136,9 @@ void main(){
     const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); const dext = gl.getExtension('OES_standard_derivatives'); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, (dext ? '#extension GL_OES_standard_derivatives : enable\n#define FW(x) fwidth(x)\n' : '#define FW(x) 0.03\n') + FS_BODY)); gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
     gl.useProgram(prog);
-    const U = {}; ['uOff', 'uYaw', 'uHalf', 'uPpm', 'uCosP', 'uSinP', 'uEx', 'uD', 'uZ0', 'uPer', 'uCont', 'uPat', 'uFogR', 'uPh', 'uFogC'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+    let GTEX = null, gtOn = 0;   // 地面の質感(assets/ground.png)。読み込めるまでは従来の色だけ
+    if (typeof Image !== 'undefined') { const gi = new Image(); gi.onload = () => { GTEX = gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GTEX); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, gi); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gtOn = 1; changed && changed(); }; gi.src = 'assets/ground.png?v=' + (window.APP_VER || '0'); }
+    const U = {}; ['uOff', 'uYaw', 'uHalf', 'uPpm', 'uCosP', 'uSinP', 'uEx', 'uD', 'uZ0', 'uPer', 'uCont', 'uPat', 'uFogR', 'uPh', 'uFogC', 'uTex', 'uTexOn'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
     const aPos = gl.getAttribLocation(prog, 'aPos'), aCol = gl.getAttribLocation(prog, 'aCol');
     const vbo = gl.createBuffer(), selBuf = gl.createBuffer();
     gl.enable(gl.DEPTH_TEST); gl.clearColor(0.05, 0.1, 0.16, 1); const FOGC = [0.05, 0.1, 0.16];
@@ -292,7 +297,14 @@ void main(){
         const shade = h > 0 ? Math.min(1.25, Math.max(0.5, 0.58 + 0.62 * nd + curv)) : 1.0;
         const pk = PK; COL[i * 3] = col[0]; COL[i * 3 + 1] = col[1]; COL[i * 3 + 2] = col[2]; SHD[i] = shade;
         if (pass === 1) continue;
-        PID = h > 0 ? pk : 1;
+        let pid = h > 0 ? pk : 1;
+        if (h > 0 && pk !== 4) { // 地表の写真風テクスチャ 0草 1ひび割れ 2砂 3雪 4礫 5湿地
+          const bb = bs[i]; let tk = 0;
+          if (Math.min(col[0], col[1], col[2]) > 205 || bb === 1) tk = 3; else if (pk === 3) tk = 5; else if (pk === 2 || bb === 5) tk = (slope > 0.12 ? 4 : 2);
+          else if (bb === 2 || bb === 12 || slope > 0.14) tk = 4; else if ((bb === 10 || bb === 7) && nzB > 0.5) tk = 1; else tk = 0;
+          pid = 5 + tk;
+        }
+        PID = pid;
         { // アニメ風の絵(山・火山・街・城・目印)を選ぶ。選ばれなければ生き物の絵記号
           const sr = hash2(q, r, L + 60), sr2 = hash2(q, r, L + 62), sr3 = hash2(q, r, L + 63), b0 = bs[i]; let spec = null;
           if (FV.has(L + ',' + q + ',' + r)) spec = { k: 'volcano', b: b0, seed: sr, active: true };
@@ -312,8 +324,8 @@ void main(){
           }
           if (!spec && h > 0 && L >= 3) { // 深い層の木・茂み・岩(素材の絵、実寸)。森の気候で木が多く、急な所は岩
             const forest = b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11, grass = b0 === 4 || b0 === 6 || b0 === 7 || b0 === 10, k0 = L === 3 ? 0 : L === 4 ? 1 : 2;
-            const pT = forest ? [0.4, 0.6, 0.05][k0] : grass ? [0.06, 0.1, 0.008][k0] : 0, pR = (slope > 0.1 || h > 1800) ? [0.15, 0.2, 0.02][k0] : [0.01, 0.02, 0.002][k0];
-            if (sr3 < pT) spec = { k: 'flora', idx: [0, 1, 2, 3, 2, 3][(sr2 * 6) | 0], m: 7 + sr * 3 };
+            const pT = forest ? [0.4, 0.6, 0.05][k0] : grass ? [0.06, 0.1, 0.008][k0] : ({ 1: 0.05, 2: 0.06, 5: 0.04, 12: 0.05 }[b0] || 0) * [1, 1.6, 0.15][k0], pR = (slope > 0.1 || h > 1800) ? [0.15, 0.2, 0.02][k0] : [0.01, 0.02, 0.002][k0];
+            if (sr3 < pT) spec = { k: 'flora', b: b0, seed: sr, idx: [0, 1, 2, 3, 2, 3][(sr2 * 6) | 0], m: 7 + sr * 3 };
             else if (sr2 < pR) spec = { k: 'flora', idx: (h > 1500 && sr < 0.25) ? [8, 9, 10, 11, 16, 17, 18][(sr3 * 7) | 0] : [6, 7, 14, 15][(sr * 4) | 0], m: 3 + sr3 * 3 };
             else if (grass && sr < 0.02 * [1, 2, 0.3][k0]) spec = { k: 'flora', idx: sr3 < 0.5 ? 13 : 19, m: 2.2 };
           }
@@ -416,7 +428,7 @@ void main(){
       if (Math.abs(dz) > 0.002 * mesh.s) { st.z0 += dz * 0.35; changed(); } else st.z0 = tz;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.useProgram(prog);
+      gl.useProgram(prog); if (GTEX) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GTEX); gl.uniform1i(U.uTex, 0); } gl.uniform1f(U.uTexOn, gtOn);
       gl.uniform2f(U.uOff, mesh.ox - st.fx, mesh.oy - st.fy);
       gl.uniform2f(U.uYaw, Math.cos(st.yaw), Math.sin(st.yaw));
       gl.uniform2f(U.uHalf, st.W / 2, st.H / 2);
