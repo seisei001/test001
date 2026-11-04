@@ -92,7 +92,7 @@ body.emb-rule #modeSeg,body.emb-rule #optText,body.emb-rule #optImg,body.emb-rul
 body.emb-warp #optRule,body.emb-edit #optRule,body.emb-shape #optRule{display:none!important;}
 #shapeSeg{display:none;}body.emb-shape #shapeSeg{display:inline-flex;}
 body.emb-shape #modeSeg,body.emb-shape #optText,body.emb-shape #optImg,body.emb-shape #optFix,body.emb-shape #optOcr,body.emb-shape #modeHint,body.emb-shape #selPanel{display:none!important;}
-body.emb-edit #optTilt,body.emb-edit #optCrop,body.emb-edit #optRot,body.emb-warp #optTilt,body.emb-warp #optCrop,body.emb-warp #optRot,body.emb-rule #optTilt,body.emb-rule #optCrop,body.emb-rule #optRot{display:none!important;}
+body.emb-edit #optTilt,body.emb-edit #optCrop_x,body.emb-edit #optRot,body.emb-warp #optTilt,body.emb-warp #optCrop_x,body.emb-warp #optRot,body.emb-rule #optTilt,body.emb-rule #optCrop_x,body.emb-rule #optRot{display:none!important;}
 #ov .rl{position:absolute;cursor:pointer;touch-action:manipulation;}
 #ov .rl .rln{position:absolute;pointer-events:none;background:rgba(37,99,235,.38);border-radius:1px;}
 #ov .rl:hover .rln{background:rgba(37,99,235,.7);}
@@ -125,6 +125,7 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 #pagewrap{position:relative;display:inline-block;max-width:100%;line-height:0;}
 #pz{display:inline-flex;gap:2px;margin-left:6px;}#pz button{min-width:30px;padding:3px 6px;}
 #pagewrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:default;}
+.wlab{font-weight:600;font-size:.8rem;color:var(--muted);margin-left:6px;white-space:nowrap;}
 #ov{text-align:left;position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;user-select:none;-webkit-user-select:none;}
 #ov.draw{cursor:crosshair;touch-action:manipulation;}   /* 指の1本ドラッグは、ふつうのスクロール。範囲指定は、何もない所の長押し→ドラッグ か 2本指ドラッグ */
 .ring{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:3px solid #2563eb;border-radius:50%;pointer-events:none;animation:ringf .6s forwards;z-index:8;transform:scale(var(--zs,1));}
@@ -240,18 +241,18 @@ body.pt-touch .grip::after{inset:-12px;}
 <span class="sub helptext">初回だけ、認識データをダウンロードします(最高精度は約36MB〜、キャッシュされます)。最高精度は NDLOCR-Lite(国立国会図書館・CC BY 4.0)のモデルを使用しています</span>
 </div>
 <div class="row hidden" id="optWarp" style="margin-bottom:8px">
-<div class="seg"><button id="wkPage" class="on">一括(ページ全体)</button><button id="wkPart">部分(範囲を指定)</button></div>
-<button class="sub-btn" id="wAuto">紙の四隅を自動で探す</button><label id="wEraseLbl" class="hidden"><input type="checkbox" id="wErase" checked> 元の場所は消す</label><button class="sub-btn hidden" id="wDstReset">貼り付け先を元の場所に戻す</button>
+<span class="wlab">① 範囲</span><div class="seg"><button id="wkPage" class="on">ページ全体</button><button id="wkPart">範囲を指定</button></div>
+<button class="sub-btn" id="wAuto" title="紙の四隅を探して、その形を範囲にします">四隅を自動で探す</button><button class="sub-btn" id="wAutoMargin" title="文字や絵のある所を、四角い範囲にします">余白を自動で除く</button>
+<span class="wlab">② 補正</span><div class="seg"><button id="wfStraight" class="on" title="範囲を、まっすぐな長方形に直します">まっすぐに直す</button><button id="wfAsis" title="範囲の形のまま、直しません">直さない</button></div>
+<span class="wlab">③ 置き場所</span><button class="sub-btn" id="wDstReset" title="緑の枠(置く場所)を、初めの位置・形に戻します">初めの位置に戻す</button><label id="wEraseLbl"><input type="checkbox" id="wErase" checked> 元の場所は消す</label>
+<span class="wlab">④ まわり</span><div class="seg"><button id="waKeep">そのまま</button><button id="waWhite">白くする</button><button id="waCrop" class="on">切り抜く</button></div>
 <button id="wApply">補正する</button>
 <button class="sub-btn" id="wCancel">やめる</button>
 </div>
-<div class="seg" id="shapeSeg"><button data-t="warp" class="on">歪み補正</button><button data-t="tilt">傾き補正</button><button data-t="crop">切り抜き</button><button data-t="rot">回転・反転</button></div>
+<div class="seg" id="shapeSeg"><button data-t="warp" class="on">範囲と補正</button><button data-t="tilt">傾き補正</button><button data-t="rot">回転・反転</button></div>
 <div class="row hidden" id="optTilt" style="margin-bottom:8px">
 <label>角度(度) <input type="number" id="shAng" value="0" min="-20" max="20" step="0.1" style="width:5em"></label><input type="range" id="shAngR" min="-20" max="20" step="0.1" value="0" style="width:170px">
 <button class="sub-btn" id="shAuto">自動で傾きを探す</button><button id="shTiltApply">傾きを直す</button>
-</div>
-<div class="row hidden" id="optCrop" style="margin-bottom:8px">
-<button class="sub-btn" id="shCropAuto">余白を自動で切る範囲にする</button><button class="sub-btn" id="shCropFree" title="四隅を、好きな位置に動かせる範囲にします(斜め・台形でもOK)">四隅を自由に動かす</button><button class="sub-btn" id="shCropQuad" title="紙の四隅を探して、その形の範囲にします">四隅を自動で探す</button><button class="sub-btn" id="shCropAll">ページ全体に戻す</button><button id="shCropApply">この範囲で切り抜く</button><button class="sub-btn hidden" id="shCropStraight" title="四隅の形を、まっすぐな長方形に直して切り抜きます">まっすぐに直して切り抜く</button><button class="sub-btn" id="shCropMove" title="この範囲を切り抜いて、好きな場所・形に動かして貼ります">この範囲を切り抜いて動かす</button><button class="sub-btn" id="shCropKeep" title="ページの大きさはそのまま。選んだ範囲のまわりを白くします">この範囲だけ残す(まわりは白)</button>
 </div>
 <div class="row hidden" id="optRot" style="margin-bottom:8px">
 <button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
@@ -577,14 +578,13 @@ function setMode(m){
   $("optOcr").classList.toggle("hidden",m!=="ocr");
   $("optWarp").classList.toggle("hidden",m!=="warp");
   $("optRule").classList.toggle("hidden",m!=="rule");
-  $("optTilt").classList.toggle("hidden",m!=="tilt");$("optCrop").classList.toggle("hidden",m!=="crop");$("optRot").classList.toggle("hidden",m!=="rot");
-  if(["warp","tilt","crop","rot"].includes(m)){shapeTool=m;[...$("shapeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.t===m));}
+  $("optTilt").classList.toggle("hidden",m!=="tilt");$("optRot").classList.toggle("hidden",m!=="rot");
+  if(["warp","tilt","rot"].includes(m)){shapeTool=m;[...$("shapeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.t===m));}
   if(m!=="tilt"&&m!=="warp")$("wPrevBox").classList.add("hidden");
   if(m==="tilt")tiltSet(0);
-  if(m==="crop"&&pdfView)cropInit();
   if(m!=="warp"){warp=null;$("wPrevBox").classList.add("hidden");}
   else{updateWarpUi();if(warpKind==="page"&&pdfView&&!warp)initWarpPage();}
-  ov.classList.toggle("draw",m!=="rule");ov.classList.toggle("noitems",m==="ocr"||m==="warp"||m==="crop"||m==="tilt"||m==="rot");   // 範囲指定のときは、部品の上からでもドラッグできる
+  ov.classList.toggle("draw",m!=="rule");ov.classList.toggle("noitems",m==="ocr"||m==="warp"||m==="tilt"||m==="rot");   // 範囲指定のときは、部品の上からでもドラッグできる
   renderOverlay();
   if(m==="sel"&&pdfView)loadRuns().then(renderOverlay).catch(()=>{});
 }
@@ -1257,7 +1257,6 @@ function renderOverlay(){
     ov.appendChild(el);itemEls.set(it.id,el);boxStyle(it,el);placeGrip(it,el);
   });
   if(mode==="warp"){if(!warp&&warpKind==="page")initWarpPage();else renderWarp();}
-  else if(mode==="crop")renderCrop();
 }
 // 枠の大きさに合わせて文字サイズを決める(枠に収まる最大サイズ。複数行・サイズ混在は相対比を保つ)
 const fitsAt=(it,g)=>{const d=measureHost(it,g);const ok=d.scrollHeight<=it.vh+0.5&&d.scrollWidth<=it.vw+0.5;d.remove();return ok;};
@@ -1510,7 +1509,7 @@ function beginRange(e){
     const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
     const tap=w<6&&h<6;let it=null;
     if(mode==="warp"){
-      if(warpKind==="part"){if(!tap&&w>20&&h>20)createPartWarp(x,y,w,h);else status("歪んでいる部分を、範囲でドラッグしてください。");}
+      if(warpKind==="part"){if(!tap&&w>20&&h>20)createPartWarp(x,y,w,h);else status("直したい範囲を、ドラッグして指定してください。");}
       return;
     }
     if(mode==="ocr"){
@@ -1559,7 +1558,7 @@ function beginRange(e){
   ov.addEventListener("pointermove",mv);ov.addEventListener("pointerup",fin);ov.addEventListener("pointercancel",fin);
 }
 function rangeOk(){
-  if(!bytes||mode==="rule"||mode==="crop"||mode==="tilt"||mode==="rot")return false;
+  if(!bytes||mode==="rule"||mode==="tilt"||mode==="rot")return false;
   if(mode==="img"&&!imgData){status("先に「画像を選ぶ」で画像を選んでください。");return false;}
   return true;
 }
@@ -1597,7 +1596,7 @@ ov.addEventListener("touchmove",e=>{if(tlp&&tlp.armed&&e.touches.length<2){if(e.
 window.addEventListener("resize",()=>renderOverlay());
 
 // ====== 歪み補正: 一括(台形補正) / 部分(上下左右のベジェ曲線で曲面を伸ばす) ======
-let warp=null,warpKind="page",warpDst=null,warpSvg=null,warpHandles=[],warpLines=[],warpPrevTimer=null,warpPrevSrc=null;
+let warp=null,warpKind="page",warpOpt={fix:"straight",around:"crop"},warpDst=null,warpSvg=null,warpHandles=[],warpLines=[],warpPrevTimer=null,warpPrevSrc=null;
 const lerp2=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
 function bez(p0,c1,c2,p3,t){const u=1-t,a=u*u*u,b=3*u*u*t,c=3*u*t*t,d=t*t*t;return[a*p0[0]+b*c1[0]+c*c2[0]+d*p3[0],a*p0[1]+b*c1[1]+c*c2[1]+d*p3[1]];}
 // 曲線を「長さ」で等分に引けるようにする(文字の間隔が偏らないように)
@@ -1686,25 +1685,40 @@ function findPaperQuad(cv){
 }
 const dist2=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 function warpRatio(wp){const P=warpP(wp);return((dist2(P.tl,P.bl)+dist2(P.tr,P.br))/2)/(((dist2(P.tl,P.tr)+dist2(P.bl,P.br))/2)||1);}
+const SVGNS="http://www.w3.org/2000/svg";
 function updateWarpUi(){
   $("wkPage").classList.toggle("on",warpKind==="page");$("wkPart").classList.toggle("on",warpKind==="part");
-  $("wAuto").classList.toggle("hidden",warpKind!=="page");
-  const part=warpKind==="part"&&!!warp&&warp.kind==="part";$("wEraseLbl").classList.toggle("hidden",!part);$("wDstReset").classList.toggle("hidden",!part);
+  $("wfStraight").classList.toggle("on",warpOpt.fix==="straight");$("wfAsis").classList.toggle("on",warpOpt.fix==="asis");
+  $("waKeep").classList.toggle("on",warpOpt.around==="keep");$("waWhite").classList.toggle("on",warpOpt.around==="white");$("waCrop").classList.toggle("on",warpOpt.around==="crop");
+  $("wEraseLbl").classList.toggle("hidden",warpOpt.around!=="keep");$("wDstReset").classList.toggle("hidden",!warp);
 }
-function initWarpPage(){
+// 補正後の、まっすぐな大きさ(pt)。ページ全体は幅をページに合わせ、高さは紙の縦横比から。範囲は、四隅の辺の長さの平均
+function warpNat(wp){
+  const P=warpP(wp);
+  if(wp.whole)return{w:VW,h:VW*warpRatio(wp)};
+  return{w:Math.max(8,(dist2(P.tl,P.tr)+dist2(P.bl,P.br))/2),h:Math.max(8,(dist2(P.tl,P.bl)+dist2(P.tr,P.br))/2)};
+}
+// 置き場所(緑の枠)の初めの形: 「まっすぐに直す」なら長方形(ページに収まる大きさ)、「直さない」なら範囲と同じ形
+function warpInitDst(wp){
+  const P=warpP(wp),q=[P.tl,P.tr,P.br,P.bl];
+  if(warpOpt.fix==="asis")wp.dst=q.map(a=>a.slice());
+  else{const n=warpNat(wp),sc=Math.min(1,VW/n.w,VH/n.h),w=n.w*sc,h=n.h*sc,x=Math.max(0,Math.min(VW-w,Math.min(...q.map(a=>a[0])))),y=Math.max(0,Math.min(VH-h,Math.min(...q.map(a=>a[1]))));
+    wp.dst=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];}
+  wp.dstTouched=false;
+}
+function initWarpPage(){   // 範囲=ページ全体(四隅は少し内側から始める)
   const m=0.04;
-  warp={kind:"page",rect:{x:0,y:0,w:VW,h:VH},curved:false,G:null};
+  warp={kind:"part",whole:true,rect:{x:0,y:0,w:VW,h:VH},curved:false,G:null,dst:null};
   warp.G=[[[VW*m,VH*m],null,null,null,[VW*(1-m),VH*m]],[],[],[],[[VW*m,VH*(1-m)],null,null,null,[VW*(1-m),VH*(1-m)]]];
-  gridFromQuad(warp);
+  gridFromQuad(warp);warpInitDst(warp);updateWarpUi();
   renderWarp();warpPreviewSoon();
-  status("紙の四隅の青い点を、写真の紙の角に合わせてください(「紙の四隅を自動で探す」で提案できます)。紙が曲がっていれば、白い点を動かすと、そこを通る曲線で曲げられます。");
+  status("① 紙の四隅の青い点を、写真の紙の角に合わせてください(「四隅を自動で探す」で提案できます)。紙が曲がっていれば、白い点を動かすと、そこを通る曲線で曲げられます。③ 緑の枠が、直した画像を置く場所です。");
 }
 function createPartWarp(x,y,w,h){
   const G=[];for(let r=0;r<GN;r++){G.push([]);for(let c=0;c<GN;c++)G[r].push([x+w*c/(GN-1),y+h*r/(GN-1)]);}
-  warp={kind:"part",rect:{x,y,w,h},curved:false,G,dst:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]};updateWarpUi();renderWarp();warpPreviewSoon();
-  status("青い四隅を、直したい部分の角に合わせてください(中の白い点もついてきます)。周りの白い点や中の白い点を動かすと、その点を通る曲線で曲げられます(元の画像の範囲)。緑の枠が、直した画像を置く場所です。緑の枠をドラッグして動かし、緑の角で形と大きさを決めてください。");
+  warp={kind:"part",whole:false,rect:{x,y,w,h},curved:false,G,dst:null};warpInitDst(warp);updateWarpUi();renderWarp();warpPreviewSoon();
+  status("① 青い四隅を、直したい部分の角に合わせてください(斜め・台形でもOK。中の白い点を動かすと曲げられます)。③ 緑の枠が、直した画像を置く場所です。中をドラッグして動かし、緑の角で形・大きさを、上の丸で回転を決めてください。");
 }
-const SVGNS="http://www.w3.org/2000/svg";
 function renderWarp(){
   if(warpSvg){warpSvg.remove();warpSvg=null;}warpHandles=[];warpLines=[];
   if(!warp||mode!=="warp")return;
@@ -1712,7 +1726,6 @@ function renderWarp(){
   svg.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:8";
   const mk=(tag,attrs)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);svg.appendChild(e);return e;};
   const k=K(),px=v=>v/k;
-  if(warp.kind==="part")mk("rect",{x:warp.rect.x,y:warp.rect.y,width:warp.rect.w,height:warp.rect.h,fill:"none",stroke:"#dc2626","stroke-width":px(1.5),"stroke-dasharray":`${px(6)} ${px(4)}`});
   for(let i=0;i<=4;i++){
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"h",f:i/4});
     warpLines.push({el:mk("polyline",{fill:"none",stroke:"rgba(37,99,235,.7)","stroke-width":px(i===0||i===4?2:1)}),dir:"v",f:i/4});
@@ -1745,7 +1758,7 @@ function updateWarpSvg(){
 }
 function dragDst(el,idx){   // idx=-1: 四角形ぜんたいを動かす / 0〜3: その角だけ動かす
   el.addEventListener("pointerdown",e=>{
-    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);warp.dstTouched=true;
     const k=K(),sx=e.clientX,sy=e.clientY,D0=warp.dst.map(q=>q.slice());
     const mv=ev=>{const dx=(ev.clientX-sx)/k,dy=(ev.clientY-sy)/k;
       if(idx<0){const mnx=Math.min(...D0.map(q=>q[0])),mxx=Math.max(...D0.map(q=>q[0])),mny=Math.min(...D0.map(q=>q[1])),mxy=Math.max(...D0.map(q=>q[1]));
@@ -1758,7 +1771,7 @@ function dragDst(el,idx){   // idx=-1: 四角形ぜんたいを動かす / 0〜3
 }
 function dragRot(el){   // 緑の四角形を、真ん中のまわりに回す(つまみのある方向へ引いた角度に合わせる)
   el.addEventListener("pointerdown",e=>{
-    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
+    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);warp.dstTouched=true;
     const D0=warp.dst.map(q=>q.slice()),cx=D0.reduce((a,q)=>a+q[0],0)/4,cy=D0.reduce((a,q)=>a+q[1],0)/4,rc=ov.getBoundingClientRect(),k=K();
     const ang=ev=>Math.atan2((ev.clientY-rc.top)/k-cy,(ev.clientX-rc.left)/k-cx),a0=ang(e);
     const mv=ev=>{let da=ang(ev)-a0;if(ev.shiftKey){da=Math.round(da/(Math.PI/12))*(Math.PI/12);}   // Shiftで15度ずつ
@@ -1816,6 +1829,7 @@ function dragWarpHandle(el,r,c){
         if(r===0||r===last){const w0=r===0?1:0;for(let i=1;i<last;i++){const w=Math.abs(w0-i/last);warp.G[i][c]=[G0[i][c][0]+dx*w,G0[i][c][1]+dy*w];}}
         else if(c===0||c===last){const w0=c===0?1:0;for(let j=1;j<last;j++){const w=Math.abs(w0-j/last);warp.G[r][j]=[G0[r][j][0]+dx*w,G0[r][j][1]+dy*w];}}
       }
+      if(warp.dst&&!warp.dstTouched)warpInitDst(warp);   // 緑の枠を動かすまでは、範囲に合わせて自動で決める
       updateWarpSvg();
     };
     const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);warpPreviewSoon();};
@@ -1825,37 +1839,35 @@ function dragWarpHandle(el,r,c){
 function warpPreviewSoon(){clearTimeout(warpPrevTimer);warpPrevTimer=setTimeout(()=>renderWarpPreview().catch(e=>console.warn(e)),250);}
 async function renderWarpPreview(){
   if(!warp)return;
+  if(warpOpt.fix==="asis"){$("wPrevBox").classList.add("hidden");return;}   // 直さないときは、見本は出さない
   const Sp=Math.min(2,900/Math.max(VW,VH));
   if(!warpPrevSrc||warpPrevSrc.page!==cur||warpPrevSrc.bytes!==bytes)warpPrevSrc={page:cur,bytes,cv:await renderRegion(0,0,VW,VH,Sp)};
   const wp=warp;if(!wp)return;
-  let outW,outH;
-  if(wp.kind==="page"){outW=Math.min(520,Math.round(VW*Sp));outH=Math.round(outW*warpRatio(wp));}
-  else{const D=wp.dst||[[wp.rect.x,wp.rect.y],[wp.rect.x+wp.rect.w,wp.rect.y],[wp.rect.x+wp.rect.w,wp.rect.y+wp.rect.h],[wp.rect.x,wp.rect.y+wp.rect.h]],dw=Math.max(8,(dist2(D[0],D[1])+dist2(D[3],D[2]))/2),dh=Math.max(8,(dist2(D[0],D[3])+dist2(D[1],D[2]))/2),sc=Math.min(520/dw,Sp);outW=Math.max(8,Math.round(dw*sc));outH=Math.max(8,Math.round(dh*sc));}
+  const n=warpNat(wp),sc=Math.min(520/n.w,Sp),outW=Math.max(8,Math.round(n.w*sc)),outH=Math.max(8,Math.round(n.h*sc));
   const res=warpImage(warpPrevSrc.cv,makePixMap(wp,outW,outH),outW,outH,Sp);
   const pc=$("wPrev");pc.width=res.width;pc.height=res.height;pc.getContext("2d").drawImage(res,0,0);
   $("wPrevBox").classList.remove("hidden");
 }
+// 補正する: ① 範囲(青い四隅・曲線)の画像を、② 補正(まっすぐ/そのまま)して、③ 置き場所(緑の枠)に貼り、④ まわり(そのまま/白/切り抜く)を整える
 async function applyWarp(){
   if(!warp||!bytes)return;
   const wp=warp;await commit();   // 未確定の文字・画像は先にページへ書き込む(補正で一緒に整う)
-  status("歪みを補正中…");
-  const WS=Math.min(5,3000/Math.max(VW,VH));
-  const page=await renderRegion(0,0,VW,VH,WS);
-  let result,newW=VW,newH=VH;
-  if(wp.kind==="page"){
-    const ratio=warpRatio(wp),outW=Math.round(VW*WS),outH=Math.round(outW*ratio);
-    result=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);newH=VW*ratio;
+  status("補正中…");
+  const WS=Math.min(5,3000/Math.max(VW,VH)),page=await renderRegion(0,0,VW,VH,WS),around=warpOpt.around;
+  const orig=document.createElement("canvas");orig.width=page.width;orig.height=page.height;orig.getContext("2d").drawImage(page,0,0);   // 直す前のページ(貼る材料)
+  let D=wp.dst.map(q=>q.slice()),result=page,newW=VW,newH=VH;
+  if(around==="crop"){
+    let B;   // 切り抜いたページの範囲(ページ座標)。置き場所を動かしていなければ、まっすぐな大きさ(紙の大きさ)にする
+    if(warpOpt.fix==="straight"&&!wp.dstTouched){const n=warpNat(wp);B={x:0,y:0,w:n.w,h:n.h};D=[[0,0],[n.w,0],[n.w,n.h],[0,n.h]];}
+    else{const xs=D.map(q=>q[0]),ys=D.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys);B={x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y};D=D.map(q=>[q[0]-B.x,q[1]-B.y]);}
+    if(B.w<8||B.h<8){status("範囲が小さすぎます。");return;}
+    result=document.createElement("canvas");result.width=Math.max(1,Math.round(B.w*WS));result.height=Math.max(1,Math.round(B.h*WS));   // 材料(ページ)と同じ細かさで作る
+    const g=result.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,result.width,result.height);
+    pasteWarpToQuad(orig,result,{...wp,dst:D},WS);newW=B.w;newH=B.h;
   }else{
-    const D=wp.dst,same=!D||D.every((q,i)=>Math.hypot(q[0]-[wp.rect.x,wp.rect.x+wp.rect.w,wp.rect.x+wp.rect.w,wp.rect.x][i],q[1]-[wp.rect.y,wp.rect.y,wp.rect.y+wp.rect.h,wp.rect.y+wp.rect.h][i])<0.5);
-    if(same){   // 置き場所が元の範囲と同じ: 範囲の中を、まっすぐに直す
-      const r=wp.rect,outW=Math.round(r.w*WS),outH=Math.round(r.h*WS);
-      const patch=warpImage(page,makePixMap(wp,outW,outH),outW,outH,WS);
-      page.getContext("2d").drawImage(patch,Math.round(r.x*WS),Math.round(r.y*WS));result=page;
-    }else{   // 置き場所が別: 元の範囲の画像を直して、緑の四角形のところへ貼る(元の場所は、選べば白く消す)
-      const orig=document.createElement("canvas");orig.width=page.width;orig.height=page.height;orig.getContext("2d").drawImage(page,0,0);
-      if($("wErase").checked)eraseWarpSource(page,wp,WS);
-      pasteWarpToQuad(orig,page,wp,WS);result=page;
-    }
+    if(around==="white"){const g=page.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,page.width,page.height);}
+    else if($("wErase").checked)eraseWarpSource(page,wp,WS);
+    pasteWarpToQuad(orig,page,wp,WS);
   }
   const blob=await new Promise(res=>result.toBlob(res,"image/jpeg",0.92));
   const doc=await PDFDocument.load(bytes);
@@ -1865,21 +1877,38 @@ async function applyWarp(){
   warp=null;warpDst=null;$("wPrevBox").classList.add("hidden");
   await setBytes(await doc.save(),true);
   setMode(FORMKIND==="shape"?"warp":"sel");
-  status("歪みを補正しました(このページは画像になりました)。続けて「🔍 画像の文字を認識」で文字にできます。元に戻すで戻せます。");
+  status("補正しました(このページは画像になりました)。続けて「🔍 画像の文字を認識」で文字にできます。元に戻すで戻せます。");
 }
-$("wkPage").onclick=()=>{warpKind="page";warp=null;updateWarpUi();$("wPrevBox").classList.add("hidden");if(pdfView)initWarpPage();};
-$("wkPart").onclick=()=>{warpKind="part";warp=null;updateWarpUi();renderWarp();$("wPrevBox").classList.add("hidden");status("歪んでいる部分を、ページ上で範囲をドラッグして指定してください。");};
-$("wAuto").onclick=busy(async()=>{
-  if(!pdfView||!warp||warp.kind!=="page")return;
+const warpAround=a=>{warpOpt.around=a;updateWarpUi();};
+$("wkPage").onclick=()=>{warpKind="page";warp=null;warpAround("crop");$("wPrevBox").classList.add("hidden");if(pdfView)initWarpPage();};
+$("wkPart").onclick=()=>{warpKind="part";warp=null;warpAround("keep");renderWarp();$("wPrevBox").classList.add("hidden");status("① 直したい範囲を、ページ上でドラッグして指定してください(指定したあと、四隅は自由に動かせます)。");};
+$("wfStraight").onclick=()=>{warpOpt.fix="straight";if(warp){warpInitDst(warp);updateWarpSvg();warpPreviewSoon();}updateWarpUi();};
+$("wfAsis").onclick=()=>{warpOpt.fix="asis";if(warp){warpInitDst(warp);updateWarpSvg();warpPreviewSoon();}updateWarpUi();};
+$("waKeep").onclick=()=>warpAround("keep");$("waWhite").onclick=()=>warpAround("white");$("waCrop").onclick=()=>warpAround("crop");
+$("wAuto").onclick=busy(async()=>{   // 紙の四隅を探して、その形を範囲にする
+  if(!pdfView)return;
   status("紙の四隅を探しています…");
   const Sd=500/Math.max(VW,VH),cv=await renderRegion(0,0,VW,VH,Sd),q=findPaperQuad(cv);
   if(!q){status("紙の四隅を見つけられませんでした。手で四隅の点を合わせてください。");return;}
-  const sc=a=>[a[0]/Sd,a[1]/Sd];
-  warp.curved=false;warp.G[0][0]=sc(q.tl);warp.G[0][GN-1]=sc(q.tr);warp.G[GN-1][GN-1]=sc(q.br);warp.G[GN-1][0]=sc(q.bl);gridFromQuad(warp);
-  updateWarpSvg();warpPreviewSoon();
+  const sc=a=>[a[0]/Sd,a[1]/Sd],c4=[sc(q.tl),sc(q.tr),sc(q.br),sc(q.bl)];
+  if(!warp){if(warpKind==="page")initWarpPage();else{const xs=c4.map(a=>a[0]),ys=c4.map(a=>a[1]),x=Math.min(...xs),y=Math.min(...ys);createPartWarp(x,y,Math.max(...xs)-x,Math.max(...ys)-y);}}
+  warp.curved=false;warp.G[0][0]=c4[0];warp.G[0][GN-1]=c4[1];warp.G[GN-1][GN-1]=c4[2];warp.G[GN-1][0]=c4[3];gridFromQuad(warp);
+  if(!warp.dstTouched)warpInitDst(warp);
+  renderWarp();warpPreviewSoon();
   status("四隅の位置を提案しました。ずれていれば、点をドラッグして合わせてから「補正する」を押してください。");
 });
-$("wDstReset").onclick=()=>{if(!warp||warp.kind!=="part")return;const r=warp.rect;warp.dst=[[r.x,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h],[r.x,r.y+r.h]];updateWarpSvg();warpPreviewSoon();};
+$("wAutoMargin").onclick=busy(async()=>{   // 文字や絵のある範囲を、四角い範囲にする(まわりの余白を除く)
+  if(!pdfView)return;
+  const Sd=Math.min(1,500/Math.max(VW,VH)),cv=await renderRegion(0,0,VW,VH,Sd),w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const hist=new Uint32Array(64);for(let i=0;i<w*h;i++)hist[((d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)>>2)]++;
+  let bg=0;for(let i=1;i<64;i++)if(hist[i]>hist[bg])bg=i;bg=bg*4+2;   // いちばん多い明るさ=余白(背景)
+  let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=d[i]*.3+d[i+1]*.59+d[i+2]*.11;if(Math.abs(g-bg)>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+  if(x1<0){status("除く余白が見つかりませんでした。");return;}
+  const m=12/Sd*0.5,sx=1/Sd;x0=Math.max(0,x0*sx-m);y0=Math.max(0,y0*sx-m);x1=Math.min(VW,(x1+1)*sx+m);y1=Math.min(VH,(y1+1)*sx+m);
+  warpKind="part";warpAround("crop");createPartWarp(x0,y0,x1-x0,y1-y0);
+  status("文字や絵のある範囲を、範囲にしました。角の点をドラッグして調整してから「補正する」を押してください。");
+});
+$("wDstReset").onclick=()=>{if(!warp)return;warpInitDst(warp);updateWarpSvg();warpPreviewSoon();};
 $("wApply").onclick=busy(applyWarp);
 $("wCancel").onclick=()=>{warp=null;$("wPrevBox").classList.add("hidden");setMode(FORMKIND==="shape"?"warp":"sel");};
 
@@ -3420,123 +3449,7 @@ $("shAng").oninput=()=>tiltSet(+$("shAng").value||0);$("shAngR").oninput=()=>til
 $("shAuto").onclick=busy(async()=>{status("傾きを探しています…");const a=await tiltAutoAngle();if(a===null){status("文字や線が少なくて、傾きを探せませんでした。角度を手で合わせてください。");return;}tiltSet(a);status(`傾きを ${a} 度と見つけました。プレビューの目印の線に文字の行がそろっているか確かめて、「傾きを直す」を押してください。`);});
 $("shTiltApply").onclick=busy(tiltApply);
 // --- 切り抜き ---
-let crop=null,cropSvg=null;
-function cropInit(){crop={b:bytes,x:0,y:0,w:VW,h:VH};cropUi();}
-function cropSetQuad(q){const xs=q.map(a=>a[0]),ys=q.map(a=>a[1]),x=Math.min(...xs),y=Math.min(...ys);crop={b:bytes,x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,q};cropUi();}   // 四隅を決める(外枠の長方形も一緒に持つ。ほかの機能はこれを使う)
-function cropUi(){const e=$("shCropStraight");if(e)e.classList.toggle("hidden",!(crop&&crop.q));const f=$("shCropFree");if(f)f.classList.toggle("on",!!(crop&&crop.q));}
-function cropPoly(g,q,S,ox,oy){q.forEach((a,i)=>g[i?"lineTo":"moveTo"]((a[0]-ox)*S,(a[1]-oy)*S));g.closePath();}
-function renderCrop(){
-  if(cropSvg){cropSvg.remove();cropSvg=null;}
-  if(mode!=="crop"||!pdfView)return;
-  if(!crop||crop.b!==bytes)cropInit();
-  const k=K(),px=v=>v/k,svg=document.createElementNS(SVGNS,"svg");svg.setAttribute("viewBox",`0 0 ${VW} ${VH}`);
-  svg.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:8";
-  const mk=(tag,at)=>{const e=document.createElementNS(SVGNS,tag);for(const q in at)e.setAttribute(q,at[q]);svg.appendChild(e);return e;};
-  if(crop.q){   // 四隅が自由な範囲(斜め・台形)
-    const poly=()=>crop.q.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "),shadeQ=mk("path",{"fill-rule":"evenodd",fill:"rgba(0,0,0,.45)"}),bodyQ=mk("polygon",{fill:"transparent",stroke:"#2563eb","stroke-width":px(2)});
-    bodyQ.style.cssText="pointer-events:all;cursor:move;touch-action:none";
-    const hq=crop.q.map(()=>{const e=mk("circle",{r:px(10),fill:"#2563eb",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;touch-action:none;cursor:pointer";return e;});
-    const placeQ=()=>{const q=crop.q;shadeQ.setAttribute("d",`M0 0H${VW}V${VH}H0Z M${q.map(a=>a[0]+" "+a[1]).join("L")}Z`);bodyQ.setAttribute("points",poly());hq.forEach((e,i)=>{e.setAttribute("cx",q[i][0]);e.setAttribute("cy",q[i][1]);});};
-    placeQ();
-    const dragQ=(el,hi)=>el.addEventListener("pointerdown",e=>{
-      e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
-      const kk=K(),sx=e.clientX,sy=e.clientY,q0=crop.q.map(a=>a.slice());
-      const mv=ev=>{const dx=(ev.clientX-sx)/kk,dy=(ev.clientY-sy)/kk;let q;
-        if(hi<0){const mnx=Math.min(...q0.map(a=>a[0])),mxx=Math.max(...q0.map(a=>a[0])),mny=Math.min(...q0.map(a=>a[1])),mxy=Math.max(...q0.map(a=>a[1])),ddx=Math.max(-mnx,Math.min(VW-mxx,dx)),ddy=Math.max(-mny,Math.min(VH-mxy,dy));q=q0.map(a=>[a[0]+ddx,a[1]+ddy]);}
-        else{q=q0.map(a=>a.slice());q[hi]=[Math.max(0,Math.min(VW,q0[hi][0]+dx)),Math.max(0,Math.min(VH,q0[hi][1]+dy))];}
-        cropSetQuad(q);placeQ();};
-      const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);};
-      el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
-    });
-    dragQ(bodyQ,-1);hq.forEach((e,i)=>dragQ(e,i));
-    ov.appendChild(svg);cropSvg=svg;return;
-  }
-  const c=crop,shade=mk("path",{d:`M0 0H${VW}V${VH}H0Z M${c.x} ${c.y}V${c.y+c.h}H${c.x+c.w}V${c.y}Z`,"fill-rule":"evenodd",fill:"rgba(0,0,0,.45)"});
-  const body=mk("rect",{x:c.x,y:c.y,width:c.w,height:c.h,fill:"transparent",stroke:"#2563eb","stroke-width":px(2)});body.style.cssText="pointer-events:all;cursor:move;touch-action:none";
-  const H=[[0,0,-1,-1],[.5,0,0,-1],[1,0,1,-1],[1,.5,1,0],[1,1,1,1],[.5,1,0,1],[0,1,-1,1],[0,.5,-1,0]];   // 8つの持ち手: 位置の割合と、動かす辺(-1=左/上、1=右/下、0=動かさない)
-  const hs=H.map(h=>{const e=mk("circle",{r:px(h[2]&&h[3]?10:8),fill:"#2563eb",stroke:"#fff","stroke-width":px(2)});e.style.cssText="pointer-events:all;touch-action:none;cursor:pointer";return e;});
-  const place=()=>{const c=crop;shade.setAttribute("d",`M0 0H${VW}V${VH}H0Z M${c.x} ${c.y}V${c.y+c.h}H${c.x+c.w}V${c.y}Z`);body.setAttribute("x",c.x);body.setAttribute("y",c.y);body.setAttribute("width",c.w);body.setAttribute("height",c.h);
-    hs.forEach((e,i)=>{e.setAttribute("cx",c.x+c.w*H[i][0]);e.setAttribute("cy",c.y+c.h*H[i][1]);});};
-  place();
-  const drag=(el,hi)=>el.addEventListener("pointerdown",e=>{
-    if(hi<0&&crop.w*crop.h>=VW*VH*0.98){e.stopPropagation();cropNew(e);return;}   // ページ全体のときは、中をドラッグして、新しい範囲を決める(動かす余地がない)
-    e.stopPropagation();e.preventDefault();el.setPointerCapture(e.pointerId);
-    const kk=K(),sx=e.clientX,sy=e.clientY,c0={...crop};
-    const mv=ev=>{const dx=(ev.clientX-sx)/kk,dy=(ev.clientY-sy)/kk;let x0=c0.x,y0=c0.y,x1=c0.x+c0.w,y1=c0.y+c0.h;
-      if(hi<0){const ddx=Math.max(-x0,Math.min(VW-x1,dx)),ddy=Math.max(-y0,Math.min(VH-y1,dy));x0+=ddx;x1+=ddx;y0+=ddy;y1+=ddy;}
-      else{const [,,hx,hy]=H[hi];if(hx<0)x0=Math.max(0,Math.min(x1-20,x0+dx));if(hx>0)x1=Math.min(VW,Math.max(x0+20,x1+dx));if(hy<0)y0=Math.max(0,Math.min(y1-20,y0+dy));if(hy>0)y1=Math.min(VH,Math.max(y0+20,y1+dy));}
-      crop={b:c0.b,x:x0,y:y0,w:x1-x0,h:y1-y0};place();};
-    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);};
-    el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
-  });
-  drag(body,-1);hs.forEach((e,i)=>drag(e,i));
-  ov.appendChild(svg);cropSvg=svg;
-}
-function cropNew(e){   // ドラッグで、切り抜く範囲を新しく決める
-  e.preventDefault();const rc=ov.getBoundingClientRect(),kk=K(),X=ev=>Math.max(0,Math.min(VW,(ev.clientX-rc.left)/kk)),Y=ev=>Math.max(0,Math.min(VH,(ev.clientY-rc.top)/kk)),x0=X(e),y0=Y(e);
-  const mv=ev=>{const x1=X(ev),y1=Y(ev);crop={b:bytes,x:Math.min(x0,x1),y:Math.min(y0,y1),w:Math.abs(x1-x0),h:Math.abs(y1-y0)};renderCrop();};
-  const up=()=>{document.removeEventListener("pointermove",mv);if(crop.w<20||crop.h<20)cropInit();renderCrop();};
-  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
-}
-ov.addEventListener("pointerdown",e=>{if(mode==="crop"&&e.target===ov&&e.button<=0)cropNew(e);});   // 何もない所をドラッグ
-async function cropAuto(){   // 紙のまわりの余白(背景と同じ色の部分)を、自動で切る範囲にする
-  const Sd=Math.min(1,500/Math.max(VW,VH)),cv=await renderRegion(0,0,VW,VH,Sd),w=cv.width,h=cv.height,d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,w,h).data;
-  const hist=new Uint32Array(64);for(let i=0;i<w*h;i++)hist[((d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)>>2)]++;
-  let bg=0;for(let i=1;i<64;i++)if(hist[i]>hist[bg])bg=i;bg=bg*4+2;   // いちばん多い明るさ=余白(背景)
-  let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=d[i]*.3+d[i+1]*.59+d[i+2]*.11;if(Math.abs(g-bg)>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
-  if(x1<0){status("切る余白が見つかりませんでした。");return;}
-  const m=12/Sd*0.5,sx=1/Sd;x0=Math.max(0,x0*sx-m);y0=Math.max(0,y0*sx-m);x1=Math.min(VW,(x1+1)*sx+m);y1=Math.min(VH,(y1+1)*sx+m);
-  crop={b:bytes,x:x0,y:y0,w:x1-x0,h:y1-y0};renderCrop();status("文字や絵のある範囲を、切り抜く範囲にしました。角の点をドラッグして調整してから「この範囲で切り抜く」を押してください。");
-}
-async function cropApply(){
-  const c=crop;if(!c||c.w<10||c.h<10){status("切り抜く範囲が小さすぎます。");return;}
-  await commit();status("切り抜いています…");
-  const WS=shapeScale(c.w,c.h),cv=await renderRegion(c.x,c.y,c.w,c.h,WS);
-  if(c.q){const g=cv.getContext("2d");g.save();g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);g.moveTo(0,0);cropPoly(g,c.q,WS,c.x,c.y);g.fill("evenodd");g.restore();}   // 四隅の形の外は白
-  await replacePageImage(cv,c.w,c.h,"切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
-}
-async function cropKeep(){   // ページの大きさはそのまま、範囲の外を白抜きにする
-  const c=crop;if(!c||c.w<10||c.h<10){status("残す範囲が小さすぎます。");return;}
-  await commit();status("範囲のまわりを白くしています…");
-  const WS=shapeScale(VW,VH),cv=await renderRegion(0,0,VW,VH,WS),g=cv.getContext("2d"),k=cv.width/VW;
-  g.fillStyle="#fff";g.beginPath();g.rect(0,0,cv.width,cv.height);if(c.q)cropPoly(g,c.q,k,0,0);else g.rect(c.x*k,c.y*k,c.w*k,c.h*k);g.fill("evenodd");   // 外側だけ塗る(穴あきの図形)
-  await replacePageImage(cv,VW,VH,"範囲のまわりを白くしました(ページの大きさはそのまま・このページは画像になりました)。元に戻すで戻せます。");
-}
-$("shCropKeep").onclick=busy(cropKeep);
-async function cropStraight(){   // 四隅の形を、まっすぐな長方形に直して切り抜く
-  const c=crop;if(!c||!c.q){return;}
-  await commit();status("まっすぐに直して切り抜いています…");
-  const q=c.q,d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]),W=(d(q[0],q[1])+d(q[3],q[2]))/2,H=(d(q[0],q[3])+d(q[1],q[2]))/2;
-  if(W<10||H<10){status("範囲が小さすぎます。");return;}
-  const WS=shapeScale(W,H),pg=await renderRegion(0,0,VW,VH,WS),sw=pg.width,sh=pg.height,sd=pg.getContext("2d",{willReadFrequently:true}).getImageData(0,0,sw,sh).data;
-  const ow=Math.max(1,Math.round(W*WS)),oh=Math.max(1,Math.round(H*WS)),out=document.createElement("canvas");out.width=ow;out.height=oh;
-  const og=out.getContext("2d"),od=og.createImageData(ow,oh),o=od.data,F=squareToQuad(q[0],q[1],q[2],q[3]),kx=sw/VW,ky=sh/VH;
-  for(let y=0;y<oh;y++)for(let x=0;x<ow;x++){
-    const [px,py]=F((x+.5)/ow,(y+.5)/oh),X=px*kx-.5,Y=py*ky-.5,x0=Math.floor(X),y0=Math.floor(Y),fx=X-x0,fy=Y-y0,k=(y*ow+x)*4;
-    const xa=Math.max(0,Math.min(sw-1,x0)),xb=Math.max(0,Math.min(sw-1,x0+1)),ya=Math.max(0,Math.min(sh-1,y0)),yb=Math.max(0,Math.min(sh-1,y0+1));
-    const i00=(ya*sw+xa)*4,i10=(ya*sw+xb)*4,i01=(yb*sw+xa)*4,i11=(yb*sw+xb)*4;
-    for(let ch=0;ch<3;ch++)o[k+ch]=sd[i00+ch]*(1-fx)*(1-fy)+sd[i10+ch]*fx*(1-fy)+sd[i01+ch]*(1-fx)*fy+sd[i11+ch]*fx*fy;
-    o[k+3]=255;}
-  og.putImageData(od,0,0);
-  await replacePageImage(out,W,H,"四隅の形を、まっすぐに直して切り抜きました(このページは画像になりました)。元に戻すで戻せます。");
-}
-$("shCropStraight").onclick=busy(cropStraight);
-$("shCropFree").onclick=()=>{if(!crop)cropInit();if(crop.q){crop={b:bytes,x:crop.x,y:crop.y,w:crop.w,h:crop.h};cropUi();}else{const c=crop;cropSetQuad([[c.x,c.y],[c.x+c.w,c.y],[c.x+c.w,c.y+c.h],[c.x,c.y+c.h]]);}renderCrop();
-  status(crop.q?"四隅の青い丸を、好きな位置に動かしてください(斜めや台形でもOK)。":"四角形の範囲に戻しました。");};
-$("shCropQuad").onclick=busy(async()=>{   // 紙の四隅を探して、その形を範囲にする
-  status("四隅を探しています…");const Sd=500/Math.max(VW,VH),cv=await renderRegion(0,0,VW,VH,Sd),q=findPaperQuad(cv);
-  if(!q){status("四隅を見つけられませんでした。「四隅を自由に動かす」で手で合わせてください。");return;}
-  const sc=a=>[a[0]/Sd,a[1]/Sd];cropSetQuad([sc(q.tl),sc(q.tr),sc(q.br),sc(q.bl)]);renderCrop();
-  status("四隅を提案しました。ずれていれば青い丸を動かして、「まっすぐに直して切り抜く」「この範囲で切り抜く」などを押してください。");
-});
-$("shCropMove").onclick=()=>{   // 切り抜く範囲を、歪み補正の「部分」に渡す。緑の枠(置く場所)を動かす・角で変形して貼る
-  const c=crop;if(!c||c.w<10||c.h<10){status("動かす範囲が小さすぎます。");return;}
-  setMode("warp");warpKind="part";updateWarpUi();$("wPrevBox").classList.add("hidden");
-  createPartWarp(c.x,c.y,c.w,c.h);
-  if(c.q){warp.G[0][0]=c.q[0].slice();warp.G[0][GN-1]=c.q[1].slice();warp.G[GN-1][GN-1]=c.q[2].slice();warp.G[GN-1][0]=c.q[3].slice();gridFromQuad(warp);warp.dst=c.q.map(a=>a.slice());updateWarpSvg();warpPreviewSoon();}   // 四隅が自由な範囲は、その形のまま
-  status("切り抜いた範囲に、緑の枠が出ました。緑の枠の中をドラッグして動かし、緑の角で形・大きさを変えて、「補正する」を押すと貼れます。元の場所を残すときは「元の場所は消す」のチェックを外してください。");
-};
-$("shCropAuto").onclick=busy(cropAuto);$("shCropAll").onclick=()=>{cropInit();renderCrop();};$("shCropApply").onclick=busy(cropApply);
+// (切り抜きは、整形の「範囲と補正」に統合しました: 範囲 → 補正 → 置き場所 → まわり)
 // --- 回転・反転 ---
 async function pageRotate(delta){
   await commit();const doc=await PDFDocument.load(bytes),pg=doc.getPage(cur);pg.setRotation(degrees((((pg.getRotation().angle+delta)%360)+360)%360));
@@ -3991,7 +3904,7 @@ if(EMBED){
     $("embRow1").querySelector(".embL").prepend($("bUndo"));
     $("embRow2").appendChild($("status"));$("status").onclick=()=>$("status").classList.toggle("open");
     $("embRow3").appendChild($("modeSeg"));$("embRow3").appendChild($("shapeSeg"));
-    ["optImg","optOcr","optWarp","optTilt","optCrop","optRot","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
+    ["optImg","optOcr","optWarp","optTilt","optRot","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
     const sb=$("setBody");["ocrEngine","ocrClean","keepRule","keepFig","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
     $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
     $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
@@ -4019,7 +3932,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={cropQuad:q=>{cropSetQuad(q);renderCrop();},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={warpSetCorners:q=>{if(!warp)return;warp.curved=false;warp.G[0][0]=q[0];warp.G[0][GN-1]=q[1];warp.G[GN-1][GN-1]=q[2];warp.G[GN-1][0]=q[3];gridFromQuad(warp);if(!warp.dstTouched)warpInitDst(warp);renderWarp();},warpState:()=>warp&&{kind:warp.kind,whole:!!warp.whole,G:warp.G,dst:warp.dst,fix:warpOpt.fix,around:warpOpt.around},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();

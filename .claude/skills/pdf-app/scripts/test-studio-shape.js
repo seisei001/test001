@@ -30,7 +30,7 @@ def bb(f):
   return (min(p[0] for p in l),min(p[1] for p in l),max(p[0] for p in l),max(p[1] for p in l)) if l else (0,0,0,0)
 print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 and c[0]<60 and c[1]<60))"`).toString().trim().split(' ').map(Number);};
   await open(src);
-  ok('整形の名前と、道具の切り替えが出る: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName'))&&await fr.locator('#shapeSeg button').count()===4);
+  ok('整形の名前と、道具の切り替えが出る: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName'))&&await fr.locator('#shapeSeg button').count()===3);
   ok('はじめは歪み補正の道具',await fr.locator('#optWarp').isVisible()&&await fr.locator('#shapeSeg button.on').getAttribute('data-t')==='warp');
   // 回転: 右に90度(ページの向きだけ変わる。文字は残る)
   await fr.locator('#shapeSeg [data-t=rot]').click();await page.waitForTimeout(300);
@@ -46,11 +46,11 @@ print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 a
   await fr.locator('#bUndo').click();await page.waitForTimeout(2000);await cur();
   ok('元に戻すと、文字のあるページに戻る',/LINE 0/.test(execSync('pdftotext /tmp/shape_cur.pdf -').toString()));
   // 切り抜き: 赤い四角のまわりだけ
-  await fr.locator('#shapeSeg [data-t=crop]').click();await page.waitForTimeout(500);
-  ok('切り抜きの道具が出る',await fr.locator('#optCrop').isVisible()&&await fr.locator('#ov svg').count()>=1);
+  await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').click();await page.waitForTimeout(300);
+  ok('範囲と補正の道具が出る',await fr.locator('#optWarp').isVisible());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/400;
   await page.mouse.move(ob.x+95*k,ob.y+(300-255)*k);await page.mouse.down();await page.mouse.move(ob.x+305*k,ob.y+(300-145)*k,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
-  await fr.locator('#shCropApply').click();await page.waitForTimeout(4500);
+  await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
   info=await cur();const sz=info.match(/Page size: +([\d.]+) x ([\d.]+)/);
   ok('切り抜き: ページが約 210×110 に: '+(sz&&sz[1]+'x'+sz[2]),sz&&Math.abs(+sz[1]-210)<12&&Math.abs(+sz[2]-110)<12);
   const bb2=redbox();ok('切り抜いた中に赤い四角がほぼいっぱい: '+bb2.slice(2,6).join(','),bb2[2]<12&&bb2[3]<12);
