@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>百人隊長戦記 見せ方の試作</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+
+/* 配置: 1つの出来事を縦に通して見る絵コンテ。各コマに「見せ方担当AIの判断」を付ける */
+:root{
+  --bg:#f3ede0; --card:#fbf7ee; --ink:#2b2218; --sub:#6e6050; --line:#d9ccb4;
+  --seal:#a63a26; --wash:#e6dcc6; --gap:#fff3d9;
+  --ff-d:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --ff-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--ff-b);line-height:1.75;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--ff-d);font-size:1.7rem;line-height:1.35;margin:0;text-wrap:balance}
+h2{font-family:var(--ff-d);font-size:1.25rem;margin:0;text-wrap:balance}
+p{margin:0}
+.lead{color:var(--sub)}
+.kicker{font-size:.75rem;letter-spacing:.12em;color:var(--seal);font-weight:700}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.box ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.crumb{display:flex;flex-wrap:wrap;gap:4px 6px;font-size:.78rem;color:var(--sub);align-items:center}
+.crumb b{color:var(--ink);background:var(--wash);padding:1px 8px;border-radius:10px;font-weight:700}
+.crumb span.s{opacity:.6}
+.frame{display:flex;flex-direction:column;gap:10px}
+.frame .view{position:relative;aspect-ratio:16/9;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--wash)}
+.frame .view img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .tag{position:absolute;left:8px;top:8px;background:rgba(43,34,24,.78);color:#fff;font-size:.72rem;padding:2px 8px;border-radius:3px}
+.frame .box.wait{aspect-ratio:16/9;justify-content:center;align-items:center;text-align:center;border:2px dashed var(--seal);background:var(--gap);border-radius:4px}
+.wait strong{font-family:var(--ff-d);font-size:1.05rem}
+.meta{display:grid;grid-template-columns:5.5em 1fr;gap:4px 10px;font-size:.88rem}
+.meta dt{color:var(--sub);font-weight:700}
+.meta dd{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips li{list-style:none;border:1px solid var(--seal);color:var(--seal);padding:0 9px;border-radius:12px;font-size:.78rem}
+.chips{margin:0;padding:0}
+.link{display:flex;gap:10px;align-items:center;color:var(--sub);font-size:.82rem;padding-left:4px}
+.link::before{content:"";width:2px;height:26px;background:var(--seal);display:block}
+table{border-collapse:collapse;font-size:.82rem;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:700}
+.scroll{overflow-x:auto}
+pre.p{white-space:pre-wrap;margin:0;font:inherit;font-size:.8rem;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:8px 10px;user-select:all}
+.ask ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px}
+</style>
+
+</head><body>
+<main><p style="margin:0"><a href="../" style="color:var(--seal);font-size:.85rem">← 世界ハニカムに戻る</a></p>
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <p class="kicker">見せ方の試作 · たたき台</p>
+    <h1>北の砦が落ち、百人隊が殿を務める</h1>
+    <p class="lead">1つの出来事を、5つの場面で通して見せます。層を降りるのではなく、出来事の「主語」が国から軍、会戦、百人隊、主人公へ移るのに合わせて、画面の絵の言葉を変えます。</p>
+  </header>
+
+  <section class="box">
+    <p class="kicker">引き継ぐもの</p>
+    <p>画面全体を拡大して見せません。次の2つだけを、場面をまたいで持ち越します。</p>
+    <ul>
+      <li><b>主語</b>: 追っている相手(北の軍、この百人隊、隊長)</li>
+      <li><b>名前のついた目印</b>: 白瀬川、灰色の橋、北の砦</li>
+    </ul>
+    <div class="chips" style="margin-top:4px"><li>白瀬川</li><li>灰色の橋</li><li>北の砦</li></div>
+  </section>
+
+  <hr class="rule">
+
+  <section class="frame">
+    <p class="kicker">場面1 · 主語は国</p>
+    <h2>勢力図</h2>
+    <div class="crumb"><b>世界</b></div>
+    <div class="box wait">
+      <strong>絵待ち: 羊皮紙の政略地図</strong>
+      <p style="font-size:.85rem">真上から見た平面。国ごとの塗り分け、国境、首都、街道、軍の旗。山や森は小さな記号で、立体にはしない。</p>
+    </div>
+    <dl class="meta">
+      <dt>出来事</dt><dd>北のカレン国が国境の砦を失い、国境線が南へ動く。</dd>
+      <dt>判断</dt><dd>主語は国。見たいのは「どの国の線がどう動いたか」なので、地形の迫力は要らない。国色と境界を最優先にする。</dd>
+      <dt>光らせる</dt><dd>落ちた砦、動いた国境、敵の軍旗。</dd>
+    </dl>
+  </section>
+  <div class="link">北の砦の周りに枠を付け、その枠が次の場面に開く</div>
+
+  <section class="frame">
+    <p class="kicker">場面2 · 主語は軍</p>
+    <h2>進軍図</h2>
+    <div class="crumb"><b>北方の国</b><span class="s">›</span><b>国境地方</b></div>
+    <div class="view"><img src="bg_meander.jpg" alt="蛇行する川と丘の絵"><span class="tag">仮: 今ある絵</span></div>
+    <dl class="meta">
+      <dt>出来事</dt><dd>追撃軍が白瀬川沿いの街道を南へ進む。補給は後ろで細くなる。</dd>
+      <dt>判断</dt><dd>主語は軍。「どの道を、何日で、補給は続くか」が見たいので、鳥瞰の絵地図にする。山・川・街は絵で描き、街道と補給線を太く重ねる。</dd>
+      <dt>光らせる</dt><dd>行軍の縦隊、補給線の細り、渡河点の灰色の橋。</dd>
+    </dl>
+  </section>
+  <div class="link">灰色の橋の周りに枠を付け、会戦の図に開く</div>
+
+  <section class="frame">
+    <p class="kicker">場面3 · 主語は会戦</p>
+    <h2>作戦図</h2>
+    <div class="crumb"><b>北方の国</b><span class="s">›</span><b>国境地方</b><span class="s">›</span><b>灰色の橋の隘路</b></div>
+    <div class="box wait">
+      <strong>絵待ち: 淡彩の作戦図</strong>
+      <p style="font-size:.85rem">真上からの平面。橋、両岸の高地、谷道を陰影で表す。部隊の枠と向きは、地図の上に重ねて表示する。</p>
+    </div>
+    <dl class="meta">
+      <dt>出来事</dt><dd>橋の手前の隘路で、追撃軍の先鋒と殿の部隊が接触する。</dd>
+      <dt>判断</dt><dd>主語は会戦。「誰がどこに立ち、どちらから押すか」が見たいので、絵の迫力より部隊の配置を読みやすくする。</dd>
+      <dt>光らせる</dt><dd>各隊の枠と向き、橋、退路。主人公の百人隊に印を付ける。</dd>
+    </dl>
+  </section>
+  <div class="link">橋の守りに就く百人隊を追い、戦場の場面に寄る</div>
+
+  <section class="frame">
+    <p class="kicker">場面4 · 主語は百人隊</p>
+    <h2>戦場の場面</h2>
+    <div class="crumb"><b>国境地方</b><span class="s">›</span><b>灰色の橋の隘路</b><span class="s">›</span><b>第三百人隊</b></div>
+    <div class="view"><img src="bg_rock_castle.jpg" alt="岩山の城壁の絵"><span class="tag">仮: 今ある絵(兵は未配置)</span></div>
+    <dl class="meta">
+      <dt>出来事</dt><dd>殿の百人隊が橋の手前で隊列を組み、敵の先鋒を押しとどめる。</dd>
+      <dt>判断</dt><dd>主語は百人隊。隊列、地形、士気が主役。45度の彩色画で、兵の姿を見せる。</dd>
+      <dt>光らせる</dt><dd>隊列の厚み、旗手、橋の幅。倒れた兵の数。</dd>
+    </dl>
+  </section>
+  <div class="link">隊長に寄り、戦いのあとの夜を見せる</div>
+
+  <section class="frame">
+    <p class="kicker">場面5 · 主語は主人公</p>
+    <h2>場面絵</h2>
+    <div class="crumb"><b>第三百人隊</b><span class="s">›</span><b>隊長 · 夜営</b></div>
+    <div class="view"><img src="bg_forest.jpg" alt="朝の光が差す森の絵"><span class="tag">仮: 今ある絵(人物は未配置)</span></div>
+    <dl class="meta">
+      <dt>出来事</dt><dd>橋を守り切った夜、千人隊長への推薦の知らせが届く。</dd>
+      <dt>判断</dt><dd>主語は主人公。地図は要らない。出来事の絵と短い文章で見せる。背景は、その場所の地形と季節に合うものを選ぶ。</dd>
+      <dt>光らせる</dt><dd>昇進の知らせ、失った部下、次の任務。</dd>
+    </dl>
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <p class="kicker">絵柄の一覧</p>
+    <h2>場面ごとに必要な絵</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>場面</th><th>絵柄</th><th>ある絵</th><th>要る絵</th></tr></thead>
+      <tbody>
+        <tr><td>勢力図</td><td>羊皮紙の政略地図</td><td>なし</td><td>台紙、山・森・街・砦の小記号</td></tr>
+        <tr><td>進軍図</td><td>鳥瞰の絵地図</td><td>山・森・街・城・地面</td><td>街道、補給線の見せ方</td></tr>
+        <tr><td>作戦図</td><td>淡彩の作戦図</td><td>なし</td><td>台紙、部隊の枠</td></tr>
+        <tr><td>戦場の場面</td><td>45度の彩色画</td><td>地面、背景</td><td>兵、旗、隊列</td></tr>
+        <tr><td>場面絵</td><td>挿絵</td><td>背景24枚</td><td>人物(隊長、部下)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <p class="kicker">絵待ちの2枚のプロンプト</p>
+    <pre class="p">古い羊皮紙に描かれた政略地図の台紙。真上から見た平面図。水彩とペン画のアニメ風。川が流れる大陸の一部に、山脈・森・湿地・都市・砦の小さな手描き記号、街道の点線、国ごとに淡い色で塗り分けた領土と太い国境線。文字・人物・紋章は描かない。縁は古い紙のしみ。正方形。</pre>
+    <pre class="p">戦場を描いた作戦図の台紙。真上から見た平面図で、羊皮紙に水彩とインク。川に架かる石橋、両岸の高地は等高線の濃淡で表し、谷あいの隘路を通す。部隊を重ねるための空きを残し、人物・兵・文字・矢印は描かない。縁は古い紙。正方形。</pre>
+  </section>
+
+  <section class="box ask">
+    <p class="kicker">了承をお願いしたい点</p>
+    <ol>
+      <li>この5つの場面の考え方(主語で場面が決まり、絵の言葉を変える)でよいか。</li>
+      <li>引き継ぐのは「主語」と「名前のついた目印」だけ、という降り方でよいか。</li>
+      <li>国の旗や紋章は、絵ではなく規則で組み合わせて出す形でよいか。</li>
+    </ol>
+  </section>
+</main>
+
+</body></html>
