@@ -283,7 +283,7 @@ const SekaiSprites = (function () {
     greek: ['d3a_3'], roman: ['d3a_4'], kraal: ['d5t_5', 'd3a_5'], stilt: ['d5t_1', 'd5t_2', 'd5t_3', 'd5t_4', 'd5t_6', 'd5t_7', 'd3a_7'], inca: ['d3a_6'], tibet: ['d2c_6', 'd2c_9']
   };
   // 層5(近景)用の高解像度の家(assets/town3)。無い街のタイプは、上の組(town2)の絵を使う
-  const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'] };
+  const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'], stilt: ['stilt'], tibet: ['tibet'] };
   const HXWH = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXHI) for (const n of HXHI[k]) all[n] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town3/' + n + '.png?v=' + (window.APP_VER || '0'); HXWH[n] = im; } })();
   const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; all.d6v_1 = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
   function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
