@@ -135,7 +135,7 @@ const SekaiSprites = (function () {
     items.sort((a, b) => a.p[1] - b.p[1]); let ok = false;
     const big = 0.3 * c.getTransform().a > 130;   // 大きく映る時は、粗くならない描き下ろしの家に切り替える
     let k = 0; for (const it of items) { const hero = it.p === WPOS[0];
-      if (big) { if (timg(c, HOUSEIMG[(k++ + Math.floor(sd * 997)) % HOUSEIMG.length], it.p[0], it.p[1], hero ? 0.4 : 0.3)) ok = true; }
+      if (big) { const hf = HXFAM[o.ty]; if (hf && hx(c, hf[(k++ + Math.floor(sd * 997)) % hf.length], it.p[0], it.p[1], hero ? 0.4 : 0.3)) ok = true; }
       else if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
     if (ok && T.wall && T.wall !== 'moat') { wimg(c, T.wall === 'star' ? 'gate_c' : 'gate_town', 0, 0.3, 0.2); wimg(c, 'wall_s', -0.3, 0.2, 0.2); wimg(c, 'wall_s', 0.3, 0.2, 0.2); wimg(c, 'watchtower', -0.4, 0.05, 0.1); wimg(c, 'watchtower', 0.4, 0.05, 0.1); }
     return ok;
@@ -244,7 +244,7 @@ const SekaiSprites = (function () {
     let city = null; const r = rng((o.seed || 0.5) * 7.77 + 0.1), n = o.n || 3, big = n >= 5, sq = (o.px || 0) >= 700 ? 0.85 : 0.52, R = T.r * (n >= 4 ? 1 : 0.85), cnt = 12 + n * 8, coast = !!(sx || sy), houses = [];
     const ok = (x, y) => !coast || x * sx + (y / sq) * sy >= -0.05;       // 海側(法線の逆)には建てない
     const pick = a => a[(r() * a.length) | 0];
-    const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, flip: r() < 0.5 }, extra || {}));
+    const add = (x, y, w, h, extra) => houses.push(Object.assign({ x, y, w, h, wc: pick(T.wc), rc: pick(T.rc), k: T.hk, ty, flip: r() < 0.5 }, extra || {}));
     if (T.lay === 'ring' || T.lay === 'grid') {
       const th = 0;   // 立体の絵(家のスプライト)は正面向きなので、道は画面に水平・垂直にそろえる
          // 海岸があれば海岸に平行、なければ街ごとに決める
@@ -275,29 +275,18 @@ const SekaiSprites = (function () {
   }
   function stroke0(c, w) { c.lineWidth = LW * w; c.strokeStyle = LINE; c.lineJoin = 'round'; }
   let DEEP = false;
+  // 街の家: 街のタイプごとの絵(AI生成・assets/town2)だけを使う。絵が無いタイプは家を描かない(自作の描画は持たない)
+  const HXFAM = {
+    igloo: ['d2c_1', 'd2c_7'], turf: ['d2c_5', 'd2c_8'], russian: ['d2c_2'], hansa: ['d2c_3', 'd1m_2', 'd1m_1'], yurt: ['d2c_4'],
+    medina: ['d3a_1', 'd3a_2'], djenne: ['d3a_2', 'd3a_1'], medieval: ['d1m_1', 'd1m_3', 'd1m_4', 'd1m_5', 'd1m_7', 'd0g_4', 'd0g_7', 'd1m_2'],
+    chinese: ['d4e_1', 'd4e_2'], japan: ['d4e_3', 'd4e_4', 'd4e_5', 'd4e_6'], starfort: ['d0g_1', 'd0g_2', 'd0g_3', 'd0g_5', 'd0g_6', 'd0g_8', 'd0g_9'],
+    greek: ['d3a_3'], roman: ['d3a_4'], kraal: ['d5t_5', 'd3a_5'], stilt: ['d5t_1', 'd5t_2', 'd5t_3', 'd5t_4', 'd5t_6', 'd5t_7', 'd3a_7'], inca: ['d3a_6'], tibet: ['d2c_6', 'd2c_9']
+  };
+  const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; all.d6v_1 = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
+  function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
   function bhouse(c, h) {
-    const { x, y, w } = h, hh = h.h;
-    if (h.k === 'gable') { const q0 = Math.abs((x * 9173 + y * 6151) | 0); if (timg(c, HOUSEIMG[(q0 >> 2) % HOUSEIMG.length], x, y, w * (DEEP ? 0.8 : 1.05))) return; }
-    if (h.k === 'gable') { const q = Math.abs((x * 9173 + y * 6151) | 0), set = 'struct' + (q % 5), idx = KHOUSE[(q >> 3) % KHOUSE.length]; if (kimg(c, set, idx, x, y, w * 1.0)) return; }
-    c.save(); stroke0(c, 0.35);
-    const wall = () => { c.fillStyle = h.wc; c.fillRect(x - w / 2, y - hh, w, hh); c.strokeRect(x - w / 2, y - hh, w, hh); c.fillStyle = 'rgba(70,45,35,.22)'; c.fillRect(x + (h.flip ? -w / 2 : w * 0.05), y - hh, w * 0.45, hh); };
-    if (h.k === 'gable') { wall(); const top = y - hh, rh = w * 0.55; c.beginPath(); c.moveTo(x - w * 0.6, top); c.lineTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(x, top - rh); c.lineTo(x + w * 0.6, top); c.lineTo(x, top); c.closePath(); c.fill(); }
-    else if (h.k === 'flat' || h.k === 'mud') { wall(); const top = y - hh; c.fillStyle = h.k === 'mud' ? h.wc : h.rc; if (h.dome) { c.beginPath(); c.ellipse(x, top, w * 0.4, w * 0.4, 0, Math.PI, 0); c.fill(); c.stroke(); } else { c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(x - w / 2, top, w, hh * 0.14); }
-      if (h.k === 'mud') { c.strokeStyle = LINE; c.lineWidth = LW * 0.4; for (const d of [-0.3, 0, 0.3]) { c.beginPath(); c.moveTo(x + d * w, top); c.lineTo(x + d * w, top - w * 0.2); c.stroke(); } }
-      c.fillStyle = 'rgba(60,40,30,.55)'; c.fillRect(x - w * 0.08, y - hh * 0.55, w * 0.16, hh * 0.55); if (h.band) { c.fillStyle = h.rc; c.fillRect(x - w / 2, top, w, hh * 0.18); } }
-    else if (h.k === 'hip') { const wl = hh * 0.55; c.fillStyle = h.wc; c.fillRect(x - w * 0.42, y - wl, w * 0.84, wl); c.strokeRect(x - w * 0.42, y - wl, w * 0.84, wl); const top = y - wl; c.beginPath(); c.moveTo(x - w * 0.62, top + w * 0.04); c.lineTo(x - w * 0.4, top - w * 0.3); c.lineTo(x + w * 0.4, top - w * 0.3); c.lineTo(x + w * 0.62, top + w * 0.04); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(x - w * 0.4, top - w * 0.3, w * 0.8, w * 0.05); }
-    else if (h.k === 'cone') { const wl = hh * 0.5; c.fillStyle = h.wc; c.fillRect(x - w * 0.4, y - wl, w * 0.8, wl); c.strokeRect(x - w * 0.4, y - wl, w * 0.8, wl); c.beginPath(); c.moveTo(x - w * 0.5, y - wl); c.lineTo(x, y - wl - w * 0.5); c.lineTo(x + w * 0.5, y - wl); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.moveTo(x, y - wl - w * 0.5); c.lineTo(x + w * 0.5, y - wl); c.lineTo(x, y - wl); c.closePath(); c.fill(); }
-    else if (h.k === 'dome') { c.beginPath(); c.ellipse(x, y, w * 0.55, w * 0.5, 0, Math.PI, 0); c.fillStyle = h.wc; c.fill(); c.stroke(); c.strokeStyle = 'rgba(120,150,200,.5)'; c.lineWidth = LW * 0.25; for (const d of [0.3, 0.6]) { c.beginPath(); c.moveTo(x - w * 0.5, y - w * d * 0.5); c.lineTo(x + w * 0.5, y - w * d * 0.5); c.stroke(); } c.fillStyle = '#4a4458'; c.fillRect(x - w * 0.08, y - w * 0.16, w * 0.16, w * 0.16); }
-    else if (h.k === 'turf') { c.fillStyle = h.wc; c.fillRect(x - w * 0.6, y - hh * 0.5, w * 1.2, hh * 0.5); c.strokeRect(x - w * 0.6, y - hh * 0.5, w * 1.2, hh * 0.5); c.beginPath(); c.ellipse(x, y - hh * 0.5, w * 0.7, hh * 0.55, 0, Math.PI, 0); c.fillStyle = h.rc; c.fill(); c.stroke(); }
-    else if (h.k === 'stilt') { c.strokeStyle = '#6a4a30'; c.lineWidth = LW * 0.6; for (const d of [-0.35, 0.35]) { c.beginPath(); c.moveTo(x + d * w, y); c.lineTo(x + d * w, y - hh * 0.5); c.stroke(); } stroke0(c, 0.35); const by = y - hh * 0.5; c.fillStyle = h.wc; c.fillRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.strokeRect(x - w / 2, by - hh * 0.6, w, hh * 0.6); c.beginPath(); c.moveTo(x - w * 0.62, by - hh * 0.6); c.lineTo(x, by - hh * 0.6 - w * 0.5); c.lineTo(x + w * 0.62, by - hh * 0.6); c.closePath(); c.fillStyle = h.rc; c.fill(); c.stroke(); }
-    c.restore();
-  }
-  // 層5(1マス=1m): 真上から見た屋根(正面の絵ではなく平面)。街の区域の外にはみ出さないよう、呼び出し側で切り抜く
-  function planHouse(c, h, sq) {
-    c.save(); c.translate(h.x, h.y); c.scale(1, sq); c.rotate(h.ang || 0); const w = h.pw * 0.94, d = h.pd * 0.94;
-    c.lineJoin = 'miter'; c.strokeStyle = 'rgba(40,25,20,.85)'; c.lineWidth = LW * 0.3;
-    c.fillStyle = h.rc; c.fillRect(-w / 2, -d / 2, w, d); c.fillStyle = 'rgba(0,0,0,.17)'; c.fillRect(-w / 2, 0, w, d / 2);
-    c.strokeRect(-w / 2, -d / 2, w, d); c.beginPath(); c.moveTo(-w / 2, 0); c.lineTo(w / 2, 0); c.stroke(); c.restore();
+    const fam = HXFAM[h.ty]; if (!fam) return;
+    const q = Math.abs((h.x * 9173 + h.y * 6151) | 0); hx(c, fam[(q >> 2) % fam.length], h.x, h.y, h.w * (DEEP ? 0.95 : 1.15));
   }
   function polyThin(c, pts, fill, stroke) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.lineWidth = LW * 0.3; c.strokeStyle = LINE; c.lineJoin = 'round'; c.stroke(); } }
   function landmark(c, L, t, sd) {
@@ -354,7 +343,7 @@ const SekaiSprites = (function () {
         c.fillStyle = '#7d9a6a'; c.beginPath(); c.arc(0, 0, G.plazaR * 0.28, 0, 6.2832); c.fill(); c.restore();
       } }   // マスク: 街の区域の中だけに描く
     for (const it of items) {
-      if (it.civ) { timg(c, 'church', 0, 0.045, 0.17); continue; }
+      if (it.civ) { if (!hx(c, 'd6v_1', 0, 0.045, 0.17)) timg(c, 'church', 0, 0.045, 0.17); continue; }
       if (it.h) bhouse(c, it.h);
       else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
     }
