@@ -329,6 +329,11 @@ void main(){
             if (fn && sr3 < fp) spec = { k: 'flora', far: fn, b: b0, seed: sr };
             else if (!fn && [2, 4].indexOf(b0) >= 0 && slope < 0.03 && sr3 < 0.15) spec = { k: 'flora', far: 'f_marsh', b: b0, seed: sr };
           }
+          if (!spec && h > 0 && L <= 3 && sr < 0.016 * (L === 3 ? 0.5 : 1)) { // 名所(地図の彩り): 気候に合う絵を選ぶ
+            const SP = { 1: ['snow', 'crystals', 'observ'], 2: ['snow', 'menhir', 'bnest', 'onsen'], 3: ['maple', 'redmush', 'fall', 'snow', 'lcave'], 4: ['meadow', 'meander', 'menhir', 'windmill', 'lake'], 5: ['dunes', 'bnest', 'ruins', 'portal', 'observ'], 6: ['meadow', 'meander', 'windmill', 'sakura', 'lake', 'rtower'], 7: ['meadow', 'windmill', 'lcave', 'ruins', 'rtower'], 8: ['sakura', 'maple', 'bamboo', 'redmush', 'fall', 'lake'], 9: ['sakura', 'bamboo', 'fall', 'redmush', 'meander'], 10: ['meadow', 'bnest', 'menhir', 'ruins', 'lake'], 11: ['jungle', 'fall', 'bamboo', 'redmush'], 12: ['rcastle', 'crystals', 'fall', 'observ', 'onsen', 'floats'] };
+            const ls = SP[b0] || ['meadow', 'lake'], ex = coast ? ['harbor', 'lrock', 'wreck'] : ((sr2 > 0.97) ? ['portal', 'floats', 'crystals'] : ls), pk0 = ex[Math.floor(hash2(q, r, L + 71) * ex.length) % ex.length];
+            spec = { k: 'spot', n: pk0, seed: sr3 };
+          }
           if (!spec && h > 0 && L >= 3) { // 深い層の木・茂み・岩(素材の絵、実寸)。森の気候で木が多く、急な所は岩
             const forest = b0 === 3 || b0 === 8 || b0 === 9 || b0 === 11, grass = b0 === 4 || b0 === 6 || b0 === 7 || b0 === 10, k0 = L === 3 ? 0 : L === 4 ? 1 : 2;
             const pT = forest ? [0.4, 0.6, 0.05][k0] : grass ? [0.06, 0.1, 0.008][k0] : ({ 1: 0.05, 2: 0.06, 5: 0.04, 12: 0.05 }[b0] || 0) * [1, 1.6, 0.15][k0], pR = (slope > 0.1 || h > 1800) ? [0.15, 0.2, 0.02][k0] : [0.01, 0.02, 0.002][k0];
@@ -528,7 +533,7 @@ void main(){
       }
       if (st.stamps === false) return;
       list.sort((a, b) => a[0] - b[0]);
-      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { mountain: 2.0, volcano: 2.8, town: 3.0, castle: 1.9, animal: 1.1 };
+      const cell = mesh.s * st.ppm, px = Math.max(13, Math.min(34, cell * 0.8)) * st.dpr, MUL = { spot: 2.2, mountain: 2.0, volcano: 2.8, town: 3.0, castle: 1.9, animal: 1.1 };
       for (const [Y, X, sp0] of list) {
         if (sp0.k === 'town') { sp0.sx = cy * sp0.nx + sy * sp0.ny; sp0.sy = -sy * sp0.nx + cy * sp0.ny; }   // 海岸の向きを画面の向きに直す
         if (typeof sp0 === 'string') {

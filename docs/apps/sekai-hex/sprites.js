@@ -30,7 +30,7 @@ const SekaiSprites = (function () {
   // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
   function frac(x) { return x - Math.floor(x); }
   // 山の形(アルプス風・エベレスト風・キリマンジャロ風・富士山風・メサ・ドロミテ・ヨセミテ・アンデス・氷山・異世界風など。assets/town5)
-  const MT = {}; (function () { if (typeof Image === 'undefined') return; for (const n of 'alps everest kili fuji canyon dolomite yosemite andes hill lowrock desertrock ice volcano float crystal bone deadtree zhang f2_hill f2_rock f2_snow f2_volcano volcano_dry forest range ruins oasis marsh conifer glowforest lake canyon2 cave'.split(' ')) { const im = new Image(); im.src = 'assets/town5/' + n + '.png?v=' + (window.APP_VER || '0'); MT[n] = im; } })();
+  const MT = {}; (function () { if (typeof Image === 'undefined') return; for (const n of 'alps everest kili fuji canyon dolomite yosemite andes hill lowrock desertrock ice volcano float crystal bone deadtree zhang f2_hill f2_rock f2_snow f2_volcano volcano_dry forest range ruins oasis marsh conifer glowforest lake canyon2 cave sp_snow sp_fall sp_rcastle sp_harbor sp_windmill sp_lrock sp_dunes sp_meadow sp_meander sp_menhir sp_wreck sp_bamboo sp_crystals sp_rtower sp_sakura sp_maple sp_onsen sp_observ sp_bnest sp_jungle sp_lcave sp_redmush sp_portal sp_floats'.split(' ')) { const im = new Image(); im.src = 'assets/town5/' + n + '.png?v=' + (window.APP_VER || '0'); MT[n] = im; } })();
   function mimg(c, n, w, y, flip) { const im = MT[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; if (flip) c.scale(-1, 1); const y0 = y == null ? 0.05 : y; c.drawImage(im, -w / 2, y0 - dh + w * 0.05, w, dh); c.restore(); return true; }
   // 高さの段(0丘 1低い岩山 2高い岩山 3雪山 4大雪峰)と気候(1氷雪 5砂漠 10サバナ 11熱帯 12高山 など)から、山の形の候補を選ぶ
   const MPOOL = (tier, b, sd0) => {
@@ -366,7 +366,13 @@ const SekaiSprites = (function () {
     if (i <= 3 && !L) return;   // 気候に合う木が無い所には何も描かない
     kimg(c, 'env', i, 0, 0.45, 1);
   }
-  const TABLE = { field, flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
+  const SPOT = {   // 地図の彩り: 名所の絵(幅, 底の位置)
+    snow: [1.5, 0.3], fall: [1.2, 0.05], rcastle: [1.5, 0.05], harbor: [1.4, 0.2], windmill: [1.3, 0.2], lrock: [1.3, 0.05], dunes: [1.5, 0.3], meadow: [1.5, 0.3],
+    meander: [1.6, 0.3], menhir: [1.4, 0.3], wreck: [1.3, 0.1], bamboo: [1.0, 0.45], crystals: [1.2, 0.05], rtower: [0.6, 0.05], sakura: [1.2, 0.5], maple: [1.2, 0.5],
+    onsen: [1.5, 0.3], observ: [0.8, 0.05], bnest: [1.1, 0.05], jungle: [1.1, 0.4], lcave: [1.4, 0.05], redmush: [0.9, 0.2], portal: [0.9, 0.05], floats: [0.8, 0.5], lake: [1.6, 0.3], ruins: [1.3, 0.2]
+  };
+  function spot(c, o) { const d = SPOT[o.n] || [1.2, 0.1], nm = (o.n === 'lake' || o.n === 'ruins') ? o.n : 'sp_' + o.n; mimg(c, nm, d[0], d[1], (o.seed || 0) > 0.5); }
+  const TABLE = { spot, field, flora, animal, mountain, volcano, town, castle, pyramid, ziggurat, icepalace, lighthouse, worldtree, shrine };
   function draw(c, kind, o, t) { const f = TABLE[kind]; if (f) f(c, o, t); }
   return { draw, kinds: Object.keys(TABLE), setSeason(v) { SEASON = ((v % 4) + 4) % 4; }, season() { return SEASON; } };
 })();
