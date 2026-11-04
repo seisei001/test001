@@ -466,3 +466,10 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - UI: 選択中の部品の行に「太字/下線/二重線」(`sBold/sUl/sStk`)。選んだ範囲(なければ全部)に付け外し(`applyFmt`、全部に付いていれば外す)。Ctrl+B / Ctrl+U。ボタンは mousedown を止めて、文字の選択を外さない。
 - 保存: 太字=文字の輪郭に同じ色の細い線(Tr=2、`withBold`。文字は1つのまま読める)、下線=1本・二重線=2本の線(`drawFmLines`。回転したページにも toUser で対応)。3つの描画(元のフォント/埋め込みフォント/画像として)すべてに反映。pdf-lib の列挙は `TextRenderingMode.FillAndOutline`(FillAndStroke ではない)。
 - テスト: test-studio-textfmt.js。未対応: 空白の上の下線は引かない(元のフォント経路)、下線と二重線の同時は2本+1本。
+
+## v124(続き): 罫線編集 1.33 — 線の種類・楕円・範囲選びのあとの個別選び
+- 線の種類 `#rStyle`(実線/破線/点線/一点鎖線/二重線)。`rlLineOps(ax,ay,bx,by,t,style,u)` が線の命令を作る(u=1ptがその座標でいくつか)。新しい線(`ruleAdd`、style)・選んだ罫線の「種類を変える」(`#rStSet`、`ruleApply` mode:"style" + style)。薄い塗りの罫線は、破線などにするとき中心の線(stroke)に置き換える(`barLine`)。本数の確認(skipCount)は、種類を変えたときは省く。
+- 楕円 `#rOval`(`ruleAddOval`、4つのベジェ曲線)。ドラッグした四角形にぴったり。種類・太さ・色は罫線と共通。罫線としては数えない図形なので、あとから選んで動かすことはできない(未対応)。
+- 「範囲で選ぶ」中は、選んでいない罫線に pointer-events:none が付いていて、1本ずつ足せなかった → 外した。罫線の上から始めたドラッグも範囲選び、軽いクリックはその1本の選択/解除(ドラッグ直後の click は RULE.dragAt で無視)。
+- 落とし穴: `s[:a]+new+s[b:]` で b<a のとき、間の部分が重複して、あとの(古い)関数宣言が勝つ。置換後は `node --check` と関数宣言の重複(grep "^async function ruleApply")を確認。
+- テスト: test-studio-rules4.js。

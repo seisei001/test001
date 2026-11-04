@@ -99,7 +99,6 @@ body.emb-edit #optTilt,body.emb-edit #optCrop_x,body.emb-edit #optRot,body.emb-w
 #ov .rl.on .rln{background:rgba(220,38,38,.85);}
 #ov .rl.on{touch-action:none;cursor:move;}
 #ov.rdraw,#ov.rbandon{cursor:crosshair;touch-action:none;}
-#ov.rbandon .rl:not(.on){pointer-events:none;}
 #ov .tc{position:absolute;box-sizing:border-box;border:1px dashed rgba(22,163,74,.7);background:rgba(22,163,74,.06);touch-action:none;cursor:cell;}
 #ov .tc.on{background:rgba(22,163,74,.35);}
 #ov.rdraw .rl{pointer-events:none;}
@@ -258,7 +257,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <button class="sub-btn" id="shRotL">左に90度</button><button class="sub-btn" id="shRotR">右に90度</button><button class="sub-btn" id="shRot180">180度</button><button class="sub-btn" id="shFlipH">左右を反転</button><button class="sub-btn" id="shFlipV">上下を反転</button>
 </div>
 <div class="row hidden" id="optRule" style="margin-bottom:8px">
-<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rBand">範囲で選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tColDel" disabled>列を消す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
+<button class="sub-btn" id="rAll">全部選ぶ</button><button class="sub-btn" id="rBand">範囲で選ぶ</button><button class="sub-btn" id="rClr" disabled>選択を外す</button><button id="rDel" disabled>選んだ罫線を消す</button><label>太さ(pt) <input type="number" id="rW" value="0.75" min="0.1" max="20" step="0.25" style="width:4.6em"></label><button class="sub-btn" id="rWSet" disabled>太さを変える</button><label>色 <input type="color" id="rC" value="#000000"></label><button class="sub-btn" id="rCSet" disabled>色を変える</button><label>種類 <select id="rStyle"><option value="solid">実線</option><option value="dash">破線</option><option value="dot">点線</option><option value="chain">一点鎖線</option><option value="double">二重線</option></select></label><button class="sub-btn" id="rStSet" disabled>種類を変える</button><button class="sub-btn" id="rDraw">線を引く</button><button class="sub-btn" id="rOval">楕円を描く</button><button class="sub-btn" id="tMode">表を編集</button><span id="tTools" class="hidden"><button class="sub-btn" id="tRowAdd" disabled>行を足す</button><button class="sub-btn" id="tRowDel" disabled>行を消す</button><label>行の高さ(pt) <input type="number" id="tH" value="20" min="2" max="400" step="0.5" style="width:4.6em"></label><button class="sub-btn" id="tRowH" disabled>高さを変える</button><button class="sub-btn" id="tColAdd" disabled>列を足す</button><button class="sub-btn" id="tColDel" disabled>列を消す</button><button class="sub-btn" id="tMerge" disabled>セルを結合</button></span><span class="sub" id="rNum"></span>
 </div>
 <div class="row hidden" id="optImg" style="margin-bottom:8px">
 <label class="btn sub-btn" for="fImg">画像を選ぶ(PNG/JPEG)</label>
@@ -3638,7 +3637,12 @@ async function ruleApply(u8,op){
     const emit=[],cut=[];let live=0;
     const line=(a,b)=>{   // 動かす・変えた線(もとの座標 a,b)
       const A=[a[0]+dl[0],a[1]+dl[1]],B=[b[0]+dl[0],b[1]+dl[1]],body=`${rlFmt(A[0])} ${rlFmt(A[1])} m ${rlFmt(B[0])} ${rlFmt(B[1])} l S`;
-      if(mode==="style"){emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${op.t?rlFmt(op.t/sc)+" w ":""}${body} Q`);}else emit.push(body);};
+      if(mode==="style"&&op.style&&op.style!=="solid"){skipCount=true;emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${rlLineOps(A[0],A[1],B[0],B[1],(op.t||0.75)/sc,op.style,1/sc)} Q`);}
+      else if(mode==="style"){emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${op.t?rlFmt(op.t/sc)+" w ":""}${body} Q`);}else emit.push(body);};
+    const barLine=(X,Y,W,H)=>{   // 薄い塗りの線を、破線などにするため、中心の線にする
+      const hz=Math.abs(W)>=Math.abs(H),th=op.t?op.t/sc:Math.min(Math.abs(W),Math.abs(H))||0.75/sc;skipCount=true;
+      const [a1,a2,b1,b2]=hz?[X,Y+H/2,X+W,Y+H/2]:[X+W/2,Y,X+W/2,Y+H];
+      emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${rlLineOps(a1,a2,b1,b2,th,op.style,1/sc)} Q`);};
     p.subs.forEach((sub,si)=>{
       const sp=pl.get(si);if(!sp){live++;return;}
       cut.push([sub.s,sub.e]);
@@ -3646,6 +3650,7 @@ async function ruleApply(u8,op){
         const [x,y,w,h]=sub.n;
         if(sp.del){   // 薄い塗り四角
           if(mode==="del")return;
+          if(mode==="style"&&op.style&&op.style!=="solid"){barLine(x,y,w,h);return;}
           let X=x,Y=y,W=w,H=h;
           if(mode==="move"){X+=dl[0];Y+=dl[1];}
           else if(op.t){if(Math.abs(w)<Math.abs(h)){const nw=op.t/sc,c=X+W/2;X=c-nw/2;W=nw;}else{const nh=op.t/sc,c=Y+H/2;Y=c-nh/2;H=nh;}if(op.t>3)skipCount=true;}
@@ -3659,6 +3664,7 @@ async function ruleApply(u8,op){
       }else{
         if(sp.del){   // 薄い塗りの多角形
           if(mode==="del")return;
+          if(mode==="style"&&op.style&&op.style!=="solid"){const xs=sub.pts.map(q=>q[0]),ys=sub.pts.map(q=>q[1]),X0=Math.min(...xs),Y0=Math.min(...ys);barLine(X0,Y0,Math.max(...xs)-X0,Math.max(...ys)-Y0);return;}
           if(mode==="style"&&op.t){   // 太さ: 外側の四角の、細い方の幅を変える(中心は動かさない)
             const xs=sub.pts.map(q=>q[0]),ys=sub.pts.map(q=>q[1]);let X=Math.min(...xs),Y=Math.min(...ys),W=Math.max(...xs)-X,H=Math.max(...ys)-Y;
             if(W<H){const nw=op.t/sc;X+=W/2-nw/2;W=nw;}else{const nh=op.t/sc;Y+=H/2-nh/2;H=nh;}if(op.t>3)skipCount=true;
@@ -3680,14 +3686,32 @@ async function ruleApply(u8,op){
   return out;
 }
 // 新しい線を、ページの一番上に書き足す(x0,y0,x1,y1 はページの座標)
+// 罫線の種類(実線・破線・点線・一点鎖線・二重線)の、線を引く命令。t=太さ、u=1ptがこの座標でいくつか(長さの最小値を pt で決めるため)
+function rlLineOps(ax,ay,bx,by,t,style,u){
+  const tt=Math.max(0.1*u,t),F=rlFmt;
+  if(style==="double"){const L=Math.hypot(bx-ax,by-ay)||1,nx=-(by-ay)/L,ny=(bx-ax)/L,o=tt*0.9,w=tt*0.55;
+    return[1,-1].map(sg=>`${F(w)} w 0 J ${F(ax+nx*o*sg)} ${F(ay+ny*o*sg)} m ${F(bx+nx*o*sg)} ${F(by+ny*o*sg)} l S`).join(" ");}
+  const dash=style==="dash"?`[${F(Math.max(3*u,tt*4))} ${F(Math.max(2*u,tt*3))}] 0 d`:style==="dot"?`[0 ${F(Math.max(2*u,tt*2.5))}] 0 d`:style==="chain"?`[${F(Math.max(6*u,tt*8))} ${F(Math.max(2*u,tt*2.5))} ${F(Math.max(u,tt*1.2))} ${F(Math.max(2*u,tt*2.5))}] 0 d`:"";
+  return`${F(tt)} w ${style==="dot"?"1":"0"} J ${dash} ${F(ax)} ${F(ay)} m ${F(bx)} ${F(by)} l S`;
+}
 async function ruleAdd(u8,ln){
   const doc=await PDFDocument.load(u8),page=doc.getPage(cur),ctx=rlScan(doc,page),n0=rlRules(ctx).length,eds=new Map();
-  const o=ctx.owners.get("P"),txt=`q ${rgbSafe(ln.rgb)} RG ${rlFmt(ln.t)} w 0 J ${rlFmt(ln.x0)} ${rlFmt(ln.y0)} m ${rlFmt(ln.x1)} ${rlFmt(ln.y1)} l S Q`;
+  const o=ctx.owners.get("P"),st=ln.style||"solid",txt=`q ${rgbSafe(ln.rgb)} RG ${rlLineOps(ln.x0,ln.y0,ln.x1,ln.y1,ln.t,st,1)} Q`;
   eds.set("P",[{s:0,e:0,t:"q\n",q:0},{s:o.bytes.length,e:o.bytes.length,t:"\n"+"Q\n".repeat((o.depthEnd||0)+1)+txt+"\n",q:1}]);   // もとの命令を q ... Q で包み、足りない Q を補ってから書き足す(座標が狂わないように)
   const out=await rlCommit(doc,page,ctx,eds);
   const d2=await PDFDocument.load(out);
-  if(rlRules(rlScan(d2,d2.getPage(cur))).length!==n0+1)throw Object.assign(new Error("線をうまく引けませんでした。"),{noHint:true});
+  if(st==="solid"&&rlRules(rlScan(d2,d2.getPage(cur))).length!==n0+1)throw Object.assign(new Error("線をうまく引けませんでした。"),{noHint:true});
   return out;
+}
+// 楕円(○): 4つの曲線で描く。枠(x,y,w,h)はPDFの座標。線の種類・太さ・色を選べる(罫線としては数えない図形)
+async function ruleAddOval(u8,ov){
+  const doc=await PDFDocument.load(u8),page=doc.getPage(cur),ctx=rlScan(doc,page),eds=new Map(),F=rlFmt;
+  const o=ctx.owners.get("P"),cx=ov.x+ov.w/2,cy=ov.y+ov.h/2,rx=ov.w/2,ry=ov.h/2,K=0.5523,t=Math.max(0.1,ov.t),st=ov.style||"solid";
+  const dash=st==="dash"?`[${F(Math.max(3,t*4))} ${F(Math.max(2,t*3))}] 0 d`:st==="dot"?`[0 ${F(Math.max(2,t*2.5))}] 0 d`:st==="chain"?`[${F(Math.max(6,t*8))} ${F(Math.max(2,t*2.5))} ${F(Math.max(1,t*1.2))} ${F(Math.max(2,t*2.5))}] 0 d`:"";
+  const path=(rx,ry)=>`${F(cx+rx)} ${F(cy)} m ${F(cx+rx)} ${F(cy+ry*K)} ${F(cx+rx*K)} ${F(cy+ry)} ${F(cx)} ${F(cy+ry)} c ${F(cx-rx*K)} ${F(cy+ry)} ${F(cx-rx)} ${F(cy+ry*K)} ${F(cx-rx)} ${F(cy)} c ${F(cx-rx)} ${F(cy-ry*K)} ${F(cx-rx*K)} ${F(cy-ry)} ${F(cx)} ${F(cy-ry)} c ${F(cx+rx*K)} ${F(cy-ry)} ${F(cx+rx)} ${F(cy-ry*K)} ${F(cx+rx)} ${F(cy)} c h S`;
+  const body=st==="double"?`${F(t*0.55)} w ${path(rx+t*0.9,ry+t*0.9)} ${F(t*0.55)} w ${path(Math.max(0.5,rx-t*0.9),Math.max(0.5,ry-t*0.9))}`:`${F(t)} w ${st==="dot"?"1":"0"} J ${dash} ${path(rx,ry)}`;
+  eds.set("P",[{s:0,e:0,t:"q\n",q:0},{s:o.bytes.length,e:o.bytes.length,t:"\n"+"Q\n".repeat((o.depthEnd||0)+1)+`q ${rgbSafe(ov.rgb)} RG ${body} Q`+"\n",q:1}]);
+  return await rlCommit(doc,page,ctx,eds);
 }
 const rgbSafe=c=>(c||[0,0,0]).map(rlFmt).join(" ");
 async function rlCommit(doc,page,ctx,eds){
@@ -3846,7 +3870,7 @@ async function ruleLoad(){   // 画面に出す罫線の一覧(画面の座標�
 function ruleSync(){const n=RULE.sel.size;
   if(n&&!RULE.tab){const r=RULE.els[[...RULE.sel][0]];if(r){$("rW").value=Math.round(r.t*100)/100;
     if(r.rgb)$("rC").value="#"+r.rgb.map(v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,"0")).join("");}}   // 選んだ線の、いまの太さと色を欄に出す
-  $("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
+  $("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rStSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
 function ruleDraw(k){
   if(RULE.for!==bytes){ruleLoad().catch(e=>status("罫線を読み取れませんでした: "+(e.message||e)));return;}
   if(RULE.tab){tabDraw(k);return;}
@@ -3881,9 +3905,10 @@ function ruleDraw(k){
 }
 const ruleDo=busy(async(fn,msg)=>{const nb=await fn();await setBytes(nb,true);status(msg);});
 $("rWSet").onclick=()=>{const t=+$("rW").value,idxs=[...RULE.sel];if(!idxs.length||!(t>0))return;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",t}),`${idxs.length}本の太さを ${t}pt にしました。`);};
+$("rStSet").onclick=()=>{const idxs=[...RULE.sel],st=$("rStyle").value;if(!idxs.length)return;const t=+$("rW").value;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",style:st,t:t>0?t:undefined}),`${idxs.length}本の種類を「${$("rStyle").selectedOptions[0].textContent}」にしました。`);};
 $("rCSet").onclick=()=>{const idxs=[...RULE.sel];if(!idxs.length)return;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",rgb:rlRGB()}),`${idxs.length}本の色を変えました。`);};
 const rlRGB=()=>{const h=$("rC").value;return[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);};
-$("rDraw").onclick=()=>{RULE.draw=!RULE.draw;$("rDraw").classList.toggle("on",RULE.draw);ov.classList.toggle("rdraw",RULE.draw);status(RULE.draw?"線を引く場所を、ドラッグしてください。横か縦に引けます。":"罫線を青く表示しています。");};
+$("rDraw").onclick=()=>{RULE.draw=!RULE.draw;if(RULE.draw&&RULE.oval){RULE.oval=false;$("rOval").classList.remove("on");}$("rDraw").classList.toggle("on",RULE.draw);ov.classList.toggle("rdraw",RULE.draw||RULE.oval);status(RULE.draw?"線を引く場所を、ドラッグしてください。横か縦に引けます。":"罫線を青く表示しています。");};
 ov.addEventListener("pointerdown",e=>{   // 線を引く: ドラッグした方向(横か縦)の線。ほかの罫線の位置に近いときは、そこに合わせる
   if(mode!=="rule"||!RULE.draw||e.button>0||!RULE.vp)return;
   e.preventDefault();const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
@@ -3894,7 +3919,19 @@ ov.addEventListener("pointerdown",e=>{   // 線を引く: ドラッグした方�
   const mv=ev=>{ex=X(ev);ey=Y(ev);const g=shape();d.style.cssText=g.hz?`left:${g.a*k}px;top:${g.y*k-1}px;width:${(g.b-g.a)*k}px;height:2px`:`left:${g.x*k-1}px;top:${g.a*k}px;width:2px;height:${(g.b-g.a)*k}px`;};
   const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();mv(ev);const g=shape();if((g.b-g.a)*k<8)return;
     const P=g.hz?RULE.vp.convertToPdfPoint(g.a,g.y):RULE.vp.convertToPdfPoint(g.x,g.a),Q=g.hz?RULE.vp.convertToPdfPoint(g.b,g.y):RULE.vp.convertToPdfPoint(g.x,g.b);
-    ruleDo(()=>ruleAdd(bytes,{x0:P[0],y0:P[1],x1:Q[0],y1:Q[1],t:Math.max(0.1,+$("rW").value||0.75),rgb:rlRGB()}),"線を引きました。");};
+    ruleDo(()=>ruleAdd(bytes,{x0:P[0],y0:P[1],x1:Q[0],y1:Q[1],t:Math.max(0.1,+$("rW").value||0.75),rgb:rlRGB(),style:$("rStyle").value}),"線を引きました。");};
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
+});
+$("rOval").onclick=()=>{RULE.oval=!RULE.oval;if(RULE.oval&&RULE.draw){RULE.draw=false;$("rDraw").classList.remove("on");}$("rOval").classList.toggle("on",RULE.oval);ov.classList.toggle("rdraw",RULE.draw||RULE.oval);status(RULE.oval?"楕円の大きさを、ドラッグして決めてください。種類・太さ・色は、上で選んだものになります。":"罫線を青く表示しています。");};
+ov.addEventListener("pointerdown",e=>{   // 楕円を描く: ドラッグした四角形にぴったりの楕円
+  if(mode!=="rule"||!RULE.oval||e.button>0||!RULE.vp)return;
+  e.preventDefault();const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
+  d.className="rband";d.style.borderRadius="50%";ov.appendChild(d);let ex=x0,ey=y0;
+  const mv=ev=>{ex=X(ev);ey=Y(ev);d.style.cssText=`left:${Math.min(x0,ex)*k}px;top:${Math.min(y0,ey)*k}px;width:${Math.abs(ex-x0)*k}px;height:${Math.abs(ey-y0)*k}px;border-radius:50%`;};
+  const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();mv(ev);d.remove();
+    if(Math.abs(ex-x0)*k<10||Math.abs(ey-y0)*k<10)return;
+    const A=RULE.vp.convertToPdfPoint(Math.min(x0,ex),Math.min(y0,ey)),B=RULE.vp.convertToPdfPoint(Math.max(x0,ex),Math.max(y0,ey));
+    ruleDo(()=>ruleAddOval(bytes,{x:Math.min(A[0],B[0]),y:Math.min(A[1],B[1]),w:Math.abs(B[0]-A[0]),h:Math.abs(B[1]-A[1]),t:Math.max(0.1,+$("rW").value||0.75),rgb:rlRGB(),style:$("rStyle").value}),"楕円を描きました。");};
   document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
 });
 // ---- 表の編集(セルを選んで、行・列を操作) ----
@@ -3941,13 +3978,15 @@ $("rDel").onclick=busy(async()=>{
   await setBytes(nb,true);status(`${idxs.length}本の罫線を消しました。`);
 });
 ov.addEventListener("pointerdown",e=>{   // 何もない所をドラッグ: 通った罫線をまとめて選ぶ(マウス)。軽くクリック: 選択を外す
-  if(mode!=="rule"||RULE.draw||RULE.tab||e.target!==ov||(e.pointerType!=="mouse"&&!RULE.band)||e.button>0)return;
+  const onRule=e.target.closest&&e.target.closest(".rl");   // 罫線の上から始めたドラッグも範囲選び(軽いクリックは、その1本の選択・解除のまま)
+  if(mode!=="rule"||RULE.draw||RULE.oval||RULE.tab||(e.target!==ov&&!(onRule&&!onRule.classList.contains("on")))||(e.pointerType!=="mouse"&&!RULE.band)||e.button>0)return;
   const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
   d.className="rband";ov.appendChild(d);let moved=false;
   const mv=ev=>{const x=Math.min(x0,X(ev)),y=Math.min(y0,Y(ev)),w=Math.abs(X(ev)-x0),h=Math.abs(Y(ev)-y0);if(w*k>4||h*k>4)moved=true;d.style.cssText=`left:${x*k}px;top:${y*k}px;width:${w*k}px;height:${h*k}px`;};
   const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();
-    if(!moved){RULE.sel.clear();}
-    else{const xa=Math.min(x0,X(ev)),xb=Math.max(x0,X(ev)),ya=Math.min(y0,Y(ev)),yb=Math.max(y0,Y(ev));
+    if(!moved){if(!onRule){RULE.sel.clear();renderOverlay();ruleSync();}return;}
+    RULE.dragAt=performance.now();   // このあとの click(ドラッグの終わり)で、1本だけ選び直さない
+    {const xa=Math.min(x0,X(ev)),xb=Math.max(x0,X(ev)),ya=Math.min(y0,Y(ev)),yb=Math.max(y0,Y(ev));
       RULE.els.forEach((r,i)=>{const [ax,ay,bx,by]=r.v;if(Math.max(ax,bx)>=xa&&Math.min(ax,bx)<=xb&&Math.max(ay,by)>=ya&&Math.min(ay,by)<=yb)RULE.sel.add(i);});}
     renderOverlay();ruleSync();};
   document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
