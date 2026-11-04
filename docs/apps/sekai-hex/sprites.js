@@ -282,11 +282,16 @@ const SekaiSprites = (function () {
     chinese: ['d4e_1', 'd4e_2'], japan: ['d4e_3', 'd4e_4', 'd4e_5', 'd4e_6'], starfort: ['d0g_1', 'd0g_2', 'd0g_3', 'd0g_5', 'd0g_6', 'd0g_8', 'd0g_9'],
     greek: ['d3a_3'], roman: ['d3a_4'], kraal: ['d5t_5', 'd3a_5'], stilt: ['d5t_1', 'd5t_2', 'd5t_3', 'd5t_4', 'd5t_6', 'd5t_7', 'd3a_7'], inca: ['d3a_6'], tibet: ['d2c_6', 'd2c_9']
   };
+  // 層5(近景)用の高解像度の家(assets/town3)。無い街のタイプは、上の組(town2)の絵を使う
+  const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'] };
+  const HXWH = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXHI) for (const n of HXHI[k]) all[n] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town3/' + n + '.png?v=' + (window.APP_VER || '0'); HXWH[n] = im; } })();
   const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; all.d6v_1 = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
   function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
   function bhouse(c, h) {
     const fam = HXFAM[h.ty]; if (!fam) return;
-    const q = Math.abs((h.x * 9173 + h.y * 6151) | 0); hx(c, fam[(q >> 2) % fam.length], h.x, h.y, h.w * (DEEP ? 0.95 : 1.15));
+    const q = Math.abs((h.x * 9173 + h.y * 6151) | 0), hi = DEEP && HXHI[h.ty];
+    if (hi) { const nm = hi[(q >> 2) % hi.length], im = HXWH[nm]; if (im && im.complete && im.naturalWidth) { const w = h.w * 1.05 * Math.min(1, 1.15 * im.naturalHeight / im.naturalWidth > 1.3 ? 0.75 : 1), dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, h.x - w / 2, h.y - dh + w * 0.07, w, dh); c.restore(); return; } }
+    hx(c, fam[(q >> 2) % fam.length], h.x, h.y, h.w * (DEEP ? 0.95 : 1.15));
   }
   function polyThin(c, pts, fill, stroke) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.lineWidth = LW * 0.3; c.strokeStyle = LINE; c.lineJoin = 'round'; c.stroke(); } }
   function landmark(c, L, t, sd) {
