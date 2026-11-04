@@ -253,7 +253,7 @@ const SekaiSprites = (function () {
   const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'], stilt: ['stilt'], tibet: ['tibet'] };
   const HXWH = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXHI) for (const n of HXHI[k]) all[n] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town3/' + n + '.png?v=' + (window.APP_VER || '0'); HXWH[n] = im; } })();
   const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; for (const j of [1, 2, 3, 4, 5, 7]) all['d6v_' + j] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
-  const WLI = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['wall_tower', 'gate', 'watch', 'palisade', 'wall', 'castle']) { const im = new Image(); im.src = 'assets/town4/' + n + '.png?v=' + (window.APP_VER || '0'); WLI[n] = im; } })();
+  const WLI = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['wall_tower', 'gate', 'watch', 'palisade', 'wall', 'castle', 'pyramid', 'worldtree', 'lighthouse', 'ziggurat', 'shrine', 'icepalace']) { const im = new Image(); im.src = 'assets/town4/' + n + '.png?v=' + (window.APP_VER || '0'); WLI[n] = im; } })();
   function wli(c, n, x, y, w) { const im = WLI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.06, w, dh); c.restore(); return true; }
   const LMIMG = { tower: 'd6v_2', keep: 'd6v_2', minaret: 'd6v_4', mosque: 'd6v_4', bluedome: 'd6v_4', onion: 'd6v_1', pagoda: 'd6v_5', temple: 'd6v_5', palace: 'd6v_5' };
   function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
@@ -312,28 +312,28 @@ const SekaiSprites = (function () {
   }
   // ピラミッド(砂漠)
   function pyramid(c) {
-    if (wimg(c, 'E11', 0, 0.05, 1.0)) return;
+    if (wli(c, 'pyramid', 0, 0.05, 1.0)) return;
   }
   // 神殿(熱帯): 階段状の塔と頂上の祠
   function ziggurat(c) {
-    if (wimg(c, 'C22', 0, 0.05, 0.95)) return;
+    if (wli(c, 'ziggurat', 0, 0.05, 0.95)) return;
   }
   // 氷の宮殿(極地): 水晶のとげ
   function icepalace(c, o, t) {
-    if (wimg(c, 'E12', 0, 0.05, 1.0)) return;
+    if (wli(c, 'icepalace', 0, 0.05, 0.85)) return;
   }
   // 灯台(海辺): 赤白の縞と、まわる光
   function lighthouse(c, o, t) {
-    if (wimg(c, 'A44', 0, 0.05, 0.5)) return;
+    if (wli(c, 'lighthouse', 0, 0.05, 0.26)) return;
   }
   // 世界樹(森): 大きな丸い樹冠と太い幹。葉がきらめく
   function worldtree(c, o, t) {
-    if (wimg(c, 'D24', 0, 0.05, 1.0)) return;
+    if (wli(c, 'worldtree', 0, 0.05, 1.2)) return;
   }
   // 山の祠・塔(高山の目印)
   function shrine(c) {
     if (0.8 * c.getTransform().a < 110 && wimg(c, 'f_ruins', 0, 0.05, 0.8)) return;
-    if (wimg(c, 'E13', 0, 0.05, 0.8)) return;
+    if (wli(c, 'shrine', 0, 0.05, 0.8)) return;
   }
   function animal(c, o, t) { animalImg(c, o); }   // 動物は用意した絵だけを描く(自作の動物の絵は持たない)
   function field(c, o) {   // 畑(素材のタイル)。円形にくり抜いて、地面になじませる
