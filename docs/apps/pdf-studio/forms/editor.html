@@ -94,6 +94,8 @@ body.emb-warp #optRule,body.emb-edit #optRule,body.emb-shape #optRule{display:no
 body.emb-shape #modeSeg,body.emb-shape #optText,body.emb-shape #optImg,body.emb-shape #optFix,body.emb-shape #optOcr,body.emb-shape #modeHint,body.emb-shape #selPanel{display:none!important;}
 body.emb-edit #optTilt,body.emb-edit #optCrop_x,body.emb-edit #optRot,body.emb-warp #optTilt,body.emb-warp #optCrop_x,body.emb-warp #optRot,body.emb-rule #optTilt,body.emb-rule #optCrop_x,body.emb-rule #optRot{display:none!important;}
 #ov .rl{position:absolute;cursor:pointer;touch-action:manipulation;}
+#ov .rhd{position:absolute;box-sizing:border-box;border:2px solid #fff;border-radius:50%;background:#dc2626;z-index:9;cursor:crosshair;touch-action:none;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
+#ov.rdraw .rhd{pointer-events:none;}
 #ov .rl .rln{position:absolute;pointer-events:none;background:rgba(37,99,235,.38);border-radius:1px;}
 #ov .rl:hover .rln{background:rgba(37,99,235,.7);}
 #ov .rl.on .rln{background:rgba(220,38,38,.85);}
@@ -3600,8 +3602,8 @@ function rlRules(ctx){   // 描く命令 → 水平・垂直の罫線(1本ずつ
     const ow=ctx.owners.get(p.owner);if(ow.locked)continue;
     const ctm=p.gs.ctm,sc=Math.sqrt(Math.abs(ctm[0]*ctm[3]-ctm[1]*ctm[2]))||1,Tr=a=>rlAp(ctm,a[0],a[1]);
     const push=(kind,si,A,B,t,extra)=>{
-      const dx=Math.abs(B[0]-A[0]),dy=Math.abs(B[1]-A[1]);if(Math.hypot(dx,dy)<1e-6)return;if(dy>dx*0.01&&dx>dy*0.01)return;   // 斜めは対象外
-      const h=dy<=dx*0.01;out.push({rgb:p.stroke?p.gs.s:p.gs.f,kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,h,pos:h?(A[1]+B[1])/2:(A[0]+B[0])/2,a:h?Math.min(A[0],B[0]):Math.min(A[1],B[1]),b:h?Math.max(A[0],B[0]):Math.max(A[1],B[1]),...extra});};
+      const dx=Math.abs(B[0]-A[0]),dy=Math.abs(B[1]-A[1]);if(Math.hypot(dx,dy)<1e-6)return;const diag=dy>dx*0.01&&dx>dy*0.01;if(diag&&kind!=="seg")return;   // 斜めは、線(seg)だけ対象(薄い四角・四角の辺は、水平・垂直だけ)
+      const h=diag?dx>=dy:dy<=dx*0.01;out.push({diag,rgb:p.stroke?p.gs.s:p.gs.f,kind,paint:p.id,sub:si,owner:p.owner,x0:A[0],y0:A[1],x1:B[0],y1:B[1],t,h,pos:h?(A[1]+B[1])/2:(A[0]+B[0])/2,a:h?Math.min(A[0],B[0]):Math.min(A[1],B[1]),b:h?Math.max(A[0],B[0]):Math.max(A[1],B[1]),...extra});};
     const bar=(si,pts)=>{const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),W=x1-x0,H=y1-y0;
       if(Math.min(W,H)>3||Math.max(W,H)<8)return false;   // 薄くて細長い塗り四角だけを、罫線とみなす
       if(W>=H)push("bar",si,[x0,(y0+y1)/2],[x1,(y0+y1)/2],H);else push("bar",si,[(x0+x1)/2,y0],[(x0+x1)/2,y1],W);return true;};
@@ -3627,15 +3629,18 @@ async function ruleApply(u8,op){
   op.idxs.forEach(i=>{const r=rules[i];if(!r)return;
     let pl=plan.get(r.paint);if(!pl){pl=new Map();plan.set(r.paint,pl);}
     let sp=pl.get(r.sub);if(!sp){sp={del:false,seg:new Set(),edge:new Set()};pl.set(r.sub,sp);}
-    if(r.kind==="bar")sp.del=true;else if(r.kind==="seg")sp.seg.add(r.seg);else sp.edge.add(r.edge);});
+    sp.r=r;if(r.kind==="bar")sp.del=true;else if(r.kind==="seg")sp.seg.add(r.seg);else sp.edge.add(r.edge);});
   const eds=new Map(),add=(o,s,e,t)=>{if(!eds.has(o))eds.set(o,[]);eds.get(o).push({s,e,t,q:eds.get(o).length});};
   const rgbT=(rgb,st)=>rgb.map(rlFmt).join(" ")+(st?" RG":" rg");
   let skipCount=false;
   for(const [pid,pl] of plan){
     const p=ctx.paints[pid],u=ctx.owners.get(p.owner).bytes,ctm=p.gs.ctm,sc=Math.sqrt(Math.abs(ctm[0]*ctm[3]-ctm[1]*ctm[2]))||1,iv=rlInv(ctm)||[1,0,0,1,0,0];
+    const E1=mode==="ends"?rlAp(iv,op.a[0],op.a[1]):null,E2=mode==="ends"?rlAp(iv,op.b[0],op.b[1]):null;   // 始点・終点(ページの座標)を、この命令の座標に直す
+    const endLine=sp=>`${rlFmt(E1[0])} ${rlFmt(E1[1])} m ${rlFmt(E2[0])} ${rlFmt(E2[1])} l S`;
     const dl=mode==="move"?[op.dx*iv[0]+op.dy*iv[2],op.dx*iv[1]+op.dy*iv[3]]:[0,0];   // ページの動きを、この命令の座標に直す
     const emit=[],cut=[];let live=0;
     const line=(a,b)=>{   // 動かす・変えた線(もとの座標 a,b)
+      if(mode==="ends"){emit.push(endLine());return;}
       const A=[a[0]+dl[0],a[1]+dl[1]],B=[b[0]+dl[0],b[1]+dl[1]],body=`${rlFmt(A[0])} ${rlFmt(A[1])} m ${rlFmt(B[0])} ${rlFmt(B[1])} l S`;
       if(mode==="style"&&op.style&&op.style!=="solid"){skipCount=true;emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${rlLineOps(A[0],A[1],B[0],B[1],(op.t||0.75)/sc,op.style,1/sc)} Q`);}
       else if(mode==="style"){emit.push(`q ${op.rgb?rgbT(op.rgb,true)+" ":""}${op.t?rlFmt(op.t/sc)+" w ":""}${body} Q`);}else emit.push(body);};
@@ -3650,6 +3655,7 @@ async function ruleApply(u8,op){
         const [x,y,w,h]=sub.n;
         if(sp.del){   // 薄い塗り四角
           if(mode==="del")return;
+          if(mode==="ends"){emit.push(`q ${rgbT(sp.r.rgb||[0,0,0],true)} ${rlFmt(sp.r.t/sc)} w ${endLine()} Q`);return;}
           if(mode==="style"&&op.style&&op.style!=="solid"){barLine(x,y,w,h);return;}
           let X=x,Y=y,W=w,H=h;
           if(mode==="move"){X+=dl[0];Y+=dl[1];}
@@ -3664,6 +3670,7 @@ async function ruleApply(u8,op){
       }else{
         if(sp.del){   // 薄い塗りの多角形
           if(mode==="del")return;
+          if(mode==="ends"){emit.push(`q ${rgbT(sp.r.rgb||[0,0,0],true)} ${rlFmt(sp.r.t/sc)} w ${endLine()} Q`);return;}
           if(mode==="style"&&op.style&&op.style!=="solid"){const xs=sub.pts.map(q=>q[0]),ys=sub.pts.map(q=>q[1]),X0=Math.min(...xs),Y0=Math.min(...ys);barLine(X0,Y0,Math.max(...xs)-X0,Math.max(...ys)-Y0);return;}
           if(mode==="style"&&op.t){   // 太さ: 外側の四角の、細い方の幅を変える(中心は動かさない)
             const xs=sub.pts.map(q=>q[0]),ys=sub.pts.map(q=>q[1]);let X=Math.min(...xs),Y=Math.min(...ys),W=Math.max(...xs)-X,H=Math.max(...ys)-Y;
@@ -3729,7 +3736,7 @@ async function rlCommit(doc,page,ctx,eds){
 // ===== 表(罫線の格子)の操作: 行を足す・消す・高さを変える / 列を足す / セルを結合 =====
 // 罫線から格子(行・列の位置)を見つけ、ページの全ての図形・文字・画像の位置を、写像(map)で書き換える。位置は覚えず、毎回読み直す
 function rlTables(rules){
-  const rs=rules.map((r,i)=>({r,i,h:r.h,pos:r.pos,a:r.a,b:r.b})).filter(q=>q.r.owner==="P"&&q.r.t<=4);
+  const rs=rules.map((r,i)=>({r,i,h:r.h,pos:r.pos,a:r.a,b:r.b})).filter(q=>q.r.owner==="P"&&q.r.t<=4&&!q.r.diag);
   const tol=1.5,bx=q=>q.h?{x0:q.a,x1:q.b,y0:q.pos-q.r.t/2,y1:q.pos+q.r.t/2}:{x0:q.pos-q.r.t/2,x1:q.pos+q.r.t/2,y0:q.a,y1:q.b};
   const near=(p,q)=>{const a=bx(p),b=bx(q);return a.x0-tol<=b.x1&&b.x0-tol<=a.x1&&a.y0-tol<=b.y1&&b.y0-tol<=a.y1;};
   const par=rs.map((_,i)=>i),fd=i=>par[i]===i?i:(par[i]=fd(par[i]));
@@ -3871,27 +3878,27 @@ function ruleSync(){const n=RULE.sel.size;
   if(n&&!RULE.tab){const r=RULE.els[[...RULE.sel][0]];if(r){$("rW").value=Math.round(r.t*100)/100;
     if(r.rgb)$("rC").value="#"+r.rgb.map(v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,"0")).join("");}}   // 選んだ線の、いまの太さと色を欄に出す
   $("rDel").disabled=!n;$("rClr").disabled=!n;$("rWSet").disabled=!n;$("rCSet").disabled=!n;$("rStSet").disabled=!n;$("rNum").textContent=n?`${n}本を選択中`:"";}
+// 罫線の見た目と、つかむ場所(斜めの線も、線の向きに合わせて回した細長い箱)
+function rlPlace(el,ax,ay,bx,by,k,padPx,lt){
+  const len=Math.hypot(bx-ax,by-ay)*k,ang=Math.atan2(by-ay,bx-ax)*180/Math.PI;
+  el.style.cssText=`left:${ax*k}px;top:${ay*k-padPx}px;width:${len}px;height:${2*padPx}px;transform-origin:0 50%;transform:rotate(${ang}deg)`;
+  const ln=el.querySelector(".rln");if(ln)ln.style.cssText=`left:0;right:0;top:${padPx-lt/2}px;height:${lt}px`;
+}
 function ruleDraw(k){
   if(RULE.for!==bytes){ruleLoad().catch(e=>status("罫線を読み取れませんでした: "+(e.message||e)));return;}
   if(RULE.tab){tabDraw(k);return;}
-  const pad=Math.max(7/k,0);
+  const padPx=isTouch()?14:7;   // 指では、つかむ幅を広げる
   RULE.els.map((r,i)=>[r,i]).sort((p,q)=>Math.hypot(q[0].v[2]-q[0].v[0],q[0].v[3]-q[0].v[1])-Math.hypot(p[0].v[2]-p[0].v[0],p[0].v[3]-p[0].v[1])).forEach(([r,i])=>{   // 長い線を先に描く(短い線が上になって、選びやすい)
-    const [ax,ay,bx,by]=r.v,hz=Math.abs(bx-ax)>=Math.abs(by-ay),el=document.createElement("div");
-    el.className="rl"+(RULE.sel.has(i)?" on":"");el.dataset.i=i;
-    const x0=Math.min(ax,bx),x1=Math.max(ax,bx),y0=Math.min(ay,by),y1=Math.max(ay,by);
-    const L=(hz?x0:x0-pad)*k,Tp=(hz?y0-pad:y0)*k,W=(hz?x1-x0:2*pad)*k,H=(hz?2*pad:y1-y0)*k;
-    el.style.cssText=`left:${L}px;top:${Tp}px;width:${W}px;height:${H}px`;
-    const ln=document.createElement("div");ln.className="rln";
-    const lt=Math.max(3,r.t*k);   // 見える太さは、3px 以上
-    ln.style.cssText=hz?`left:0;right:0;top:${H/2-lt/2}px;height:${lt}px`:`top:0;bottom:0;left:${W/2-lt/2}px;width:${lt}px`;
-    el.appendChild(ln);
-    el.addEventListener("pointerdown",e=>{   // 選んでいる罫線をつかんで動かす(全部が横線なら上下だけ、全部が縦線なら左右だけ)
-      if(RULE.draw||!RULE.sel.has(i)||e.button>0)return;
-      const sx=e.clientX,sy=e.clientY,sels=[...RULE.sel].map(j=>RULE.els[j]),hz=r=>Math.abs(r.v[2]-r.v[0])>=Math.abs(r.v[3]-r.v[1]);
-      const allH=sels.every(hz),allV=sels.every(r=>!hz(r));let moved=false,dxv=0,dyv=0;
+    const [ax,ay,bx,by]=r.v,el=document.createElement("div");
+    el.className="rl"+(RULE.sel.has(i)?" on":"")+(r.diag?" dg":"");el.dataset.i=i;
+    const ln=document.createElement("div");ln.className="rln";el.appendChild(ln);
+    rlPlace(el,ax,ay,bx,by,k,padPx,Math.max(3,r.t*k));   // 見える太さは、3px 以上
+    el.addEventListener("pointerdown",e=>{   // 選んでいる罫線をつかんで、好きな向きに動かす
+      if(RULE.draw||RULE.oval||!RULE.sel.has(i)||e.button>0)return;
+      const sx=e.clientX,sy=e.clientY,sels=[...RULE.sel].map(j=>RULE.els[j]);let moved=false,dxv=0,dyv=0;
       try{el.setPointerCapture(e.pointerId);}catch{}
-      const mv=ev=>{dxv=allH?0:(ev.clientX-sx)/k;dyv=allV?0:(ev.clientY-sy)/k;if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>5)moved=true;
-        if(moved)ov.querySelectorAll(".rl.on").forEach(d=>{d.style.transform=`translate(${dxv*k}px,${dyv*k}px)`;});};
+      const mv=ev=>{dxv=(ev.clientX-sx)/k;dyv=(ev.clientY-sy)/k;if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>5)moved=true;
+        if(moved){ov.querySelectorAll(".rl.on").forEach(d=>{d.style.translate=`${dxv*k}px ${dyv*k}px`;});ov.querySelectorAll(".rhd").forEach(d=>{d.style.translate=`${dxv*k}px ${dyv*k}px`;});}};
       const up=ev=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);
         if(!moved)return;RULE.dragAt=performance.now();
         if(ev.type==="pointercancel"||(!dxv&&!dyv)){renderOverlay();return;}
@@ -3899,26 +3906,58 @@ function ruleDraw(k){
         ruleDo(()=>ruleApply(bytes,{idxs:[...RULE.sel],mode:"move",dx:B[0]-A[0],dy:B[1]-A[1]}),`${sels.length}本を動かしました。`);};
       el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
     });
-    el.onclick=e=>{e.stopPropagation();if(performance.now()-RULE.dragAt<400)return;RULE.sel.has(i)?RULE.sel.delete(i):RULE.sel.add(i);el.classList.toggle("on");ruleSync();};
+    el.onclick=e=>{e.stopPropagation();if(performance.now()-RULE.dragAt<400)return;RULE.sel.has(i)?RULE.sel.delete(i):RULE.sel.add(i);renderOverlay();ruleSync();};
     ov.appendChild(el);
   });
+  // 1本だけ選んでいるときは、始点・終点の丸が出る。ドラッグで、好きな位置へ動かせる(ほかの罫線の端・線に、近いと吸い付く)
+  if(RULE.sel.size===1&&!RULE.draw&&!RULE.oval){
+    const i=[...RULE.sel][0],r=RULE.els[i];if(!r)return;
+    const hp=isTouch()?16:10,pts=[[r.v[0],r.v[1]],[r.v[2],r.v[3]]];
+    const snapPts=[];RULE.els.forEach((q,j)=>{if(j!==i)snapPts.push([q.v[0],q.v[1]],[q.v[2],q.v[3]]);});
+    pts.forEach((pt,wi)=>{
+      const h=document.createElement("div");h.className="rhd";h.title=wi?"終点":"始点";
+      h.style.cssText=`left:${pt[0]*k-hp}px;top:${pt[1]*k-hp}px;width:${2*hp}px;height:${2*hp}px`;
+      h.addEventListener("pointerdown",e=>{
+        e.stopPropagation();e.preventDefault();if(e.button>0)return;try{h.setPointerCapture(e.pointerId);}catch{}
+        const rc=ov.getBoundingClientRect();let cur=pt.slice(),moved=false;
+        const sel=ov.querySelector(".rl.on"),other=wi?[r.v[0],r.v[1]]:[r.v[2],r.v[3]];
+        const mv=ev=>{let x=(ev.clientX-rc.left)/k,y=(ev.clientY-rc.top)/k;moved=true;
+          let bd=9/k,bp=null;snapPts.forEach(q=>{const d=Math.hypot(q[0]-x,q[1]-y);if(d<bd){bd=d;bp=q;}});if(bp){x=bp[0];y=bp[1];}
+          else{const dx=Math.abs(x-other[0]),dy=Math.abs(y-other[1]);if(dy<dx*0.07)y=other[1];else if(dx<dy*0.07)x=other[0];}   // ほぼ水平・垂直なら、まっすぐに合わせる
+          cur=[x,y];h.style.left=(x*k-hp)+"px";h.style.top=(y*k-hp)+"px";
+          const a=wi?other:cur,b=wi?cur:other;if(sel)rlPlace(sel,a[0],a[1],b[0],b[1],k,padPx,Math.max(3,r.t*k));};
+        const up=()=>{h.removeEventListener("pointermove",mv);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",up);
+          if(!moved||Math.hypot(cur[0]-pt[0],cur[1]-pt[1])*k<2){renderOverlay();return;}
+          RULE.dragAt=performance.now();
+          const a=wi?other:cur,b=wi?cur:other,P=RULE.vp.convertToPdfPoint(a[0],a[1]),Q=RULE.vp.convertToPdfPoint(b[0],b[1]);
+          ruleDo(()=>ruleApply(bytes,{idxs:[i],mode:"ends",a:P,b:Q}),"線の始点・終点を動かしました。");};
+        h.addEventListener("pointermove",mv);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
+      });
+      ov.appendChild(h);
+    });
+  }
 }
 const ruleDo=busy(async(fn,msg)=>{const nb=await fn();await setBytes(nb,true);status(msg);});
 $("rWSet").onclick=()=>{const t=+$("rW").value,idxs=[...RULE.sel];if(!idxs.length||!(t>0))return;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",t}),`${idxs.length}本の太さを ${t}pt にしました。`);};
 $("rStSet").onclick=()=>{const idxs=[...RULE.sel],st=$("rStyle").value;if(!idxs.length)return;const t=+$("rW").value;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",style:st,t:t>0?t:undefined}),`${idxs.length}本の種類を「${$("rStyle").selectedOptions[0].textContent}」にしました。`);};
 $("rCSet").onclick=()=>{const idxs=[...RULE.sel];if(!idxs.length)return;ruleDo(()=>ruleApply(bytes,{idxs,mode:"style",rgb:rlRGB()}),`${idxs.length}本の色を変えました。`);};
 const rlRGB=()=>{const h=$("rC").value;return[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);};
-$("rDraw").onclick=()=>{RULE.draw=!RULE.draw;if(RULE.draw&&RULE.oval){RULE.oval=false;$("rOval").classList.remove("on");}$("rDraw").classList.toggle("on",RULE.draw);ov.classList.toggle("rdraw",RULE.draw||RULE.oval);status(RULE.draw?"線を引く場所を、ドラッグしてください。横か縦に引けます。":"罫線を青く表示しています。");};
-ov.addEventListener("pointerdown",e=>{   // 線を引く: ドラッグした方向(横か縦)の線。ほかの罫線の位置に近いときは、そこに合わせる
+$("rDraw").onclick=()=>{RULE.draw=!RULE.draw;if(RULE.draw&&RULE.oval){RULE.oval=false;$("rOval").classList.remove("on");}$("rDraw").classList.toggle("on",RULE.draw);ov.classList.toggle("rdraw",RULE.draw||RULE.oval);status(RULE.draw?"線を引く場所を、始点から終点までドラッグしてください。斜めにも引けます(ほぼ水平・垂直なら、まっすぐに合わせます)。":"罫線を青く表示しています。");};
+ov.addEventListener("pointerdown",e=>{   // 線を引く: ドラッグした始点から終点まで、好きな向きの線。ほぼ水平・垂直なら、まっすぐに合わせ、ほかの罫線の端に近いときは、そこに合わせる
   if(mode!=="rule"||!RULE.draw||e.button>0||!RULE.vp)return;
   e.preventDefault();const rc=ov.getBoundingClientRect(),k=K(),X=ev=>(ev.clientX-rc.left)/k,Y=ev=>(ev.clientY-rc.top)/k,x0=X(e),y0=Y(e),d=document.createElement("div");
-  d.className="rband";ov.appendChild(d);let ex=x0,ey=y0;
-  const xs=[],ys=[];RULE.els.forEach(r=>{xs.push(r.v[0],r.v[2]);ys.push(r.v[1],r.v[3]);});
-  const snap=(v,a)=>{let b=v,bd=7/k;a.forEach(q=>{if(Math.abs(q-v)<bd){bd=Math.abs(q-v);b=q;}});return b;};
-  const shape=()=>{const hz=Math.abs(ex-x0)>=Math.abs(ey-y0);return hz?{hz,y:snap(y0,ys),a:snap(Math.min(x0,ex),xs),b:snap(Math.max(x0,ex),xs)}:{hz,x:snap(x0,xs),a:snap(Math.min(y0,ey),ys),b:snap(Math.max(y0,ey),ys)};};
-  const mv=ev=>{ex=X(ev);ey=Y(ev);const g=shape();d.style.cssText=g.hz?`left:${g.a*k}px;top:${g.y*k-1}px;width:${(g.b-g.a)*k}px;height:2px`:`left:${g.x*k-1}px;top:${g.a*k}px;width:2px;height:${(g.b-g.a)*k}px`;};
-  const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();mv(ev);const g=shape();if((g.b-g.a)*k<8)return;
-    const P=g.hz?RULE.vp.convertToPdfPoint(g.a,g.y):RULE.vp.convertToPdfPoint(g.x,g.a),Q=g.hz?RULE.vp.convertToPdfPoint(g.b,g.y):RULE.vp.convertToPdfPoint(g.x,g.b);
+  d.className="rband";d.style.cssText="border:0;background:#2563eb;height:2px;transform-origin:0 50%";ov.appendChild(d);let ex=x0,ey=y0;
+  const pts=[],xs=[],ys=[];RULE.els.forEach(r=>{pts.push([r.v[0],r.v[1]],[r.v[2],r.v[3]]);xs.push(r.v[0],r.v[2]);ys.push(r.v[1],r.v[3]);});
+  const snapP=(x,y)=>{let bd=8/k,bp=null;pts.forEach(q=>{const dd=Math.hypot(q[0]-x,q[1]-y);if(dd<bd){bd=dd;bp=q;}});return bp;};
+  const shape=()=>{let a=snapP(x0,y0)||[x0,y0],b=snapP(ex,ey)||[ex,ey];
+    const dx=Math.abs(b[0]-a[0]),dy=Math.abs(b[1]-a[1]);
+    if(dy<dx*0.07){const yy=snapP(x0,y0)?a[1]:(()=>{let v=(a[1]+b[1])/2,bd=7/k;ys.forEach(q=>{if(Math.abs(q-v)<bd){bd=Math.abs(q-v);v=q;}});return v;})();a=[a[0],yy];b=[b[0],yy];}
+    else if(dx<dy*0.07){const xx=snapP(x0,y0)?a[0]:(()=>{let v=(a[0]+b[0])/2,bd=7/k;xs.forEach(q=>{if(Math.abs(q-v)<bd){bd=Math.abs(q-v);v=q;}});return v;})();a=[xx,a[1]];b=[xx,b[1]];}
+    return{a,b};};
+  const mv=ev=>{ex=X(ev);ey=Y(ev);const g=shape(),len=Math.hypot(g.b[0]-g.a[0],g.b[1]-g.a[1])*k,ang=Math.atan2(g.b[1]-g.a[1],g.b[0]-g.a[0])*180/Math.PI;
+    d.style.left=g.a[0]*k+"px";d.style.top=(g.a[1]*k-1)+"px";d.style.width=len+"px";d.style.transform=`rotate(${ang}deg)`;};
+  const up=ev=>{document.removeEventListener("pointermove",mv);d.remove();ex=X(ev);ey=Y(ev);const g=shape();if(Math.hypot(g.b[0]-g.a[0],g.b[1]-g.a[1])*k<8)return;
+    const P=RULE.vp.convertToPdfPoint(g.a[0],g.a[1]),Q=RULE.vp.convertToPdfPoint(g.b[0],g.b[1]);
     ruleDo(()=>ruleAdd(bytes,{x0:P[0],y0:P[1],x1:Q[0],y1:Q[1],t:Math.max(0.1,+$("rW").value||0.75),rgb:rlRGB(),style:$("rStyle").value}),"線を引きました。");};
   document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
 });
@@ -4029,7 +4068,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={fmOf:()=>{const i=items.find(x=>x.type==="fix"||x.type==="text");return i&&i.fm;},warpSetCorners:q=>{if(!warp)return;warp.curved=false;warp.G[0][0]=q[0];warp.G[0][GN-1]=q[1];warp.G[GN-1][GN-1]=q[2];warp.G[GN-1][0]=q[3];gridFromQuad(warp);if(!warp.dstTouched)warpInitDst(warp);renderWarp();},warpState:()=>warp&&{kind:warp.kind,whole:!!warp.whole,G:warp.G,dst:warp.dst,fix:warpOpt.fix,around:warpOpt.around},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={fmOf:()=>{const i=items.find(x=>x.type==="fix"||x.type==="text");return i&&i.fm;},warpSetCorners:q=>{if(!warp)return;warp.curved=false;warp.G[0][0]=q[0];warp.G[0][GN-1]=q[1];warp.G[GN-1][GN-1]=q[2];warp.G[GN-1][0]=q[3];gridFromQuad(warp);if(!warp.dstTouched)warpInitDst(warp);renderWarp();},warpState:()=>warp&&{kind:warp.kind,whole:!!warp.whole,G:warp.G,dst:warp.dst,fix:warpOpt.fix,around:warpOpt.around},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,x0:r.x0,y0:r.y0,x1:r.x1,y1:r.y1,diag:!!r.diag,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
