@@ -137,7 +137,7 @@ const SekaiSprites = (function () {
     let k = 0; for (const it of items) { const hero = it.p === WPOS[0];
       if (big) { const hf = HXFAM[o.ty]; if (hf && hx(c, hf[(k++ + Math.floor(sd * 997)) % hf.length], it.p[0], it.p[1], hero ? 0.4 : 0.3)) ok = true; }
       else if (wimg(c, it.nm, it.p[0], it.p[1], hero ? 0.3 : 0.22)) ok = true; }
-    if (ok && T.wall && T.wall !== 'moat') { wimg(c, T.wall === 'star' ? 'gate_c' : 'gate_town', 0, 0.3, 0.2); wimg(c, 'wall_s', -0.3, 0.2, 0.2); wimg(c, 'wall_s', 0.3, 0.2, 0.2); wimg(c, 'watchtower', -0.4, 0.05, 0.1); wimg(c, 'watchtower', 0.4, 0.05, 0.1); }
+    if (ok && T.wall && T.wall !== 'moat') { wli(c, 'gate', 0, 0.3, 0.2); wli(c, 'wall', -0.3, 0.2, 0.21); wli(c, 'wall', 0.3, 0.2, 0.21); wli(c, 'watch', -0.4, 0.05, 0.095); wli(c, 'watch', 0.4, 0.05, 0.095); }
     return ok;
   }
   // ---- 動物・海の生き物・船(利用者が用意した大きな絵を1匹ずつ切り出したもの。assets/animals/) ----
@@ -285,7 +285,10 @@ const SekaiSprites = (function () {
   // 層5(近景)用の高解像度の家(assets/town3)。無い街のタイプは、上の組(town2)の絵を使う
   const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'], stilt: ['stilt'], tibet: ['tibet'] };
   const HXWH = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXHI) for (const n of HXHI[k]) all[n] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town3/' + n + '.png?v=' + (window.APP_VER || '0'); HXWH[n] = im; } })();
-  const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; all.d6v_1 = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
+  const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; for (const j of [1, 2, 3, 4, 5, 7]) all['d6v_' + j] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
+  const WLI = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['wall_tower', 'gate', 'watch', 'palisade', 'wall']) { const im = new Image(); im.src = 'assets/town4/' + n + '.png?v=' + (window.APP_VER || '0'); WLI[n] = im; } })();
+  function wli(c, n, x, y, w) { const im = WLI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.06, w, dh); c.restore(); return true; }
+  const LMIMG = { tower: 'd6v_2', keep: 'd6v_2', minaret: 'd6v_4', mosque: 'd6v_4', bluedome: 'd6v_4', onion: 'd6v_1', pagoda: 'd6v_5', temple: 'd6v_5', palace: 'd6v_5' };
   function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
   function bhouse(c, h) {
     const fam = HXFAM[h.ty]; if (!fam) return;
@@ -294,20 +297,6 @@ const SekaiSprites = (function () {
     hx(c, fam[(q >> 2) % fam.length], h.x, h.y, h.w * (DEEP ? 0.95 : 1.15));
   }
   function polyThin(c, pts, fill, stroke) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.lineWidth = LW * 0.3; c.strokeStyle = LINE; c.lineJoin = 'round'; c.stroke(); } }
-  function landmark(c, L, t, sd) {
-    const poly = polyThin, lm = L.T.lm; if (!lm) return; c.save(); stroke0(c, 0.5);
-    const flag = (x, y) => { const w = Math.sin(t * 0.006 + sd * 9) * 0.015; poly(c, [[x, y], [x + 0.07 + w, y + 0.02], [x, y + 0.04]], '#e5533d', false); };
-    if (lm === 'tower') { poly(c, [[-0.035, 0.01], [-0.035, -0.17], [0.035, -0.17], [0.035, 0.01]], '#efe6d6', true); poly(c, [[-0.05, -0.17], [0, -0.3], [0.05, -0.17]], '#3f7fd6', true); flag(0, -0.3); }
-    else if (lm === 'minaret') { poly(c, [[-0.03, 0.01], [-0.025, -0.26], [0.025, -0.26], [0.03, 0.01]], '#e8d2a8', true); poly(c, [[-0.045, -0.26], [0.045, -0.26], [0.04, -0.22], [-0.04, -0.22]], '#d6bd90', true); poly(c, [[-0.03, -0.26], [0, -0.36], [0.03, -0.26]], '#3f9a6a', true); }
-    else if (lm === 'keep') { poly(c, [[-0.1, 0.01], [-0.07, -0.07], [0.07, -0.07], [0.1, 0.01]], '#9a9aa4', true); let y = -0.07, w = 0.07; for (let k = 0; k < 3; k++) { c.fillStyle = '#f4f0e6'; c.fillRect(-w, y - 0.07, w * 2, 0.07); c.strokeRect(-w, y - 0.07, w * 2, 0.07); poly(c, [[-w - 0.03, y - 0.07], [-w * 0.7, y - 0.11], [w * 0.7, y - 0.11], [w + 0.03, y - 0.07]], '#3d4250', true); y -= 0.1; w *= 0.78; } ell(c, 0, y - 0.04, 0.012, 0.012, '#e8c04a', false); }
-    else if (lm === 'onion') { poly(c, [[-0.05, 0.01], [-0.05, -0.12], [0.05, -0.12], [0.05, 0.01]], '#f4efe2', true); c.fillStyle = '#3f7fd6'; c.beginPath(); c.moveTo(-0.045, -0.12); c.quadraticCurveTo(-0.08, -0.2, 0, -0.3); c.quadraticCurveTo(0.08, -0.2, 0.045, -0.12); c.closePath(); c.fill(); c.stroke(); ell(c, 0, -0.32, 0.012, 0.012, '#e8c04a', false); }
-    else if (lm === 'mosque') { poly(c, [[-0.16, 0.01], [-0.16, -0.12], [0.16, -0.12], [0.16, 0.01]], '#b98a5e', true); for (const x of [-0.12, 0, 0.12]) { poly(c, [[x - 0.035, -0.12], [x - 0.02, -0.28], [x + 0.02, -0.28], [x + 0.035, -0.12]], '#a97b52', true); ell(c, x, -0.29, 0.012, 0.012, '#f2e3c4', false); } poly(c, [[-0.03, 0.01], [-0.03, -0.06], [0.03, -0.06], [0.03, 0.01]], '#5a3a28', false); }
-    else if (lm === 'pagoda') { let y = 0.01, w = 0.06; for (let k = 0; k < 3; k++) { c.fillStyle = '#c8553d'; c.fillRect(-w * 0.7, y - 0.07, w * 1.4, 0.07); c.strokeRect(-w * 0.7, y - 0.07, w * 1.4, 0.07); poly(c, [[-w - 0.02, y - 0.07], [-w * 0.6, y - 0.11], [w * 0.6, y - 0.11], [w + 0.02, y - 0.07]], '#4b5563', true); y -= 0.1; w *= 0.8; } }
-    else if (lm === 'temple') { poly(c, [[-0.1, 0.01], [-0.1, -0.02], [0.1, -0.02], [0.1, 0.01]], '#efe6d6', true); for (const x of [-0.08, -0.027, 0.027, 0.08]) { c.fillStyle = '#f7f1e4'; c.fillRect(x - 0.01, -0.12, 0.02, 0.1); c.strokeRect(x - 0.01, -0.12, 0.02, 0.1); } poly(c, [[-0.11, -0.12], [0, -0.19], [0.11, -0.12]], '#cf6b43', true); }
-    else if (lm === 'bluedome') { poly(c, [[-0.045, 0.01], [-0.045, -0.08], [0.045, -0.08], [0.045, 0.01]], '#fbfbf6', true); c.fillStyle = '#2f72c4'; c.beginPath(); c.ellipse(0, -0.08, 0.05, 0.06, 0, Math.PI, 0); c.fill(); c.stroke(); ell(c, 0, -0.145, 0.006, 0.014, '#fbfbf6', false); }
-    else if (lm === 'palace') { poly(c, [[-0.16, 0.01], [-0.16, -0.09], [0.16, -0.09], [0.16, 0.01]], '#f7f4ec', true); poly(c, [[-0.11, -0.09], [-0.11, -0.19], [0.11, -0.19], [0.11, -0.09]], '#8a3a30', true); poly(c, [[-0.06, -0.19], [-0.06, -0.27], [0.06, -0.27], [0.06, -0.19]], '#f7f4ec', true); for (const [x, y, w] of [[0, -0.27, 0.08], [-0.12, -0.19, 0.05], [0.12, -0.19, 0.05]]) poly(c, [[x - w, y], [x - w * 0.6, y - 0.04], [x + w * 0.6, y - 0.04], [x + w, y]], '#e8c04a', true); }
-    c.restore();
-  }
   function town(c, o, t) {
     if ((o.px || 0) < 110 && !(o.px >= 700)) { const T0 = o.ty, nm = (o.nx || o.ny) ? ((o.seed || 0) > 0.5 ? 'f_port' : 'f_port2') : (['chinese', 'japan', 'tibet'].indexOf(T0) >= 0) ? 'f_town_cn' : (['medina', 'djenne', 'kraal', 'inca'].indexOf(T0) >= 0) ? 'f_town_desert' : 'f_town_eu'; if (wimg(c, nm, 0, 0.12, 0.95)) return; }   // 小さく映る街は、輪郭の太い単純な絵
     const LW0 = LW; LW = 0.05 * Math.min(1, 110 / (o.px || 110));   // 大きく描くほど輪郭線は細く(画面上の太さを一定に)
@@ -323,20 +312,9 @@ const SekaiSprites = (function () {
     if (T.water && !DP) { c.save(); c.globalAlpha = 0.7; ell(c, 0, 0.02, R * 1.0, R * 0.9 * sq, '#5aaeee', false); c.restore(); }
     if (T.wall === 'moat' && !DP) { c.save(); c.strokeStyle = '#2f72c4'; c.lineWidth = 0.05; c.beginPath(); c.ellipse(0, 0, R + 0.06, (R + 0.06) * sq, 0, 0, 6.2832); c.stroke(); c.strokeStyle = '#5aaeee'; c.lineWidth = 0.035; c.stroke(); c.restore(); }
     if (!DP) { c.save(); c.strokeStyle = '#efe0bd'; c.lineWidth = 0.028; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(L.gate) * (R + 0.14), Math.sin(L.gate) * (R + 0.14) * sq); c.stroke(); c.restore(); }
-    const wallPath = (back) => {
-      const wc = T.wcol; if (!wc || T.wall === 'moat' || DP) return; c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
-      for (const [col, w] of [[LINE, 0.05], [wc, 0.032]]) {
-        c.strokeStyle = col; c.lineWidth = w; c.beginPath();
-        if (T.wall === 'round') c.ellipse(0, 0, R + 0.04, (R + 0.04) * sq, 0, back ? Math.PI : 0, back ? 6.2832 : Math.PI);
-        else if (T.wall === 'rect') { const a = R + 0.05, b = (R + 0.05) * sq; if (back) { c.moveTo(-a, 0); c.lineTo(-a, -b); c.lineTo(a, -b); c.lineTo(a, 0); } else { c.moveTo(-a, 0); c.lineTo(-a, b); c.lineTo(a, b); c.lineTo(a, 0); } }
-        else if (T.wall === 'star') { for (let k = 0; k <= 16; k++) { const a = k / 16 * 6.2832, rr = (k % 2 ? 0.8 : 1.12) * R + 0.03, x = Math.cos(a) * rr, y = Math.sin(a) * rr * sq; if (back ? y > 0.0001 : y < -0.0001) { c.moveTo(x, y); continue; } if (k === 0) c.moveTo(x, y); else c.lineTo(x, y); } }
-        c.stroke();
-      } c.restore();
-    };
-    wallPath(true);
     if (T.terr && !DP) { c.save(); c.strokeStyle = T.terr; c.lineWidth = 0.02; for (let j = 0; j < 5; j++) { const yy = -0.22 + j * 0.1 + 0.01, half = (0.12 + j * 0.07) * (R / 0.36) + 0.04; c.beginPath(); c.moveTo(-half, yy); c.lineTo(half, yy); c.stroke(); } c.restore(); }
     const civic = L.city && T.hk === 'gable';   // 街の中心に教会
-    const items = L.houses.map(h => ({ y: h.y, h })).concat(DP ? [] : L.towers.map(tw => ({ y: tw.y + 0.001, tw }))).concat(civic ? [{ y: 0.03, civ: true }] : []);
+    const items = L.houses.map(h => ({ y: h.y, h })).concat(DP ? [] : L.towers.map(tw => ({ y: tw.y + 0.001, tw }))).concat(civic ? [{ y: 0.03, civ: true }] : []).concat(DP || !T.wall || T.wall === 'moat' ? [] : [{ y: Math.sin(L.gate) * (R + 0.05) * sq + 0.002, gt: { x: Math.cos(L.gate) * (R + 0.05), y: Math.sin(L.gate) * (R + 0.05) * sq } }]);
     items.sort((a, b) => a.y - b.y);
     const deep = (o.px || 0) >= 700;   // 深い層でも立体の家(スプライト)を奥から順に描く
     if (deep) { c.save(); c.beginPath(); c.ellipse(0, 0, (R + 0.03) * 1.12, (R + 0.03) * 1.12 * sq, 0, 0, 6.2832); c.clip();
@@ -350,11 +328,11 @@ const SekaiSprites = (function () {
     for (const it of items) {
       if (it.civ) { if (!hx(c, 'd6v_1', 0, 0.045, 0.17)) timg(c, 'church', 0, 0.045, 0.17); continue; }
       if (it.h) bhouse(c, it.h);
-      else { const { x, y } = it.tw; c.save(); stroke0(c, 0.4); c.fillStyle = T.wcol || '#c9b79c'; c.fillRect(x - 0.026, y - 0.1, 0.052, 0.1); c.strokeRect(x - 0.026, y - 0.1, 0.052, 0.1); poly(c, [[x - 0.036, y - 0.1], [x, y - 0.17], [x + 0.036, y - 0.1]], T.lm === 'minaret' ? '#3f9a6a' : '#3f7fd6', true); c.restore(); }
+      else if (it.gt) { wli(c, 'gate', it.gt.x, it.gt.y, 0.2); }
+      else { const { x, y } = it.tw; wli(c, T.wall === 'rect' ? 'watch' : 'wall_tower', x, y, T.wall === 'rect' ? 0.09 : 0.16); }
     }
     if (deep) c.restore();
-    wallPath(false);
-    if (!deep && !civic && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } landmark(c, L, t, sd); c.restore(); }
+    if (!deep && !civic && T.lm && (L.big || T.wall || T.lay === 'terrace' || T.lm === 'mosque' || T.lm === 'onion')) { c.save(); c.translate(0, T.lay === 'terrace' ? -0.22 * 0 - 0.18 : 0); if (o.px > 300) { const ks = 0.55; c.translate(0, 0.04); c.scale(ks, ks); } hx(c, LMIMG[T.lm], 0, 0.02, 0.17); c.restore(); }
     if (!DP && (T.hk === 'gable' || T.hk === 'flat')) smoke(c, t + sd * 4000, 0.1, -0.1, 2, 0.4, 0.035, '#e6e1ee');
     c.restore();
   }
