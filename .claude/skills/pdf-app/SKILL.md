@@ -482,3 +482,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 始点・終点: 1本だけ選ぶと赤い丸(`.rhd`)が2つ出て、ドラッグで好きな位置へ(ほかの罫線の端に吸い付く、ほぼ水平・垂直なら揃える)。`ruleApply` mode "ends"(a,b=ページの座標。薄い四角・多角形は stroke の線に置き換える。色は r.rgb、太さは r.t)。
 - 線を引く: 始点から終点まで自由な向き(ほぼ水平・垂直は揃える、端に吸い付く)。プレビューは回した細い箱。
 - デバッグ: `rules()` に x0,y0,x1,y1,diag を足した。テスト: test-studio-rules5.js。
+
+## v126: 罫線編集 1.35 — 楕円は保存するまで部品
+- 楕円(`RULE.ovals`、`{id,x,y,w,h,t,rgb,style}` ページの表示座標)は、描いても PDF に書かず、SVG の部品として表示(`ovalDraw`)。線の上をドラッグで移動、選ぶと四隅の丸で大きさ、「太さ/色/種類を変える」「選んだ罫線を消す」はその楕円に効く(ruleSync・各ボタンが `ovSel()` を先に見る)。選ぶと罫線の選択は外れる(逆も)。
+- 書き込みは `flushOvals()`(`ruleAddOval` を順に)。`commit()` の先頭で呼ぶ(「保存」が commit を呼ぶ)。「戻る」の変更確認にも、未確定の楕円を数える。
+- 描画ツールの最中は `#ov.rdraw .ovp{pointer-events:none}`。ドラッグ中は、要素が作り直される(renderOverlay)ので、setPointerCapture ではなく document の pointermove/up を使う。
+- テスト: test-studio-rules6.js(描く→動かす→大きさ→種類→保存して位置を確認)。
