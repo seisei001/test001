@@ -1407,7 +1407,11 @@ function dupItem(it){   // 同じ内容の枠を、同じ位置に作って選�
 function deleteItem(it,skipAsk){
   if(!it||!items.includes(it))return;
   if(!skipAsk&&!confirm("この枠を消去してもよろしいですか?"))return;
-  items.splice(items.indexOf(it),1);hideSizePop();
+  hideSizePop();
+  if(it.type==="fix"){   // PDFにある文字の枠: 枠だけ消しても、PDFの文字は残る(何も起きないように見える)。文字そのものを消す(確定でPDFに反映)
+    it.txt="";it.sz=[];if(cs===it)select(null);else renderOverlay();syncPanel();status("文字を消しました(確定するとPDFに反映されます。元に戻すで戻せます)。");return;
+  }
+  items.splice(items.indexOf(it),1);
   if(cs===it)cs=null;renderOverlay();syncPanel();status("枠を消去しました。");
 }
 document.addEventListener("keydown",e=>{
@@ -1484,7 +1488,8 @@ $("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文�
 function nudge(dx,dy){if(!cs)return;cs.vx+=dx;cs.vy+=dy;clampToPage(cs);const el=itemEls.get(cs.id);if(el)boxStyle(cs,el);else renderOverlay();}   // 枠だけ動かす(入力中の文字の位置を消さない)
 [["nL",-1,0],["nR",1,0],["nU",0,-1],["nD",0,1]].forEach(([id,dx,dy])=>{$(id).onclick=()=>{nudge(dx*0.5,dy*0.5);};});
 document.addEventListener("keydown",e=>{if(!e.altKey||!cs||!/^Arrow/.test(e.key))return;e.preventDefault();const st=e.shiftKey?2:0.5;nudge(e.key==="ArrowLeft"?-st:e.key==="ArrowRight"?st:0,e.key==="ArrowUp"?-st:e.key==="ArrowDown"?st:0);});
-$("sDel").onclick=()=>{if(cs){items=items.filter(x=>x!==cs);cs=null;renderOverlay();syncPanel();}};
+$("sDel").onclick=()=>{if(cs)deleteItem(cs,true);};
+["sDel","sClose","sErase"].forEach(i=>$(i).addEventListener("mousedown",e=>e.preventDefault()));   // ボタンを押しても、入力中の枠から、フォーカスを奪わない(奪うと、確定・画面の組み直しが先に起きて、押した操作が空振りすることがある)
 $("sClose").onclick=()=>select(null);
 
 // --- ドラッグで範囲指定 ---
