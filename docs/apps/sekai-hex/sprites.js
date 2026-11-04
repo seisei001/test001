@@ -29,11 +29,25 @@ const SekaiSprites = (function () {
   // 山: 1つ1つ形を変える。主峰の位置・幅・高さ・左右の非対称・副峰の数を乱数(seed)で変え、高さ比(hr)で大きさを変える。
   // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
   function frac(x) { return x - Math.floor(x); }
+  // 山の形(アルプス風・エベレスト風・キリマンジャロ風・富士山風・メサ・ドロミテ・ヨセミテ・アンデス・氷山・異世界風など。assets/town5)
+  const MT = {}; (function () { if (typeof Image === 'undefined') return; for (const n of 'alps everest kili fuji canyon dolomite yosemite andes hill lowrock desertrock ice volcano float crystal bone deadtree zhang'.split(' ')) { const im = new Image(); im.src = 'assets/town5/' + n + '.png?v=' + (window.APP_VER || '0'); MT[n] = im; } })();
+  function mimg(c, n, w) { const im = MT[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, -w / 2, 0.05 - dh + w * 0.05, w, dh); c.restore(); return true; }
+  // 高さの段(0丘 1低い岩山 2高い岩山 3雪山 4大雪峰)と気候(1氷雪 5砂漠 10サバナ 11熱帯 12高山 など)から、山の形の候補を選ぶ
+  const MPOOL = (tier, b) => {
+    const warm = b === 10 || b === 11, dry = b === 5, ice = b === 1 || b === 2, temp = b === 6 || b === 8 || b === 9 || b === 7;
+    if (tier === 0) return dry ? ['desertrock'] : ice ? ['lowrock', 'ice'] : warm ? ['hill', 'hill', 'kili'] : ['hill', 'hill', 'lowrock'];
+    if (tier === 1) return dry ? ['desertrock', 'canyon'] : ice ? ['ice', 'lowrock'] : warm ? ['lowrock', 'kili', 'zhang'] : b === 12 ? ['lowrock', 'dolomite', 'andes'] : ['lowrock', 'dolomite', 'lowrock'];
+    if (tier === 2) return dry ? ['canyon', 'desertrock', 'yosemite'] : ice ? ['ice', 'dolomite'] : warm ? ['kili', 'zhang', 'yosemite'] : b === 12 ? ['andes', 'dolomite', 'yosemite', 'alps'] : temp ? ['yosemite', 'dolomite', 'andes', 'zhang'] : ['yosemite', 'dolomite', 'andes'];
+    if (tier === 3) return ice ? ['ice', 'alps', 'everest'] : warm ? ['kili', 'fuji'] : dry ? ['canyon', 'alps'] : temp ? ['fuji', 'alps', 'andes'] : ['alps', 'fuji', 'andes', 'ice'];
+    return ice ? ['ice', 'everest'] : warm ? ['kili', 'everest'] : ['everest', 'alps', 'everest'];
+  };
   function mountain(c, o) {
     { const hr = o.hr == null ? 0.7 : o.hr, sd = o.seed || 0.5;   // 高さで5段階に分け、高い山ほど大きく描く(丘→岩山→高い岩山→雪山→大雪峰)
       const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.55, 0.8, 1.05, 1.35, 1.7][tier], v2 = sd > 0.5;
       const nm = tier === 0 ? (v2 ? 'mt_hill2' : 'mt_hill') : tier === 1 ? (v2 ? 'mt_rocklow2' : 'mt_rocklow') : tier === 2 ? (o.snow ? 'mt_snow' : 'mt_rockhigh') : tier === 3 ? 'mt_snow' : 'mt_peak';
       if (W * c.getTransform().a < 120) { const fn = tier === 0 ? 'f_hill' : (tier === 1 || (tier === 2 && !o.snow)) ? 'f_rock' : 'f_snow'; if (wimg(c, fn, 0, 0.05, W)) return; }   // 小さく映る遠景は、輪郭の太い単純な絵
+      { const pool = MPOOL(tier, o.b), r = Math.floor(sd * 9973), rare = (r % 23) === 0 && tier >= 1 ? ['float', 'crystal', 'bone', 'deadtree'][(r >> 3) % 4] : null;   // まれに異世界風
+        if (mimg(c, rare || pool[r % pool.length], W * 1.15)) return; }
       if (wimg(c, nm, 0, 0.05, W)) return;
       const nm0 = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
       if (wimg(c, nm0, 0, 0.05, W)) return; }
@@ -41,6 +55,7 @@ const SekaiSprites = (function () {
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
     if (1.5 * c.getTransform().a < 120 && wimg(c, 'f_volcano', 0, 0.05, 1.1)) return;
+    if ((o.seed || 0) > 0.35 && mimg(c, 'volcano', 1.7)) return;
     if (wimg(c, (o.seed || 0) > 0.5 ? 'mt_volcano2' : 'mt_volcano', 0, 0.05, 1.5)) return;
     if (wimg(c, 'C15', 0, 0.05, 1.5)) return;
   }
