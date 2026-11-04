@@ -42,8 +42,7 @@ void main(){
     vec2 f1=clamp(fract(m1),0.004,0.996); vec2 f2=clamp(fract(m2),0.004,0.996); vec2 b=vec2(mod(tk,4.0),floor(tk/4.0));
     vec3 t1=texture2D(uTex,vec2((b.x+f1.x)*0.25,(b.y+f1.y)*0.5)).rgb*2.0; vec3 t2=texture2D(uTex,vec2((b.x+f2.x)*0.25,(b.y+f2.y)*0.5)).rgb*2.0;
     vec3 tx=(t1+t2)*0.5; c=clamp(c*mix(vec3(1.0),tx,0.5),0.0,1.0); }
-  float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); c=mix(c,uFogC,fg);
-  gl_FragColor=vec4(c,1.0);
+  float fg=smoothstep(uFogR*0.78,uFogR,length(vG)); float al=uFogR>1e10?1.0:1.0-fg; gl_FragColor=vec4(mix(c,uFogC,uFogR>1e10?0.0:0.0)*al,al);
 }`;
 
 
@@ -131,7 +130,7 @@ void main(){
   }
   function create(canvas, sk, hooks) {
     hooks = hooks || {};
-    const gl = canvas.getContext('webgl', { antialias: true, alpha: false, depth: true });
+    const gl = canvas.getContext('webgl', { antialias: true, alpha: true, premultipliedAlpha: true, depth: true });
     if (!gl) throw new Error('WebGL unavailable');
     function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
     const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); const dext = gl.getExtension('OES_standard_derivatives'); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, (dext ? '#extension GL_OES_standard_derivatives : enable\n#define FW(x) fwidth(x)\n' : '#define FW(x) 0.03\n') + FS_BODY)); gl.linkProgram(prog);
@@ -143,7 +142,7 @@ void main(){
     const U = {}; ['uOff', 'uYaw', 'uHalf', 'uPpm', 'uCosP', 'uSinP', 'uEx', 'uD', 'uZ0', 'uPer', 'uCont', 'uPat', 'uFogR', 'uPh', 'uFogC', 'uTex', 'uTexOn'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
     const aPos = gl.getAttribLocation(prog, 'aPos'), aCol = gl.getAttribLocation(prog, 'aCol');
     const vbo = gl.createBuffer(), selBuf = gl.createBuffer();
-    gl.enable(gl.DEPTH_TEST); gl.clearColor(0.05, 0.1, 0.16, 1); const FOGC = [0.05, 0.1, 0.16];
+    gl.enable(gl.DEPTH_TEST); gl.clearColor(0, 0, 0, 0); const FOGC = [0.05, 0.1, 0.16];
 
     const FV = new Set();   // 噴火で生まれた火山(層,q,r)
     const fv = FV;
@@ -434,7 +433,22 @@ void main(){
       SK.locate(mesh.L, st.fx, st.fy, fq); SK.roundAxial(fq[0], fq[1], fr2);
       sk.cell(mesh.L, fr2[0], fr2[1], fcell); return fcell.h > 0 ? fcell.h : 0;
     }
+
+const SPOTNAME = { snow: '雪原', fall: '大瀑布', rcastle: '岩山の城', harbor: '港町', windmill: '風車の村', lrock: '灯台岩', dunes: '大砂丘', meadow: '花の草原', meander: '蛇行の川', menhir: '環状列石', wreck: '難破船', bamboo: '竹林', crystals: '水晶の山', rtower: '円塔', sakura: '桜の森', maple: '紅葉の森', onsen: '温泉', observ: '天文台', bnest: '骨の巣', jungle: '密林', lcave: '鍾乳洞', redmush: '赤茸の森', portal: '転移門', floats: '浮島', lake: '湖', ruins: '古代遺跡' };
+    const BGMAP = { 1: ['snow_tundra', 'conifer'], 2: ['snow_tundra', 'swamp'], 3: ['conifer', 'snow_tundra'], 4: ['meadow_path', 'stones_moss', 'meander'], 5: ['dunes', 'oasis'], 6: ['meadow_path', 'windmill_village', 'meander', 'stones_plaza'], 7: ['windmill_village', 'stones_plaza', 'meadow_path'], 8: ['forest', 'bamboo', 'waterfall_pool'], 9: ['forest', 'bamboo', 'glowforest'], 10: ['meadow_path', 'dunes', 'stones_moss'], 11: ['bamboo', 'waterfall_pool', 'glowforest'], 12: ['mountains', 'rock_castle', 'cave_ruins', 'canyon_river'] };
+    let bgCur = '';
+    function updateBg() {
+      const el = document.getElementById('bg'); if (!el) return;
+      let nm = '';
+      if (mesh && mesh.L >= 1) {
+        SK.locate(mesh.L, st.fx, st.fy, fq); SK.roundAxial(fq[0], fq[1], fr2); sk.cell(mesh.L, fr2[0], fr2[1], fcell);
+        if (fcell.h <= 0) nm = ['lake', 'lighthouse', 'harbor_dock'][Math.abs(fr2[0] * 7 + fr2[1] * 3) % 3];
+        else { const ls = BGMAP[fcell.b] || BGMAP[6]; nm = ls[Math.abs(fr2[0] * 5 + fr2[1] * 11) % ls.length]; }
+      }
+      if (nm !== bgCur) { bgCur = nm; el.style.backgroundImage = nm ? 'url(assets/bg/bg_' + nm + '.jpg?v=' + (window.APP_VER || '0') + ')' : 'none'; }
+    }
     function draw() {
+      updateBg();
       if (needRebuild()) build();
       const tz = focusHeight(), dz = tz - st.z0;
       if (Math.abs(dz) > 0.002 * mesh.s) { st.z0 += dz * 0.35; changed(); } else st.z0 = tz;
@@ -544,6 +558,7 @@ void main(){
           let sz = size; if (sp0.k === 'field') { sz = mesh.s * st.ppm * 1.15 * st.dpr; sp0.cp = cp; } if (sp0.k === 'flora') sz = sp0.far ? mesh.s * st.ppm * 0.95 * st.dpr : Math.max(9, Math.min(150, sp0.m * st.ppm)) * st.dpr;
           if (tw) { sp0.um = 120 * ((sp0.n || 3) >= 5 ? 2 : (sp0.n || 3) >= 4 ? 1.4 : 1); if (mesh.L >= 4) sz = Math.max(size, sp0.um * st.ppm * st.dpr); sp0.px = sz / st.dpr; }   // 深い層では実際の大きさ(1マス=人1人)で描く
           c2.save(); c2.translate(X * st.dpr, Y * st.dpr); c2.scale(sz, sz); SekaiSprites.draw(c2, sp0.k, sp0, tm); c2.restore();
+          if (sp0.k === 'spot' && sz > 34 * st.dpr) { const nm = SPOTNAME[sp0.n]; if (nm) { c2.save(); c2.font = 'bold ' + Math.round(12 * st.dpr) + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'top'; c2.lineWidth = 3 * st.dpr; c2.strokeStyle = 'rgba(255,255,255,.9)'; c2.fillStyle = '#4a3a22'; c2.strokeText(nm, X * st.dpr, (Y + 3) * st.dpr); c2.fillText(nm, X * st.dpr, (Y + 3) * st.dpr); c2.restore(); } }
         }
       }
     }

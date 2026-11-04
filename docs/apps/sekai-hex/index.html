@@ -42,6 +42,7 @@ button:active{background:var(--accent);color:#fff}
   <button id="dice" aria-label="新しい世界" title="新しい世界">🎲</button>
 </header>
 <main>
+  <div id="bg" style="position:absolute;z-index:0;inset:0;background-size:cover;background-position:center top;filter:saturate(.9)"></div>
   <canvas id="cv"></canvas>
   <canvas id="ov" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
   <div class="hud" id="hud"></div>
@@ -71,13 +72,13 @@ button:active{background:var(--accent);color:#fff}
   <canvas id="mini" aria-label="世界の小さな地図" style="position:absolute;inset:auto;left:auto;bottom:auto;right:8px;top:8px;width:120px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--hud)"></canvas>
   <div id="err" hidden></div>
 </main>
-<script>window.APP_VER='0.85';</script>
-<script src="world.js?v=0.85"></script>
-<script src="transport.js?v=0.85"></script>
-<script src="realm.js?v=0.85"></script>
-<script src="sekai.js?v=0.85"></script>
-<script src="sprites.js?v=0.85"></script>
-<script src="view.js?v=0.85"></script>
+<script>window.APP_VER='0.87';</script>
+<script src="world.js?v=0.87"></script>
+<script src="transport.js?v=0.87"></script>
+<script src="realm.js?v=0.87"></script>
+<script src="sekai.js?v=0.87"></script>
+<script src="sprites.js?v=0.87"></script>
+<script src="view.js?v=0.87"></script>
 <script>
 (function(){
   'use strict';
