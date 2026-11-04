@@ -455,3 +455,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ④ まわり(`warpOpt.around`): `keep`=そのまま / `white`=白くする(ページ全体を白にして貼る) / `crop`=切り抜く(新しいページ=緑の枠の外枠。枠を触っていなければ自然な大きさ=旧「一括」のページ比率)。ページ全体の既定は crop、範囲指定の既定は keep。
 - `applyWarp` は1本化: 材料(`orig`=直す前のページ)を `pasteWarpToQuad(orig,出力,wp,WS)` で緑の枠へ貼る(材料と出力は同じ細かさ WS でないと貼れない → crop でも WS を使う)。旧「同じ場所に直す」分岐・page 専用の出力サイズ計算は廃止。
 - デバッグ: `pdfEditorDebug.warpSetCorners(q)`, `warpState()`。テスト: test-studio-shape2.js(A直す+切り抜く/B直さない+切り抜く/C白くする/D そのまま/E回転つまみ/F自動)。cropquad/cropmove/croprot は廃止、shape/v111 は新UIに更新。
+
+## v123: ページ編集 2.96
+- 「消去」(`sDel`)が「何も起きない」報告: PDFにある文字の枠(type "fix"。新しく作った文字も、一度確定するとPDFの文字になり、選び直すと fix)は、枠(訂正の部品)だけ消してもPDFの文字が残り、同じ文字の枠がすぐ出て、何も起きないように見えた。→ fix の「消去」は文字そのものを消す(`it.txt=""`→選択解除で applyNow が確定。元に戻すで戻せる)。新しい文字の枠(type "text")・画像の枠は従来どおり枠ごと消える。`deleteItem` に集約(ボタン・ポップアップ・Deleteキー共通)。
+- ボタン(消去/選択を解除/元のPDFの文字を消す)の mousedown を preventDefault(入力中の枠からフォーカスを奪って、確定や画面の組み直しが先に起きるのを防ぐ)。
+- 同じ症状でも、新しい枠(text)の消去は、Playwright(IME入力・長押し・画像ページ含む)では再現しなかった。実際の原因は「確定済みの文字を選び直した fix」と判断(ユーザーは「新しく作った枠」と回答)。テスト: test-studio-delete.js(修正前は失敗)。
