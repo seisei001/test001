@@ -460,3 +460,16 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 「消去」(`sDel`)が「何も起きない」報告: PDFにある文字の枠(type "fix"。新しく作った文字も、一度確定するとPDFの文字になり、選び直すと fix)は、枠(訂正の部品)だけ消してもPDFの文字が残り、同じ文字の枠がすぐ出て、何も起きないように見えた。→ fix の「消去」は文字そのものを消す(`it.txt=""`→選択解除で applyNow が確定。元に戻すで戻せる)。新しい文字の枠(type "text")・画像の枠は従来どおり枠ごと消える。`deleteItem` に集約(ボタン・ポップアップ・Deleteキー共通)。
 - ボタン(消去/選択を解除/元のPDFの文字を消す)の mousedown を preventDefault(入力中の枠からフォーカスを奪って、確定や画面の組み直しが先に起きるのを防ぐ)。
 - 同じ症状でも、新しい枠(text)の消去は、Playwright(IME入力・長押し・画像ページ含む)では再現しなかった。実際の原因は「確定済みの文字を選び直した fix」と判断(ユーザーは「新しく作った枠」と回答)。テスト: test-studio-delete.js(修正前は失敗)。
+
+## v124: ページ編集 2.97 — 文字の太字・下線・二重線(訂正)
+- 文字ごとの書式 `it.fm[i]`(1=太字 2=下線 4=二重線。全部0ならnull)。`it.sz`(文字ごとの大きさ)と同じ作り: 表示は buildText(`fmSpan` で入れ子の span: data-f1/f2/f4)、読み取りは serialize(isEditor)→readEditor、貼り付け・freezeLayout・dupItem・layoutText/layoutFaithful(ch.f)・runsOf(rn.f)・fixSig に通してある。
+- UI: 選択中の部品の行に「太字/下線/二重線」(`sBold/sUl/sStk`)。選んだ範囲(なければ全部)に付け外し(`applyFmt`、全部に付いていれば外す)。Ctrl+B / Ctrl+U。ボタンは mousedown を止めて、文字の選択を外さない。
+- 保存: 太字=文字の輪郭に同じ色の細い線(Tr=2、`withBold`。文字は1つのまま読める)、下線=1本・二重線=2本の線(`drawFmLines`。回転したページにも toUser で対応)。3つの描画(元のフォント/埋め込みフォント/画像として)すべてに反映。pdf-lib の列挙は `TextRenderingMode.FillAndOutline`(FillAndStroke ではない)。
+- テスト: test-studio-textfmt.js。未対応: 空白の上の下線は引かない(元のフォント経路)、下線と二重線の同時は2本+1本。
+
+## v124(続き): 罫線編集 1.33 — 線の種類・楕円・範囲選びのあとの個別選び
+- 線の種類 `#rStyle`(実線/破線/点線/一点鎖線/二重線)。`rlLineOps(ax,ay,bx,by,t,style,u)` が線の命令を作る(u=1ptがその座標でいくつか)。新しい線(`ruleAdd`、style)・選んだ罫線の「種類を変える」(`#rStSet`、`ruleApply` mode:"style" + style)。薄い塗りの罫線は、破線などにするとき中心の線(stroke)に置き換える(`barLine`)。本数の確認(skipCount)は、種類を変えたときは省く。
+- 楕円 `#rOval`(`ruleAddOval`、4つのベジェ曲線)。ドラッグした四角形にぴったり。種類・太さ・色は罫線と共通。罫線としては数えない図形なので、あとから選んで動かすことはできない(未対応)。
+- 「範囲で選ぶ」中は、選んでいない罫線に pointer-events:none が付いていて、1本ずつ足せなかった → 外した。罫線の上から始めたドラッグも範囲選び、軽いクリックはその1本の選択/解除(ドラッグ直後の click は RULE.dragAt で無視)。
+- 落とし穴: `s[:a]+new+s[b:]` で b<a のとき、間の部分が重複して、あとの(古い)関数宣言が勝つ。置換後は `node --check` と関数宣言の重複(grep "^async function ruleApply")を確認。
+- テスト: test-studio-rules4.js。
