@@ -253,7 +253,7 @@ const SekaiSprites = (function () {
   const HXHI = { medieval: ['m_tudor'], turf: ['turf_log'], japan: ['machiya'], chinese: ['cn_a', 'cn_b'], medina: ['medina'], djenne: ['medina'], kraal: ['kraal'], yurt: ['yurt'], igloo: ['igloo'], greek: ['greek'], hansa: ['hansa'], inca: ['inca'], roman: ['roman'], stilt: ['stilt'], tibet: ['tibet'] };
   const HXWH = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXHI) for (const n of HXHI[k]) all[n] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town3/' + n + '.png?v=' + (window.APP_VER || '0'); HXWH[n] = im; } })();
   const HXI = {}; (function () { if (typeof Image === 'undefined') return; const all = {}; for (const k in HXFAM) for (const n of HXFAM[k]) all[n] = 1; for (const j of [1, 2, 3, 4, 5, 7]) all['d6v_' + j] = 1; for (const n in all) { const im = new Image(); im.src = 'assets/town2/' + n + '.png?v=' + (window.APP_VER || '0'); HXI[n] = im; } })();
-  const WLI = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['wall_tower', 'gate', 'watch', 'palisade', 'wall']) { const im = new Image(); im.src = 'assets/town4/' + n + '.png?v=' + (window.APP_VER || '0'); WLI[n] = im; } })();
+  const WLI = {}; (function () { if (typeof Image === 'undefined') return; for (const n of ['wall_tower', 'gate', 'watch', 'palisade', 'wall', 'castle']) { const im = new Image(); im.src = 'assets/town4/' + n + '.png?v=' + (window.APP_VER || '0'); WLI[n] = im; } })();
   function wli(c, n, x, y, w) { const im = WLI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.06, w, dh); c.restore(); return true; }
   const LMIMG = { tower: 'd6v_2', keep: 'd6v_2', minaret: 'd6v_4', mosque: 'd6v_4', bluedome: 'd6v_4', onion: 'd6v_1', pagoda: 'd6v_5', temple: 'd6v_5', palace: 'd6v_5' };
   function hx(c, n, x, y, w) { const im = HXI[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, x - w / 2, y - dh + w * 0.07, w, dh); c.restore(); return true; }
@@ -306,6 +306,7 @@ const SekaiSprites = (function () {
   // 城: 中央の本丸と両脇の塔、はためく旗
   function castle(c, o, t) {
     if (1.9 * c.getTransform().a < 110 && wimg(c, 'f_castle', 0, 0.05, 0.95)) return;
+    if (wli(c, 'castle', 0, 0.05, 1.0)) return;
     { const CS = ['B41', 'A42', 'K11', 'K12', 'K13', 'K21', 'K22', 'K23', 'K31', 'K32', 'K33', 'K41', 'K42', 'K43']; if (wimg(c, CS[Math.floor((o.seed || 0) * 997) % CS.length], 0, 0.05, 0.95)) return; }
     if (timg(c, 'castle', 0, 0.02, 1.1)) return;
   }
