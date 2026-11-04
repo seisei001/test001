@@ -30,13 +30,14 @@ const SekaiSprites = (function () {
   // 左は明るく右は影。山裾は輪郭を引かず地面に溶ける。
   function frac(x) { return x - Math.floor(x); }
   // 山の形(アルプス風・エベレスト風・キリマンジャロ風・富士山風・メサ・ドロミテ・ヨセミテ・アンデス・氷山・異世界風など。assets/town5)
-  const MT = {}; (function () { if (typeof Image === 'undefined') return; for (const n of 'alps everest kili fuji canyon dolomite yosemite andes hill lowrock desertrock ice volcano float crystal bone deadtree zhang f2_hill f2_rock f2_snow f2_volcano'.split(' ')) { const im = new Image(); im.src = 'assets/town5/' + n + '.png?v=' + (window.APP_VER || '0'); MT[n] = im; } })();
-  function mimg(c, n, w) { const im = MT[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, -w / 2, 0.05 - dh + w * 0.05, w, dh); c.restore(); return true; }
+  const MT = {}; (function () { if (typeof Image === 'undefined') return; for (const n of 'alps everest kili fuji canyon dolomite yosemite andes hill lowrock desertrock ice volcano float crystal bone deadtree zhang f2_hill f2_rock f2_snow f2_volcano volcano_dry forest range ruins oasis marsh conifer'.split(' ')) { const im = new Image(); im.src = 'assets/town5/' + n + '.png?v=' + (window.APP_VER || '0'); MT[n] = im; } })();
+  function mimg(c, n, w, y, flip) { const im = MT[n]; if (!im || !im.complete || !im.naturalWidth) return false; const dh = w * im.naturalHeight / im.naturalWidth; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; if (flip) c.scale(-1, 1); const y0 = y == null ? 0.05 : y; c.drawImage(im, -w / 2, y0 - dh + w * 0.05, w, dh); c.restore(); return true; }
   // 高さの段(0丘 1低い岩山 2高い岩山 3雪山 4大雪峰)と気候(1氷雪 5砂漠 10サバナ 11熱帯 12高山 など)から、山の形の候補を選ぶ
-  const MPOOL = (tier, b) => {
+  const MPOOL = (tier, b, sd0) => {
     const warm = b === 10 || b === 11, dry = b === 5, ice = b === 1 || b === 2, temp = b === 6 || b === 8 || b === 9 || b === 7;
     if (tier === 0) return dry ? ['desertrock'] : ice ? ['lowrock', 'ice'] : warm ? ['hill', 'hill', 'kili'] : ['hill', 'hill', 'lowrock'];
     if (tier === 1) return dry ? ['desertrock', 'canyon'] : ice ? ['ice', 'lowrock'] : warm ? ['lowrock', 'kili', 'zhang'] : b === 12 ? ['lowrock', 'dolomite', 'andes'] : ['lowrock', 'dolomite', 'lowrock'];
+    if (tier >= 2 && !warm && !dry && (Math.floor(sd0 * 9973) % 5) === 0) return ['range'];
     if (tier === 2) return dry ? ['canyon', 'desertrock', 'yosemite'] : ice ? ['ice', 'dolomite'] : warm ? ['kili', 'zhang', 'yosemite'] : b === 12 ? ['andes', 'dolomite', 'yosemite', 'alps'] : temp ? ['yosemite', 'dolomite', 'andes', 'zhang'] : ['yosemite', 'dolomite', 'andes'];
     if (tier === 3) return ice ? ['ice', 'alps', 'everest'] : warm ? ['kili', 'fuji'] : dry ? ['canyon', 'alps'] : temp ? ['fuji', 'alps', 'andes'] : ['alps', 'fuji', 'andes', 'ice'];
     return ice ? ['ice', 'everest'] : warm ? ['kili', 'everest'] : ['everest', 'alps', 'everest'];
@@ -46,8 +47,8 @@ const SekaiSprites = (function () {
       const tier = hr < 0.3 ? 0 : hr < 0.5 ? 1 : hr < 0.7 ? 2 : hr < 0.88 ? 3 : 4, W = [0.55, 0.8, 1.05, 1.35, 1.7][tier], v2 = sd > 0.5;
       const nm = tier === 0 ? (v2 ? 'mt_hill2' : 'mt_hill') : tier === 1 ? (v2 ? 'mt_rocklow2' : 'mt_rocklow') : tier === 2 ? (o.snow ? 'mt_snow' : 'mt_rockhigh') : tier === 3 ? 'mt_snow' : 'mt_peak';
       if (W * c.getTransform().a < 120) { const fn = tier === 0 ? 'f_hill' : (tier === 1 || (tier === 2 && !o.snow)) ? 'f_rock' : 'f_snow'; if (mimg(c, tier === 0 ? 'f2_hill' : (tier === 1 || (tier === 2 && !o.snow)) ? 'f2_rock' : 'f2_snow', W * 0.95)) return; if (wimg(c, fn, 0, 0.05, W)) return; }   // 小さく映る遠景は、輪郭の太い単純な絵
-      { const pool = MPOOL(tier, o.b), r = Math.floor(sd * 9973), rare = (r % 23) === 0 && tier >= 1 ? ['float', 'crystal', 'bone', 'deadtree'][(r >> 3) % 4] : null;   // まれに異世界風
-        if (mimg(c, rare || pool[r % pool.length], W * 1.15)) return; }
+      { const pool = MPOOL(tier, o.b, sd), r = Math.floor(sd * 9973), rare = (r % 23) === 0 && tier >= 1 ? ['float', 'crystal', 'bone', 'deadtree'][(r >> 3) % 4] : null;   // まれに異世界風
+        const nm2 = rare || pool[r % pool.length]; if (mimg(c, nm2, nm2 === 'range' ? W * 1.7 : W * 1.15, nm2 === 'range' ? 0.1 : null, nm2 === 'range' && (r & 1))) return; }
       if (wimg(c, nm, 0, 0.05, W)) return;
       const nm0 = tier === 0 ? 'C13' : tier === 1 ? 'C12' : tier === 2 ? (o.snow ? 'C11' : (sd > 0.5 ? 'C12' : 'C32')) : 'C11';
       if (wimg(c, nm0, 0, 0.05, W)) return; }
@@ -55,7 +56,7 @@ const SekaiSprites = (function () {
   // 火山: 頂上の火口が赤く光り、煙が上がる。山腹に溶岩の筋
   function volcano(c, o, t) {
     if (1.5 * c.getTransform().a < 120 && (mimg(c, 'f2_volcano', 1.2) || wimg(c, 'f_volcano', 0, 0.05, 1.1))) return;
-    if ((o.seed || 0) > 0.35 && mimg(c, 'volcano', 1.7)) return;
+    if (mimg(c, o.active ? 'volcano' : 'volcano_dry', o.active ? 1.7 : 1.5)) return;
     if (wimg(c, (o.seed || 0) > 0.5 ? 'mt_volcano2' : 'mt_volcano', 0, 0.05, 1.5)) return;
     if (wimg(c, 'C15', 0, 0.05, 1.5)) return;
   }
@@ -359,7 +360,7 @@ const SekaiSprites = (function () {
   let SEASON = 1; const SEASON_TREE = ['s_spring', 's_summer', 's_autumn', 's_winter'];   // 季節(0春 1夏 2秋 3冬)。温帯の広葉樹がこれで変わる
   const BTREE = { 1: ['i_rimetree', 'i_rimetree', 'i_crystal'], 2: ['t_moss', 't_shrub', 't_lichen'], 3: ['c_spruce', 'c_spruce', 'c_birch', 't_fir'], 4: ['c_grass', 'c_thorn', 'c_grass'], 5: ['d_cactus', 'd_cactus', 't_dead'], 6: ['t_oak', 't_birch'], 7: ['m_olive', 'm_cypress', 'm_vines', 'm_olive'], 8: ['t_oak', 't_birch', 't_autumn'], 9: ['o_cedar', 'o_cedar', 'o_rockfern', 'o_mush', 'o_bigtree'], 10: ['a_acacia', 'a_baobab', 'a_acacia2'], 11: ['j_palm', 'j_fern', 'j_palm'], 12: ['h_pine', 'h_flowers', 'h_pine'] };
   function flora(c, o) {   // 木(idx 0-3)は気候ごとの木。岩・花などは従来の素材のまま
-    if (o.far) { wimg(c, o.far, 0, 0.45, o.far === 'f_marsh' || o.far === 'f_oasis' ? 0.8 : 0.95); return; }   // 遠景の森のかたまり
+    if (o.far) { if (o.far === 'f_conifer' && mimg(c, 'conifer', 1.0, 0.5, (o.seed || 0) > 0.5)) return; if (o.far === 'f_oasis' && mimg(c, 'oasis', 1.1, 0.35)) return; if (o.far === 'f_marsh' && mimg(c, 'marsh', 1.1, 0.35)) return; if (o.far === 'f_broadleaf' && mimg(c, 'forest', 1.05, 0.5, (o.seed || 0) > 0.5)) return; wimg(c, o.far, 0, 0.45, o.far === 'f_marsh' || o.far === 'f_oasis' ? 0.8 : 0.95); return; }   // 遠景の森のかたまり
     const i = o.idx || 0, L = (o.b === 6 || o.b === 8) ? [SEASON_TREE[SEASON], SEASON_TREE[SEASON], o.b === 6 ? 'g_flowers' : 't_birch'].slice(0, (SEASON === 3 ? 2 : 3)) : BTREE[o.b];
     if (i <= 3 && L) { if ((() => { const nm = L[Math.floor((o.seed || 0) * 997 + i) % L.length]; return wimg(c, nm, 0, 0.45, /cactus|bush|dead|crystal|flowers|moss|shrub|lichen|grass|thorn|vines|rockfern|mush/.test(nm) ? 0.6 : 0.9); })()) return; }
     if (i <= 3 && !L) return;   // 気候に合う木が無い所には何も描かない
