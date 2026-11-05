@@ -600,6 +600,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
+  closeUnderAsk();
   mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp","m-rule","m-tilt","m-crop","m-rot");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
@@ -1604,7 +1605,17 @@ function beginRange(e){
       await doOcr(x,y,w,h);
       if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
       return;}
-    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    if(mode==="text"){
+      let made0=null;
+      if(!tap&&!window.__noUnderAsk){   // 枠の下に、PDFの文字があるときは、元の文字を拾って訂正する枠にする(多くは、元の文字を直したいため)。ほかの扱いは、枠のそばの案内から選べる
+        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+        const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+        if(inside.length){const groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
+          made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+          made0.forEach(m=>items.push(m));it=made0[0];showUnderAsk({x,y,w,h,made:made0,n:inside.length});}
+      }
+      if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    }
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
       it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};
@@ -3207,6 +3218,23 @@ async function remainsImage(b,foot){
   cx.putImageData(im,0,0);
   const blob=await new Promise(res=>cv.toBlob(res,"image/png"));return new Uint8Array(await blob.arrayBuffer());
 }
+// ===== 文字の上に枠を作ったとき: 下のPDFの文字を、どうするか =====
+// 既定は「元の文字を拾って訂正」(すでにそうなっている)。「消して、新しく書く」(重なる文字を取り除いて、新しい枠に書く)/「そのまま」(枠は透明・下には触らない)を、枠のそばから選べる
+let underAskEl=null;
+function closeUnderAsk(){if(underAskEl){clearTimeout(underAskEl._tm);underAskEl.remove();underAskEl=null;}}
+function showUnderAsk(info){
+  closeUnderAsk();
+  const d=document.createElement("div");d.id="underAsk";
+  d.style.cssText="position:fixed;left:8px;right:8px;bottom:12px;z-index:3000;background:var(--panel-bg,#fff);color:var(--text,#000);border:1px solid var(--border,#ccc);border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.35);line-height:1.6;max-width:520px;margin:0 auto";
+  d.innerHTML=`<div style="font-size:.88rem;margin-bottom:6px">枠の下に、PDFの文字(${info.n}個)があります。<b>元の文字を拾って、訂正できる枠</b>にしました。ほかの扱いにするときは、選んでください。</div><div id="uaBtns" style="display:flex;gap:8px;flex-wrap:wrap"></div>`;
+  const bt=(t,fn,cls)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="40px";if(cls)b.className=cls;b.onclick=()=>{closeUnderAsk();fn();};d.querySelector("#uaBtns").appendChild(b);};
+  const toNew=(transparent)=>{items=items.filter(o=>!info.made.includes(o));cs=null;const t=newText(info.x,info.y,info.w,info.h);if(transparent){t.bgMode="none";t.erase=false;}items.push(t);renderOverlay();select(t,true);
+    status(transparent?"枠は透明です。下のPDFの文字には、触りません。":"重なる文字を取り除いて、新しい枠に書きます。");};
+  bt("拾って訂正(このまま)",()=>{status("元の文字を拾いました。文字をタップして直してください。");});
+  bt("消して、新しく書く",()=>toNew(false),"sub-btn");
+  bt("そのまま(透明・下は触らない)",()=>toNew(true),"sub-btn");
+  document.body.appendChild(d);underAskEl=d;d._tm=setTimeout(closeUnderAsk,25000);
+}
 // ===== 枠の下の画像の文字を、消す前の確認 =====
 // 「文字だけ消す」で、枠の下の画像から、文字(のインク)を消す前に、何を消そうとしているか(範囲の画像・読み取った文字)を見せて、「はい/いいえ」を聞く
 async function eraseSummary(it){
@@ -3270,6 +3298,7 @@ async function commit(only){
   const under=new Map();
   for(const it of todo){
     if(it.type==="img"||!(it.txt||"").trim())continue;
+    if(it.type==="text"&&bgModeOf(it)==="none")continue;   // 透明な枠は、下のPDFの文字に触らない
     const foot=bgModeOf(it)==="all"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:lineRectsOf(it);if(!foot.length)continue;
     const U=under.get(it.page)||{ex:new Map(),foot:[],hasText:false};under.set(it.page,U);U.foot.push(...foot);
     const own=it.type==="fix"?(it.covers||[it.cover]):[];
