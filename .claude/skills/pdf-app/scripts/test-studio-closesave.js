@@ -9,7 +9,7 @@ const run=async(mock,btn)=>{await page.reload();await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('input[type=checkbox]').check();await page.evaluate(()=>document.getElementById('bRotCur').click());await page.waitForTimeout(1500);
   await page.evaluate(()=>document.getElementById('bClose').click());await page.waitForTimeout(600);
-  await page.locator('button',{hasText:btn}).first().click();await page.waitForTimeout(2500);
+  await page.locator('button',{hasText:btn}).last().click();await page.waitForTimeout(2500);
   return page.evaluate(()=>({n:window.pdfStudioDebug.bundles().length,saved:window.__saved,st:document.getElementById('status').textContent}));};
 let r=await run('ok','名前を付けて保存');chk('保存して閉じる: '+JSON.stringify(r),r.n===0&&r.saved.length===1);
 r=await run('security','名前を付けて保存');chk('保存先の画面を開く許可が切れても、ダウンロードで保存して閉じる: '+r.st,r.n===0);
