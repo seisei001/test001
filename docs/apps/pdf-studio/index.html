@@ -144,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.25"},
+  desk:{name:"製本デスク",ver:"2.26"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"3.01",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.08",src:"forms/editor.html?form=shape"},
@@ -538,7 +538,8 @@ async function mergeSelected(){   // 選択した束を、表示の並び順(左
 }
 $("bMerge").onclick=()=>mergeSelected().catch(e=>status("結合できませんでした: "+(e.message||e)));
 $("bUndo").onclick=undo;
-async function writeTo(h,b){const w=await h.createWritable();await w.write(new Blob([b.bytes],{type:"application/pdf"}));await w.close();}
+async function writeTo(h,b){const w=await h.createWritable();await w.write(new Blob([b.bytes],{type:"application/pdf"}));await w.close();
+  try{const f=await h.getFile();if(f&&f.size!==b.bytes.length)throw new Error(`書き込んだ大きさが合いません(${f.size}/${b.bytes.length})`);}catch(e){if(e&&/大きさが合いません/.test(e.message))throw e;}}   // 書き込んだあと、ファイルの大きさを確かめる
 async function saveBundle(b){   // 名前を付けて保存。保存できたらtrue
   const name=b.name.endsWith(".pdf")?b.name:b.name+".pdf";
   if(window.showSaveFilePicker){
@@ -546,9 +547,24 @@ async function saveBundle(b){   // 名前を付けて保存。保存できたら
     catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}
       if(e&&e.name==="SecurityError"||e&&e.name==="NotAllowedError"){return downloadBundle(b,name);}   // 保存先を選ぶ画面を開く許可が切れたとき(操作から時間が経った)は、ダウンロードで保存する
       throw e;}
-  }else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);b.dirty=false;paintCard(b);status("ダウンロードしました(Chrome・Edgeでは保存先を選べます)。");return true;}
+  }else if(isIOS()){return await saveIos(b,name);}   // iPhone・iPad: ダウンロードは、保存されたかが分かりにくい。共有メニューの「"ファイル"に保存」へ案内する
+  else{return downloadBundle(b,name);}
 }
-function downloadBundle(b,name){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);b.dirty=false;paintCard(b);status("ダウンロードして保存しました。");return true;}
+function downloadBundle(b,name){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},60000);b.dirty=false;paintCard(b);status("ダウンロードして保存しました。ブラウザのダウンロード(保存先の設定)を確かめてください。");return true;}   // 取り消し(revoke)が早いと、大きいファイルのダウンロードが途中で切れる
+// iPhone・iPad の保存: 「共有して保存する」(共有メニューの「"ファイル"に保存」)。保存できたと確認できたら、変更ありの印を外す
+function saveIos(b,name){return new Promise(res=>{
+  const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+  const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+  box.innerHTML=`<p style="margin:0 0 8px;font-weight:600">「${esc0(name)}」を保存します</p><p style="margin:0 0 12px;font-size:.9rem">iPhone・iPad では、保存先を選んで保存します。「共有して保存する」を押し、出てきたメニューで「"ファイル"に保存」を選んでください。</p><div id="iosSave" style="display:flex;flex-direction:column;gap:8px"></div>`;
+  const done=v=>{o.remove();res(v);};
+  const bt=(t,fn,cls)=>{const x=document.createElement("button");x.textContent=t;x.style.minHeight="46px";if(cls)x.className=cls;x.onclick=fn;box.querySelector("#iosSave").appendChild(x);};
+  bt("共有して保存する",async()=>{try{const f=new File([b.bytes],name,{type:"application/pdf"});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});b.dirty=false;paintCard(b);status("共有メニューから保存しました。");done(true);}
+      else{downloadBundle(b,name);done(true);}}
+    catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return;}downloadBundle(b,name);done(true);}});   // 共有できないときは、ダウンロード
+  bt("やめる",()=>{status("保存をやめました。");done(false);},"sub-btn");
+  o.appendChild(box);document.body.appendChild(o);});}
+const esc0=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 async function overwriteBundle(b){   // 読み込んだ元のファイルに上書き。保存できたらtrue
   if(!b.handle)return saveBundle(b);
   try{await writeTo(b.handle,b);b.dirty=false;paintCard(b);status(`「${b.handle.name}」に上書き保存しました。`);return true;}
