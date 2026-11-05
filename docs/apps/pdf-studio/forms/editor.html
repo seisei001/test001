@@ -2059,7 +2059,7 @@ async function getOcr(lang){
   ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status){const t=`認識エンジンの準備中(初回のみ): ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`;status(t);job.step(t);}}});
   ocrLang=lang;return ocrWorker;
 }
-let ocrTextBoxes=null;
+let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
 // ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
 async function imageBoxes(){
@@ -2471,12 +2471,18 @@ async function doOcr(x,y,w,h){
   const whole=w>=VW-1&&h>=VH-1;
   job.start(whole?"ページ全体を文字に変換しています…":"指定した範囲を文字に変換しています…");
   try{
-    const n=await doOcrBody(x,y,w,h);
+    ocrRetried=false;ocrRetryNote="";
+    let n=await doOcrBody(x,y,w,h);
+    if(n&&n.retry){   // 同じ数字ばかり返す(エンジンが正しく動いていない)ときは、次のエンジンで、やり直す
+      ocrRetried=true;const names={paddle:"高精度",tess:"標準"};$("ocrEngine").value=n.retry;ocrRetryNote=`${n.why}${names[n.retry]}エンジンでやり直しました。`;
+      status(ocrRetryNote);job.step(`${names[n.retry]}エンジンで、やり直しています…`);
+      n=await doOcrBody(x,y,w,h);
+    }
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
+    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+(ocrRetryNote?ocrRetryNote:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
-  finally{ocrTextBoxes=null;ocrOnlyBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
+  finally{ocrTextBoxes=null;ocrOnlyBoxes=null;ocrRetried=false;ocrRunning=false;$("bOcrPage").disabled=false;}
 }
 // 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
 function keepInRange(it,x,y,w,h){
@@ -2784,6 +2790,15 @@ async function doOcrBody(x,y,w,h){
     if(r.lines.length)res.push(r);
   }
   ocrTrack=null;
+  // エンジンが正しく動いていない端末(iPhoneなど)では、どの行も、同じような数字(「10.00」「0.00」)ばかりを返す。こういう結果は、ほかのエンジンで読み直す(読み直せないときは、その行を捨てる)
+  {const fake=window.__ocrJunkEngine&&$("ocrEngine").value===window.__ocrJunkEngine;   // (動作確認用: 指定したエンジンが、同じ数字ばかり返す状態を再現する)
+   const strs=res.flatMap(c=>c.lines.map(l=>fake?"10.00":joinWords(l.words).trim())),dec=strs.filter(t=>/^[$¥￥]?\d{0,3}[.,]\d{2}$/.test(t)),cnt=new Map();dec.forEach(t=>cnt.set(t,(cnt.get(t)||0)+1));
+    const top=Math.max(0,...cnt.values());
+    if(strs.length>=6&&(dec.length>=0.25*strs.length||top>=5)&&dec.length>=4){
+      const next=ndlMode?"paddle":ppMode?"tess":null;
+      if(next&&!ocrRetried){return{ok:false,retry:next,why:`${ndlMode?"最高精度":"高精度"}エンジンが、この端末で正しく動いていません(どの行も同じような数字になりました)。`};}
+      for(let i=res.length-1;i>=0;i--){res[i].lines=res[i].lines.filter(l=>!/^[$¥￥]?\d{0,3}[.,]\d{2}$/.test(joinWords(l.words).trim()));if(!res[i].lines.length)res.splice(i,1);}   // 読み直せない: 数字の行を捨てる
+    }}
   // 1行だけの塊は、同じ高さに別の塊が並んでいたら、中央・右揃えとは言えない(ラベルの右の値が、たまたまページ中央にあるだけ)→ 左揃え
   res.forEach((c,i)=>{if(c.lines.length!==1||c.align==="left")return;const l=c.lines[0],cy=(l.y0+l.y1)/2;
     if(res.some((o,j)=>j!==i&&o.lines.some(m=>Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(c.size,o.size))))c.align="left";});
