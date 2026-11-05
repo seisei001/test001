@@ -1484,7 +1484,9 @@ function deleteItem(it,skipAsk){
   if(!skipAsk&&!confirm("この枠を消去してもよろしいですか?"))return;
   hideSizePop();
   if(it.type==="fix"){   // PDFにある文字の枠: 枠だけ消しても、PDFの文字は残る(何も起きないように見える)。文字そのものを消す(確定でPDFに反映)
-    it.txt="";it.sz=[];if(cs===it)select(null);else renderOverlay();syncPanel();status("文字を消しました(確定するとPDFに反映されます。元に戻すで戻せます)。");return;
+    it.txt="";it.sz=[];it.fm=null;if(cs===it)cs=null;renderOverlay();syncPanel();status("文字を消しています…");
+    commit([it]).then(()=>status("文字を消しました(PDFに反映しました。元に戻すで戻せます)。")).catch(e=>status("消せませんでした: "+(e&&e.message?e.message:e)));   // 枠も、元のPDFの文字も、すぐに消す(空の枠を残さない)
+    return;
   }
   items.splice(items.indexOf(it),1);
   if(cs===it)cs=null;renderOverlay();syncPanel();status("枠を消去しました。");
