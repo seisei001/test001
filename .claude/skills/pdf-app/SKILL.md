@@ -492,3 +492,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 ## v127: 罫線編集 1.36 / 整形 1.08 — ヘルプ
 - 罫線編集・整形のヘルプが、ページ編集用のまま(「いまのモード: (空)」「ほかのモード: 選択・訂正…」「文字として…」)で、中身が合っていなかった。`openHelp` は FORMKIND が rule/shape のとき、`FORM_HELP_RULE` / `FORM_HELP_SHAPE`(固定の説明)だけを出す。ページ編集は従来どおり(HINTS+.helptext)。
 - 機能を足したら、この2つの説明も直す(罫線: 選ぶ/動かす・始点終点/太さ色種類/線を引く/楕円/表/保存。整形: 範囲→補正→置き場所→まわり/傾き/回転)。テスト: test-studio-help.js。
+
+## v128: 製本デスク 2.24 — iPhone・iPadの印刷
+- 報告「アイホンでプリンターの画面にならない」: iPhone/iPad は、アプリから print() でプリンター画面を開けない。従来は先に別画面を window.open していたが、ページ編集の中(iframe→親へ postMessage)からの印刷では、ボタン操作の流れの外になり開けず、何も起きなかった。→ iOS では `showIosPrint`(案内の画面)を出し、押してもらう: 「共有して印刷する」(`navigator.share({files:[PDF]})` → 共有メニューの「プリント」)/「PDFを開く」(開いた画面の共有ボタン→「プリント」)。共有未対応のときは PDF を開く。
+- `isIOS()` は `window.__forceIOS` でテストできる。テスト: test-studio-iosprint.js(share を差し替えて、束の印刷・ページ編集の印刷の両方でPDFが渡ることを確認)。実機の iPhone は未確認(共有シートの「プリント」はiOSの標準機能)。
