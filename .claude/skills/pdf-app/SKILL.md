@@ -488,3 +488,7 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 書き込みは `flushOvals()`(`ruleAddOval` を順に)。`commit()` の先頭で呼ぶ(「保存」が commit を呼ぶ)。「戻る」の変更確認にも、未確定の楕円を数える。
 - 描画ツールの最中は `#ov.rdraw .ovp{pointer-events:none}`。ドラッグ中は、要素が作り直される(renderOverlay)ので、setPointerCapture ではなく document の pointermove/up を使う。
 - テスト: test-studio-rules6.js(描く→動かす→大きさ→種類→保存して位置を確認)。
+
+## v127: 罫線編集 1.36 / 整形 1.08 — ヘルプ
+- 罫線編集・整形のヘルプが、ページ編集用のまま(「いまのモード: (空)」「ほかのモード: 選択・訂正…」「文字として…」)で、中身が合っていなかった。`openHelp` は FORMKIND が rule/shape のとき、`FORM_HELP_RULE` / `FORM_HELP_SHAPE`(固定の説明)だけを出す。ページ編集は従来どおり(HINTS+.helptext)。
+- 機能を足したら、この2つの説明も直す(罫線: 選ぶ/動かす・始点終点/太さ色種類/線を引く/楕円/表/保存。整形: 範囲→補正→置き場所→まわり/傾き/回転)。テスト: test-studio-help.js。
