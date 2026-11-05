@@ -600,6 +600,7 @@ function openSettings(){
   o.onpointerdown=e=>{if(e.target===o)closeSettings();};
 }
 function setMode(m){
+  closeUnderAsk();
   mode=m;if(m!=="ocr"&&document.body.classList.contains("noimg")){document.body.classList.remove("noimg");const b=$("bImgToggle");if(b)b.textContent="元画像を消す";}   // 文字認識のモードを出たら、元の画像を戻すdocument.body.classList.remove("m-sel","m-text","m-img","m-ocr","m-warp","m-rule","m-tilt","m-crop","m-rot");document.body.classList.add("m-"+m);
   if(m!=="sel"&&m!=="text"&&cs){pruneEmpty(cs);cs=null;}   // 文字の枠の道具は、文字のモードのときだけ(ほかのモードでは、選択を外す)
   [...$("modeSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.m===m));
@@ -1604,7 +1605,17 @@ function beginRange(e){
       await doOcr(x,y,w,h);
       if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
       return;}
-    if(mode==="text"){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    if(mode==="text"){
+      let made0=null;
+      if(!tap&&!window.__noUnderAsk){   // 枠の下に、PDFの文字があるときは、元の文字を拾って訂正する枠にする(多くは、元の文字を直したいため)。ほかの扱いは、枠のそばの案内から選べる
+        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+        const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+        if(inside.length){const groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
+          made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+          made0.forEach(m=>items.push(m));it=made0[0];showUnderAsk({x,y,w,h,made:made0,n:inside.length});}
+      }
+      if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    }
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
       it={id:nextId++,type:"img",fmt:"pic",page:cur,vx:tap?r.sx:x,vy:tap?r.sy:y,vw:bw,vh:bh,data:imgData,ratio:imgData.ratio};
@@ -2059,8 +2070,30 @@ async function getOcr(lang){
   ocrWorker=await Tesseract.createWorker(lang,1,{langPath:LANG_PATH[lang],logger:m=>{if(m.status){const t=`認識エンジンの準備中(初回のみ): ${LBL[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`;status(t);job.step(t);}}});
   ocrLang=lang;return ocrWorker;
 }
-let ocrTextBoxes=null;
+let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
+// ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function imageBoxes(){
+  const out=[];
+  try{
+    const p=await pdfView.getPage(cur+1),vp=p.getViewport({scale:1}),ol=await p.getOperatorList(),O=pdfjsLib.OPS;
+    const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];
+    const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+    let ctm=vp.transform.slice();const stack=[];
+    const IMG=new Set([O.paintImageXObject,O.paintInlineImageXObject,O.paintImageMaskXObject,O.paintJpegXObject].filter(v=>v!=null));
+    for(let i=0;i<ol.fnArray.length;i++){
+      const fn=ol.fnArray[i],a=ol.argsArray[i];
+      if(fn===O.save)stack.push(ctm.slice());
+      else if(fn===O.restore){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.transform)ctm=mul(ctm,a);
+      else if(fn===O.paintFormXObjectBegin){stack.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0]);}
+      else if(fn===O.paintFormXObjectEnd){if(stack.length)ctm=stack.pop();}
+      else if(IMG.has(fn)){const c=[ap(ctm,0,0),ap(ctm,1,0),ap(ctm,1,1),ap(ctm,0,1)],xs=c.map(q=>q[0]),ys=c.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;if(w>=8&&h>=8)out.push({x,y,w,h});}
+    }
+  }catch(e){console.warn("画像の場所を調べられませんでした",e);return null;}
+  return out;
+}
+let ocrOnlyBoxes=null;   // 文字のデータがあるページでは、文字認識は、画像のある所だけ(図形を文字に読み間違えない)
 async function textLayerBoxes(x,y,w,h){
   await loadRuns().catch(()=>{});
   return runs.map(r=>({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.3})).filter(b=>b.x<x+w&&b.x+b.w>x&&b.y<y+h&&b.y+b.h>y);
@@ -2070,6 +2103,11 @@ async function renderRegion(x,y,w,h,scale){
   const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));if(ocrTrack)ocrTrack.push(cv);
   const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
+  if(ocrOnlyBoxes){   // 画像のある所だけ残して、ほかは白にする
+    const keep=document.createElement("canvas");keep.width=cv.width;keep.height=cv.height;keep.getContext("2d").drawImage(cv,0,0);
+    cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+    for(const b of ocrOnlyBoxes){const bx=Math.max(0,(b.x-x)*scale),by=Math.max(0,(b.y-y)*scale),bx1=Math.min(cv.width,(b.x+b.w-x)*scale),by1=Math.min(cv.height,(b.y+b.h-y)*scale);if(bx1>bx&&by1>by)cx.drawImage(keep,bx,by,bx1-bx,by1-by,bx,by,bx1-bx,by1-by);}
+  }
   if(ocrTextBoxes&&ocrTextBoxes.length){cx.fillStyle="#fff";for(const b of ocrTextBoxes){const bx=(b.x-x)*scale,by=(b.y-y)*scale,bw=b.w*scale,bh=b.h*scale;if(bx<cv.width&&by<cv.height&&bx+bw>0&&by+bh>0)cx.fillRect(bx,by,bw,bh);}}   // OCR中: PDFの文字データがある所は、読まない(元のデータが最優先)
   if(window.OCR_SMEAR){const c2=document.createElement("canvas");c2.width=cv.width;c2.height=cv.height;const x2=c2.getContext("2d");x2.fillStyle="#fff";x2.fillRect(0,0,c2.width,c2.height);x2.globalCompositeOperation="darken";const d=window.OCR_SMEAR*scale/3.09;for(const o of [-d,0,d])x2.drawImage(cv,0,o);cx.drawImage(c2,0,0);}   // テスト用: 文字を縦に太らせて、iPhoneの「行がつながる」状態をまねる
   return cv;
@@ -2319,6 +2357,13 @@ async function tessShort(cv,est){
 }
 // 元の画像と重ねた一致度の、捨てるしきい値。数字・記号だけの行は、ごみ(二次元コードなど)になりやすいので厳しめ。
 // 漢字・かなを3字以上含む行は、実際の文字のことが多いので、「何も写っていない所を読んだ」ほど低いときだけ捨てる(画面用の書体と、元の書体(明朝体など)が違うと、一致度が低めに出るため。以前は0.37で捨てていて、小さい文字の段落がほとんど消えた)
+// 数字だけの行で、元の画像と照合できなかった(大きな行は、照合の範囲が広すぎて飛ばされる)ものは、点線・小さな欄を数字(「10.00」「0.00」など)に読み間違えたごみが多い。
+// 周りの文字よりずっと大きいとき、または日本語のページで「小数(0.00)」の形のときは、文字にしない。照合できて、よく重なる行は、残す
+function ocrJunkNum(r,jpPage,szMed){
+  if(!/^[\s$¥￥0-9.,:+\-%]+$/.test(r.str)||r.refScore!=null)return false;
+  if(r.size>1.6*szMed)return true;
+  return jpPage&&/^[$¥￥]?\d{1,3}[.,]\d{2}$/.test(r.str.trim());
+}
 function ocrMinMatch(r){
   if(/^[\s0-9.,:;\-+*#$%¥￥()（）\[\]{}|/\\_~=<>!?'"]+$/.test(r.str))return OCR_MIN_MATCH_NUM;
   const cjk=(r.str.match(/[\u3040-\u30ff\u3400-\u9fff]/g)||[]).length;
@@ -2437,12 +2482,18 @@ async function doOcr(x,y,w,h){
   const whole=w>=VW-1&&h>=VH-1;
   job.start(whole?"ページ全体を文字に変換しています…":"指定した範囲を文字に変換しています…");
   try{
-    const n=await doOcrBody(x,y,w,h);
+    ocrRetried=false;ocrRetryNote="";
+    let n=await doOcrBody(x,y,w,h);
+    if(n&&n.retry){   // 同じ数字ばかり返す(エンジンが正しく動いていない)ときは、次のエンジンで、やり直す
+      ocrRetried=true;const names={paddle:"高精度",tess:"標準"};$("ocrEngine").value=n.retry;ocrRetryNote=`${n.why}${names[n.retry]}エンジンでやり直しました。`;
+      status(ocrRetryNote);job.step(`${names[n.retry]}エンジンで、やり直しています…`);
+      n=await doOcrBody(x,y,w,h);
+    }
     rng.classList.add("done");setTimeout(()=>rng.remove(),2500);
-    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
+    if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+(ocrRetryNote?ocrRetryNote:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
-  finally{ocrTextBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
+  finally{ocrTextBoxes=null;ocrOnlyBoxes=null;ocrRetried=false;ocrRunning=false;$("bOcrPage").disabled=false;}
 }
 // 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
 function keepInRange(it,x,y,w,h){
@@ -2715,6 +2766,13 @@ async function doOcrBody(x,y,w,h){
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
   ocrTextBoxes=await textLayerBoxes(x,y,w,h);const nText=ocrTextBoxes.length;
+  ocrOnlyBoxes=null;
+  if(nText>=10){   // 文字のデータが十分あるページ(表・申請書など)は、画像のある所だけを認識する。罫線・枠・点線を、文字(「10.00」など)に読み間違えるのを防ぐ
+    const ib=await imageBoxes();
+    if(ib){const inR=ib.filter(b=>b.x<x+w&&b.x+b.w>x&&b.y<y+h&&b.y+b.h>y);
+      if(!inR.length){const msg=`この範囲の文字は、PDFの文字データ(${nText}個)で、画像の文字はありません。OCRは要りません。「選択・訂正」で文字をタップすると、そのまま枠にできます。`;status(msg);return{ok:false,msg};}
+      ocrOnlyBoxes=inR;}
+  }
   const cv=await renderRegion(x,y,w,h,S);
   const nCode=await maskCodes(cv);   // 二次元コードは、文字として読まない
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
@@ -2743,6 +2801,15 @@ async function doOcrBody(x,y,w,h){
     if(r.lines.length)res.push(r);
   }
   ocrTrack=null;
+  // エンジンが正しく動いていない端末(iPhoneなど)では、どの行も、同じような数字(「10.00」「0.00」)ばかりを返す。こういう結果は、ほかのエンジンで読み直す(読み直せないときは、その行を捨てる)
+  {const fake=window.__ocrJunkEngine&&$("ocrEngine").value===window.__ocrJunkEngine;   // (動作確認用: 指定したエンジンが、同じ数字ばかり返す状態を再現する)
+   const strs=res.flatMap(c=>c.lines.map(l=>fake?"10.00":joinWords(l.words).trim())),dec=strs.filter(t=>/^[$¥￥]?\d{0,3}[.,]\d{2}$/.test(t)),cnt=new Map();dec.forEach(t=>cnt.set(t,(cnt.get(t)||0)+1));
+    const top=Math.max(0,...cnt.values());
+    if(strs.length>=6&&(dec.length>=0.25*strs.length||top>=5)&&dec.length>=4){
+      const next=ndlMode?"paddle":ppMode?"tess":null;
+      if(next&&!ocrRetried){return{ok:false,retry:next,why:`${ndlMode?"最高精度":"高精度"}エンジンが、この端末で正しく動いていません(どの行も同じような数字になりました)。`};}
+      for(let i=res.length-1;i>=0;i--){res[i].lines=res[i].lines.filter(l=>!/^[$¥￥]?\d{0,3}[.,]\d{2}$/.test(joinWords(l.words).trim()));if(!res[i].lines.length)res.splice(i,1);}   // 読み直せない: 数字の行を捨てる
+    }}
   // 1行だけの塊は、同じ高さに別の塊が並んでいたら、中央・右揃えとは言えない(ラベルの右の値が、たまたまページ中央にあるだけ)→ 左揃え
   res.forEach((c,i)=>{if(c.lines.length!==1||c.align==="left")return;const l=c.lines[0],cy=(l.y0+l.y1)/2;
     if(res.some((o,j)=>j!==i&&o.lines.some(m=>Math.abs((m.y0+m.y1)/2-cy)<0.6*Math.max(c.size,o.size))))c.align="left";});
@@ -2772,7 +2839,7 @@ async function doOcrBody(x,y,w,h){
   const allc=runs.reduce((a,r)=>a+Array.from(r.str).length,0)||1,cjkc=runs.reduce((a,r)=>a+(r.str.match(/[\u3040-\u30ff\u3400-\u9fff]/g)||[]).length,0),jpPage=cjkc/allc>=0.5,
     szMed=[...runs.map(r=>r.size)].sort((a,b)=>a-b)[runs.length>>1]||10;
   const junkLatin=r=>jpPage&&/^[A-Za-z][A-Za-z .]{5,}$/.test(r.str)&&(r.size>2.5*szMed||(r.conf!=null&&r.conf<60));
-  const keep=runs.filter(r=>!(r.ocr&&(junkLatin(r)||(r.refScore!=null&&r.refScore<ocrMinMatch(r))))),dropped=runs.length-keep.length;
+  const keep=runs.filter(r=>!(r.ocr&&(junkLatin(r)||ocrJunkNum(r,jpPage,szMed)||(r.refScore!=null&&r.refScore<ocrMinMatch(r))))),dropped=runs.length-keep.length;
   lastOcrDropped=runs.filter(r=>!keep.includes(r));
   if(dropped){runs.length=0;runs.push(...keep);}
   if(!runs.length){const msg="文字を認識できませんでした(読み取った文字が、元の画像と重ならなかったため除きました)。";status(msg);return{ok:false,msg};}
@@ -2791,7 +2858,7 @@ async function doOcrBody(x,y,w,h){
     }
     it.ocrMade=true;it.bgMode="ink";growToFit(it);clampToPage(it);   // 画像の文字は、文字のインクだけを消す(罫線・図形・背景は残す)
     if(!ocrRange.whole)keepInRange(it,x,y,w,h);
-    it.ocrSig=ocrSigOf(it);
+    it.ocrSig=ocrSigOf(it);it.ocrOrig=it.txt;   // 認識した、元の文字(消すときの確認に見せる)
     made.push(it);
   });
   // 同じ範囲をもう一度変換したときは、前回の変換結果(まだ確定していないもの)を置き換える(重ならない)
@@ -3151,6 +3218,50 @@ async function remainsImage(b,foot){
   cx.putImageData(im,0,0);
   const blob=await new Promise(res=>cv.toBlob(res,"image/png"));return new Uint8Array(await blob.arrayBuffer());
 }
+// ===== 文字の上に枠を作ったとき: 下のPDFの文字を、どうするか =====
+// 既定は「元の文字を拾って訂正」(すでにそうなっている)。「消して、新しく書く」(重なる文字を取り除いて、新しい枠に書く)/「そのまま」(枠は透明・下には触らない)を、枠のそばから選べる
+let underAskEl=null;
+function closeUnderAsk(){if(underAskEl){clearTimeout(underAskEl._tm);underAskEl.remove();underAskEl=null;}}
+function showUnderAsk(info){
+  closeUnderAsk();
+  const d=document.createElement("div");d.id="underAsk";
+  d.style.cssText="position:fixed;left:8px;right:8px;bottom:12px;z-index:3000;background:var(--panel-bg,#fff);color:var(--text,#000);border:1px solid var(--border,#ccc);border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.35);line-height:1.6;max-width:520px;margin:0 auto";
+  d.innerHTML=`<div style="font-size:.88rem;margin-bottom:6px">枠の下に、PDFの文字(${info.n}個)があります。<b>元の文字を拾って、訂正できる枠</b>にしました。ほかの扱いにするときは、選んでください。</div><div id="uaBtns" style="display:flex;gap:8px;flex-wrap:wrap"></div>`;
+  const bt=(t,fn,cls)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="40px";if(cls)b.className=cls;b.onclick=()=>{closeUnderAsk();fn();};d.querySelector("#uaBtns").appendChild(b);};
+  const toNew=(transparent)=>{items=items.filter(o=>!info.made.includes(o));cs=null;const t=newText(info.x,info.y,info.w,info.h);if(transparent){t.bgMode="none";t.erase=false;}items.push(t);renderOverlay();select(t,true);
+    status(transparent?"枠は透明です。下のPDFの文字には、触りません。":"重なる文字を取り除いて、新しい枠に書きます。");};
+  bt("拾って訂正(このまま)",()=>{status("元の文字を拾いました。文字をタップして直してください。");});
+  bt("消して、新しく書く",()=>toNew(false),"sub-btn");
+  bt("そのまま(透明・下は触らない)",()=>toNew(true),"sub-btn");
+  document.body.appendChild(d);underAskEl=d;d._tm=setTimeout(closeUnderAsk,25000);
+}
+// ===== 枠の下の画像の文字を、消す前の確認 =====
+// 「文字だけ消す」で、枠の下の画像から、文字(のインク)を消す前に、何を消そうとしているか(範囲の画像・読み取った文字)を見せて、「はい/いいえ」を聞く
+async function eraseSummary(it){
+  const pcs=(it._ink&&it._ink.patches)||[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  pcs.forEach(q=>{x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x+q.w);y1=Math.max(y1,q.y+q.h);});
+  x0=Math.max(0,x0-2);y0=Math.max(0,y0-2);x1=Math.min(VW,x1+2);y1=Math.min(VH,y1+2);
+  const w=Math.max(4,x1-x0),h=Math.max(4,y1-y0),S=Math.min(4,Math.max(1.5,Math.min(700/w,500/h)));
+  let img="",txt=it.ocrOrig||null;
+  try{const cv=await renderRegion(x0,y0,w,h,S);
+    const tw=Math.min(300,cv.width),th=Math.max(1,Math.round(cv.height*tw/cv.width)),t=document.createElement("canvas");t.width=tw;t.height=th;t.getContext("2d").drawImage(cv,0,0,tw,th);img=t.toDataURL("image/png");
+    if(txt==null&&!window.__noEraseOcr){   // 読み取れた文字を見せる(軽い標準エンジン。時間がかかるときは、画像だけ見せる)
+      try{const wk=await getOcr($("ocrLang").value),r=await Promise.race([wk.recognize(cv),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),12000))]);txt=cleanOcr((r.data&&r.data.text)||"").replace(/\s+/g,"");}catch{txt=null;}}
+  }catch(e){console.warn("消す範囲を調べられませんでした",e);}
+  return{img,txt:txt||""};
+}
+function confirmErase(rows){
+  return new Promise(res=>{
+    const o=document.createElement("div");o.id="eraseAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:460px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">枠の下の画像の文字を、消してもいいですか?</p><p style="margin:0 0 10px;font-size:.88rem;opacity:.85">下の画像から、文字と読み取れた部分を消します(罫線・図形・背景は残します)。消したあとは、元の画像の文字は、見えなくなります。</p>`+
+      rows.map((r,i)=>`<div style="margin:0 0 10px;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px"><div style="font-size:.8rem;opacity:.8">消す範囲${rows.length>1?" "+(i+1):""}</div>${r.img?`<img src="${r.img}" style="max-width:100%;border:1px solid #ccc;background:#fff;display:block;margin:4px 0">`:""}<div style="font-size:.9rem">読み取った文字: ${r.txt?`<b>「${esc(r.txt.slice(0,80))}」</b>`:"(読み取れませんでした。上の画像の範囲を消します)"}</div></div>`).join("");
+    const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
+    const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
+    mk("はい(消す)",true,true);mk("いいえ(消さずに、文字だけ置く)",false,false);
+    box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
+}
 async function commit(only){
   if(!only&&typeof RULE!=="undefined"&&RULE.ovals.length)await flushOvals();   // 未確定の楕円も、PDFに書き込む
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
@@ -3158,6 +3269,15 @@ async function commit(only){
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
   todo.forEach(leaveEdit);   // 入力中の枠は、見えている配置のまま固定してから書く
+  if(!window.__noEraseAsk){   // 枠の下の画像の文字を消す前に、確認する(一度答えた枠は、聞き直さない)
+    const cand=[];for(const it of todo){if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&it._eraseOK===undefined){const st=await inkCompute(it).catch(()=>null);if(st&&!st.failed&&st.patches&&st.patches.length)cand.push(it);}}
+    if(cand.length){
+      status("消す範囲を確かめています…");const rows=[];for(const it of cand)rows.push(await eraseSummary(it));
+      const yes=await confirmErase(rows);
+      cand.forEach(it=>{it._eraseOK=yes;if(!yes){it.bgMode="none";it.erase=false;it._ink=null;}});   // いいえ: 消さずに、文字だけ置く
+      if(!yes)status("画像の文字は消さずに、文字だけ置きます。");
+    }
+  }
   const doc=await PDFDocument.load(bytes);
   // 元のフォントで書けるかを、先に調べる(書けない文字があるときは、別のフォントを足すので、ファイルが大きくなる→確認する)
   const needFallback=[];
@@ -3178,6 +3298,7 @@ async function commit(only){
   const under=new Map();
   for(const it of todo){
     if(it.type==="img"||!(it.txt||"").trim())continue;
+    if(it.type==="text"&&bgModeOf(it)==="none")continue;   // 透明な枠は、下のPDFの文字に触らない
     const foot=bgModeOf(it)==="all"?[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}]:lineRectsOf(it);if(!foot.length)continue;
     const U=under.get(it.page)||{ex:new Map(),foot:[],hasText:false};under.set(it.page,U);U.foot.push(...foot);
     const own=it.type==="fix"?(it.covers||[it.cover]):[];
@@ -4166,7 +4287,7 @@ if(EMBED){
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
 setTimeout(()=>{ensureWebFont().catch(()=>{});},1500);   // 文字の枠の見た目に使うフォントを、先に読んでおく(長押しの準備で待たされないように)
-window.pdfEditorDebug={bgModes:()=>items.filter(x=>x.type==="text").map(x=>bgModeOf(x)),ovals:()=>RULE.ovals.map(o=>({...o})),fmOf:()=>{const i=items.find(x=>x.type==="fix"||x.type==="text");return i&&i.fm;},warpSetCorners:q=>{if(!warp)return;warp.curved=false;warp.G[0][0]=q[0];warp.G[0][GN-1]=q[1];warp.G[GN-1][GN-1]=q[2];warp.G[GN-1][0]=q[3];gridFromQuad(warp);if(!warp.dstTouched)warpInitDst(warp);renderWarp();},warpState:()=>warp&&{kind:warp.kind,whole:!!warp.whole,G:warp.G,dst:warp.dst,fix:warpOpt.fix,around:warpOpt.around},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,x0:r.x0,y0:r.y0,x1:r.x1,y1:r.y1,diag:!!r.diag,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
+window.pdfEditorDebug={junkNum:(str,size,ref,jp,med)=>ocrJunkNum({str,size,refScore:ref},jp,med),bgModes:()=>items.filter(x=>x.type==="text").map(x=>bgModeOf(x)),ovals:()=>RULE.ovals.map(o=>({...o})),fmOf:()=>{const i=items.find(x=>x.type==="fix"||x.type==="text");return i&&i.fm;},warpSetCorners:q=>{if(!warp)return;warp.curved=false;warp.G[0][0]=q[0];warp.G[0][GN-1]=q[1];warp.G[GN-1][GN-1]=q[2];warp.G[GN-1][0]=q[3];gridFromQuad(warp);if(!warp.dstTouched)warpInitDst(warp);renderWarp();},warpState:()=>warp&&{kind:warp.kind,whole:!!warp.whole,G:warp.G,dst:warp.dst,fix:warpOpt.fix,around:warpOpt.around},inkWhy:()=>items.filter(it=>it._ink).map(it=>it._ink.why),inkAll:()=>Promise.all(items.filter(it=>it.type==="fix"||it.type==="text").map(it=>inkCompute(it))),addFix:b=>{const run={str:b.s,x:b.x,base:b.y+b.h*0.82,w:b.w,size:b.size,ocr:true,box:{x:b.x,y:b.y,w:b.w,h:b.h}},it=newFix([run]);it.ocrMade=true;it.bgMode=b.mode||"ink";it.txt=b.txt==null?".":b.txt;it.ocrSig=ocrSigOf(it);items.push(it);renderOverlay();return it.id;},inkDump:i=>{const it=items.filter(o=>o.type==="fix")[i];return it&&it._ink?{txt:it.txt.slice(0,10),covers:(it.covers||[it.cover]),patches:it._ink.patches.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h,url:p.cv.toDataURL("image/png")}))}:null;},setBg:m=>{items.forEach(it=>{if(it.type==="fix"){it.bgMode=m;it._ink=null;renderCovers(it);}});},inkState:()=>items.filter(it=>it.type==="fix"||it.type==="text").map(it=>({type:it.type,mode:bgModeOf(it),ink:it._ink?{why:it._ink.why,failed:it._ink.failed,busy:it._ink.busy,n:it._ink.patches.length}:null})),tables:()=>RULE.tables.map(T=>({ys:T.ys.map(v=>Math.round(v*10)/10),xs:T.xs.map(v=>Math.round(v*10)/10),rows:T.rows,cols:T.cols})),tableOp:op=>tableApply(bytes,op).then(nb=>setBytes(nb,true)),warpDst:()=>warp&&warp.dst?warp.dst.map(q=>q.map(v=>Math.round(v*10)/10)):null,ruleDo:(m,o)=>ruleApply(bytes,{...o,mode:m}).then(nb=>setBytes(nb,true)),rules:()=>RULE.for===bytes?RULE.els.map((r,i)=>({i,kind:r.kind,x0:r.x0,y0:r.y0,x1:r.x1,y1:r.y1,diag:!!r.diag,v:r.v.map(x=>Math.round(x*100)/100),t:r.t,on:RULE.sel.has(i)})):null,ocrDiag:()=>lastOcrDiagText,geo:()=>({form:GEO.form(),screen:GEO.screen(),shown:GEO.shown(),scale:GEO.scale(),inv:GEO.inv(),app:GEO.app()}),jobShow:t=>job.done(t,60000),bytes:()=>Array.from(bytes),pending:()=>items.length,strip:(u8,pg,rects)=>PDFDocument.load(u8).then(async d=>{const per=await stripPageText(d,pg,rects);return d.save().then(b=>({per,bytes:Array.from(b)}));}),blocks:()=>[...new Set(blockOf.values())].map(g=>g.map(r=>r.str)),warpG:()=>warp&&warp.G.map(r=>r.map(p=>p.slice())),pz:()=>PZ,jobFail:t=>job.fail(t),textBoxes:(x,y,w,h)=>textLayerBoxes(x,y,w,h),ocrDropped:()=>lastOcrDropped.map(r=>({s:r.str,sc:r.refScore,size:r.size,gh:r.gh,conf:r.conf,w:r.w,x:r.x,base:r.base})),ocrScore:async(str,x,base,size,w)=>{const S=3,cv=await renderRegion(0,0,VW,VH,S),ink=makeInk(cv,S),r={str,x,base,w,size,gh:size,ocr:true};const k=refineRun(r,ink,0,0,famOf("text"));return{k,sc:r.refScore,size:r.size,str:r.str};},ocrRuns:()=>lastOcrRuns.map(r=>({s:r.str,sc:r.refScore,ref:!!r.refined,size:r.size,gh:r.gh,conf:r.conf,w:r.w})),selId:()=>cs?cs.id:null,page:()=>({VW,VH}),ocr:{paddle:async cv=>(await paddleRec(cv)).map(c=>c.ch).join(""),lang:l=>getOcr(l),lines:(...a)=>ocrLines(...a),renderRegion:(...a)=>renderRegion(...a),flatten:cv=>flattenForOcr(cv),segment:(cv,S,r,t,dl)=>ocrSegment(cv,S,r,t,dl),fillGaps:(a,b)=>fillGaps(a,b)},items:()=>items.map(it=>({ed:!!it._editing,erase:it.erase!==false,covers:(it.covers||[]).map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.w),Math.round(c.h)]),ls:it.ls||0,id:it.id,type:it.type,txt:it.txt,size:it.size,vx:it.vx,vy:it.vy,vw:it.vw,vh:it.vh,lh:it.lh,align:it.align||"left"}))};
 $("fxGap").onchange=()=>{if(runsFor===cur){recomputeBlocks();renderOverlay();}};
 setMode("sel");
 })();
