@@ -144,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.23"},
+  desk:{name:"製本デスク",ver:"2.24"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"2.97",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.08",src:"forms/editor.html?form=shape"},
@@ -316,6 +316,23 @@ async function addFiles(files){
   }
   if(added){defaultSel();render();persist();if(!lastNote)status(`${added}個のPDFを開きました。`);}
   if(fails.length)showLoadFails(fails,added);
+}
+// iPhone・iPad の印刷: 「共有して印刷する」(共有メニューの「プリント」)か、「PDFを開く」(開いた画面の共有ボタンから「プリント」)
+function showIosPrint(bytes,name,url){
+  const o=document.createElement("div");o.id="iosPrint";o.style.cssText="position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+  const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+  box.innerHTML=`<p style="margin:0 0 8px;font-weight:600">印刷用のPDFを作りました</p><p style="margin:0 0 12px;font-size:.9rem">iPhone・iPad では、このアプリからプリンターの画面を直接開けません。次のどちらかで印刷します。</p>
+  <p style="margin:0 0 4px;font-size:.9rem"><b>① 共有して印刷する(おすすめ)</b><br>下のボタンを押し、出てくるメニューで「プリント」を選びます。</p>
+  <p style="margin:0 0 12px;font-size:.9rem"><b>② PDFを開く</b><br>開いた画面の下の共有ボタン(□から上向きの矢印)を押し、「プリント」を選びます。</p><div id="iosBtns" style="display:flex;flex-direction:column;gap:8px"></div>`;
+  const bt=(t,fn,cls)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(cls)b.className=cls;b.onclick=fn;box.querySelector("#iosBtns").appendChild(b);return b;};
+  const file=()=>new File([bytes],/\.pdf$/i.test(name)?name:name+".pdf",{type:"application/pdf"});
+  bt("共有して印刷する",async()=>{
+    try{const f=file();if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});}
+      else{window.open(url,"_blank");}}   // 共有に対応していないときは、PDFを開く
+    catch(e){if(e&&e.name==="AbortError")return;window.open(url,"_blank");}});
+  bt("PDFを開く",()=>{window.open(url,"_blank");},"sub-btn");
+  bt("閉じる",()=>{o.remove();setTimeout(()=>{try{URL.revokeObjectURL(url);}catch{}},60000);},"sub-btn");
+  o.appendChild(box);document.body.appendChild(o);
 }
 function hasEncrypt(b){   // 「/Encrypt」の印があるか(鍵付きPDFは、辞書にこの名前が入る)。全体を読み込まずに、バイト列を走査するだけ
   const t=[47,69,110,99,114,121,112,116],n=b.length-t.length;   // "/Encrypt"
@@ -699,7 +716,7 @@ render();
 // ===== 印刷 =====
 // 選んでいる束(複数なら、並んでいる順に1つにつなげて)を、ブラウザの印刷の画面で印刷する。「このページを印刷」は、表示しているページだけ
 // パソコン: 見えない枠にPDFを読み込んで、印刷の画面を開く。iPhone・iPad: 印刷の画面を直接は開けないので、PDFを別の画面で開く(共有 → プリント)
-const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const isIOS=()=>window.__forceIOS||/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 async function printBundles(onlyCurrent){
   const list=bundles.filter(b=>b.sel);if(!list.length)return;
   await printBytesOut(async()=>{
@@ -711,13 +728,13 @@ async function printBundles(onlyCurrent){
   });
 }
 async function printBytesOut(make){   // make() が {bytes,name} を返す。印刷の画面を開く(束の印刷と、ページ編集の印刷で共用)
-  const win=isIOS()&&!window.__printHook?window.open("","_blank"):null;   // 新しい画面は、操作の直後でないと開けないので、先に開いておく
+  const ios=isIOS()&&!window.__printHook,win=null;   // iPhone・iPad は、アプリからプリンターの画面を直接開けない。ボタンを押してもらって、共有メニューの「プリント」へ案内する(ここで先に別画面を開くと、ページ編集の中からの印刷では、開けずに何も起きない)
   try{
     status("印刷の準備をしています…");
     const {bytes,name}=await make();
     if(window.__printHook){window.__printHook(bytes,name);status("印刷の画面を開きました。");return;}   // 動作確認用
     const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
-    if(win){win.location.href=url;status("PDFを別の画面で開きました。共有ボタンから「プリント」を選んでください。");return;}
+    if(ios){showIosPrint(bytes,name,url);status("印刷用のPDFを作りました。画面の案内に従って、「プリント」を選んでください。");return;}
     const fr=document.createElement("iframe");fr.style.cssText="position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none";
     const clean=()=>setTimeout(()=>{try{fr.remove();URL.revokeObjectURL(url);}catch{}},60000);
     fr.onload=()=>{try{fr.contentWindow.focus();fr.contentWindow.print();status("印刷の画面を開きました。");clean();}
