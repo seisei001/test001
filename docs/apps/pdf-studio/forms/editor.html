@@ -139,6 +139,12 @@ body.emb-edit [data-m=warp],body.emb-edit #optWarp{display:none!important;}
 .rub{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.12);pointer-events:none;}
 .run{position:absolute;border:1px dotted rgba(37,99,235,.55);pointer-events:none;}   /* 色は付けない(重なると濃くなるため) */
 .cover{position:absolute;pointer-events:none;z-index:0;}
+.fc{position:absolute;white-space:pre;cursor:move;touch-action:none;z-index:5;user-select:none;-webkit-user-select:none;padding:0;margin:0;}
+.fc:hover{outline:1px dashed #2563eb;}.fc.on{outline:2px solid #2563eb;background:rgba(37,99,235,.14);}
+#freeForm{position:fixed;right:8px;bottom:12px;z-index:3000;width:268px;max-height:70vh;overflow:auto;background:var(--panel-bg,#fff);color:var(--text,#000);border:1px solid var(--border,#ccc);border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:.85rem;line-height:1.5;}
+#freeForm .ffr{display:flex;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap;}#freeForm label{white-space:nowrap;}
+#freeForm input[type=number]{width:4.6em;min-height:34px;}#freeForm input[type=text]{width:5em;min-height:38px;font-size:18px;text-align:center;}#freeForm button{min-height:34px;margin:0;padding:2px 8px;}
+@media(max-width:600px){#freeForm{left:8px;right:8px;width:auto;}}
 .ibox{z-index:1;}
 .cvo{position:absolute;pointer-events:none;outline:1px dashed rgba(239,68,68,.95);z-index:4;}
 .ibox{position:absolute;outline:1px dashed rgba(37,99,235,.42);line-height:1.3;color:#000;}
@@ -845,7 +851,7 @@ function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   renderCovers(it);
 }
 // すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
-const taken=q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return items.some(it=>it.page===cur&&it.type==="fix"&&(it.covers||[it.cover]).some(c=>cx>=c.x-1&&cx<=c.x+c.w+1&&cy>=c.y-1&&cy<=c.y+c.h+1));};
+const taken=q=>{const b=runBox(q),cx=b.x+b.w/2,cy=b.y+b.h/2;return items.some(it=>it.page===cur&&(it.type==="fix"||it.free)&&(it.covers||[it.cover]).filter(Boolean).some(c=>cx>=c.x-1&&cx<=c.x+c.w+1&&cy>=c.y-1&&cy<=c.y+c.h+1));};
 const runBox=r=>r.box||({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.25});
 // ページ画像から文字色・背景色を推定
 function sampleColors(box){
@@ -1238,10 +1244,11 @@ function renderOverlay(){
       const d=document.createElement("div");d.className="run";
       d.style.cssText=`left:${x0*k}px;top:${y0*k}px;width:${(x1-x0)*k}px;height:${(y1-y0)*k}px`;ov.appendChild(d);});
   }
-  items.filter(it=>it.page===cur).forEach(it=>{
+  items.filter(it=>it.page===cur&&!it.free).forEach(it=>{
     renderCovers(it);
   });
-  items.filter(it=>it.page===cur).forEach(it=>{
+  renderFree(k);
+  items.filter(it=>it.page===cur&&!it.free).forEach(it=>{
     const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade&&!ocrEdited(it)?" ocrf":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
@@ -3233,6 +3240,7 @@ function showUnderAsk(info){
   bt("拾って訂正(このまま)",()=>{status("元の文字を拾いました。文字をタップして直してください。");});
   bt("消して、新しく書く",()=>toNew(false),"sub-btn");
   bt("そのまま(透明・下は触らない)",()=>toNew(true),"sub-btn");
+  bt("自由編集(1文字ずつ)",()=>startFree(info),"sub-btn");
   document.body.appendChild(d);underAskEl=d;d._tm=setTimeout(closeUnderAsk,25000);
 }
 // ===== 枠の下の画像の文字を、消す前の確認 =====
@@ -3262,9 +3270,135 @@ function confirmErase(rows){
     mk("はい(消す)",true,true);mk("いいえ(消さずに、文字だけ置く)",false,false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
+// ===== 自由編集: 文字の上に枠を作ったとき、枠の中の文字を、1文字ずつの部品にして、1文字ずつ直す =====
+// 1文字ずつ、位置・大きさ・フォント・回転・装飾を持つ。ほかの文字は、動かない。PDFに反映する(確定・保存)まで、「自由編集をやめる」で、元のままに戻せる
+const FREE={cur:null};
+function freeCharsFrom(fx){   // 訂正の枠(PDFの元の行の並び)から、1文字ずつの位置を作る
+  if(!mctx)mctx=document.createElement("canvas").getContext("2d");
+  const fam=famOf(fx.fmt,fx.font),L=layoutOf(fx,(c,sv)=>{mctx.font=`${sv}px ${fam}`;return mctx.measureText(c).width;}),out=[];
+  L.lines.forEach(ln=>{let x=fx.vx+(ln.off||0);const y=fx.vy+ln.base;
+    ln.ch.forEach(q=>{if(!/\s/.test(q.c))out.push({c:q.c,x,y,size:q.s,color:fx.color||"#000000",font:"orig",ofName:fx.ofName||null,rot:0,fm:q.f||0});x+=q.w;});});
+  return out;
+}
+function freeWidth(q){if(!mctx)mctx=document.createElement("canvas").getContext("2d");mctx.font=`${q.size}px ${famOf("text",q.font!=="orig"?q.font:undefined)}`;return mctx.measureText(q.c).width;}
+function freeConfirm(n){
+  if(window.__noFreeAsk)return Promise.resolve(true);
+  return new Promise(res=>{
+    const o=document.createElement("div");o.id="freeAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+    box.innerHTML=`<p style="margin:0 0 8px;font-weight:600">自由編集にします</p><p style="margin:0 0 12px;font-size:.9rem">この枠の中の元の文字(${n}個)を、<b>1文字ずつ編集できる部品に変えます</b>。PDFの元の文字の並びとは、別のものになります(元の文字は、PDFに反映するときに取り除かれます)。<br>反映する前なら、「自由編集をやめる」で、元のままに戻せます。</p><div style="display:flex;flex-direction:column;gap:8px"></div>`;
+    const bar=box.querySelector("div div"),mk=(t,v,pr)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!pr)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
+    mk("はい(自由編集にする)",true,true);mk("いいえ",false,false);o.appendChild(box);document.body.appendChild(o);});
+}
+async function startFree(info){
+  const n=info.made.reduce((a,f)=>a+Array.from(f.txt||"").filter(c=>!/\s/.test(c)).length,0);
+  if(!await freeConfirm(n)){status("自由編集にしませんでした。元の文字を拾った枠のままです。");return;}
+  const chs=info.made.flatMap(freeCharsFrom),covers=info.made.flatMap(f=>(f.covers||[f.cover]).filter(Boolean)),f0=info.made[0];
+  items=items.filter(o=>!info.made.includes(o));cs=null;
+  const it={id:nextId++,type:"free",free:true,fmt:"text",page:cur,txt:"",sz:[],vx:0,vy:0,vw:1,vh:1,size:f0.size,color:f0.color,bg:f0.bg,chs,covers,ofName:f0.ofName};
+  items.push(it);FREE.cur=chs.length?{it,i:0}:null;renderOverlay();freeFormShow();
+  status("自由編集にしました。文字をタップすると、横のフォームで直せます。ドラッグで動かせます。");
+}
+function renderFree(k){
+  items.filter(it=>it.page===cur&&it.free).forEach(it=>{
+    (it.covers||[]).forEach(c=>{const d=document.createElement("div");d.className="cover";d.dataset.for=it.id;d.style.cssText=`left:${c.x*k}px;top:${c.y*k}px;width:${c.w*k}px;height:${c.h*k}px;background:${it.bg||"#ffffff"}`;ov.appendChild(d);});
+    it.chs.forEach((q,i)=>{
+      const d=document.createElement("div"),on=FREE.cur&&FREE.cur.it===it&&FREE.cur.i===i,bo=baseOff("text",q.size,1);
+      d.className="fc"+(on?" on":"");d.textContent=q.c;
+      const dec=[];if((q.fm||0)&FM_U)dec.push("underline");if((q.fm||0)&FM_S)dec.push("line-through");
+      d.style.cssText=`left:${q.x*k}px;top:${(q.y-bo)*k}px;font-size:${q.size*k}px;line-height:1;color:${q.color};font-family:${famOf("text",q.font!=="orig"?q.font:undefined)};transform-origin:0 ${bo*k}px;transform:rotate(${q.rot||0}deg);${(q.fm||0)&FM_B?"font-weight:bold;":""}${dec.length?`text-decoration:${dec.join(" ")}${(q.fm||0)&FM_S?";text-decoration-style:double":""};`:""}`;
+      d.addEventListener("pointerdown",e=>{
+        if(e.button>0)return;e.stopPropagation();e.preventDefault();FREE.cur={it,i};
+        const sx=e.clientX,sy=e.clientY,x0=q.x,y0=q.y;let moved=false;
+        ov.querySelectorAll(".fc.on").forEach(z=>z.classList.remove("on"));d.classList.add("on");freeFormSync();
+        const mv=ev=>{if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>3)moved=true;if(!moved)return;q.x=Math.round((x0+(ev.clientX-sx)/k)*10)/10;q.y=Math.round((y0+(ev.clientY-sy)/k)*10)/10;d.style.left=q.x*k+"px";d.style.top=(q.y-bo)*k+"px";freeFormSync();};
+        const up=()=>{document.removeEventListener("pointermove",mv);};
+        document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up,{once:true});
+      });
+      ov.appendChild(d);
+    });
+  });
+  freeFormShow();
+}
+// 横のフォーム(1文字用)
+let freeFormEl=null;
+function closeFreeForm(){if(freeFormEl){freeFormEl.remove();freeFormEl=null;}FREE.cur=null;}
+function freeCur(){const c=FREE.cur;return c&&c.it.chs[c.i]?{it:c.it,q:c.it.chs[c.i],i:c.i}:null;}
+function freeFormShow(){
+  const any=items.some(it=>it.free&&it.page===cur);
+  if(!any){closeFreeForm();return;}
+  if(freeFormEl){freeFormSync();return;}
+  const d=document.createElement("div");d.id="freeForm";
+  d.innerHTML=`<div style="font-weight:600;margin-bottom:2px">自由編集(1文字ずつ)</div><div class="sub" id="ffInfo" style="margin-bottom:4px">文字をタップして選びます。</div>
+  <div class="ffr"><label>文字 <input type="text" id="ffChar" autocomplete="off"></label><button id="ffDel" class="danger">この文字を消す</button><button id="ffAdd" class="sub-btn">右に足す</button></div>
+  <div class="ffr"><label>フォント <select id="ffFont" style="min-height:34px"><option value="orig">元のフォント</option>${Object.keys(FONTS).map(k=>`<option value="${k}">${FONTS[k].label}</option>`).join("")}</select></label><label>大きさ <input type="number" id="ffSize" min="2" max="400" step="0.5"></label></div>
+  <div class="ffr"><label>位置X <input type="number" id="ffX" step="0.5"></label><label>Y <input type="number" id="ffY" step="0.5"></label></div>
+  <div class="ffr"><button id="ffL" class="sub-btn">◀</button><button id="ffU" class="sub-btn">▲</button><button id="ffD" class="sub-btn">▼</button><button id="ffR" class="sub-btn">▶</button><label>回転 <input type="number" id="ffRot" step="1" min="-180" max="180"></label></div>
+  <div class="ffr"><label><input type="checkbox" id="ffB"> 太字</label><label><input type="checkbox" id="ffUl"> 下線</label><label><input type="checkbox" id="ffSt"> 消し線</label><label>色 <input type="color" id="ffCol"></label></div>
+  <div class="ffr" style="margin-top:8px"><button id="ffOk">PDFに反映する</button><button id="ffCancel" class="sub-btn">自由編集をやめる</button></div>`;
+  document.body.appendChild(d);freeFormEl=d;
+  const $f=id=>d.querySelector("#"+id),redraw=()=>{renderOverlay();},
+    upd=fn=>{const c=freeCur();if(!c)return;fn(c);redraw();},
+    nudge=(dx,dy)=>upd(c=>{c.q.x=Math.round((c.q.x+dx)*10)/10;c.q.y=Math.round((c.q.y+dy)*10)/10;});
+  $f("ffL").onclick=()=>nudge(-0.5,0);$f("ffR").onclick=()=>nudge(0.5,0);$f("ffU").onclick=()=>nudge(0,-0.5);$f("ffD").onclick=()=>nudge(0,0.5);
+  $f("ffX").onchange=()=>upd(c=>{c.q.x=+$f("ffX").value||0;});$f("ffY").onchange=()=>upd(c=>{c.q.y=+$f("ffY").value||0;});
+  $f("ffSize").onchange=()=>upd(c=>{const v=+$f("ffSize").value;if(v>=2)c.q.size=v;});
+  $f("ffRot").onchange=()=>upd(c=>{c.q.rot=+$f("ffRot").value||0;});
+  $f("ffCol").oninput=()=>upd(c=>{c.q.color=$f("ffCol").value;});
+  $f("ffFont").onchange=async()=>{const v=$f("ffFont").value;if(v!=="orig")await ensureWebFontKey(v).catch(()=>{});upd(c=>{c.q.font=v;});};
+  const fm=(id,fl)=>{$f(id).onchange=()=>upd(c=>{c.q.fm=($f(id).checked?(c.q.fm||0)|fl:(c.q.fm||0)&~fl);});};fm("ffB",FM_B);fm("ffUl",FM_U);fm("ffSt",FM_S);
+  $f("ffChar").onchange=()=>upd(c=>{   // 文字を替える(2文字以上入れたら、2文字目からは、右に足す)
+    const a=Array.from($f("ffChar").value.replace(/\s/g,""));
+    if(!a.length){freeDelete();return;}
+    c.q.c=a[0];let x=c.q.x+freeWidth(c.q);const base=c.q;
+    a.slice(1).forEach((ch,j)=>{const nq={...base,c:ch,x};c.it.chs.splice(c.i+1+j,0,nq);x+=freeWidth(nq);});
+  });
+  $f("ffDel").onclick=()=>freeDelete();
+  $f("ffAdd").onclick=()=>upd(c=>{const nq={...c.q,c:"あ",x:c.q.x+freeWidth(c.q)};c.it.chs.splice(c.i+1,0,nq);FREE.cur={it:c.it,i:c.i+1};});
+  $f("ffOk").onclick=busy(async()=>{await commit();status("PDFに反映しました。");});
+  $f("ffCancel").onclick=()=>{items=items.filter(o=>!o.free);closeFreeForm();renderOverlay();status("自由編集をやめました。元のままです。");};
+  freeFormSync();
+}
+function freeDelete(){const c=freeCur();if(!c)return;c.it.chs.splice(c.i,1);FREE.cur=c.it.chs.length?{it:c.it,i:Math.min(c.i,c.it.chs.length-1)}:null;renderOverlay();}   // その文字だけ消す(ほかの文字は、動かさない)
+function freeFormSync(){
+  if(!freeFormEl)return;const c=freeCur(),$f=id=>freeFormEl.querySelector("#"+id);
+  $f("ffInfo").textContent=c?`${c.i+1}文字目を選んでいます(全部で${c.it.chs.length}文字)`:"文字をタップして選びます。";
+  ["ffChar","ffDel","ffAdd","ffFont","ffSize","ffX","ffY","ffL","ffU","ffD","ffR","ffRot","ffB","ffUl","ffSt","ffCol"].forEach(id=>{$f(id).disabled=!c;});
+  if(!c)return;const q=c.q;
+  if(document.activeElement!==$f("ffChar"))$f("ffChar").value=q.c;
+  $f("ffFont").value=q.font||"orig";$f("ffSize").value=q.size;$f("ffX").value=q.x;$f("ffY").value=q.y;$f("ffRot").value=q.rot||0;
+  $f("ffB").checked=!!((q.fm||0)&FM_B);$f("ffUl").checked=!!((q.fm||0)&FM_U);$f("ffSt").checked=!!((q.fm||0)&FM_S);$f("ffCol").value=/^#[0-9a-f]{6}$/i.test(q.color)?q.color:"#000000";
+}
+document.addEventListener("keydown",e=>{   // 選んだ文字だけ消す(Delete・Backspace)
+  if(!freeCur()||(e.key!=="Delete"&&e.key!=="Backspace"))return;const a=document.activeElement;if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return;e.preventDefault();freeDelete();});
+async function commitFree(frees){
+  const doc=await PDFDocument.load(bytes),pfCache={};status("自由編集の文字を、PDFに反映しています…");
+  for(const it of frees){   // 元の文字を、PDFの命令から取り除く(取り除けないときは、白い四角で隠す)
+    const page=doc.getPage(it.page),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360,rl=(it.covers||[]).filter(Boolean);
+    const per=rl.length?await stripPageText(doc,it.page,rl):[];
+    rl.forEach((c,i)=>{if(per[i])return;const [a1,b1]=toUser(c.x,c.y,W,H,r),[a2,b2]=toUser(c.x+c.w,c.y+c.h,W,H,r);page.drawRectangle({x:Math.min(a1,a2),y:Math.min(b1,b2),width:Math.abs(a2-a1),height:Math.abs(b2-b1),color:hex2rgb(it.bg||"#ffffff"),borderWidth:0});});
+  }
+  for(const it of frees){
+    const page=doc.getPage(it.page),{width:W,height:H}=page.getSize(),r=((page.getRotation().angle%360)+360)%360;
+    for(const q of it.chs){
+      const col=hex2rgb(/^#[0-9a-f]{6}$/i.test(q.color)?q.color:"#000000"),th=((q.rot||0)*Math.PI)/180,rotPdf=r-(q.rot||0);
+      let of=null;if(q.font==="orig"&&q.ofName){try{of=resolveOrigFont(doc,page,q.ofName);}catch{}}
+      const useOrig=!!(of&&of.inv&&of.inv.has(q.c));let jp=null,w;
+      if(!useOrig){const fk=(q.font&&q.font!=="orig"&&FONTS[q.font])?q.font:"gothic";if(!pfCache[fk]){doc.registerFontkit(fontkit);pfCache[fk]=await doc.embedFont(await loadFontKey(fk),{subset:false});}jp=pfCache[fk];w=jp.widthOfTextAtSize(q.c,q.size);}
+      else w=(of.width(q.c)??0.25)*q.size;
+      const [ax,ay]=toUser(q.x,q.y,W,H,r);
+      withBold(page,q.fm||0,q.size,col,()=>{if(useOrig)drawOrigText(page,of,q.c,ax,ay,q.size,col,rotPdf,0);else page.drawText(q.c,{x:ax,y:ay,size:q.size,font:jp,color:col,rotate:degrees(rotPdf)});});
+      const P=(dx,dy)=>toUser(q.x+dx*Math.cos(th)-dy*Math.sin(th),q.y+dx*Math.sin(th)+dy*Math.cos(th),W,H,r),line=dy=>{const a=P(0,dy),b=P(w,dy);page.drawLine({start:{x:a[0],y:a[1]},end:{x:b[0],y:b[1]},thickness:Math.max(0.4,q.size*0.05),color:col});};
+      if((q.fm||0)&FM_U)line(q.size*0.14);if((q.fm||0)&FM_S){line(-q.size*0.24);line(-q.size*0.36);}
+    }
+  }
+  await setBytes(await doc.save(),true);
+}
 async function commit(only){
   if(!only&&typeof RULE!=="undefined"&&RULE.ovals.length)await flushOvals();   // 未確定の楕円も、PDFに書き込む
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
+  {const fr0=(only||items).filter(it=>it.free);   // 自由編集の文字は、先にPDFに書く
+   if(fr0.length){await commitFree(fr0);items=items.filter(x=>!fr0.includes(x));if(only)only=only.filter(x=>!fr0.includes(x));closeFreeForm();}}
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
@@ -4281,7 +4415,7 @@ if(EMBED){
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
   $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
   $("embPrint").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
-  $("embCancel").onclick=()=>{const changed=hist.length>0||RULE.ovals.length>0||items.some(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
+  $("embCancel").onclick=()=>{const changed=hist.length>0||RULE.ovals.length>0||items.some(it=>it.free||((it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it)));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
   if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)

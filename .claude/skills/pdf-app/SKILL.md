@@ -554,3 +554,11 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 第1段階(3.06): ①③ を実装。`mode==="text"` のドラッグで、枠の中にPDFの文字(runs)があれば、既定で「拾って訂正」(newFix で fix の枠)にして、画面の下に案内(`showUnderAsk`)を出す: 「拾って訂正(このまま)」/「消して、新しく書く」(従来の新しい枠=重なる文字を取り除く)/「そのまま(透明・下は触らない)」(bgMode none。commit の `under` 処理で、透明な text の枠は、下のPDFの文字を取り除かない)。タップ(1点)は従来どおり。ページの文字データは、テキストモードでは未読込なので `loadRuns()` を待つ。
 - テスト: harness が `window.__noUnderAsk=true` を入れて、ふだんのテストは従来の動き。test-studio-underask.js が false にして確かめる(3つの選択・fixになる・消して書く・透明で保存すると下の文字も残る)。
 - 未実装: ②自由編集(1文字ずつの部品・1文字用フォーム・フォント拡充・絵文字)。PDFの描画命令から、全グリフの幅が取れることは確認済み(位置=命令の起点+幅の積み上げ。「上記の」で実測と約2%の差)。
+
+## v140 自由編集(ページ編集 3.07)
+- 文字の上に枠を作ったときの選択に4つ目「自由編集(1文字ずつ)」を追加。確認画面(#freeAsk)で「元の文字を変えて元に戻せません」と伝え、はいで実行(テストは window.__noFreeAsk=true で省略。harness に設定済み)。
+- データ: items に `{type:"free",free:true,chs:[{c,x,y(ベースライン),size,color,font,ofName,rot,fm}],covers}`。枠内のPDF文字を layoutOf の文字幅で1文字ずつに分解。元の文字は commitFree で stripPageText により除去(失敗時は白い四角)。
+- 表示: renderFree が `.fc` を絶対配置。選ぶと横に #freeForm(消去・入力・フォント・大きさ・位置・回転・太字/下線/消し線・色)。Delete/Backspace は選んだ1文字だけ消す(他は動かない)。
+- 保存: 「PDFに反映する」(#ffOk)で commit→commitFree、その後 #embSave でホストへ。元フォントで書けない文字は埋め込みフォント(gothic/mincho/maru)。
+- テスト: test-studio-free.js(A-1の「-」→Q、「1」を消す→保存後 "AQ")。underask は選択4つに更新。
+- 限界: フォントは既存3種のみ。絵文字(カラー)は未対応(図にするしかない)。iPhone実機は未確認。

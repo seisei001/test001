@@ -13,7 +13,7 @@ const open=async()=>{await page.reload();await page.waitForTimeout(2300);await p
   return{fr,f};};
 const types=f=>f.evaluate(()=>window.pdfEditorDebug.items().map(x=>x.type+':'+(x.type==='text'?window.pdfEditorDebug.bgModes()[0]:'')));
 let {fr,f}=await open();
-chk('枠のそばに、3つの選択が出る',await fr.locator('#underAsk').count()===1&&(await fr.locator('#underAsk button').allInnerTexts()).length===3);
+chk('枠のそばに、4つの選択(自由編集を含む)が出る',await fr.locator('#underAsk').count()===1&&(await fr.locator('#underAsk button').allInnerTexts()).length===4);
 let t=await types(f);chk('既定: 元の文字を拾った訂正の枠(fix): '+t,t.length>=1&&t.every(x=>x.startsWith('fix')));
 await fr.locator('#underAsk button',{hasText:'消して、新しく書く'}).click();await page.waitForTimeout(500);
 t=await types(f);chk('「消して、新しく書く」: 新しい文字の枠(text)になる: '+t,t.length===1&&t[0].startsWith('text'));
