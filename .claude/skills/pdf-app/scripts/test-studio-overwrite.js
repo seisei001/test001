@@ -1,0 +1,21 @@
+// 製本デスク: 「保存」は、読み込んだ元のファイルがあれば上書き(保存先を選ばない)。「名前を付けて保存」は保存先を選ぶ
+process.env.PDFAPP_TARGET='pdf-studio';
+const fs=require('fs');const {launch,WORK}=require('./harness');
+(async()=>{const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>d.accept());
+let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
+await page.waitForTimeout(2300);
+const b64=fs.readFileSync(WORK+'/samples/studio_A4.pdf').toString('base64');
+await page.evaluate(async b64=>{window.__w=[];window.__picker=0;window.showSaveFilePicker=async o=>{window.__picker++;return{name:'new_'+o.suggestedName,kind:'file',createWritable:async()=>{let n=0;return{write:async b=>{n=b.size;},close:async()=>{window.__w.push('picker:'+n);}};},getFile:async()=>({size:window.__lastN})};};
+  const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)),f=new File([bytes],'orig.pdf',{type:'application/pdf'});let n=0;
+  const h={name:'orig.pdf',kind:'file',queryPermission:async()=>'granted',createWritable:async()=>({write:async b=>{n=b.size;window.__lastN=b.size;},close:async()=>{window.__w.push('orig:'+n);}}),getFile:async()=>({size:n})};
+  await addFiles([{f,h}]);},b64);
+await page.waitForTimeout(1500);
+await page.locator('.card').first().locator('input[type=checkbox]').check();await page.evaluate(()=>document.getElementById('bRotCur').click());await page.waitForTimeout(1500);
+await page.evaluate(()=>document.getElementById('bSave').click());await page.waitForTimeout(1200);
+let r=await page.evaluate(()=>({w:window.__w,picker:window.__picker,st:document.getElementById('status').textContent}));
+chk('保存: 元のファイルに上書き・保存先を選ぶ画面は出ない: '+JSON.stringify(r),r.w.length===1&&/^orig:/.test(r.w[0])&&r.picker===0&&/上書き保存/.test(r.st));
+await page.evaluate(()=>document.getElementById('bRotCur').click());await page.waitForTimeout(1200);
+await page.evaluate(()=>document.getElementById('bSaveAs').click());await page.waitForTimeout(1200);
+r=await page.evaluate(()=>({w:window.__w,picker:window.__picker}));
+chk('名前を付けて保存: 保存先を選ぶ画面が出る: '+JSON.stringify(r),r.picker===1&&r.w.length===2&&/^picker:/.test(r.w[1]));
+console.log('errs',errs.slice(0,3));await browser.close();process.exit(ok&&!errs.length?0:1);})();

@@ -10,7 +10,7 @@ const {launch,WORK}=require('./harness');
   chk('「選択 ○/○」の表示は無い',!(await page.evaluate(()=>/選択 \d+ \/ \d+/.test(document.body.innerText))));
   const items=async id=>(await page.locator('#'+id+' button').allInnerTexts()).map(t=>t.trim());
   await page.locator('.mtop',{hasText:'ファイル'}).click();
-  chk('ファイル: '+(await items('mdFile')).join('/'),JSON.stringify(await items('mdFile'))===JSON.stringify(['新規作成(白紙)','PDFを開く','閉じる','保存','印刷','元に戻す']));
+  chk('ファイル: '+(await items('mdFile')).join('/'),JSON.stringify(await items('mdFile'))===JSON.stringify(['新規作成(白紙)','PDFを開く','閉じる','保存','名前を付けて保存','印刷','元に戻す']));
   await page.locator('.mtop',{hasText:'編集'}).click();
   chk('ファイルが閉じ、編集が開く',await page.locator('#mdFile').isHidden()&&await page.locator('#mdEdit').isVisible());
   chk('編集: '+(await items('mdEdit')).join('/'),JSON.stringify(await items('mdEdit'))===JSON.stringify(['回転','前に移動','後に移動','切り離し','このページを印刷']));
