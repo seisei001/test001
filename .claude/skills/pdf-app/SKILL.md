@@ -543,3 +543,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 直し: `imageBoxes()`(PDFの描画命令から、画像の場所を集める。`paintImageXObject` 等+CTM)。文字のデータが10個以上あるページ(`nText>=10`)は、`ocrOnlyBoxes`(画像のある所)以外を白くして読む。画像が無ければ「PDFの文字データです。OCRは要りません」で終える。文字データが少ない/無いスキャンは、従来どおり(ページ全体)。
 - 追加: `ocrJunkNum`(3.02、照合できない大きな数字を捨てる)も残している。テスト: test-studio-ocrimgonly.js(図形だけ→OCR不要/画像+図形→画像の文字だけ読む)、ocr-cover・ocr-dense・ocrjunk は通過(一致率80.4%)。
 - 注意: 手元の `pdfEditorDebug.items()` は、`ocrMade` を出さない。テストは type==='fix' で見る。
+
+## v139: ページ編集 3.05 — 枠の下の画像の文字を消す前の確認(はい/いいえ)
+- 依頼: 枠の下の図を認識して、文字と読み取れたものを見せ、消そうとするときに「消してもいいか? いいえ/はい」を出す。
+- 実装: `commit()` の先頭近く(`todo.forEach(leaveEdit)` の直後)で、「文字だけ消す」(bgMode ink)の部品のうち、パッチが実際にある(`inkCompute` が失敗でも空でもない)ものについて、`eraseSummary(it)`(消す範囲の画像+読み取った文字。文字認識で作った枠は、認識した元の文字 `it.ocrOrig`。それ以外は Tesseract(標準)で読む。12秒で打ち切って、画像だけ見せる)→ `confirmErase(rows)`(はい/いいえ)。「いいえ」は、`bgMode="none"` にして、画像の文字は消さず、文字だけ置く。一度答えた枠(`it._eraseOK`)は聞き直さない。
+- テスト: harness の `launch` が `window.__noEraseAsk=true` を入れて、ふだんのテストでは出さない。test-studio-eraseask.js だけが false にして確かめる(`__noEraseOcr=true` で読み取りを省ける)。
