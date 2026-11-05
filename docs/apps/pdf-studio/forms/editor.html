@@ -2061,6 +2061,28 @@ async function getOcr(lang){
 }
 let ocrTextBoxes=null;
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
+// ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function imageBoxes(){
+  const out=[];
+  try{
+    const p=await pdfView.getPage(cur+1),vp=p.getViewport({scale:1}),ol=await p.getOperatorList(),O=pdfjsLib.OPS;
+    const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];
+    const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+    let ctm=vp.transform.slice();const stack=[];
+    const IMG=new Set([O.paintImageXObject,O.paintInlineImageXObject,O.paintImageMaskXObject,O.paintJpegXObject].filter(v=>v!=null));
+    for(let i=0;i<ol.fnArray.length;i++){
+      const fn=ol.fnArray[i],a=ol.argsArray[i];
+      if(fn===O.save)stack.push(ctm.slice());
+      else if(fn===O.restore){if(stack.length)ctm=stack.pop();}
+      else if(fn===O.transform)ctm=mul(ctm,a);
+      else if(fn===O.paintFormXObjectBegin){stack.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0]);}
+      else if(fn===O.paintFormXObjectEnd){if(stack.length)ctm=stack.pop();}
+      else if(IMG.has(fn)){const c=[ap(ctm,0,0),ap(ctm,1,0),ap(ctm,1,1),ap(ctm,0,1)],xs=c.map(q=>q[0]),ys=c.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;if(w>=8&&h>=8)out.push({x,y,w,h});}
+    }
+  }catch(e){console.warn("画像の場所を調べられませんでした",e);return null;}
+  return out;
+}
+let ocrOnlyBoxes=null;   // 文字のデータがあるページでは、文字認識は、画像のある所だけ(図形を文字に読み間違えない)
 async function textLayerBoxes(x,y,w,h){
   await loadRuns().catch(()=>{});
   return runs.map(r=>({x:r.x-1,y:r.base-r.size*0.95,w:r.w+2,h:r.size*1.3})).filter(b=>b.x<x+w&&b.x+b.w>x&&b.y<y+h&&b.y+b.h>y);
@@ -2070,6 +2092,11 @@ async function renderRegion(x,y,w,h,scale){
   const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(w*scale));cv.height=Math.max(1,Math.ceil(h*scale));if(ocrTrack)ocrTrack.push(cv);
   const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
   await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-x*scale,-y*scale]}).promise;
+  if(ocrOnlyBoxes){   // 画像のある所だけ残して、ほかは白にする
+    const keep=document.createElement("canvas");keep.width=cv.width;keep.height=cv.height;keep.getContext("2d").drawImage(cv,0,0);
+    cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+    for(const b of ocrOnlyBoxes){const bx=Math.max(0,(b.x-x)*scale),by=Math.max(0,(b.y-y)*scale),bx1=Math.min(cv.width,(b.x+b.w-x)*scale),by1=Math.min(cv.height,(b.y+b.h-y)*scale);if(bx1>bx&&by1>by)cx.drawImage(keep,bx,by,bx1-bx,by1-by,bx,by,bx1-bx,by1-by);}
+  }
   if(ocrTextBoxes&&ocrTextBoxes.length){cx.fillStyle="#fff";for(const b of ocrTextBoxes){const bx=(b.x-x)*scale,by=(b.y-y)*scale,bw=b.w*scale,bh=b.h*scale;if(bx<cv.width&&by<cv.height&&bx+bw>0&&by+bh>0)cx.fillRect(bx,by,bw,bh);}}   // OCR中: PDFの文字データがある所は、読まない(元のデータが最優先)
   if(window.OCR_SMEAR){const c2=document.createElement("canvas");c2.width=cv.width;c2.height=cv.height;const x2=c2.getContext("2d");x2.fillStyle="#fff";x2.fillRect(0,0,c2.width,c2.height);x2.globalCompositeOperation="darken";const d=window.OCR_SMEAR*scale/3.09;for(const o of [-d,0,d])x2.drawImage(cv,0,o);cx.drawImage(c2,0,0);}   // テスト用: 文字を縦に太らせて、iPhoneの「行がつながる」状態をまねる
   return cv;
@@ -2449,7 +2476,7 @@ async function doOcr(x,y,w,h){
     if(n.ok){const r=n.ref;job.hide();lastOcrDiagText=ocrDiag;status(`変換が終わりました(${n.lines}行・${n.parts}個のまとまり)。`+(r?`元の画像との照合: ${r.fixed}行を整え、${r.kept}行は元のまま、${r.skip}行は照合できず。`:"")+"誤認識は、枠をタップして直してください。",true);}   // 終わりの緑の枠も、結果の表示も、出さない(文字だけ入れて、画面には隠す)。診断は、pdfEditorDebug.ocrDiag() で見る
     else{rng.remove();job.fail(n.msg||"文字を認識できませんでした。");}
   }catch(e){rng.remove();job.fail("変換できませんでした: "+(e.message||e));throw e;}
-  finally{ocrTextBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
+  finally{ocrTextBoxes=null;ocrOnlyBoxes=null;ocrRunning=false;$("bOcrPage").disabled=false;}
 }
 // 範囲指定の変換: 枠が範囲の外に出ないようにし、出るときは文字を小さくして、行が折り返さないようにする
 function keepInRange(it,x,y,w,h){
@@ -2722,6 +2749,13 @@ async function doOcrBody(x,y,w,h){
   const S=Math.min(4,Math.max(2.5,2600/Math.max(w,h)));
   status("画像を準備中…");job.step("画像を準備しています…",3);
   ocrTextBoxes=await textLayerBoxes(x,y,w,h);const nText=ocrTextBoxes.length;
+  ocrOnlyBoxes=null;
+  if(nText>=10){   // 文字のデータが十分あるページ(表・申請書など)は、画像のある所だけを認識する。罫線・枠・点線を、文字(「10.00」など)に読み間違えるのを防ぐ
+    const ib=await imageBoxes();
+    if(ib){const inR=ib.filter(b=>b.x<x+w&&b.x+b.w>x&&b.y<y+h&&b.y+b.h>y);
+      if(!inR.length){const msg=`この範囲の文字は、PDFの文字データ(${nText}個)で、画像の文字はありません。OCRは要りません。「選択・訂正」で文字をタップすると、そのまま枠にできます。`;status(msg);return{ok:false,msg};}
+      ocrOnlyBoxes=inR;}
+  }
   const cv=await renderRegion(x,y,w,h,S);
   const nCode=await maskCodes(cv);   // 二次元コードは、文字として読まない
   const flat=$("ocrClean").checked&&flattenForOcr(cv);
