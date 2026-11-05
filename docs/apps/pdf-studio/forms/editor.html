@@ -277,6 +277,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <label id="sLsLbl">字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label title="文字の色"><span class="lbl">色</span> <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT" title="文字として(選択・コピー・検索ができる)">文字</button><button id="sFmtP" title="画像として(見た目のまま固定)">画像</button></div>
+<div class="seg" id="sWrapSeg"><button id="sWrap" title="枠の幅で折り返します(PDFの元の行のままにしません)。もう一度押すと、元の行に戻ります">折り返す</button></div>
 <div class="seg" id="sFmtSeg"><button id="sBold" title="選んだ文字を太字に(Ctrl+B)">太字</button><button id="sUl" title="選んだ文字に下線を引く(Ctrl+U)">下線</button><button id="sStk" title="選んだ文字を二重線で消して、訂正します">二重線</button></div>
 <div class="seg"><button id="sAL" title="左揃え">左</button><button id="sAC" title="中央揃え">中</button><button id="sAR" title="右揃え">右</button></div>
 </div>
@@ -1103,6 +1104,17 @@ function applySize(it,size,range){
   if(it===cs){t.focus({preventScroll:true});if(range){setSelRange(t,range.start,range.end);lastSel={id:it.id,start:range.start,end:range.end};}else lastSel=null;}
   syncPanel();
 }
+// PDFの文字の枠(fix)は、ふだんは元の行のまま(折り返さない・長くなったら枠を広げる)。「折り返す」で、枠の幅で折り返す枠(文字の枠と同じ)にする
+function setWrap(it,on){
+  if(!it||it.type!=="fix")return;
+  if(on){if(it.ol){it._ol0=it.ol;it.ol=null;it.fsig=null;}}
+  else if(it._ol0){it.ol=it._ol0;it._ol0=null;it.fsig=faithSig(it);}
+  const el=itemEls.get(it.id);growToFit(it);if(el)boxStyle(it,el);renderOverlay();syncPanel();
+  if(it===cs&&!isTouch()){const t=itemEls.get(it.id)?.querySelector(".t");if(t&&t.isContentEditable)t.focus({preventScroll:true});}   // 続けて文字を打てるように
+  status(on?"枠の幅で折り返します。枠の幅は、右下の角(⇲)で変えられます。":"元のPDFの行のままにしました。");
+}
+$("sWrap").addEventListener("mousedown",e=>e.preventDefault());
+$("sWrap").onclick=()=>{if(cs&&cs.type==="fix")setWrap(cs,!!cs.ol);};
 // 太字・下線・二重線: 選んだ範囲(なければ枠の全部)に、書式を付ける/外す(範囲の全部に付いていれば外す)
 function applyFmt(it,flag){
   if(!it||it.type==="img")return;
@@ -1496,11 +1508,11 @@ function dragHandle(h,it,el,resize){
     const ep=e.pointerType==='mouse'?null:edgePan((x,y)=>mvf({clientX:x,clientY:y,syn:true}));
     const mvf=ev=>{if(ep&&!ev.syn)ep.move(ev);if(!ev.syn&&e.pointerType!=='mouse'&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>12&&atEdge(ev)){up();edgeToast(EDGE_MSG);return;}if(lpTm&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>14){clearTimeout(lpTm);lpTm=null;}const dx=(ev.clientX-sx+scrollX-sX0)/k,dy=(ev.clientY-sy+scrollY-sY0)/k;
       if(resize&&it.type==='img'){const r0=oh/ow||1,sc=((ow+dx)*ow+(oh+dy)*oh)/(ow*ow+oh*oh);let nw=ow*sc;nw=Math.max(16,Math.min(nw,VW-it.vx,(VH-it.vy)/r0));it.vw=nw;it.vh=nw*r0;}   // 画像は、縦横比をそのままに、大きく・小さくする
-      else if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));}   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
+      else if(resize){it.vw=Math.max(10,Math.min(VW-it.vx,ow+dx));it.vh=Math.max(8,Math.min(VH-it.vy,oh+dy));if(it.type==="fix"&&it.ol&&Math.abs(it.vw-ow)>2){it._ol0=it.ol;it.ol=null;it.fsig=null;}}   // 枠の幅を変えたら、その幅で折り返す枠にする   // 枠は自由に大きく・小さくできる(文字サイズは変えない)
       else{it.vx=Math.max(0,Math.min(VW-it.vw,ox+dx));it.vy=Math.max(0,Math.min(VH-it.vh,oy+dy));}
       boxStyle(it,el);};
     const cleanup=()=>{if(ep)ep.stop();h.removeEventListener("pointermove",mvf);h.removeEventListener("pointerup",up);h.removeEventListener("pointercancel",cx);};
-    const up=()=>{if(lpTm)clearTimeout(lpTm);cleanup();};
+    const up=()=>{if(lpTm)clearTimeout(lpTm);cleanup();if(resize&&it.type==="fix"&&!it.ol&&it._ol0&&el.classList.contains("faith")){growToFit(it);renderOverlay();syncPanel();}};   // 折り返す枠に変わったら、入力用の枠に組み直す
     const cx=()=>{cleanup();};   // iPhoneは、長押しの途中で、キーボードや画面の動きで、押し込みが取り消される(pointercancel)ことがある。取り消されても、長押しのタイマーは止めない(指を離したときだけ止める)
     h.addEventListener("pointermove",mvf);h.addEventListener("pointerup",up);h.addEventListener("pointercancel",cx);
   };
@@ -1528,6 +1540,7 @@ function syncPanel(){
   ["L","C","R"].forEach((k,i)=>$("sA"+k).classList.toggle("on",(it.align||"left")===["left","center","right"][i]));
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
   $("sBold").classList.toggle("on",fmState(it,FM_B));$("sUl").classList.toggle("on",fmState(it,FM_U));$("sStk").classList.toggle("on",fmState(it,FM_S));
+  $("sWrapSeg").classList.toggle("hidden",it.type!=="fix"||!(it.ol||it._ol0));$("sWrap").classList.toggle("on",!it.ol);
 }
 function refreshSel(){if(!cs)return;const el=itemEls.get(cs.id);if(el){boxStyle(cs,el);
   const tag=el.querySelector(".tag");if(tag)tag.textContent=(cs.type==="fix"?"訂正":"文字")+(cs.fmt==="pic"?"(画像)":"");}}
