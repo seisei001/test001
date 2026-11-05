@@ -10,7 +10,7 @@ await prep();
 await page.evaluate(()=>{window.showSaveFilePicker=async o=>({name:o.suggestedName,kind:'file',createWritable:async()=>({write:async()=>{},close:async()=>{}}),getFile:async()=>({size:0})});});
 await page.evaluate(()=>document.getElementById('bSave').click());await page.waitForTimeout(1500);
 let st=await page.evaluate(()=>document.getElementById('status').textContent);
-chk('書き込んだ大きさが合わないとき、保存できたと言わない: '+st,/保存できませんでした/.test(st)&&!/として保存しました/.test(st));
+chk('書き込んだ大きさが合わないとき、保存できたと言わない: '+st,/保存できませんでした/.test(st)&&!/^「[^」]*」として保存しました/.test(st));
 // 2) 大きさが合えば、保存できたと言う
 await prep();
 await page.evaluate(()=>{window.showSaveFilePicker=async o=>{let n=0;return{name:o.suggestedName,kind:'file',createWritable:async()=>({write:async b=>{n=b.size;},close:async()=>{}}),getFile:async()=>({size:n})};};});
