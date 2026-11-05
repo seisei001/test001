@@ -144,7 +144,7 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.24"},
+  desk:{name:"製本デスク",ver:"2.25"},
   menu:{name:"機能メニュー",ver:"2.03"},
   edit:{name:"ページ編集",ver:"3.01",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.08",src:"forms/editor.html?form=shape"},
@@ -543,9 +543,12 @@ async function saveBundle(b){   // 名前を付けて保存。保存できたら
   const name=b.name.endsWith(".pdf")?b.name:b.name+".pdf";
   if(window.showSaveFilePicker){
     try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:"PDFファイル",accept:{"application/pdf":[".pdf"]}}]});await writeTo(h,b);b.handle=h;b.dirty=false;paintCard(b);status(`「${h.name}」として保存しました。`);return true;}
-    catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}throw e;}
+    catch(e){if(e&&e.name==="AbortError"){status("保存をやめました。");return false;}
+      if(e&&e.name==="SecurityError"||e&&e.name==="NotAllowedError"){return downloadBundle(b,name);}   // 保存先を選ぶ画面を開く許可が切れたとき(操作から時間が経った)は、ダウンロードで保存する
+      throw e;}
   }else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);b.dirty=false;paintCard(b);status("ダウンロードしました(Chrome・Edgeでは保存先を選べます)。");return true;}
 }
+function downloadBundle(b,name){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([b.bytes],{type:"application/pdf"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);b.dirty=false;paintCard(b);status("ダウンロードして保存しました。");return true;}
 async function overwriteBundle(b){   // 読み込んだ元のファイルに上書き。保存できたらtrue
   if(!b.handle)return saveBundle(b);
   try{await writeTo(b.handle,b);b.dirty=false;paintCard(b);status(`「${b.handle.name}」に上書き保存しました。`);return true;}
@@ -560,8 +563,12 @@ function askSave(b){return new Promise(res=>{
   [[b.handle?"上書き保存(元のファイル)":null,"over"],["名前を付けて保存","as"],["保存しない","no"],["やめる(閉じない)","cancel"]].forEach(([t,v])=>{if(!t)return;const x=document.createElement("button");x.textContent=t;x.style.minHeight="44px";if(v==="no")x.className="sub-btn";x.onclick=()=>done(v);box.appendChild(x);});
   document.body.appendChild(o);addFit(o);});}
 async function removeBundle(b){
-  if(b.dirty){const a=await askSave(b);if(a==="cancel")return;if(a==="over"){if(!await overwriteBundle(b))return;}else if(a==="as"){if(!await saveBundle(b))return;}}
-  snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);}
+  if(b.dirty){const a=await askSave(b);if(a==="cancel")return false;
+    if(a==="over"||a==="as"){let ok=false;
+      try{ok=a==="over"?await overwriteBundle(b):await saveBundle(b);}
+      catch(e){status(`「${b.name}」を保存できませんでした(${e&&e.message?e.message:e})。閉じていません。`);return false;}   // 保存できなかったときは、閉じない。理由を見せる(以前は、何も出ずに止まっていた)
+      if(!ok)return false;}}
+  snap();if(b.doc){try{b.doc.destroy();}catch{}}bundles=bundles.filter(x=>x!==b);render();status(`「${b.name}」を閉じました。`);return true;}
 
 // ===== 回転(右に90度ずつ): 束ぜんぶ / いま表示しているページだけ =====
 async function rotateBundles(onlyCur){
@@ -613,7 +620,7 @@ $("bSplit").onclick=()=>{const b=bundles.find(x=>x.sel);if(b)splitAt(b).catch(e=
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
   $("bHelp").onclick=()=>{closeAll();$("deskHelp").classList.remove("hidden");};$("deskHelpClose").onclick=()=>$("deskHelp").classList.add("hidden");$("deskHelp").addEventListener("pointerdown",e=>{if(e.target===$("deskHelp"))$("deskHelp").classList.add("hidden");});
 }
-$("bClose").onclick=async()=>{for(const b of bundles.filter(x=>x.sel))await removeBundle(b);};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
+$("bClose").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){if(await removeBundle(b)===false)break;}};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
 $("bSave").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){try{await saveBundle(b);}catch(e){status("保存できませんでした: "+e.message);}}};   // 選んでいる束を、PDFとして保存
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
