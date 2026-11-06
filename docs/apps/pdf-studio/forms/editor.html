@@ -90,6 +90,8 @@ body.noimg #pagewrap{background:#fff;}
 body.embed header,body.embed #ver,body.embed label[for=fOpen],body.embed #mergeLbl,body.embed #bNew,body.embed #bSave,body.embed #bOverwrite,body.embed #pagesPanel{display:none!important;}
 body.emb-rule #modeSeg,body.emb-rule #optText,body.emb-rule #optImg,body.emb-rule #optFix,body.emb-rule #optOcr,body.emb-rule #optWarp,body.emb-rule #modeHint,body.emb-rule #selPanel{display:none!important;}
 body.emb-warp #optRule,body.emb-edit #optRule,body.emb-shape #optRule{display:none!important;}
+body.emb-shape #embSet,body.emb-shape #embPrint,body.emb-shape #embHelp,body.emb-shape #pz{display:none!important;}   /* 整形: 上の段は「戻す・保存・戻る」だけ */
+#shDet{flex-basis:100%;}#shDet>summary{cursor:pointer;color:var(--muted);font-size:.8rem;padding:2px 0;}#shDet .shDetIn{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;}
 #shapeSeg{display:none;}body.emb-shape #shapeSeg{display:inline-flex;}
 body.emb-shape #modeSeg,body.emb-shape #optText,body.emb-shape #optImg,body.emb-shape #optFix,body.emb-shape #optOcr,body.emb-shape #modeHint,body.emb-shape #selPanel{display:none!important;}
 body.emb-edit #optTilt,body.emb-edit #optCrop_x,body.emb-edit #optRot,body.emb-warp #optTilt,body.emb-warp #optCrop_x,body.emb-warp #optRot,body.emb-rule #optTilt,body.emb-rule #optCrop_x,body.emb-rule #optRot{display:none!important;}
@@ -4400,6 +4402,13 @@ if(EMBED){
     $("bOcrRange").onclick=()=>{status("ページの上を、ドラッグして、認識する範囲を指定してください(指は、長押ししてから、ドラッグ)。");const b=$("bOcrRange");b.classList.add("on");setTimeout(()=>b.classList.remove("on"),4000);};
   }
   const send=m=>parent.postMessage(m,"*");
+  if(FORMKIND==="shape"){   // 整形: よく使う操作だけを見せ、細かい設定は「くわしい設定」に畳む
+    const ow=$("optWarp"),k=[...ow.children],keep=new Set([$("wApply"),$("wCancel")]);
+    const d=document.createElement("details");d.id="shDet";const sm=document.createElement("summary");sm.textContent="くわしい設定";const inn=document.createElement("div");inn.className="shDetIn";d.append(sm,inn);
+    const segPage=$("wkPage").parentElement;$("wkPage").parentElement.previousElementSibling.style.display="none";   // 「① 範囲」の文字は出さない
+    k.forEach((e,i)=>{if(i===0||e===segPage||keep.has(e))return;inn.appendChild(e);});   // 範囲の切り替えと「補正する/やめる」以外は、畳む
+    ow.insertBefore(d,$("wApply"));
+  }
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
   $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="shape"?"ページの形を整えて、「保存」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}

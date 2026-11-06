@@ -562,3 +562,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 保存: 「PDFに反映する」(#ffOk)で commit→commitFree、その後 #embSave でホストへ。元フォントで書けない文字は埋め込みフォント(gothic/mincho/maru)。
 - テスト: test-studio-free.js(A-1の「-」→Q、「1」を消す→保存後 "AQ")。underask は選択4つに更新。
 - 限界: フォントは既存3種のみ。絵文字(カラー)は未対応(図にするしかない)。iPhone実機は未確認。
+
+## v141 整形のヘッダーを簡素化(整形 1.09)
+- 整形(?form=shape)のときだけ、上の段の「設定・印刷・ヘルプ・拡大縮小」を非表示(CSS `body.emb-shape`)。残るのは 元に戻す/保存/戻る。
+- 「範囲と補正」は、見える所に「範囲: ページ全体/範囲を指定」+「補正する/やめる」だけ。自動で探す・補正の種類・置き場所・まわり(#waCrop 等)は `<details id="shDet">くわしい設定</details>` に畳んだ(DOMはJSで移動、IDはそのまま)。
+- テスト: 畳んだ設定を押すテストは、先に `#shDet` を open にする(`evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{})`)。整形でない画面には #shDet が無い。
+- 状況メッセージ(#embRow2)は残した(失敗の文が見えなくならないように)。
