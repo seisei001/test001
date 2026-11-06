@@ -50,7 +50,7 @@ print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 a
   ok('範囲と補正の道具が出る',await fr.locator('#optWarp').isVisible());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/400;
   await page.mouse.move(ob.x+95*k,ob.y+(300-255)*k);await page.mouse.down();await page.mouse.move(ob.x+305*k,ob.y+(300-145)*k,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
-  await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
+  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
   info=await cur();const sz=info.match(/Page size: +([\d.]+) x ([\d.]+)/);
   ok('切り抜き: ページが約 210×110 に: '+(sz&&sz[1]+'x'+sz[2]),sz&&Math.abs(+sz[1]-210)<12&&Math.abs(+sz[2]-110)<12);
   const bb2=redbox();ok('切り抜いた中に赤い四角がほぼいっぱい: '+bb2.slice(2,6).join(','),bb2[2]<12&&bb2[3]<12);

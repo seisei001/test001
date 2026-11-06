@@ -25,7 +25,7 @@ print(bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),bb(lambda c:c[2]>200 and c[0
     await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
     await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
     const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
-    await fr.locator('#wkPart').click();await page.waitForTimeout(300);
+    await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#wkPart').click();await page.waitForTimeout(300);
     const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;
     const X=v=>ob.x+v*k,Y=v=>ob.y+v*k;
     await page.mouse.move(X(90),Y(90));await page.mouse.down();await page.mouse.move(X(160),Y(160),{steps:8});await page.mouse.up();await page.waitForTimeout(1200);
