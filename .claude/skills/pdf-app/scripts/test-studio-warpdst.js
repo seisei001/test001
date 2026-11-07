@@ -23,7 +23,7 @@ print(bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),bb(lambda c:c[2]>200 and c[0
   for(const erase of [true,false]){
     await page.reload();await page.waitForTimeout(2300);
     await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
-    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
+    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);
     const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
     await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#wkPart').click();await page.waitForTimeout(300);
     const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;

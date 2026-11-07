@@ -23,7 +23,7 @@ const {launch,WORK}=require('./harness');
   
   await page.click('#bAll');await page.click('#bNone');
   await page.locator('.card').first().locator('input[type=checkbox]').check();await page.locator('.card').first().locator('.mnb').click();
-  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3000);
+  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3000);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);
   const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
   await fr.locator('#wkPart').click();await page.waitForTimeout(500);
   await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});chk('「まわりを白くする」がある',await fr.locator('#waWhite').count()===1);
