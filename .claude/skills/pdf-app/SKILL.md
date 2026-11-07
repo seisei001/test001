@@ -576,3 +576,9 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 自由な形: warpKind="free"。beginLasso でなぞる→simplifyPath(Douglas-Peucker)で頂点化→`warp={kind:"free",poly,tf:{dx,dy,rot,sc}}`。青い頂点で元の形を直す。緑の形(行き先)=poly に tf を掛けたもの(中をドラッグ=移動、丸=回転、四角=拡大縮小、Shiftで15度)。applyFreeWarp は元の形を白く消し(「元の場所は消す」)、行き先の形でクリップして元の絵を動かして貼る(canvas の setTransform)。ページサイズは変えない。
 - 限界: 自由な形の見本(補正後のイメージ)は出さない/頂点の追加・削除は未対応/TPSは格子点25組(射影変換ではなくなめらかな補間)/iPhone実機は未確認。
 - テスト: test-studio-newwarp.js(三角形をなぞって動かす・移し先の点で仕上がりが変わる)。畳んだ設定を触るテストは先に #shDet を開く。
+
+## v143 整形 1.11: 機能の選択→操作+戻る / 自由な形を多角形に
+- ヘッダー(整形のみ): 最初は #shapeSeg(範囲と補正/傾き補正/回転・反転)だけ(body.shape-pick)。選ぶと shapeStage(t) でその機能の操作+「← 戻る」(#shBack, 機能名 #shTitle)だけを出し、選択は隠す。戻る=shapeStage(null)(内部は setMode("rot") で中立にして、CSSで #optRot を隠す)。テストは、整形を開いたあと `#shapeSeg button[data-t=warp]` を押してから操作する。機能を切り替えるときは先に #shBack。
+- 自由な形(warpKind="free"): ①ドラッグ(beginLasso): まっすぐ(弦/経路>0.6)=四角(頂点4)、ぐるっと囲む=その形(Douglas-Peuckerで頂点化、30超は resampleClosed で30点)。四隅の自動検出もここへ(createFreeWarp)。②頂点の増減: 辺の中点の○を引く=増える(30まで)、頂点をダブルタップ=減る(3まで)。③対角線(向かい合う頂点)を引き、交点(複数なら平均)=基準点 freeCtr(×印)。中の点=基準点+基準点〜各頂点の中点(freeInner)。
+- ④動かし方(#wmAll/#wmVert/#wmMid): 全体をそのまま(tf=移動・回転・拡大縮小, 緑の枠)/頂点を別々に(offV, 緑の点 data-g=v*)/中の点を(offI, 緑の○ data-g=i*)。補正(applyFreeWarp): offが無ければ canvas のクリップ+setTransform、あれば dest→src の TPS(makeTps)で画素ごとに取り、行き先の形のマスクで合成。元の形は「元の場所は消す」で白く消す。debug: freeState。
+- 限界: 補正後のイメージ(見本)は出さない/中の点は基準点+中点のみ(任意の点の追加は未対応)/頂点の増減で中の点の動かしは初めに戻る/iPhone実機は未確認。
