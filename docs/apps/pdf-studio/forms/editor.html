@@ -94,7 +94,7 @@ body.emb-shape #embSet,body.emb-shape #embPrint,body.emb-shape #embHelp,body.emb
 #optWarp{flex-direction:column;align-items:stretch;}#optWarp .wr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}#optWarp .wlab{min-width:3em;margin-left:0;}#optWarp .wr.hidden{display:none!important;}
 #shNav{display:none;}body.emb-shape.tool-warp #shNav{display:flex;flex-direction:column;gap:6px;width:100%;}
 body.emb-shape.tool-warp #optWarp,body.emb-shape.tool-warp #shHead{display:none!important;}
-#shCrumb{font-size:.8rem;color:var(--muted);}#shBtns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+#shBtns button.off{opacity:.45;}#shCrumb{font-size:.8rem;color:var(--muted);}#shBtns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
 #embHead #shBtns button{min-height:44px;font-size:.95rem;padding:6px 12px;}#embHead #shBtns .seg button{min-height:44px;}
 #shHead{display:none;}body.emb-shape:not(.shape-pick) #shHead{display:flex;gap:10px;align-items:center;}#shTitle{font-weight:600;font-size:.95rem;}
 body.shape-pick #optWarp,body.shape-pick #optTilt,body.shape-pick #optRot,body.shape-pick #wPrevBox{display:none!important;}
@@ -4218,7 +4218,9 @@ function navLock(){   // 四角の元の形を確定する(もう戻れない)�
 function navBar(id){
   const B=[],apply={l:"補正する",fn:()=>$("wApply").click(),primary:true};
   if(["q4a","q4r","q4p","q4f","qfe","qfi","qfg"].includes(id)){
-    if(warp&&!warp.locked){B.push({l:"確定",fn:navLock,primary:true});if(id.startsWith("qf"))B.push({l:"四隅を自動認識",fn:()=>$("wAuto").click()});}   // 元の形の指定だけ
+    if(!warp||!warp.locked){   // 元の形の指定だけ。確定は、いつも見える(まだのときは、薄く出し、押すと足りないことを伝える)
+      const hint={q4a:"四隅を探しています。見つかったら確定できます。",q4r:"ドラッグで四角を決めてから、確定してください。",q4p:"紙の角を4か所タップしてから、確定してください。"}[id]||"元の形を指定してから、確定してください。";
+      B.push({l:"確定",fn:warp?navLock:()=>status(hint),off:!warp,primary:true});if(id.startsWith("qf"))B.push({l:"四隅を自動認識",fn:()=>$("wAuto").click()});}
     else if(warp){B.push({seg:[{l:"まっすぐ直す",on:warpOpt.fix==="straight",fn:()=>$("wfStraight").click()},{l:"同じ形のまま",on:warpOpt.fix==="asis",fn:()=>$("wfAsis").click()}]});B.push({l:"初めに戻す",fn:()=>$("wDstReset").click()});B.push(apply);}
   }else{
     if(warp&&warp.kind==="free"){   // 確定した形: 緑の枠を動かして、行き先を決める
@@ -4230,7 +4232,7 @@ function navBar(id){
       if(OUT.hist.length)B.push({l:"戻す",fn:outUndo});
       if(OUT.redo.length)B.push({l:"やり直す",fn:outRedo});
       if(OUT.sel>=0&&OUT.sel<outN())B.push({l:"選んだ点を消す",fn:outDelSel});
-      if(outN()>=3)B.push({l:"確定",fn:outConfirm,primary:true});
+      B.push({l:"確定",fn:outN()>=3?outConfirm:()=>status(id==="plA"&&!OUT.rect?"ドラッグで範囲を指定してから、確定してください。":id==="plT"&&!outN()?"端をなぞってから、確定してください。":"頂点を3つ以上決めてから、確定してください。"),off:outN()<3,primary:true});
     }
   }
   return B;
@@ -4238,7 +4240,7 @@ function navBar(id){
 function navRender(){
   const box=$("shBtns"),cr=$("shCrumb");if(!box||!cr)return;
   const id=navPath[navPath.length-1],node=NAV_TREE[id];cr.textContent=navPath.map(i=>NAV_TREE[i].t).join(" › ");box.textContent="";
-  const mk=it=>{const b=document.createElement("button");b.textContent=it.l;if(!it.primary&&!it.kid)b.classList.add("sub-btn");if(it.on)b.classList.add("on");b.onclick=it.fn;return b;};
+  const mk=it=>{const b=document.createElement("button");b.textContent=it.l;if(!it.primary&&!it.kid)b.classList.add("sub-btn");if(it.on)b.classList.add("on");if(it.off)b.classList.add("off");b.onclick=it.fn;return b;};
   if(node.kids)node.kids.forEach(k=>box.appendChild(mk({l:NAV_TREE[k].t,kid:1,fn:()=>navGo(k)})));
   else navBar(id).forEach(it=>{if(it.seg){const sg=document.createElement("div");sg.className="seg";it.seg.forEach(x=>sg.appendChild(mk({...x,kid:1})));box.appendChild(sg);}else box.appendChild(mk(it));});
   const dstStage=!!(warp&&(warp.kind==="free"||warp.locked));   // 確定したあとは、戻れない(やめるだけ)
