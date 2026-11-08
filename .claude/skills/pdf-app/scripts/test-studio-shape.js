@@ -19,7 +19,7 @@ const {PDFDocument,rgb,StandardFonts,degrees}=require(LIB+'pdf-lib');
   let allOk=true;const ok=(l,c)=>{console.log((c?'OK  ':'NG  ')+l);if(!c)allOk=false;};
   await page.waitForTimeout(2300);
   const open=async(file)=>{await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[file]);await page.waitForTimeout(1800);
-    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);};
+    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(800);await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'四角の四隅'}).click({timeout:1500}).catch(()=>{});await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'自由な四隅'}).click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1200);};
   const F=()=>page.frames().find(x=>x!==page.mainFrame()),fr=page.frameLocator('#formFrame');
   const cur=async()=>{const u=await F().evaluate(()=>window.pdfEditorDebug.bytes());fs.writeFileSync('/tmp/shape_cur.pdf',Buffer.from(u));return execSync('pdfinfo /tmp/shape_cur.pdf').toString();};
   const redbox=()=>{execSync('pdftoppm -r 72 -png -singlefile /tmp/shape_cur.pdf /tmp/shape_cur');return execSync(`python3 -W ignore -c "
@@ -31,9 +31,9 @@ def bb(f):
 print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 and c[0]<60 and c[1]<60))"`).toString().trim().split(' ').map(Number);};
   await open(src);
   ok('整形の名前と、道具の切り替えが出る: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName'))&&await fr.locator('#shapeSeg button').count()===3);
-  ok('はじめは(選んだ)歪み補正の道具。戻るが出る',await fr.locator('#optWarp').isVisible()&&await fr.locator('#shBack').isVisible());
+  ok('歪み補正を選ぶと、動かす物を決める選択が出る',await fr.locator('#shBtns').isVisible()&&!(await fr.locator('#optWarp').isVisible()));
   // 回転: 右に90度(ページの向きだけ変わる。文字は残る)
-  await fr.locator('#shBack').click({timeout:800}).catch(()=>{});await fr.locator('#shapeSeg [data-t=rot]').click();await page.waitForTimeout(300);
+  await page.frames().find(x=>x!==page.mainFrame()).evaluate(()=>window.pdfEditorDebug.shapeHome());await page.waitForTimeout(300);await fr.locator('#shapeSeg [data-t=rot]').click();await page.waitForTimeout(300);
   await fr.locator('#shRotR').click();await page.waitForTimeout(2500);
   let info=await cur();ok('右に90度: ページが縦長に(Page rot 90 / サイズ 400x300): '+info.match(/Page rot:.*/)[0]+' '+info.match(/Page size:.*/)[0],/Page rot: +90/.test(info));
   ok('文字は残っている',/LINE 0/.test(execSync('pdftotext /tmp/shape_cur.pdf -').toString()));
@@ -46,17 +46,17 @@ print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 a
   await fr.locator('#bUndo').click();await page.waitForTimeout(2000);await cur();
   ok('元に戻すと、文字のあるページに戻る',/LINE 0/.test(execSync('pdftotext /tmp/shape_cur.pdf -').toString()));
   // 切り抜き: 赤い四角のまわりだけ
-  await fr.locator('#shBack').click({timeout:800}).catch(()=>{});await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').click();await page.waitForTimeout(300);
-  ok('範囲と補正の道具が出る',await fr.locator('#optWarp').isVisible());
+  await page.frames().find(x=>x!==page.mainFrame()).evaluate(()=>window.pdfEditorDebug.shapeHome());await page.waitForTimeout(300);await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').evaluate(e=>e.click());await page.waitForTimeout(300);
+  ok('範囲と補正の道具が出る',await fr.locator('#shBtns').isVisible());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/400;
   await page.mouse.move(ob.x+95*k,ob.y+(300-255)*k);await page.mouse.down();await page.mouse.move(ob.x+305*k,ob.y+(300-145)*k,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
-  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
+  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').evaluate(e=>e.click());await fr.locator('#wApply').evaluate(e=>e.click());await page.waitForTimeout(4500);
   info=await cur();const sz=info.match(/Page size: +([\d.]+) x ([\d.]+)/);
   ok('切り抜き: ページが約 210×110 に: '+(sz&&sz[1]+'x'+sz[2]),sz&&Math.abs(+sz[1]-210)<12&&Math.abs(+sz[2]-110)<12);
   const bb2=redbox();ok('切り抜いた中に赤い四角がほぼいっぱい: '+bb2.slice(2,6).join(','),bb2[2]<12&&bb2[3]<12);
   // 傾き補正(自動)
   await open('/tmp/shape_skew.pdf');
-  await fr.locator('#shBack').click({timeout:800}).catch(()=>{});await fr.locator('#shapeSeg [data-t=tilt]').click();await page.waitForTimeout(500);
+  await page.frames().find(x=>x!==page.mainFrame()).evaluate(()=>window.pdfEditorDebug.shapeHome());await page.waitForTimeout(300);await fr.locator('#shapeSeg [data-t=tilt]').click();await page.waitForTimeout(500);
   ok('傾き補正の道具が出る',await fr.locator('#optTilt').isVisible());
   await fr.locator('#shAuto').click();await page.waitForTimeout(3000);
   const ang=+await fr.locator('#shAng').inputValue();
