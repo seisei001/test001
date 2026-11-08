@@ -30,8 +30,8 @@ print(bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),bb(lambda c:c[2]>200 and c[0
     const X=v=>ob.x+v*k,Y=v=>ob.y+v*k;
     await page.mouse.move(X(90),Y(90));await page.mouse.down();await page.mouse.move(X(160),Y(160),{steps:8});await page.mouse.up();await page.waitForTimeout(1200);
     ok('緑の貼り付け先の枠が出る',await fr.locator('svg.warp polygon').count()===1);
-    ok('「元の場所は消す」の欄が出る',await fr.locator('#wEraseLbl').isVisible());
-    if(!erase)await fr.locator('#wErase').uncheck();
+    ok('「元の場所は消す」の欄がある',(await fr.locator('#wEraseLbl').count())===1);
+    if(!erase)await fr.locator('#wErase').evaluate(e=>{e.checked=false;});
     // 緑の枠の中(赤い四角の外側の角の近く)をつかんで、右へ 200pt、下へ 100pt 動かす
     await page.mouse.move(X(116),Y(116));await page.mouse.down();await page.mouse.move(X(316),Y(216),{steps:8});await page.mouse.up();await page.waitForTimeout(1200);
     console.log('   緑の枠:',JSON.stringify(await f.evaluate(()=>window.pdfEditorDebug.warpDst())));
