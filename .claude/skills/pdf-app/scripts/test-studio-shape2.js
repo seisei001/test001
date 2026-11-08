@@ -12,7 +12,7 @@ const {PDFDocument,rgb,degrees}=require(path.join(WORK,'lib/node_modules')+'/pdf
   const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>d.accept());
   let allOk=true;const ok=(l,c)=>{console.log((c?'OK  ':'NG  ')+l);if(!c)allOk=false;};
   const open=async()=>{await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
-    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
+    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);
     const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
     await fr.locator('#wkPart').click();await page.waitForTimeout(300);
     const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;
@@ -30,7 +30,7 @@ print(W,H,red,blue)"`).toString().trim().split(' ').map(Number);};
   // A: まっすぐに直す + 切り抜く
   let {fr,f}=await open();
   const ids=['wkPage','wkPart','wAuto','wAutoMargin','wfStraight','wfAsis','wDstReset','waKeep','waWhite','waCrop','wApply'];
-  ok('手順の部品が揃っている',(await Promise.all(ids.map(i=>fr.locator('#'+i).count()))).every(n=>n===1)&&await fr.locator('#shapeSeg button').count()===3);
+  ok('手順の部品が揃っている',(await Promise.all(ids.map(i=>fr.locator('#'+i).count()))).every(n=>n===1)&&(await fr.locator('#shapeSeg button').count())===3);
   await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(5000);
   let r=await out(fr);console.log('A',r);
   ok('A 直す+切り抜く: 200×100の長方形で、ほぼ全部赤',Math.abs(r[0]-200)<=3&&Math.abs(r[1]-100)<=3&&r[2]>r[0]*r[1]*0.9);

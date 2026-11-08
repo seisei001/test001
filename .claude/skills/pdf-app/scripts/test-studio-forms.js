@@ -39,7 +39,7 @@ const S=WORK+'/samples/';
   await page.setInputFiles('#fAdd',[S+'photo_persp.pdf']);await page.waitForTimeout(1500);
   const w0=await page.evaluate(()=>document.querySelectorAll('.card')[1].querySelector('canvas').toDataURL().length);
   await page.locator('.card').nth(1).locator('.chk').click();await page.locator('.card').nth(0).locator('.chk').click();await page.waitForTimeout(300);await page.locator('.card').nth(1).locator('.mnb').evaluate(e=>e.click());
-  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(2500);
+  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(2500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);
   ok('整形の名前: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName')));
   const vis=async s=>fr.locator(s).isVisible();
   ok('何を(3つ)・どこへ・補正するが見え、細かい設定は畳まれている',await vis('#wkPage')&&await vis('#wkPart')&&await vis('#wkFree')&&await vis('#wfStraight')&&await vis('#wApply')&&!(await vis('#waCrop')));
