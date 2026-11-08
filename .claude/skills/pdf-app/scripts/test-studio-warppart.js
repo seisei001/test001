@@ -8,7 +8,7 @@ const {PDFDocument,rgb}=require(LIB+'pdf-lib');
 (async()=>{
   const src='/tmp/warppart_src.pdf';
   {const d=await PDFDocument.create(),p=d.addPage([595,842]);p.drawRectangle({x:100,y:600,width:200,height:100,color:rgb(0.9,0.9,0.9)});fs.writeFileSync(src,await d.save());}
-  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>d.accept());
+  const {browser,page}=await launch();await page.addInitScript(()=>{window.__warpAutoLock=false;});const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('dialog',d=>d.accept());
   let allOk=true;const ok=(l,c)=>{console.log((c?'OK  ':'NG  ')+l);if(!c)allOk=false;};
   await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
   await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(800);await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'四角の四隅'}).click({timeout:1500}).catch(()=>{});await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'自由な四隅'}).click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1200);

@@ -42,7 +42,7 @@ const S=WORK+'/samples/';
   await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(2500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(800);await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'四角の四隅'}).click({timeout:1500}).catch(()=>{});await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'自由な四隅'}).click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1200);
   ok('整形の名前: '+await page.textContent('#formName'),/整形/.test(await page.textContent('#formName')));
   const vis=async s=>fr.locator(s).isVisible();
-  ok('動かす物を決める3つの選択と戻るが出る',(await fr.locator('#shBtns button').count())===4);
+  ok('動かす物を決める選択(階層ヘッダー)が出る',(await fr.locator('#shBtns button').count())>=1&&!(await fr.locator('#optWarp').isVisible()));
   await page.screenshot({path:WORK+'/shot_form_warp.png'});
   await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#wAuto').evaluate(e=>e.click());await page.waitForTimeout(4000);
   await fr.locator('#wApply').evaluate(e=>e.click());await page.waitForTimeout(4000);
