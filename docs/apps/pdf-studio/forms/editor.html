@@ -2260,7 +2260,7 @@ function renderFreeWarp(){
 function updateFreeSvg(){
   const u=warpFreeUi;if(!u||!warp)return;const pts=a=>a.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" "),DV=freeDestV(warp),Q=warp.Q,px=u.px;
   u.src.setAttribute("points",pts(warp.poly));u.dst.setAttribute("points",pts(DV));u.box.setAttribute("points",pts(Q));
-  u.corners.forEach((e,i)=>{e.setAttribute("x",Q[i][0]-px(8));e.setAttribute("y",Q[i][1]-px(8));});
+  {const cn=[(Q[0][0]+Q[1][0]+Q[2][0]+Q[3][0])/4,(Q[0][1]+Q[1][1]+Q[2][1]+Q[3][1])/4];u.corners.forEach((e,i)=>{const dx=Q[i][0]-cn[0],dy=Q[i][1]-cn[1],L=Math.hypot(dx,dy)||1;e.setAttribute("x",Q[i][0]+dx/L*px(15)-px(8));e.setAttribute("y",Q[i][1]+dy/L*px(15)-px(8));});}   // 四角の角のつまみは、少し外側に(頂点と重なっても、両方つかめるように)
   u.vd.forEach((e,j)=>{const p=DV[warp.vi[j]];e.setAttribute("cx",p[0]);e.setAttribute("cy",p[1]);});
   const c=[(Q[0][0]+Q[1][0]+Q[2][0]+Q[3][0])/4,(Q[0][1]+Q[1][1]+Q[2][1]+Q[3][1])/4],tm=[(Q[0][0]+Q[1][0])/2,(Q[0][1]+Q[1][1])/2],L=Math.hypot(tm[0]-c[0],tm[1]-c[1])||1,hx=tm[0]+(tm[0]-c[0])/L*u.off,hy=tm[1]+(tm[1]-c[1])/L*u.off;
   u.rl.setAttribute("x1",tm[0]);u.rl.setAttribute("y1",tm[1]);u.rl.setAttribute("x2",hx);u.rl.setAttribute("y2",hy);u.rh.setAttribute("cx",hx);u.rh.setAttribute("cy",hy);u.rp=[hx,hy];

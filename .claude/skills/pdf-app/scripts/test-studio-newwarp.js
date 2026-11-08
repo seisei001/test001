@@ -131,7 +131,7 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
   ok('辺の点だけが見える(四隅+辺の12点=16、中の点は隠れる)',(await fr.locator('svg.warp circle[data-h*="_"]').evaluateAll(a=>a.filter(e=>e.style.display!=='none').length))===16);
   await go('戻る');await go('中に点を足して曲げる');await page.waitForTimeout(600);
   ok('中の点だけが見える(四隅+中の9点)',(await fr.locator('svg.warp circle[data-h*="_"]').evaluateAll(a=>a.filter(e=>e.style.display!=='none').length))===13);
-  await open();await go('四角の四隅','四隅を自動認識');await page.waitForTimeout(3000);L=await labels();ok('四隅を自動認識すると、補正するが出る',L.some(t=>/補正する/.test(t)));
+  await open();await go('四角の四隅','四隅を自動認識');await page.waitForTimeout(3000);L=await labels();ok('四隅を自動認識すると、確定が出る(まだ緑の枠は無い)',L.some(t=>/確定/.test(t))&&!L.some(t=>/補正する/.test(t)));await go('確定');await page.waitForTimeout(600);L=await labels();ok('確定すると、補正するが出る',L.some(t=>/補正する/.test(t)));
   await open();await go('四角の四隅','四点を自分で選ぶ');
   {const {X,Y}=await geo();for(const p of [[100,100],[300,110],[310,300],[90,290]]){await page.mouse.click(X(p[0]),Y(p[1]));await page.waitForTimeout(250);}
    const ws=await f.evaluate(()=>window.pdfEditorDebug.warpState());ok('四点をタップすると、四角ができる',ws&&ws.kind==='part'&&Math.abs(ws.G[0][0][0]-100)<2);}
