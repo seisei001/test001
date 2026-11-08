@@ -2,7 +2,7 @@
 process.env.PDFAPP_TARGET='pdf-studio';
 const {launch,WORK}=require('./harness');
 (async()=>{
-  const {browser,page}=await launch();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+  const {browser,page}=await launch();await page.addInitScript(()=>{window.__warpAutoLock=false;});const errs=[];page.on('pageerror',e=>errs.push(e.message));
   await page.waitForTimeout(2300);
   await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
   await page.locator('.card').first().locator('.mnb').click();

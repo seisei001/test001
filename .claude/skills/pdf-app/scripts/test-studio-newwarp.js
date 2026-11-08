@@ -22,7 +22,7 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
   const open=async()=>{await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[src]);await page.waitForTimeout(1800);
     await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);
     fr=page.frameLocator('#formFrame');f=page.frames().find(x=>x!==page.mainFrame());
-    await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);};
+    await f.evaluate(()=>{window.__warpAutoLock=false;});await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);};
   const go=async(...names)=>{for(const n of names){await fr.locator('#shBtns button',{hasText:n}).first().click();await page.waitForTimeout(350);}};
   const geo=async()=>{const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;return{X:v=>ob.x+v*k,Y:v=>ob.y+v*k,k,ob};};
   const labels=async()=>(await fr.locator('#shBtns button').allInnerTexts()).map(t=>t.trim());
@@ -67,17 +67,50 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
    const fs0=await f.evaluate(()=>window.pdfEditorDebug.freeState());console.log('   確定後',fs0);
    ok('確定すると、外周が固定され、内側に格子の点ができる',fs0&&fs0.kind!==undefined?true:fs0&&fs0.inner>=1);
    L=await labels();console.log('   確定後の段',L);
-   ok('確定後は、編集に戻る・動かし方3つ・補正する',L.some(t=>/編集に戻る/.test(t))&&L.some(t=>/全体をそのまま/.test(t))&&L.some(t=>/補正する/.test(t)));
-   // 編集に戻る→確定の往復
-   await go('編集に戻る');ok('編集に戻れる(頂点は残っている)',(await st()).n===4&&(await labels()).some(t=>/確定/.test(t)));
-   await go('確定');
+   ok('確定後は、緑の枠の操作だけ(補正する・初めに戻す・やめる)。編集に戻る/戻るは無い',L.some(t=>/補正する/.test(t))&&L.some(t=>/やめる/.test(t))&&!L.some(t=>/編集に戻る|← 戻る/.test(t)));
+   ok('緑の枠が出る(四角の角4つ・頂点)',(await fr.locator('svg.warp rect').count())===4&&(await fr.locator('svg.warp circle[data-g]').count())===4);
    // 全体をそのまま動かして補正(赤い四角を含む正方形(80〜240)を右下へ200,100)
-   const d0=await geo();const dst=fr.locator('svg.warp polygon').nth(1);
+   const d0=await geo();
    await page.mouse.move(d0.X(100),d0.Y(100));await page.mouse.down();await page.mouse.move(d0.X(300),d0.Y(200),{steps:8});await page.mouse.up();await page.waitForTimeout(400);
    await go('補正する');await page.waitForTimeout(6500);
    L=await labels();ok('補正後は、最上段に戻る',L.length===4&&/四角の四隅/.test(L[0]));
    await save('newwarp_a');const r=red('/tmp/newwarp_a.png');console.log('   赤',r);ok('形ごと動いた(赤が右下にある)',r[0]>8000&&r[3]>=390);
   }
+  // ===== 元の形を決めている間は、緑の枠を出さない(青い枠の機能だけ)。確定したら出る =====
+  await open();await go('四角の四隅','自由な四隅');await page.waitForTimeout(600);
+  L=await labels();console.log('   四角の指定中',L);
+  ok('元の形の指定中は、確定と戻るだけ',L.length===2&&/確定/.test(L[0])&&/戻る/.test(L[1]));
+  ok('指定中は、緑の枠が出ない',(await fr.locator('svg.warp polygon').count())===0&&(await fr.locator('svg.warp circle[data-d]').count())===0);
+  await go('確定');await page.waitForTimeout(700);L=await labels();console.log('   四角の確定後',L);
+  ok('確定すると、緑の枠が出る',(await fr.locator('svg.warp polygon').count())>=1&&(await fr.locator('svg.warp circle[data-d]').count())>0);
+  ok('確定後は戻れない(やめるだけ)・元の形は固定',L.some(t=>/やめる/.test(t))&&!L.some(t=>/← 戻る/.test(t))&&(await fr.locator('svg.warp circle[data-h="0_0"]').evaluate(e=>e.style.pointerEvents))==='none');
+  // ===== 自由な形の緑の枠: 囲む四角・角で大きさ・つまみで回転・拡大縮小・頂点・形のまま移動 =====
+  await open();await go('完全自由','頂点を置く');
+  {const {X,Y}=await geo();for(const p of [[80,80],[240,80],[240,240],[80,240]]){await page.mouse.click(X(p[0]),Y(p[1]));await page.waitForTimeout(150);}
+   await go('確定');await page.waitForTimeout(500);
+   const Q=async()=>(await f.evaluate(()=>window.pdfEditorDebug.freeQ())).Q;
+   let q0=await Q();ok('緑の枠を囲む最小の四角(元の形のぴったり外側)',q0[0][0]===80&&q0[2][0]===240&&q0[2][1]===240);
+   const ctr=async el=>{const b=await el.boundingBox();return[b.x+b.width/2,b.y+b.height/2];};
+   // 角を自由に動かす
+   let c=await ctr(fr.locator('svg.warp rect').nth(2));await page.mouse.move(c[0],c[1]);await page.mouse.down();await page.mouse.move(c[0]+80*(await geo()).k,c[1]+20*(await geo()).k,{steps:6});await page.mouse.up();await page.waitForTimeout(300);
+   let q1=await Q();ok('四角の角を自由に動かせる(右下が動いた)',q1[2][0]>q0[2][0]+60&&q1[0][0]===80);
+   // 頂点を自由に動かす
+   c=await ctr(fr.locator('svg.warp circle[data-g="v0"]'));await page.mouse.move(c[0],c[1]);await page.mouse.down();await page.mouse.move(c[0]+25,c[1]+25,{steps:5});await page.mouse.up();await page.waitForTimeout(300);
+   ok('緑の枠の頂点を自由に動かせる',(await f.evaluate(()=>window.pdfEditorDebug.freeQ())).off===true);
+   // 戻す
+   await go('戻す');await go('戻す');q1=await Q();ok('戻すで、動かす前に戻る',q1[2][0]===240);
+   // 拡大縮小(縦横の割合を変えない)
+   const sc=fr.locator('svg.warp path').last();c=await ctr(sc);const w0=q1[1][0]-q1[0][0],h0=q1[3][1]-q1[0][1];
+   await page.mouse.move(c[0],c[1]);await page.mouse.down();await page.mouse.move(c[0]+60,c[1]+60,{steps:6});await page.mouse.up();await page.waitForTimeout(300);
+   const q2=await Q(),w1=q2[1][0]-q2[0][0],h1=q2[3][1]-q2[0][1];ok('縦横の割合を変えずに拡大できる: '+(w1/h1).toFixed(3),w1>w0*1.1&&Math.abs(w1/h1-w0/h0)<0.02);
+   // 回転(自由な角度)
+   const rh=fr.locator('svg.warp circle:not([data-g])').first();c=await ctr(rh);const cc=await ctr(fr.locator('svg.warp rect').nth(0));
+   await page.mouse.move(c[0],c[1]);await page.mouse.down();await page.mouse.move(c[0]+90,c[1]+40,{steps:6});await page.mouse.up();await page.waitForTimeout(300);
+   const q3=await Q(),ang=Math.atan2(q3[1][1]-q3[0][1],q3[1][0]-q3[0][0])*180/Math.PI;ok('自由な角度に回転できる: '+ang.toFixed(1)+'度',Math.abs(ang)>8);
+   // 形のまま移動
+   const d1=await geo();await page.mouse.move(d1.X(160),d1.Y(160));await page.mouse.down();await page.mouse.move(d1.X(200),d1.Y(190),{steps:6});await page.mouse.up();await page.waitForTimeout(300);
+   const q4=await Q();ok('緑の枠を、形のまま移動できる',Math.abs(q4[0][0]-q3[0][0]-40)<2&&Math.abs(q4[0][1]-q3[0][1]-30)<2);
+   await go('補正する');await page.waitForTimeout(7000);L=await labels();ok('変形・回転した状態で補正できる(エラーなし)',errs.length===0&&L.length===4);}
   // ===== 3-1 ドラッグ+端の自動認識(色/濃淡/線/外から) =====
   for(const m of ['色','濃淡','線','外から']){
     await open();await go('完全自由','ドラッグ');
@@ -98,7 +131,7 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
   ok('辺の点だけが見える(四隅+辺の12点=16、中の点は隠れる)',(await fr.locator('svg.warp circle[data-h*="_"]').evaluateAll(a=>a.filter(e=>e.style.display!=='none').length))===16);
   await go('戻る');await go('中に点を足して曲げる');await page.waitForTimeout(600);
   ok('中の点だけが見える(四隅+中の9点)',(await fr.locator('svg.warp circle[data-h*="_"]').evaluateAll(a=>a.filter(e=>e.style.display!=='none').length))===13);
-  await open();await go('四角の四隅','四隅を自動認識');await page.waitForTimeout(3000);L=await labels();ok('四隅を自動認識すると、補正するが出る',L.some(t=>/補正する/.test(t)));
+  await open();await go('四角の四隅','四隅を自動認識');await page.waitForTimeout(3000);L=await labels();ok('四隅を自動認識すると、確定が出る(まだ緑の枠は無い)',L.some(t=>/確定/.test(t))&&!L.some(t=>/補正する/.test(t)));await go('確定');await page.waitForTimeout(600);L=await labels();ok('確定すると、補正するが出る',L.some(t=>/補正する/.test(t)));
   await open();await go('四角の四隅','四点を自分で選ぶ');
   {const {X,Y}=await geo();for(const p of [[100,100],[300,110],[310,300],[90,290]]){await page.mouse.click(X(p[0]),Y(p[1]));await page.waitForTimeout(250);}
    const ws=await f.evaluate(()=>window.pdfEditorDebug.warpState());ok('四点をタップすると、四角ができる',ws&&ws.kind==='part'&&Math.abs(ws.G[0][0][0]-100)<2);}
