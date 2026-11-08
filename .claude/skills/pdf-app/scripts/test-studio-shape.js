@@ -47,7 +47,7 @@ print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 a
   ok('元に戻すと、文字のあるページに戻る',/LINE 0/.test(execSync('pdftotext /tmp/shape_cur.pdf -').toString()));
   // 切り抜き: 赤い四角のまわりだけ
   await page.frames().find(x=>x!==page.mainFrame()).evaluate(()=>window.pdfEditorDebug.shapeHome());await page.waitForTimeout(300);await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').evaluate(e=>e.click());await page.waitForTimeout(300);
-  ok('範囲と補正の道具が出る',await fr.locator('#optWarp').isVisible());
+  ok('範囲と補正の道具が出る',await fr.locator('#shBtns').isVisible());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/400;
   await page.mouse.move(ob.x+95*k,ob.y+(300-255)*k);await page.mouse.down();await page.mouse.move(ob.x+305*k,ob.y+(300-145)*k,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
   await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').evaluate(e=>e.click());await fr.locator('#wApply').evaluate(e=>e.click());await page.waitForTimeout(4500);
