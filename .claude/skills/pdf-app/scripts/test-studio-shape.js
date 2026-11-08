@@ -19,7 +19,7 @@ const {PDFDocument,rgb,StandardFonts,degrees}=require(LIB+'pdf-lib');
   let allOk=true;const ok=(l,c)=>{console.log((c?'OK  ':'NG  ')+l);if(!c)allOk=false;};
   await page.waitForTimeout(2300);
   const open=async(file)=>{await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[file]);await page.waitForTimeout(1800);
-    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);};
+    await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3500);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(800);await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'四角の四隅'}).click({timeout:1500}).catch(()=>{});await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'自由な四隅'}).click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1200);};
   const F=()=>page.frames().find(x=>x!==page.mainFrame()),fr=page.frameLocator('#formFrame');
   const cur=async()=>{const u=await F().evaluate(()=>window.pdfEditorDebug.bytes());fs.writeFileSync('/tmp/shape_cur.pdf',Buffer.from(u));return execSync('pdfinfo /tmp/shape_cur.pdf').toString();};
   const redbox=()=>{execSync('pdftoppm -r 72 -png -singlefile /tmp/shape_cur.pdf /tmp/shape_cur');return execSync(`python3 -W ignore -c "
@@ -46,11 +46,11 @@ print(W,H,*bb(lambda c:c[0]>200 and c[1]<60 and c[2]<60),*bb(lambda c:c[2]>200 a
   await fr.locator('#bUndo').click();await page.waitForTimeout(2000);await cur();
   ok('元に戻すと、文字のあるページに戻る',/LINE 0/.test(execSync('pdftotext /tmp/shape_cur.pdf -').toString()));
   // 切り抜き: 赤い四角のまわりだけ
-  await fr.locator('#shBack').click({timeout:800}).catch(()=>{});await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').click();await page.waitForTimeout(300);
+  await fr.locator('#shBack').click({timeout:800}).catch(()=>{});await fr.locator('#shapeSeg [data-t=warp]').click();await page.waitForTimeout(500);await fr.locator('#wkPart').evaluate(e=>e.click());await page.waitForTimeout(300);
   ok('範囲と補正の道具が出る',await fr.locator('#optWarp').isVisible());
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/400;
   await page.mouse.move(ob.x+95*k,ob.y+(300-255)*k);await page.mouse.down();await page.mouse.move(ob.x+305*k,ob.y+(300-145)*k,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
-  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
+  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waCrop').evaluate(e=>e.click());await fr.locator('#wApply').evaluate(e=>e.click());await page.waitForTimeout(4500);
   info=await cur();const sz=info.match(/Page size: +([\d.]+) x ([\d.]+)/);
   ok('切り抜き: ページが約 210×110 に: '+(sz&&sz[1]+'x'+sz[2]),sz&&Math.abs(+sz[1]-210)<12&&Math.abs(+sz[2]-110)<12);
   const bb2=redbox();ok('切り抜いた中に赤い四角がほぼいっぱい: '+bb2.slice(2,6).join(','),bb2[2]<12&&bb2[3]<12);

@@ -23,15 +23,15 @@ const {launch,WORK}=require('./harness');
   
   await page.click('#bAll');await page.click('#bNone');
   await page.locator('.card').first().locator('input[type=checkbox]').check();await page.locator('.card').first().locator('.mnb').click();
-  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3000);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1500);
+  await page.locator('#menuBtns button',{hasText:'整形'}).click();await page.waitForTimeout(3000);await page.frameLocator('#formFrame').locator('#shapeSeg button[data-t=warp]').click({timeout:1500}).catch(()=>{});await page.waitForTimeout(800);await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'四角の四隅'}).click({timeout:1500}).catch(()=>{});await page.frameLocator('#formFrame').locator('#shBtns button',{hasText:'自由な四隅'}).click({timeout:1500}).catch(()=>{});await page.waitForTimeout(1200);
   const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
-  await fr.locator('#wkPart').click();await page.waitForTimeout(500);
+  await fr.locator('#wkPart').evaluate(e=>e.click());await page.waitForTimeout(500);
   await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});chk('「まわりを白くする」がある',await fr.locator('#waWhite').count()===1);
   const ob=await fr.locator('#ov').boundingBox();
   const pw0=await f.evaluate(()=>[window.pdfEditorDebug.pageSize?window.pdfEditorDebug.pageSize():null]).catch(()=>[null]);
   await page.mouse.move(ob.x+ob.width*.3,ob.y+ob.height*.05);await page.mouse.down();await page.mouse.move(ob.x+ob.width*.7,ob.y+ob.height*.3,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   const sz0=await f.evaluate(()=>{const c=document.querySelector('#stage canvas')||document.querySelector('canvas');return [c.width,c.height];});
-  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waWhite').click();await fr.locator('#wApply').click();await page.waitForTimeout(4500);
+  await fr.locator('#shDet').evaluate(e=>{e.open=true},null,{timeout:400}).catch(()=>{});await fr.locator('#waWhite').evaluate(e=>e.click());await fr.locator('#wApply').evaluate(e=>e.click());await page.waitForTimeout(4500);
   const px=await f.evaluate(()=>{const c=[...document.querySelectorAll('canvas')].sort((a,b)=>b.width*b.height-a.width*a.height)[0],g=c.getContext('2d'),W=c.width,H=c.height;
     const dark=(x0,y0,x1,y1)=>{const d=g.getImageData(x0,y0,x1-x0,y1-y0).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]<250)n++;return n;};
     return {W,H,inside:dark(Math.round(W*.3),Math.round(H*.05),Math.round(W*.7),Math.round(H*.3)),outsideBelow:dark(0,Math.round(H*.4),W,H),outsideLeft:dark(0,0,Math.round(W*.28),H)};});
