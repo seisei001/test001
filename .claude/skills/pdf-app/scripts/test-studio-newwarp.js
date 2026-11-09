@@ -60,6 +60,17 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
    const before=(await st()).n;await page.mouse.click(X(60),Y(400));await page.waitForTimeout(300);
    ok('頂点を足せる(近い辺に割り込む)',(await st()).n===before+1||(await st()).n===before);
   }
+  // ===== 置いた点は、置いた順につながる。点を選ぶと、その点の次につながる。頂点をドラッグで動かせる =====
+  await open();await go('完全自由','頂点を置く');
+  {const {X,Y}=await geo();const P=[[80,80],[240,90],[250,250],[160,300],[70,240]];for(const p of P){await page.mouse.click(X(p[0]),Y(p[1]));await page.waitForTimeout(150);}
+   let s0=await st();ok('置いた順につながる(最後の点が、最後に入る)',s0.n===5&&Math.abs(s0.pts[4][0]-70)<1&&Math.abs(s0.pts[4][1]-240)<1);
+   // 点0を選んでから置くと、点0の次につながる
+   await page.mouse.click(X(80),Y(80));await page.waitForTimeout(250);await page.mouse.click(X(150),Y(60));await page.waitForTimeout(300);
+   s0=await st();ok('点を選んでから置くと、その点の次につながる(位置1に入る)',s0.n===6&&Math.abs(s0.pts[1][0]-150)<1&&Math.abs(s0.pts[1][1]-60)<1);
+   // 頂点をドラッグで最後まで動かせる(途中で途切れない)
+   const c=await fr.locator('svg.warp circle').nth(2).boundingBox();const before=(await st()).pts[2];
+   await page.mouse.move(c.x+c.width/2,c.y+c.height/2);await page.mouse.down();for(let i=1;i<=10;i++)await page.mouse.move(c.x+c.width/2+i*6,c.y+c.height/2+i*3);await page.mouse.up();await page.waitForTimeout(300);
+   const after=(await st()).pts[2];ok('頂点をドラッグで動かせる(最後まで追従): '+before+' → '+after,Math.abs(after[0]-before[0]-60/(await geo()).k)<3);}
   // ===== 確定 → 格子の点 =====
   await open();await go('完全自由','頂点を置く');
   {const {X,Y}=await geo();for(const p of [[80,80],[240,80],[240,240],[80,240]]){await page.mouse.click(X(p[0]),Y(p[1]));await page.waitForTimeout(150);}
