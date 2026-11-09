@@ -38,13 +38,13 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
   await go('完全自由');L=await labels();ok('多角形を選ぶと、3つの作り方と戻る',L.length===4&&/自動認識/.test(L[0])&&/なぞって/.test(L[1])&&/頂点/.test(L[2]));
   // ===== 3-3 頂点を置く =====
   await go('頂点を置く');
-  L=await labels();ok('はじめは「戻る」だけ(今できることだけ出す)',L.length===1&&/戻る/.test(L[0]));
+  L=await labels();const off=async()=>fr.locator('#shBtns button',{hasText:'確定'}).evaluate(e=>e.classList.contains('off'));ok('最初から確定が見える(まだ押せないので薄い)と戻る',L.length===2&&/確定/.test(L[0])&&/戻る/.test(L[1])&&await off());
   {const {X,Y}=await geo();
    await page.mouse.click(X(90),Y(90));await page.waitForTimeout(200);await page.mouse.click(X(260),Y(100));await page.waitForTimeout(200);
-   L=await labels();ok('2点では確定は出ない(線だけ)',!L.some(t=>/確定/.test(t))&&L.some(t=>/戻す/.test(t)));
+   L=await labels();ok('2点では、確定はまだ薄い(押すと足りない点を知らせる)',await off()&&L.some(t=>/戻す/.test(t)));
    await page.mouse.click(X(250),Y(260));await page.waitForTimeout(200);await page.mouse.click(X(100),Y(240));await page.waitForTimeout(300);
    let s=await st();ok('頂点を4つ置けた',s.n===4);
-   L=await labels();ok('3点以上で「確定」が出る',L.some(t=>/確定/.test(t)));
+   L=await labels();ok('3点以上で「確定」が押せる',L.some(t=>/確定/.test(t))&&!(await off()));
    // 辺を引いて曲線にする
    const ed=await fr.locator('svg.warp path').nth(1).boundingBox();
    await page.mouse.move(X(175),Y(95));await page.mouse.down();await page.mouse.move(X(175),Y(60),{steps:6});await page.mouse.up();await page.waitForTimeout(300);
@@ -79,7 +79,7 @@ print(len(l),min(p[0] for p in l) if l else 0,min(p[1] for p in l) if l else 0,m
   // ===== 元の形を決めている間は、緑の枠を出さない(青い枠の機能だけ)。確定したら出る =====
   await open();await go('四角の四隅','自由な四隅');await page.waitForTimeout(600);
   L=await labels();console.log('   四角の指定中',L);
-  ok('元の形の指定中は、確定と戻るだけ',L.length===2&&/確定/.test(L[0])&&/戻る/.test(L[1]));
+  ok('元の形の指定中は、確定と戻るだけ',L.length===2&&/確定/.test(L[0])&&/戻る/.test(L[1])&&!(await fr.locator('#shBtns button',{hasText:'確定'}).evaluate(e=>e.classList.contains('off'))));
   ok('指定中は、緑の枠が出ない',(await fr.locator('svg.warp polygon').count())===0&&(await fr.locator('svg.warp circle[data-d]').count())===0);
   await go('確定');await page.waitForTimeout(700);L=await labels();console.log('   四角の確定後',L);
   ok('確定すると、緑の枠が出る',(await fr.locator('svg.warp polygon').count())>=1&&(await fr.locator('svg.warp circle[data-d]').count())>0);
