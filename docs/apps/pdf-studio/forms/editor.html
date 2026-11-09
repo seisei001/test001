@@ -2049,15 +2049,16 @@ function outLoad(j){const o=JSON.parse(j);OUT.pts=o.pts;OUT.c=o.c;OUT.sel=-1;}
 function outUndo(){if(!OUT.hist.length)return;OUT.redo.push(outJ());outLoad(OUT.hist.pop());outRender();outBar();}
 function outRedo(){if(!OUT.redo.length)return;OUT.hist.push(outJ());outLoad(OUT.redo.pop());outRender();outBar();}
 function outClear(){OUT.on=false;OUT.pts=[];OUT.c=[];OUT.sel=-1;OUT.hist=[];OUT.redo=[];OUT.rect=null;OUT.tap4=null;OUT.confirmed=false;if(OUT.svg){OUT.svg.remove();OUT.svg=null;}}
-function outAddAt(x,y){   // 頂点を置く: 3つ未満は、順に足す。それ以降は、いちばん近い辺に割り込む
+function outAddAt(x,y){   // 頂点を置く: 選んでいる点(いちばん最近置いた点)の次につなぐ。別の点を選んでから置くと、その点の次につながる
   if(outN()>=FREE_MAX){status("頂点は"+FREE_MAX+"個までです。");return;}
   outPush();
+  const at=outN()<3?outN():(OUT.sel>=0&&OUT.sel<outN()?OUT.sel+1:outN());   // 3つ未満は、置いた順。それ以降は、選んだ点の次(選んでいなければ、最後の次)
   if(outN()<3){OUT.pts.push([x,y]);OUT.c.push(null);}
-  else{let bi=0,bd=1e18;for(let i=0;i<outN();i++){for(const p of outEdge(i,8).concat([OUT.pts[(i+1)%outN()]])){const d=Math.hypot(p[0]-x,p[1]-y);if(d<bd){bd=d;bi=i;}}}
-    OUT.pts.splice(bi+1,0,[x,y]);OUT.c.splice(bi,1,null,null);}
-  OUT.sel=outN()<3?outN()-1:OUT.pts.findIndex(p=>p[0]===x&&p[1]===y);
-  if(outCrossing()){outUndo();status("線が交差するので、そこには置けません。");return;}
+  else{OUT.pts.splice(at,0,[x,y]);OUT.c.splice(at-1,1,null,null);}
+  OUT.sel=at;
+  if(outCrossing()){outUndo();status("線が交差するので、そこには置けません。つなぐ点を選び直してください。");return;}
   outRender();outBar();
+  if(outN()>=3)status("次に置く点は、選んでいる点(橙)の次につながります。別の所につなぐときは、先にその点をタップしてください。");
 }
 function outDelSel(){if(OUT.sel<0||OUT.sel>=outN())return;outPush();const i=OUT.sel,n=outN();OUT.pts.splice(i,1);OUT.c.splice(i,1);OUT.c[(i-1+n-1)%(n-1||1)]=null;OUT.sel=-1;outRender();outBar();}
 function outRender(){
@@ -2073,21 +2074,22 @@ function outRender(){
     const a=OUT.pts[i],b=OUT.pts[(i+1)%n],q=OUT.c[i],dd=`M${a[0]} ${a[1]}`+(q?` Q${q[0]} ${q[1]} ${b[0]} ${b[1]}`:` L${b[0]} ${b[1]}`);
     const e=mk("path",{d:dd,fill:"none",stroke:"rgba(0,0,0,0.001)","stroke-width":px(26)});e.style.cssText="pointer-events:stroke;cursor:pointer;touch-action:none";
     e.addEventListener("pointerdown",ev=>outEdgeDrag(ev,i,e));}
+  if(n>=3&&OUT.sel>=0&&OUT.sel<n&&OUT.leaf==="pts"){const a=OUT.pts[OUT.sel],b=OUT.pts[(OUT.sel+1)%n];mk("line",{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:"#f59e0b","stroke-width":px(4),"stroke-dasharray":`${px(8)} ${px(5)}`,opacity:".9"});}   // 次に置く点が割り込む線(選んだ点の次の線)
   OUT.pts.forEach((p,i)=>{const e=mk("circle",{cx:p[0],cy:p[1],r:px(OUT.sel===i?11:8),fill:OUT.sel===i?"#f59e0b":"#2563eb",stroke:"#fff","stroke-width":px(2)});
     e.style.cssText="pointer-events:all;cursor:move;touch-action:none";e.addEventListener("pointerdown",ev=>outVertexDrag(ev,i,e));});
   ov.appendChild(svg);OUT.svg=svg;
 }
-function outDragGeneric(ev,el,onmove,onend){   // 共通: つかんで動かす(動かさなかったときは、履歴を増やさない)
-  ev.stopPropagation();ev.preventDefault();el.setPointerCapture(ev.pointerId);const rc=ov.getBoundingClientRect(),K0=K(),sx=ev.clientX,sy=ev.clientY;let moved=false;outPush();
-  const mv=e2=>{if(!moved&&Math.hypot(e2.clientX-sx,e2.clientY-sy)<4)return;moved=true;onmove((e2.clientX-rc.left)/K0,(e2.clientY-rc.top)/K0);outRender();};
-  const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);if(!moved)OUT.hist.pop();onend&&onend(moved);outBar();};
-  el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up);
+function outDragGeneric(ev,el,onmove,onend){   // 共通: つかんで動かす(動かさなかったときは、履歴を増やさない)。描き直しても途切れないよう、動きは document で受ける
+  ev.stopPropagation();ev.preventDefault();try{el.setPointerCapture(ev.pointerId);}catch{}const rc=ov.getBoundingClientRect(),K0=K(),sx=ev.clientX,sy=ev.clientY,pid=ev.pointerId;let moved=false;outPush();
+  const mv=e2=>{if(e2.pointerId!==pid)return;if(!moved&&Math.hypot(e2.clientX-sx,e2.clientY-sy)<4)return;moved=true;onmove((e2.clientX-rc.left)/K0,(e2.clientY-rc.top)/K0);outRender();};
+  const up=e2=>{if(e2.pointerId!==pid)return;document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);if(!moved)OUT.hist.pop();onend&&onend(moved);outBar();};
+  document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
 }
 let outLastTap={i:-1,t:0};
 function outVertexDrag(ev,i,el){
   OUT.sel=i;const now=Date.now(),dbl=outLastTap.i===i&&now-outLastTap.t<350;outLastTap={i,t:now};
   if(dbl){ev.stopPropagation();ev.preventDefault();outDelSel();return;}   // ダブルタップ: 頂点を消す
-  outDragGeneric(ev,el,(x,y)=>{OUT.pts[i]=[Math.max(0,Math.min(VW,x)),Math.max(0,Math.min(VH,y))];},()=>{});
+  outDragGeneric(ev,el,(x,y)=>{OUT.pts[i]=[Math.max(0,Math.min(VW,x)),Math.max(0,Math.min(VH,y))];},()=>{outRender();});
 }
 function outEdgeDrag(ev,i,el){   // 辺の一部を引く: その場所を通るように、曲線(2次ベジェ)にする
   const rc=ov.getBoundingClientRect(),K0=K(),P0=[(ev.clientX-rc.left)/K0,(ev.clientY-rc.top)/K0],a=OUT.pts[i],b=OUT.pts[(i+1)%outN()],dx=b[0]-a[0],dy=b[1]-a[1];
