@@ -613,3 +613,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 行間・字間のバー(.spbar): 表示の大きさ(×0.7〜3)と、スライダーの長さ(40〜260px)を、設定の窓(#spbUi)で変えられる。値は SPB={size,len} で、localStorage("pdfEditorSpBar")に覚える。大きさは bar.style.transform の scale に SPB.size を掛け、長さは CSS変数 --spLen。設定を動かすと、出ているバーにもすぐ反映(spbApply)。「標準に戻す」あり。
 - ヘッダーの「確定」(#sClose を、埋め込みでは「確定」に改名・先頭 order:-1): 入力枠を選んでいるときだけ出る。押すと select(null)=選択を外して枠をPDFに反映する(従来の「選択を解除」と同じ動き)。
 - テスト: test-studio-spbar.js。
+
+## v149 ページ編集 3.09: 隣のPDFの文字を、勝手に画像にしない
+- 症状: 入力が長くなって、隣のPDFの文字に一部だけ重なると、その隣の文字が「見えている部分だけの画像」(splitRun/remainsImage)に変わっていた(入力した文字は文字のまま)。
+- 直し: 反映(commit)の前に、一部だけ重なる隣の文字(U.ex で fr<0.9)があれば confirmPartial で聞く。「文字のまま残す(おすすめ)」=その文字を U.ex から外す(取り除かず・画像にもしない。重なって見えることがある)/「重なる部分を隠して、画像にして残す」=従来どおり。完全に隠れる文字は、従来どおり取り除く。
+- テスト: window.__partialAns("keep"/"img")で窓を省略できる。harness は __partialAns="img"(従来の動きのまま他のテストを通す)。test-studio-partialask.js は未設定にして窓を確かめる(samples/pic_neighbor.pdf を作る)。
