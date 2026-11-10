@@ -3623,6 +3623,17 @@ async function eraseSummary(it){
   }catch(e){console.warn("消す範囲を調べられませんでした",e);}
   return{img,txt:txt||""};
 }
+function confirmPartial(names){   // 入力した文字が、隣のPDFの文字の一部に重なるとき: 勝手に画像にせず、どうするかを聞く("keep"=文字のまま残す / "img"=重なる部分を隠して画像にする)
+  return new Promise(res=>{
+    const o=document.createElement("div");o.id="partialAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:460px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">入力した文字が、隣のPDFの文字に重なっています</p><p style="margin:0 0 8px;font-size:.9rem">${names.slice(0,4).map(n=>"「"+esc(n.length>20?n.slice(0,20)+"…":n)+"」").join("・")}${names.length>4?" ほか":""}</p><p style="margin:0 0 12px;font-size:.85rem;opacity:.85">「文字のまま残す」なら、隣の文字は文字のまま変わりません(重なって見えることがあります)。「重なる部分を隠す」と、隣の文字は、見えている部分だけの画像になります(文字ではなくなります)。枠を小さくして重ならないようにしてから確定することもできます。</p>`;
+    const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
+    const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
+    mk("文字のまま残す(おすすめ)","keep",true);mk("重なる部分を隠して、画像にして残す","img",false);
+    box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
+}
 function confirmErase(rows){
   return new Promise(res=>{
     const o=document.createElement("div");o.id="eraseAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
@@ -3813,6 +3824,8 @@ async function commit(only){
       const key=[b.x,b.y,b.w].map(v=>Math.round(v)).join(),ex=U.ex.get(key)||{b,run:rn,fr:0};ex.fr=Math.max(ex.fr,fr);U.ex.set(key,ex);
     }
   }
+  {const partial=[];for(const U of under.values())for(const [k,e] of U.ex)if(e.fr<0.9)partial.push([U,k,e]);   // 一部だけ重なる隣の文字: 勝手に画像にしない(聞く)
+   if(partial.length){const ans=window.__partialAns||await confirmPartial(partial.map(([,,e])=>e.run.str));if(ans==="keep")partial.forEach(([U,k])=>U.ex.delete(k));}}
   // 元のPDFの文字(拾い上げた部品・下になる文字)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
   {const byPage=new Map();todo.forEach(it=>{if(it.type==="fix"&&it.sig0&&!it.ocrMade){const a=byPage.get(it.page)||[];a.push(it);byPage.set(it.page,a);}});
    for(const pg of under.keys())if(!byPage.has(pg))byPage.set(pg,[]);
