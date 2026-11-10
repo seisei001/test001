@@ -65,7 +65,8 @@ body.embed #filePanel{display:none!important;}
 #embHead .row.hidden,#embHead .hidden{display:none!important;}
 #embHead select,#embHead input[type=number]{min-height:30px!important;font-size:16px;}
 #embHead #selPanel{border:0;padding:0;margin:0!important;background:none;box-shadow:none;border-radius:0;}
-#embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sClose,#embHead #sLsLbl{display:none!important;}
+#embHead #selPanel h2,#embHead #nudgeRow,#embHead #sErase,#embHead #sLsLbl{display:none!important;}
+#embHead #sClose{order:-1;}   /* 入力枠を確定するボタン: ヘッダーの先頭に出す */
 #embHead #selPanel,#embHead #selTextBox,#embHead #selPanel .row{display:contents;}   /* 道具は、1つながりに並べる(入りきらなければ折り返す) */
 body.embed .stage{overflow:visible;padding:clamp(28px,5vw,52px);}   /* ページのまわりに余白(回転のつまみなど、ページの外に出る持ち手も触れるように) */   /* 縦と横を、別々のスクロールにしない(別々だと、斜めに動かせない)。画面全体のスクロールひとつで、縦も横も斜めも動く */
 body.embed #editPanel{border:0;box-shadow:none;background:none;padding:6px 0;}
@@ -179,7 +180,7 @@ body.pt-touch .hdl.mv::before{content:"✥";}body.pt-touch .hdl.rs::before{conte
 @keyframes hblink{50%{opacity:1;}}
 .sample{position:absolute;left:0;top:0;color:rgba(0,0,0,.28);pointer-events:none;white-space:nowrap;}   /* 空の枠の、1文字の見本 */
 .spbar{position:absolute;left:6px;bottom:100%;margin-bottom:0;display:flex;flex-direction:column;gap:2px;align-items:stretch;white-space:nowrap;background:rgba(255,255,255,.94);border:1px solid #cbd5e1;border-radius:6px;padding:2px 6px;font-size:11px;color:#334155;transform-origin:0 100%;z-index:7;touch-action:none;-webkit-user-select:none;user-select:none;}   /* 行間・字間のバー: 枠の真上、✥の右から出す(右下の矢印に重ならない)。右端から出ても、動かさない(出し直さない) */
-.spbar label{display:flex;align-items:center;justify-content:space-between;gap:6px;}.spbar input{width:60px;margin:0 0 0 4px;vertical-align:middle;}
+.spbar label{display:flex;align-items:center;justify-content:space-between;gap:6px;}.spbar input{width:var(--spLen,60px);margin:0 0 0 4px;vertical-align:middle;}   /* 長さは、設定で変えられる */
 .grip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:absolute;width:11px;height:11px;border-radius:50%;background:#f9a8d4;border:1px solid #ec4899;color:#9d174d;font-size:8px;line-height:9px;text-align:center;touch-action:none;cursor:ns-resize;z-index:6;}   /* 文字の大きさを変える矢印(うすいピンク) */
 .grip::after{content:"";position:absolute;inset:-7px;}
 body.pt-touch .grip{width:18px;height:18px;line-height:16px;font-size:12px;transform:scale(var(--zs,1));}
@@ -608,8 +609,25 @@ function openHelp(){
   o.addEventListener("pointerdown",e=>{if(e.target===o)closeHelp();});
   document.body.appendChild(o);o.querySelector("#helpClose").onclick=closeHelp;
 }
+const SPB={size:1,len:60};   // 行間・字間のバー: 大きさの倍率と、スライダーの長さ(px)。設定で変えて、ブラウザに覚えておく
+try{const o=JSON.parse(localStorage.getItem("pdfEditorSpBar")||"null");if(o){SPB.size=Math.min(3,Math.max(0.7,+o.size||1));SPB.len=Math.min(260,Math.max(40,+o.len||60));}}catch{}
+function spbApply(){   // 見えているバーにも、すぐ反映する
+  document.documentElement.style.setProperty("--spLen",SPB.len+"px");
+  document.querySelectorAll(".spbar").forEach(b=>{const el=b.parentElement,k=typeof K==="function"?K():1;b.style.transform=`scale(${(((isTouch()?10:11.5)*Math.min(1.5,Math.max(0.5,k))/11)*SPB.size).toFixed(3)})`;});
+  if(typeof barKeepSoon==="function")barKeepSoon();
+}
+function spbSave(){try{localStorage.setItem("pdfEditorSpBar",JSON.stringify(SPB));}catch{}}
+function spbMakeUi(){   // 設定の窓に、バーの大きさ・長さの調整を足す
+  const sb=$("setBody");if(!sb||$("spbUi"))return;const d=document.createElement("div");d.id="spbUi";d.style.cssText="margin:14px 0;padding-top:10px;border-top:1px solid #cbd5e1";
+  d.innerHTML='<div style="font-weight:600;margin-bottom:6px">行間・字間のバー</div><label style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap">表示の大きさ <input type="range" id="spbSize" min="0.7" max="3" step="0.1" style="width:160px"> <b id="spbSizeV"></b></label><label style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap">バーの長さ <input type="range" id="spbLen" min="40" max="260" step="5" style="width:160px"> <b id="spbLenV"></b></label><button class="sub-btn" id="spbReset" style="margin:4px 0">標準に戻す</button>';
+  sb.appendChild(d);
+  const sz=$("spbSize"),ln=$("spbLen"),show=()=>{$("spbSizeV").textContent="×"+SPB.size.toFixed(1);$("spbLenV").textContent=SPB.len+"px";sz.value=SPB.size;ln.value=SPB.len;};
+  sz.oninput=()=>{SPB.size=+sz.value;show();spbApply();spbSave();};ln.oninput=()=>{SPB.len=+ln.value;show();spbApply();spbSave();};
+  $("spbReset").onclick=()=>{SPB.size=1;SPB.len=60;show();spbApply();spbSave();};show();
+}
 function closeSettings(){const o=$("setBox");o.classList.add("xhide");o.removeAttribute("style");}
 function openSettings(){
+  spbMakeUi();
   const o=$("setBox"),A=GEO.shown(),z=GEO.inv();   // 窓は、いま見えている範囲(SHOWN)に、ふだんの大きさで出す(出すとき1回だけ)
   o.classList.remove("xhide");
   o.style.cssText=`position:fixed;z-index:3000;left:${A.x}px;top:${A.y}px;width:${A.w/z}px;height:${A.h/z}px;transform:scale(${z});transform-origin:0 0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box`;
@@ -1312,7 +1330,7 @@ function renderOverlay(){
           gr.addEventListener("pointermove",mvf);gr.addEventListener("pointerup",up);gr.addEventListener("pointercancel",up);
         });
         el.appendChild(gr);
-        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${((isTouch()?10:11.5)*Math.min(1.5,Math.max(0.5,k))/11).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
+        const bar=document.createElement("div");bar.className="spbar";bar.style.transform=`scale(${(((isTouch()?10:11.5)*Math.min(1.5,Math.max(0.5,k))/11)*SPB.size).toFixed(3)})`;   // 標準: 文字10ptの大きさ(ページの表示倍率kに合わせる。画面の拡大率には左右されない)
 
         bar.innerHTML='<label>行間 <b class="v1"></b><input type="range" class="r1" min="0.8" max="3" step="0.05"></label><label>字間 <b class="v2"></b><input type="range" class="r2" min="-2" max="20" step="0.5"></label>';
         const r1=bar.querySelector(".r1"),r2=bar.querySelector(".r2"),v1=bar.querySelector(".v1"),v2=bar.querySelector(".v2");
@@ -4821,7 +4839,8 @@ if(EMBED){
     ["optImg","optOcr","optWarp","optTilt","optRot","optRule","selPanel"].forEach(id=>$("embRow4").appendChild($(id)));
     const sb=$("setBody");["ocrEngine","ocrClean","keepRule","keepFig","ovGhost","fxJoin","fxGap","nSize","nColor"].forEach(id=>{const lb=$(id).closest("label");lb.style.cssText="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap";sb.appendChild(lb);});   // たまにしか使わない設定は、「設定」の中
     $("bImgToggle").onclick=()=>{const off=document.body.classList.toggle("noimg");$("bImgToggle").textContent=off?"元画像を出す":"元画像を消す";};
-    $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;
+    $("embSet").onclick=openSettings;$("setClose").onclick=closeSettings;spbApply();
+    {const c=$("sClose");c.textContent="確定";c.title="いま選んでいる入力枠を、確定します(選択を外して、枠をPDFに反映します)";c.classList.remove("sub-btn");}   // ヘッダーでは「確定」(枠を選んでいるときだけ出る)
     $("bOcrRange").onclick=()=>{status("ページの上を、ドラッグして、認識する範囲を指定してください(指は、長押ししてから、ドラッグ)。");const b=$("bOcrRange");b.classList.add("on");setTimeout(()=>b.classList.remove("on"),4000);};
   }
   const send=m=>parent.postMessage(m,"*");
