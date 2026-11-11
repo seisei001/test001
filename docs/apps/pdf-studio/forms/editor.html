@@ -838,7 +838,8 @@ function buildBlocks(list,gapOverride){
 const fixSig=it=>JSON.stringify([it.txt,it.fm||0,it.size,it.color,Math.round(it.vx*10),Math.round(it.vy*10),Math.round(it.vw*10),Math.round(it.vh*10),it.ls||0,it.align||"left",it.fmt,it.font||"orig",it.sz||[]]);
 const ocrSigOf=it=>[it.txt,it.size,Math.round(it.vx),Math.round(it.vy),it.ls||0,it.align||"left"].join("|");
 const ocrEdited=it=>!!it.ocrMade&&it.ocrSig!=null&&ocrSigOf(it)!==it.ocrSig;   // 文字認識でできた枠を、直した(文字・大きさ・位置)あとかどうか。直したら、元の画像を重ねて見せるのをやめて、直した状態(元の文字は消えた状態)を見せる
-const fixChanged=it=>it.type!=="fix"||it.ocrMade||!it.sig0||fixSig(it)!==it.sig0;
+const fixChanged=it=>{if(it.type!=="fix")return true;if(it.autoOcr)return ocrEdited(it);   /* 枠を作って読み取った画像の文字は、直したときだけ反映する(直さなければ、画像に何もしない) */
+  return !!it.ocrMade||!it.sig0||fixSig(it)!==it.sig0;};
 // 背景の選び方(✥の設定): none=完全透明(何も隠さない)/ text=余白透明(文字のあるところだけ白抜き。標準)/ all=白抜き(枠の全体)
 const bgModeOf=it=>it.bgMode||(it.erase===false?"none":"text");
 let mctx=null;
@@ -1652,9 +1653,16 @@ function beginRange(e){
           made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
           made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
       }
-      if(!made0&&!tap&&!window.__noAutoOcr&&await rangeHasImage(x,y,w,h)){   // 画像の文字の上に枠を作った: その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本ではなく)
-        const n0=items.length;await doOcr(x,y,w,h).catch(()=>{});const got=items.slice(n0).filter(o=>o.ocrMade);
-        if(got.length){select(got[0],true);status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の画像の文字を消去するか、残すかを聞きます)。");return;}
+      if(!made0&&!window.__noAutoOcr){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)
+        const bx=tap?{x:0,y:Math.max(0,r.sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
+        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+        if(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)){
+          const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
+          if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
+            const dist=o=>{const dx=r.sx<o.vx?o.vx-r.sx:r.sx>o.vx+o.vw?r.sx-o.vx-o.vw:0,dy=r.sy<o.vy?o.vy-r.sy:r.sy>o.vy+o.vh?r.sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
+            const best=got.slice().sort((p,q)=>dist(p)-dist(q))[0];items=items.filter(o=>!got.includes(o)||o===best);got=[best];}
+          if(got.length){got.forEach(o=>{o.autoOcr=true;});select(got[0],true);status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(直さなければ、何も変えません。直したときは、確定のとき、元の画像の文字を消去するか、聞きます)。");return;}
+        }
       }
       if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     }
@@ -3669,7 +3677,7 @@ function confirmErase(rows){
       rows.map((r,i)=>`<div style="margin:0 0 10px;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px"><div style="font-size:.8rem;opacity:.8">消す範囲${rows.length>1?" "+(i+1):""}</div>${r.img?`<img src="${r.img}" style="max-width:100%;border:1px solid #ccc;background:#fff;display:block;margin:4px 0">`:""}<div style="font-size:.9rem">読み取った文字: ${r.txt?`<b>「${esc(r.txt.slice(0,80))}」</b>`:"(読み取れませんでした。上の画像の範囲を消します)"}</div></div>`).join("");
     const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
-    mk("はい(元の文字を消去して、置き換える)",true,true);mk("いいえ(元の文字は残して、文字を置く)",false,false);
+    mk("はい(元の文字を消去して、置き換える)",true,true);mk("いいえ(元の画像には触らず、入力した文字だけを置く)",false,false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
 // ===== 自由編集: 文字の上に枠を作ったとき、枠の中の文字を、1文字ずつの部品にして、1文字ずつ直す =====
