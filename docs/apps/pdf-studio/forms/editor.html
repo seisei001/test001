@@ -434,7 +434,7 @@ $("fOpen").onchange=busy(async e=>{
 $("fMerge").onchange=busy(async e=>{
   const files=[...e.target.files];if(!files.length)return;
   if(!bytes){status("先にPDFを開くか新規作成してください。");return;}
-  await commit();
+  if((await commit())==="cancel")return;
   const doc=await PDFDocument.load(bytes);
   for(const f of files){
     const o=await PDFDocument.load(await readFile(f));
@@ -460,9 +460,9 @@ async function saveAs(b,name,keep){
   if(keep){saveHandle=h;fileName=h.name;$("bOverwrite").classList.remove("hidden");$("bOverwrite").disabled=false;}
   status(`「${h.name}」として保存しました。`);return true;
 }
-$("bSave").onclick=busy(async()=>{await commit();await saveAs(bytes,fileName,true);});
+$("bSave").onclick=busy(async()=>{if((await commit())==="cancel")return;await saveAs(bytes,fileName,true);});
 $("bOverwrite").onclick=busy(async()=>{   // 保存したファイルに、そのまま上書き
-  if(!saveHandle)return;await commit();
+  if(!saveHandle)return;if((await commit())==="cancel")return;
   const w=await saveHandle.createWritable();await w.write(new Blob([bytes],{type:"application/pdf"}));await w.close();
   status(`「${saveHandle.name}」に上書き保存しました。`);
 });
@@ -475,13 +475,13 @@ $("bAll").onclick=()=>{const n=pdfView.numPages;sel=sel.size===n?new Set():new S
 function renderGridChecks(){[...$("grid").children].forEach((d,i)=>d.querySelector("input").checked=sel.has(i));}
 function target(){return sel.size?selList():[cur];}
 $("bRot").onclick=busy(async()=>{
-  await commit();
+  if((await commit())==="cancel")return;
   const doc=await PDFDocument.load(bytes);
   target().forEach(i=>{const p=doc.getPage(i);p.setRotation(degrees((p.getRotation().angle+90)%360));});
   await setBytes(await doc.save(),true);
 });
 $("bDel").onclick=busy(async()=>{
-  await commit();
+  if((await commit())==="cancel")return;
   const t=target();const doc=await PDFDocument.load(bytes);
   if(t.length>=doc.getPageCount()){status("全ページは削除できません。");return;}
   if(!confirm(`${t.length}ページを削除しますか?(元に戻すで復元できます)`))return;
@@ -489,7 +489,7 @@ $("bDel").onclick=busy(async()=>{
   await setBytes(await doc.save());
 });
 async function move(dir){
-  await commit();
+  if((await commit())==="cancel")return;
   const t=selList();if(!t.length){status("移動するページにチェックを入れてください。");return;}
   const n=pdfView.numPages;const order=[...Array(n).keys()];
   const set=new Set(t);
@@ -502,13 +502,13 @@ async function move(dir){
 }
 $("bUp").onclick=busy(()=>move(-1));$("bDown").onclick=busy(()=>move(1));
 $("bBlank").onclick=busy(async()=>{
-  await commit();
+  if((await commit())==="cancel")return;
   const doc=await PDFDocument.load(bytes);const ref=doc.getPage(cur);
   const {width,height}=ref.getSize();doc.insertPage(cur+1,[width,height]);
   cur=cur+1;sel=new Set();await setBytes(await doc.save(),true);
 });
 $("bExtract").onclick=busy(async()=>{
-  await commit();
+  if((await commit())==="cancel")return;
   const t=selList();if(!t.length){status("分割するページにチェックを入れてください。");return;}
   const src=await PDFDocument.load(bytes);const out=await PDFDocument.create();
   (await out.copyPages(src,t)).forEach(p=>out.addPage(p));
@@ -1004,7 +1004,7 @@ async function applyNow(it){
   const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
   if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&((it.sig0&&fixChanged(it))||(it.ocrMade&&ocrEdited(it)))))||it._noApply||!(it.txt||"").trim())return;   // 文字認識でできた枠も、直したら(ocrEdited)、選択を外したときに、PDFにする(元の画像の文字は隠れ、直した文字がPDFの文字になる)
   applying=true;ov.style.pointerEvents="none";
-  applyP=(async()=>{try{await commit([it]);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
+  applyP=(async()=>{try{if((await commit([it]))==="cancel"&&items.includes(it))setTimeout(()=>select(it,true),0);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
   await applyP;applyP=null;
 }
 function pruneEmpty(it){   // 何も入力しなかった新しい文字の枠は、選択を外したときに消す(枠だけが増えていくのを防ぐ)
@@ -2314,7 +2314,7 @@ function updateFreeSvg(){
   u.sh.setAttribute("d",`M${o2[0]+s} ${o2[1]-s}L${o2[0]+s} ${o2[1]+s}L${o2[0]-s} ${o2[1]+s}Z`);
 }
 async function applyFreeWarp(){
-  const wp=warp;await commit();status("補正中…");
+  const wp=warp;if((await commit())==="cancel")return;status("補正中…");
   const WS=Math.min(5,3000/Math.max(VW,VH)),page=await renderRegion(0,0,VW,VH,WS),orig=document.createElement("canvas");orig.width=page.width;orig.height=page.height;orig.getContext("2d").drawImage(page,0,0);
   const g=page.getContext("2d"),path=(ctx,poly,sc,ox=0,oy=0)=>{ctx.beginPath();poly.forEach((q,i)=>{if(i)ctx.lineTo(q[0]*sc-ox,q[1]*sc-oy);else ctx.moveTo(q[0]*sc-ox,q[1]*sc-oy);});ctx.closePath();};
   if($("wErase").checked){g.save();g.fillStyle="#fff";path(g,wp.poly,WS);g.fill();g.lineWidth=Math.max(1,WS);g.strokeStyle="#fff";g.stroke();g.restore();}   // 元の形は、白く消す
@@ -2343,7 +2343,7 @@ async function applyFreeWarp(){
 async function applyWarp(){
   if(!warp||!bytes)return;
   if(warp.kind==="free")return applyFreeWarp();
-  const wp=warp;await commit();   // 未確定の文字・画像は先にページへ書き込む(補正で一緒に整う)
+  const wp=warp;if((await commit())==="cancel")return;   // 未確定の文字・画像は先にページへ書き込む(補正で一緒に整う)
   status("補正中…");
   const WS=Math.min(5,3000/Math.max(VW,VH)),page=await renderRegion(0,0,VW,VH,WS),around=warpOpt.around;
   const orig=document.createElement("canvas");orig.width=page.width;orig.height=page.height;orig.getContext("2d").drawImage(page,0,0);   // 直す前のページ(貼る材料)
@@ -3683,12 +3683,13 @@ function confirmKeepOrig(names){   // 確定のとき: 元の文字○○を消�
     box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">元の文字は、消去されます</p><p style="margin:0 0 6px;font-size:.88rem;opacity:.85">次の元の文字を消して、入力した文字に置き換えます。</p>${list}<p style="margin:10px 0 12px;font-size:.85rem;opacity:.85">元の文字を残して、そこに文字を置くこともできます(重なって見えることがあります)。</p>`;
     const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
-    mk("はい(元の文字を消去して、置き換える)","erase",true);mk("いいえ(元の文字は残して、文字を置く)","keep",false);
+    mk("はい(元の文字を消去して、置き換える)","erase",true);mk("いいえ(元の文字は残して、文字を置く)","keep",false);mk("戻る(確定せず、編集に戻る)","back",false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
 async function askKeepOrig(pool){   // 元のPDFの文字を直した枠: 反映する前に、消去するかを聞く。「残す」なら、元の文字に触らない新しい文字の枠(透明)にする
   const c=pool.filter(it=>it.type==="fix"&&it.sig0&&!it.ocrMade&&fixChanged(it)&&(it.txt||"").trim()&&it._keepAns===undefined);if(!c.length)return;
   const ans=window.__keepAns||await confirmKeepOrig(c.map(it=>it.ol?it.ol.map(l=>l.txt0).join(" "):(it.t0||"")));
+  if(ans==="back")return"back";
   c.forEach(it=>{it._keepAns=ans;if(ans==="keep"){it.type="text";it.bgMode="none";it.erase=false;it.covers=null;it.cover=null;it.ol=null;it._ol0=null;it.sig0=null;it.fsig=null;}});
 }
 function confirmPartial(names){   // 入力した文字が、隣のPDFの文字の一部に重なるとき: 勝手に画像にせず、どうするかを聞く("keep"=文字のまま残す / "img"=重なる部分を隠して画像にする)
@@ -3699,7 +3700,7 @@ function confirmPartial(names){   // 入力した文字が、隣のPDFの文字�
     box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">入力した文字が、隣のPDFの文字に重なっています</p><p style="margin:0 0 8px;font-size:.9rem">${names.slice(0,4).map(n=>"「"+esc(n.length>20?n.slice(0,20)+"…":n)+"」").join("・")}${names.length>4?" ほか":""}</p><p style="margin:0 0 12px;font-size:.85rem;opacity:.85">「文字のまま残す」なら、隣の文字は文字のまま変わりません(重なって見えることがあります)。「重なる部分を隠す」と、隣の文字は、見えている部分だけの画像になります(文字ではなくなります)。枠を小さくして重ならないようにしてから確定することもできます。</p>`;
     const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
-    mk("文字のまま残す(おすすめ)","keep",true);mk("重なる部分を隠して、画像にして残す","img",false);
+    mk("文字のまま残す(おすすめ)","keep",true);mk("重なる部分を隠して、画像にして残す","img",false);mk("戻る(確定せず、編集に戻る)","back",false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
 function confirmErase(rows){
@@ -3711,7 +3712,7 @@ function confirmErase(rows){
       rows.map((r,i)=>`<div style="margin:0 0 10px;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px"><div style="font-size:.8rem;opacity:.8">消す範囲${rows.length>1?" "+(i+1):""}</div>${r.img?`<img src="${r.img}" style="max-width:100%;border:1px solid #ccc;background:#fff;display:block;margin:4px 0">`:""}<div style="font-size:.9rem">読み取った文字: ${r.txt?`<b>「${esc(r.txt.slice(0,80))}」</b>`:"(読み取れませんでした。上の画像の範囲を消します)"}</div></div>`).join("");
     const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
-    mk("はい(元の文字を消去して、置き換える)",true,true);mk("いいえ(元の画像には触らず、入力した文字だけを置く)",false,false);
+    mk("はい(元の文字を消去して、置き換える)",true,true);mk("いいえ(元の画像には触らず、入力した文字だけを置く)",false,false);mk("戻る(確定せず、編集に戻る)","back",false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
 // ===== 自由編集: 文字の上に枠を作ったとき、枠の中の文字を、1文字ずつの部品にして、1文字ずつ直す =====
@@ -3799,7 +3800,7 @@ function freeFormShow(){
   });
   $f("ffDel").onclick=()=>freeDelete();
   $f("ffAdd").onclick=()=>upd(c=>{const nq={...c.q,c:"あ",x:c.q.x+freeWidth(c.q)};c.it.chs.splice(c.i+1,0,nq);FREE.cur={it:c.it,i:c.i+1};});
-  $f("ffOk").onclick=busy(async()=>{await commit();status("PDFに反映しました。");});
+  $f("ffOk").onclick=busy(async()=>{if((await commit())==="cancel")return;status("PDFに反映しました。");});
   $f("ffCancel").onclick=()=>{items=items.filter(o=>!o.free);closeFreeForm();renderOverlay();status("自由編集をやめました。元のままです。");};
   freeFormSync();
 }
@@ -3843,7 +3844,7 @@ async function commit(only){
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
   {const fr0=(only||items).filter(it=>it.free);   // 自由編集の文字は、先にPDFに書く
    if(fr0.length){await commitFree(fr0);items=items.filter(x=>!fr0.includes(x));if(only)only=only.filter(x=>!fr0.includes(x));closeFreeForm();}}
-  await askKeepOrig(only||items);
+  if(await askKeepOrig(only||items)==="back"){status("確定せずに、編集に戻りました。");return"cancel";}   // 「戻る」: 何も変えずに、編集に戻る
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
@@ -3855,6 +3856,7 @@ async function commit(only){
     if(cand.length){
       status("消す範囲を確かめています…");const rows=[];for(const it of cand)rows.push(await eraseSummary(it));
       const yes=await confirmErase(rows);
+      if(yes==="back"){status("確定せずに、編集に戻りました。");return"cancel";}
       cand.forEach(it=>{it._eraseOK=yes;if(!yes){it.bgMode="none";it.erase=false;it._ink=null;}else if(it._eraseForced){it.bgMode="text";it._ink=null;}});   // いいえ: 消さずに、文字だけ置く(図には何もしない)。はい(インクを見つけられなかったとき): 文字のある所だけ白抜き
       if(!yes)status("画像の文字は消さずに、文字だけ置きます。");
     }
@@ -3896,7 +3898,7 @@ async function commit(only){
     }
   }
   {const partial=[];for(const U of under.values())for(const [k,e] of U.ex)if(e.fr<0.9)partial.push([U,k,e]);   // 一部だけ重なる隣の文字: 勝手に画像にしない(聞く)
-   if(partial.length){const ans=window.__partialAns||await confirmPartial(partial.map(([,,e])=>e.run.str));if(ans==="keep")partial.forEach(([U,k])=>U.ex.delete(k));}}
+   if(partial.length){const ans=window.__partialAns||await confirmPartial(partial.map(([,,e])=>e.run.str));if(ans==="back"){status("確定せずに、編集に戻りました。");return"cancel";}if(ans==="keep")partial.forEach(([U,k])=>U.ex.delete(k));}}
   // 元のPDFの文字(拾い上げた部品・下になる文字)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
   {const byPage=new Map();todo.forEach(it=>{if(it.type==="fix"&&it.sig0&&!it.ocrMade){const a=byPage.get(it.page)||[];a.push(it);byPage.set(it.page,a);}});
    for(const pg of under.keys())if(!byPage.has(pg))byPage.set(pg,[]);
@@ -4250,7 +4252,7 @@ async function tiltAutoAngle(){   // 文字の行が水平に一番そろう角�
 }
 async function tiltApply(){
   const a=+$("shAng").value||0;if(!a){status("角度が 0 度です。角度を決めてから押してください。");return;}
-  await commit();status("傾きを直しています…");
+  if((await commit())==="cancel")return;status("傾きを直しています…");
   const WS=shapeScale(VW,VH),page=await renderRegion(0,0,VW,VH,WS);
   await replacePageImage(tiltDraw(page,a,page.width,page.height),VW,VH,`傾きを ${a} 度直しました(このページは画像になりました。四隅の余白は白です)。元に戻すで戻せます。`);
 }
@@ -4261,11 +4263,11 @@ $("shTiltApply").onclick=busy(tiltApply);
 // (切り抜きは、整形の「範囲と補正」に統合しました: 範囲 → 補正 → 置き場所 → まわり)
 // --- 回転・反転 ---
 async function pageRotate(delta){
-  await commit();const doc=await PDFDocument.load(bytes),pg=doc.getPage(cur);pg.setRotation(degrees((((pg.getRotation().angle+delta)%360)+360)%360));
+  if((await commit())==="cancel")return;const doc=await PDFDocument.load(bytes),pg=doc.getPage(cur);pg.setRotation(degrees((((pg.getRotation().angle+delta)%360)+360)%360));
   await setBytes(await doc.save(),true);status(`ページを${delta===180?"180度":delta>0?"右に90度":"左に90度"}回しました。元に戻すで戻せます。`);setMode(shapeTool);
 }
 async function pageFlip(horizontal){
-  await commit();status("反転しています…");
+  if((await commit())==="cancel")return;status("反転しています…");
   const WS=shapeScale(VW,VH),page=await renderRegion(0,0,VW,VH,WS),out=document.createElement("canvas");out.width=page.width;out.height=page.height;
   const c=out.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,out.width,out.height);
   if(horizontal){c.translate(out.width,0);c.scale(-1,1);}else{c.translate(0,out.height);c.scale(1,-1);}
@@ -4941,10 +4943,10 @@ if(EMBED){
   }));
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
-  $("embSave").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"result",bytes:bytes.slice()});});
-  $("embPrint").onclick=busy(async()=>{if(!bytes)return;await commit();send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
+  $("embSave").onclick=busy(async()=>{if(!bytes)return;if((await commit())==="cancel")return;send({type:"result",bytes:bytes.slice()});});
+  $("embPrint").onclick=busy(async()=>{if(!bytes)return;if((await commit())==="cancel")return;send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
   $("embCancel").onclick=()=>{const changed=hist.length>0||RULE.ovals.length>0||items.some(it=>it.free||((it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it)));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する
-  if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();await commit();send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
+  if(FORMKIND==="warp")$("wApply").onclick=busy(async()=>{await applyWarp();if((await commit())==="cancel")return;send({type:"result",bytes:bytes.slice()});});   // 補正したら、そのまま束に戻す
   send({type:"ready"});
   setInterval(()=>send({type:"needzoom"}),1500);   // 拡大率を、ときどき親に問い合わせる(通知が届かなかったときの保険)
 }
