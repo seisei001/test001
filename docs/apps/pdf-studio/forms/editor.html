@@ -294,6 +294,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <label id="sLsLbl">字間(pt) <input type="number" id="sLs" min="-2" max="40" step="0.1" style="width:80px"></label>
 <label title="文字の色"><span class="lbl">色</span> <input type="color" id="sColor"></label>
 <div class="seg"><button id="sFmtT" title="文字として(選択・コピー・検索ができる)">文字</button><button id="sFmtP" title="画像として(見た目のまま固定)">画像</button></div>
+<div class="seg" id="sUnderSeg" title="枠の下(元の画像・元の文字)を、どうするか"><button data-u="keep">そのまま重ねる</button><button data-u="erase">文字だけ消す</button><button data-u="white">白く塗る</button></div><button class="sub-btn" id="sRead" title="枠の下の文字(PDFの文字・画像の文字)を読み取って、枠に入れます">下の文字を読み取る</button>
 <div class="seg" id="sWrapSeg"><button id="sWrap" title="枠の幅で折り返します(PDFの元の行のままにしません)。もう一度押すと、元の行に戻ります">折り返す</button></div>
 <div class="seg" id="sFmtSeg"><button id="sBold" title="選んだ文字を太字に(Ctrl+B)">太字</button><button id="sUl" title="選んだ文字に下線を引く(Ctrl+U)">下線</button><button id="sStk" title="選んだ文字を二重線で消して、訂正します">二重線</button></div>
 <div class="seg"><button id="sAL" title="左揃え">左</button><button id="sAC" title="中央揃え">中</button><button id="sAR" title="右揃え">右</button></div>
@@ -878,7 +879,7 @@ function renderCovers(it){   // 画面の、元の文字を隠す四角を作り
   if(!items.includes(it))return;   // 消去した枠の、あとから終わった処理(文字だけ消す)で、四角・パッチが残らないように
   const k=K(),bg=bgOf(it);let rs;
   if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"){
-    const need=it.type==="text"||ocrEdited(it)||it===cs;   // 直していない文字認識の枠は、元の画像を重ねて見せるので、パッチは要らない(枠が多いページで、重くならないように。確定のときに作る)
+    const need=it.type==="text"||it.readFrame||ocrEdited(it)||it===cs;   // 直していない文字認識の枠は、元の画像を重ねて見せるので、パッチは要らない(枠が多いページで、重くならないように。確定のときに作る)
     if(need)inkCompute(it).catch(()=>{});
     const st=need?it._ink:null;
     if(st&&!st.busy&&!st.failed){   // 文字のインクだけを消した、パッチの画像を、元の画像の上に重ねる
@@ -897,7 +898,7 @@ function renderCovers(it){   // 画面の、元の文字を隠す四角を作り
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
   if(it.type==="img")return;
-  if(el&&it.ocrMade)el.classList.toggle("ocrf",!ocrEdited(it));
+  if(el&&it.ocrMade)el.classList.toggle("ocrf",!it.readFrame&&!ocrEdited(it));
   renderCovers(it);
 }
 // すでに訂正の部品にした文字(元の文字を隠す範囲の中の文字)かどうか。ほかの枠をドラッグで作るとき、同じ文字を二重に取り込まないため
@@ -944,7 +945,7 @@ function newText(x,y,w,h){
   const size=newSizePt||autoSize(w,h);if(!newSizePt)$("nSize").value=size;   // 自分で決めたサイズがなければ、枠から割り出したサイズを、欄にも表示する
   // 枠の範囲に、PDFの文字(文字のデータ)がなければ、そこにあるのは画像(スキャン・写真)。画像の上に置く枠は、PDFにする瞬間に、枠の範囲の下の文字のインクだけを消す。PDFの文字があるときは、従来どおり(文字を取り除く)
   const fr0={x:x,y:y,w:w,h:Math.max(h,size*1.3)},imgPage=!!pdfView&&!(runsFor===cur&&runs.some(r=>{const b=runBox(r);return b.x<fr0.x+fr0.w&&fr0.x<b.x+b.w&&b.y<fr0.y+fr0.h&&fr0.y<b.y+b.h;}));   // (文字のデータを、まだ読んでいないときは、画像として扱う)
-  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true,bgMode:imgPage?"ink":undefined};   // ページの高さの6%まで(1〜2行の、文字を置き換える小さな枠)だけ。大きな枠(絵や写真の上に、大きく置いた枠)は、下の画像を消さない(消したいときは、✥の設定の背景で選ぶ)   // 画像のページに置く文字の枠は、枠の範囲の下の文字のインクだけを消す(罫線・図形・背景は残す)
+  return{id:nextId++,type:"text",fmt:"text",page:cur,vx:x,vy:y,vw:w,vh:Math.max(h,size*1.3),txt:"",sz:[],size,color:$("nColor").value,lh:1.3,autoFit:true,bgMode:"none"};void imgPage;   // ページの高さの6%まで(1〜2行の、文字を置き換える小さな枠)だけ。大きな枠(絵や写真の上に、大きく置いた枠)は、下の画像を消さない(消したいときは、✥の設定の背景で選ぶ)   // 画像のページに置く文字の枠は、枠の範囲の下の文字のインクだけを消す(罫線・図形・背景は残す)
 }
 // 元の文字を隠す範囲: 全体を囲む四角ではなく、文字のある所だけ(行ごと・かたまりごと)。罫線や行の間の背景を消さない
 function tightCovers(list){
@@ -1002,7 +1003,7 @@ let applying=false,applyP=null;   // applyP: 反映の最中(保存は、これ�
 // 直したPDFの部品は、選択を外したとき、PDFの元の文字を取り除いて、新しい文字に置き換える(確認を出す)。そのあと、PDFの文字から枠を作り直す。やめたときは、保存するときに反映する
 async function applyNow(it){
   const isNew=it.type==="text";   // 新しく入力した文字: PDFの文字になる(枠の形は、文字に合わせて作り直される)。置き換えるものがないので、確認は出さない
-  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&((it.sig0&&fixChanged(it))||(it.ocrMade&&ocrEdited(it)))))||it._noApply||!(it.txt||"").trim())return;   // 文字認識でできた枠も、直したら(ocrEdited)、選択を外したときに、PDFにする(元の画像の文字は隠れ、直した文字がPDFの文字になる)
+  if(applying||!items.includes(it)||!(isNew||(it.type==="fix"&&((it.sig0&&fixChanged(it))||(it.ocrMade&&(ocrEdited(it)||it.readFrame)))))||it._noApply||!(it.txt||"").trim())return;   // 文字認識でできた枠も、直したら(ocrEdited)、選択を外したときに、PDFにする(元の画像の文字は隠れ、直した文字がPDFの文字になる)
   applying=true;ov.style.pointerEvents="none";
   applyP=(async()=>{try{if((await commit([it]))==="cancel"&&items.includes(it))setTimeout(()=>select(it,true),0);}catch(e){it._noApply=true;console.error(e);status("反映できませんでした: "+(e.message||e));}finally{applying=false;ov.style.pointerEvents="";}})();
   await applyP;applyP=null;
@@ -1224,7 +1225,7 @@ document.addEventListener("pointerdown",e=>{if(!ctx.contains(e.target))hideCtx()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")hideCtx();});
 window.addEventListener("scroll",hideCtx,true);
 function boxStyle(it,el){
-  if(it.ocrMade){const u=!ocrEdited(it);if(el.classList.contains("ocrf")!==u){el.classList.toggle("ocrf",u);renderCovers(it);}}   // 動かした・大きさを変えたら、元の画像を重ねて見せるのをやめる
+  if(it.ocrMade){const u=!it.readFrame&&!ocrEdited(it);if(el.classList.contains("ocrf")!==u){el.classList.toggle("ocrf",u);renderCovers(it);}}   // 動かした・大きさを変えたら、元の画像を重ねて見せるのをやめる
   const k=K();el.style.left=it.vx*k+"px";el.style.top=it.vy*k+"px";el.style.width=it.vw*k+"px";el.style.height=it.vh*k+"px";
   const t=el.querySelector(".t");
   if(t){t.style.whiteSpace=it.ol?"pre":"";t.style.overflowWrap=it.ol?"normal":"";t.style.fontFamily=famOf(it.fmt,it.font);t.style.letterSpacing=(it.ls||0)*k+"px";t.style.fontSize=it.size*k+"px";t.style.lineHeight=it.lh;t.style.color=it.color;t.style.textAlign=it.align||"left";t.querySelectorAll("span[data-s]").forEach(sp=>{sp.style.fontSize=(+sp.dataset.s)*k+"px";});}
@@ -1299,7 +1300,7 @@ function renderOverlay(){
   });
   renderFree(k);
   items.filter(it=>it.page===cur&&!it.free).forEach(it=>{
-    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade&&!ocrEdited(it)?" ocrf":"");
+    const el=document.createElement("div");el.className="ibox"+(it===cs?" on":"")+(it===cs&&it.type!=="img"&&(!isTouch()||it._editing)?" edit":"")+((it.type==="fix"||it.ocrMade)?" cmp":"")+(it.ocrMade&&!it.readFrame&&!ocrEdited(it)?" ocrf":"");
     if(it.type==="img"){const im=document.createElement("img");im.src=it.data.url;el.appendChild(im);}
     else{
       const t=document.createElement("div");t.className="t";t.spellcheck=false;
@@ -1597,6 +1598,8 @@ function syncPanel(){
   $("selTextBox").classList.toggle("hidden",it.type==="img");
   $("sErase").classList.toggle("hidden",it.type!=="fix");
   $("sFree").classList.toggle("hidden",!(it.type==="fix"&&!it.ocrMade&&it.sig0));
+  {const u=underOf(it),txtish=it.type==="text"||it.type==="fix";$("sUnderSeg").classList.toggle("hidden",!txtish);$("sRead").classList.toggle("hidden",it.type!=="text");
+   [...$("sUnderSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.u===u));}
   $("sColor").value=it.color||"#000000";showSize();
   ["L","C","R"].forEach((k,i)=>$("sA"+k).classList.toggle("on",(it.align||"left")===["left","center","right"][i]));
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
@@ -1629,6 +1632,8 @@ document.addEventListener("keydown",e=>{if(!e.altKey||!cs||!/^Arrow/.test(e.key)
 $("sDel").onclick=()=>{if(cs)deleteItem(cs,true);};
 ["sDel","sClose","sErase","sFree"].forEach(i=>$(i).addEventListener("mousedown",e=>e.preventDefault()));   // ボタンを押しても、入力中の枠から、フォーカスを奪わない(奪うと、確定・画面の組み直しが先に起きて、押した操作が空振りすることがある)
 $("sClose").onclick=()=>select(null);
+[...$("sUnderSeg").children].forEach(b=>{b.addEventListener("mousedown",e=>e.preventDefault());b.onclick=()=>{if(cs)setUnder(cs,b.dataset.u);};});
+$("sRead").addEventListener("mousedown",e=>e.preventDefault());$("sRead").onclick=busy(async()=>{await readUnder();});
 $("sFree").onclick=()=>{if(cs&&cs.type==="fix")startFree({made:[cs],n:0});};
 
 // --- ドラッグで範囲指定 ---
@@ -1665,17 +1670,8 @@ function beginRange(e){
       await doOcr(x,y,w,h);
       if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}   // 変換が終わったら、そのまま選択・訂正できる状態に
       return;}
-    if(mode==="text"){
-      let made0=null;
-      if(!tap&&!window.__noUnderAsk){   // 枠の下に、PDFの文字があるときは、元の文字を拾って訂正する枠にする(多くは、元の文字を直したいため)。ほかの扱いは、枠のそばの案内から選べる
-        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
-        const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
-        if(inside.length){const groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
-          made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
-          made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
-      }
-      if(!made0&&!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,tap,r.sx,r.sy);if(got){select(got[0],true);return;}}   // 画像の文字の上に枠を作った: 読み取った文字を入力枠に入れる
-      if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
+    if(mode==="text"){   // 枠を作るだけ(読み取りも、消去もしない)。中身は、手で入れるか「下の文字を読み取る」で入れる。下地の扱いは、ヘッダーで選ぶ(初めは、そのまま重ねる)
+      it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);
     }
     else if(mode==="img"){
       const bw=tap?150:w,bh=tap?150*imgData.ratio:h;
@@ -1693,8 +1689,7 @@ function beginRange(e){
       }
       if(!groups.length){
         if(tap){renderOverlay();return;} // 文字のない所のタップは、選択の解除だけ
-        // 文字のない所をドラッグ→画像の文字なら読み取って入力枠に入れる。何も読み取れなければ、新しい文字の枠
-        if(!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,false,r.sx,r.sy);if(got){select(got[0],true);return;}}
+        // 文字のない所をドラッグ→新しい文字の枠(読み取りは「下の文字を読み取る」で)
         it=newText(x,y,w,h);items.push(it);
         if(!runs.length)status("このページにはPDFの文字データがありません(スキャン画像など)。画像の文字は「🔍 画像の文字を認識」で文字にできます。今回は新しい文字の枠を作りました。");
       }else{
@@ -3674,6 +3669,39 @@ async function eraseSummary(it){
   }catch(e){console.warn("消す範囲を調べられませんでした",e);}
   return{img,txt:txt||""};
 }
+// ===== 下地の扱い(枠ごとに1つ): keep=そのまま重ねる / erase=文字だけ消す / white=白く塗る。選んだ瞬間に、画面がその結果の見た目になる =====
+function underOf(it){const m=bgModeOf(it);return m==="none"?"keep":m==="all"?"white":"erase";}
+function setUnder(it,u){
+  it.bgMode=u==="keep"?"none":u==="white"?"all":(it.type==="fix"&&!it.ocrMade)?undefined:"ink";   // 文字だけ消す: PDFの文字は取り除く/画像の文字は、文字のインクだけ消す(罫線は残す)
+  it.erase=u!=="keep";it._ink=null;it._eraseOK=undefined;
+  renderOverlay();syncPanel();
+  status(u==="keep"?"枠の下は、そのままです(入力した文字を、上に重ねます)。":u==="white"?"枠の中を、白く塗ります。":"枠の下の文字だけを消します(罫線・図形・背景は残します)。");
+}
+async function readUnder(){   // 「下の文字を読み取る」: 枠の下の文字を、枠に入れる。PDFの文字があれば拾う(訂正の枠)。なければ、画像の文字を読み取る
+  const it=cs;if(!it||it.type!=="text")return;const x=it.vx,y=it.vy,w=it.vw,h=it.vh,u=underOf(it);
+  if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+  const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
+  if(inside.length){const groups=$("fxJoin").checked?[inside]:buildBlocks(inside),made=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
+    items=items.filter(o=>o!==it);cs=null;made.forEach(m=>{items.push(m);});select(made[0],true);
+    status(`PDFの文字(${inside.length}個)を、枠に入れました。下地は「文字だけ消す」(元の文字を、直した文字に置き換える)です。変えるときは、ヘッダーで選んでください。`);return;}
+  const before=new Set(items);items=items.filter(o=>o!==it);cs=null;renderOverlay();
+  await doOcr(x,y,w,h).catch(()=>{});const got=items.filter(o=>!before.has(o)&&o.ocrMade);
+  if(!got.length){items.push(it);select(it,true);status("下の文字を、読み取れませんでした。枠の位置・大きさを直して、もう一度読み取るか、手で入力してください。");return;}
+  got.forEach(g=>{g.readFrame=true;g.bgMode=u==="keep"?"none":u==="white"?"all":"ink";g._ink=null;});   // 下地の扱いは、枠で選んでいたまま
+  renderOverlay();select(got[0],true);
+  status("下の文字を読み取って、枠に入れました。下地の扱い(そのまま重ねる/文字だけ消す/白く塗る)は、ヘッダーで選べます。");
+}
+function confirmApply(n){   // 確定の確認は1回だけ: いま見えているとおりに、PDFに書き込む
+  return new Promise(res=>{
+    if(window.__noConfirmAsk)return res(true);
+    const o=document.createElement("div");o.id="applyAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">この見た目で確定します</p><p style="margin:0 0 12px;font-size:.9rem;opacity:.85">いま画面に見えているとおりに${n>1?`(${n}個の枠)`:""}、PDFに書き込みます。確定したあとは、見えているものが、そのまま結果になります(元に戻すで戻せます)。</p>`;
+    const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
+    const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
+    mk("確定する",true,true);mk("戻る(確定せず、編集に戻る)",false,false);
+    box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
+}
 function confirmKeepOrig(names){   // 確定のとき: 元の文字○○を消去して置き換えるか、元の文字は残して文字を置くかを聞く("erase"/"keep")
   return new Promise(res=>{
     const o=document.createElement("div");o.id="keepAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
@@ -3685,6 +3713,9 @@ function confirmKeepOrig(names){   // 確定のとき: 元の文字○○を消�
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
     mk("はい(元の文字を消去して、置き換える)","erase",true);mk("いいえ(元の文字は残して、文字を置く)","keep",false);mk("戻る(確定せず、編集に戻る)","back",false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
+}
+function keepOrigAsChosen(pool){   // 訂正の枠(PDFの文字)で「そのまま重ねる」: 元の文字に触らない、新しい文字の枠(透明)にする
+  pool.filter(it=>it.type==="fix"&&it.sig0&&!it.ocrMade&&bgModeOf(it)==="none"&&fixChanged(it)&&(it.txt||"").trim()).forEach(it=>{it.type="text";it.bgMode="none";it.erase=false;it.covers=null;it.cover=null;it.ol=null;it._ol0=null;it.sig0=null;it.fsig=null;});
 }
 async function askKeepOrig(pool){   // 元のPDFの文字を直した枠: 反映する前に、消去するかを聞く。「残す」なら、元の文字に触らない新しい文字の枠(透明)にする
   const c=pool.filter(it=>it.type==="fix"&&it.sig0&&!it.ocrMade&&fixChanged(it)&&(it.txt||"").trim()&&it._keepAns===undefined);if(!c.length)return;
@@ -3844,23 +3875,12 @@ async function commit(only){
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
   {const fr0=(only||items).filter(it=>it.free);   // 自由編集の文字は、先にPDFに書く
    if(fr0.length){await commitFree(fr0);items=items.filter(x=>!fr0.includes(x));if(only)only=only.filter(x=>!fr0.includes(x));closeFreeForm();}}
-  if(await askKeepOrig(only||items)==="back"){status("確定せずに、編集に戻りました。");return"cancel";}   // 「戻る」: 何も変えずに、編集に戻る
+  keepOrigAsChosen(only||items);   // 「そのまま重ねる」を選んだ訂正の枠: 元の文字には触らない
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
   todo.forEach(leaveEdit);   // 入力中の枠は、見えている配置のまま固定してから書く
-  if(!window.__noEraseAsk){   // 枠の下の画像の文字を消す前に、確認する(一度答えた枠は、聞き直さない)
-    const cand=[];for(const it of todo){if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&it._eraseOK===undefined){const st=window.__inkEmpty?{failed:true,patches:[]}:await inkCompute(it).catch(()=>null);
-      if(st&&!st.failed&&st.patches&&st.patches.length)cand.push(it);
-      else if(await frameHasInk(it)){it._eraseForced=true;cand.push(it);}}}   // 消せる文字のインクを見つけられなくても、下に文字らしいものがあれば、必ず聞く(聞かずに、重ねて終わりにしない)
-    if(cand.length){
-      status("消す範囲を確かめています…");const rows=[];for(const it of cand)rows.push(await eraseSummary(it));
-      const yes=await confirmErase(rows);
-      if(yes==="back"){status("確定せずに、編集に戻りました。");return"cancel";}
-      cand.forEach(it=>{it._eraseOK=yes;if(!yes){it.bgMode="none";it.erase=false;it._ink=null;}else if(it._eraseForced){it.bgMode="text";it._ink=null;}});   // いいえ: 消さずに、文字だけ置く(図には何もしない)。はい(インクを見つけられなかったとき): 文字のある所だけ白抜き
-      if(!yes)status("画像の文字は消さずに、文字だけ置きます。");
-    }
-  }
+  if(!(await confirmApply(todo.length))){status("確定せずに、編集に戻りました。");return"cancel";}   // 確認は1回だけ(見えているとおりに書き込む)
   const doc=await PDFDocument.load(bytes);
   // 元のフォントで書けるかを、先に調べる(書けない文字があるときは、別のフォントを足すので、ファイルが大きくなる→確認する)
   const needFallback=[];
@@ -3898,7 +3918,8 @@ async function commit(only){
     }
   }
   {const partial=[];for(const U of under.values())for(const [k,e] of U.ex)if(e.fr<0.9)partial.push([U,k,e]);   // 一部だけ重なる隣の文字: 勝手に画像にしない(聞く)
-   if(partial.length){const ans=window.__partialAns||await confirmPartial(partial.map(([,,e])=>e.run.str));if(ans==="back"){status("確定せずに、編集に戻りました。");return"cancel";}if(ans==="keep")partial.forEach(([U,k])=>U.ex.delete(k));}}
+   if(partial.length){const ans=window.__partialAns||"keep";   // 隣のPDFの文字は、勝手に画像にしない(文字のまま)
+if(ans==="back"){status("確定せずに、編集に戻りました。");return"cancel";}if(ans==="keep")partial.forEach(([U,k])=>U.ex.delete(k));}}
   // 元のPDFの文字(拾い上げた部品・下になる文字)は、PDFの命令から取り除いて、置き換える。取り除けないときだけ、白い四角で隠す
   {const byPage=new Map();todo.forEach(it=>{if(it.type==="fix"&&it.sig0&&!it.ocrMade){const a=byPage.get(it.page)||[];a.push(it);byPage.set(it.page,a);}});
    for(const pg of under.keys())if(!byPage.has(pg))byPage.set(pg,[]);

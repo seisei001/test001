@@ -6,10 +6,9 @@ let chkAsk=-1,ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)o
 await page.reload();await page.waitForTimeout(2300);await page.setInputFiles('#fAdd',[WORK+'/samples/studio_A4.pdf']);await page.waitForTimeout(1500);
 await page.locator('.card').first().locator('.mnb').click();await page.locator('#menuBtns button',{hasText:'ページ編集'}).click();await page.waitForTimeout(3500);
 const fr=page.frameLocator('#formFrame'),f=page.frames().find(x=>x!==page.mainFrame());
-await f.evaluate(()=>{window.__noUnderAsk=false;window.__noFreeAsk=false;});
+await f.evaluate(()=>{window.__noFreeAsk=false;});
 await fr.locator('[data-m=sel]').click();await page.waitForTimeout(600);
-const rb=await fr.locator('#ov .run').first().boundingBox();await fr.locator('[data-m=text]').click();await page.waitForTimeout(300);
-await page.mouse.move(rb.x-6,rb.y-6);await page.mouse.down();await page.mouse.move(rb.x+rb.width+6,rb.y+rb.height+6,{steps:6});await page.mouse.up();await page.waitForTimeout(1200);
+const rb=await fr.locator('#ov .run').first().boundingBox();await page.mouse.click(rb.x+rb.width/2,rb.y+rb.height/2);await page.waitForTimeout(800);
 const before=execSync('pdftotext -f 1 -l 1 '+WORK+'/samples/studio_A4.pdf -').toString();
 chkAsk=await fr.locator('#underAsk').count();await fr.locator('#sFree').click();await page.waitForTimeout(500);
 chk('枠を作っても、案内の枠は出ない(確定のときに聞く)',chkAsk===0);chk('確認画面が出る',await fr.locator('#freeAsk').count()===1);
