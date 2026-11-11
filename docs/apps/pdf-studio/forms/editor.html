@@ -3913,7 +3913,7 @@ async function commit(only){
       let inter=0;foot.forEach(f=>{const w=Math.min(f.x+f.w,b.x+b.w)-Math.max(f.x,b.x),h=Math.min(f.y+f.h,b.y+b.h)-Math.max(f.y,b.y);if(w>0&&h>0)inter+=w*h;});
       const fr=Math.min(1,inter/(b.w*b.h));
       let rel=0;foot.forEach(f=>{const w=Math.min(f.x+f.w,b.x+b.w)-Math.max(f.x,b.x),h=Math.min(f.y+f.h,b.y+b.h)-Math.max(f.y,b.y);if(w>0&&h>0)rel=Math.max(rel,w*h/Math.min(b.w*b.h,f.w*f.h));});   // 小さな文字を、長い行の一部に重ねたとき(行全体に対しては小さい割合)も、重なりとして扱う
-      const inF=cx0>=it.vx&&cx0<=it.vx+it.vw&&cy0>=it.vy&&cy0<=it.vy+it.vh;   // 「文字だけ消す」: 枠の中にある元の文字(中心が枠の中)は、まるごと取り除く
+      const inF=((Math.max(0,Math.min(it.vx+it.vw,b.x+b.w)-Math.max(it.vx,b.x))*Math.max(0,Math.min(it.vy+it.vh,b.y+b.h)-Math.max(it.vy,b.y)))/((b.w*b.h)||1))>=0.6;   // 「文字だけ消す」: ほとんど(6割以上)が枠の中にある元の文字は、まるごと取り除く。はみ出している文字は、文字のまま残す
       if(!inF&&fr<0.08&&rel<0.25)continue;
       const key=[b.x,b.y,b.w].map(v=>Math.round(v)).join(),ex=U.ex.get(key)||{b,run:rn,fr:0};ex.fr=Math.max(ex.fr,inF?1:fr);U.ex.set(key,ex);
     }
