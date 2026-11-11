@@ -1652,6 +1652,10 @@ function beginRange(e){
           made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
           made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
       }
+      if(!made0&&!tap&&!window.__noAutoOcr&&await rangeHasImage(x,y,w,h)){   // 画像の文字の上に枠を作った: その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本ではなく)
+        const n0=items.length;await doOcr(x,y,w,h).catch(()=>{});const got=items.slice(n0).filter(o=>o.ocrMade);
+        if(got.length){select(got[0],true);status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の画像の文字を消去するか、残すかを聞きます)。");return;}
+      }
       if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     }
     else if(mode==="img"){
@@ -2447,6 +2451,9 @@ async function getOcr(lang){
 let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
 // ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function rangeHasImage(x,y,w,h){   // 範囲の4分の1以上が、画像の上か
+  try{const bs=await imageBoxes();let inter=0;for(const b of bs){const iw=Math.min(b.x+b.w,x+w)-Math.max(b.x,x),ih=Math.min(b.y+b.h,y+h)-Math.max(b.y,y);if(iw>0&&ih>0)inter+=iw*ih;}return inter>=w*h*0.25;}catch{return false;}
+}
 async function imageBoxes(){
   const out=[];
   try{
@@ -3658,11 +3665,11 @@ function confirmErase(rows){
     const o=document.createElement("div");o.id="eraseAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
     const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:460px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
     const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">枠の下の画像の文字を、消してもいいですか?</p><p style="margin:0 0 10px;font-size:.88rem;opacity:.85">下の画像から、文字と読み取れた部分を消します(罫線・図形・背景は残します)。消したあとは、元の画像の文字は、見えなくなります。</p>`+
+    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">元の文字は、消去されます。消してもいいですか?</p><p style="margin:0 0 10px;font-size:.88rem;opacity:.85">下の画像から、文字と読み取れた部分を消します(罫線・図形・背景は残します)。消したあとは、元の画像の文字は、見えなくなります。</p>`+
       rows.map((r,i)=>`<div style="margin:0 0 10px;padding:8px;border:1px solid var(--border,#ccc);border-radius:8px"><div style="font-size:.8rem;opacity:.8">消す範囲${rows.length>1?" "+(i+1):""}</div>${r.img?`<img src="${r.img}" style="max-width:100%;border:1px solid #ccc;background:#fff;display:block;margin:4px 0">`:""}<div style="font-size:.9rem">読み取った文字: ${r.txt?`<b>「${esc(r.txt.slice(0,80))}」</b>`:"(読み取れませんでした。上の画像の範囲を消します)"}</div></div>`).join("");
     const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
     const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
-    mk("はい(消す)",true,true);mk("いいえ(消さずに、文字だけ置く)",false,false);
+    mk("はい(元の文字を消去して、置き換える)",true,true);mk("いいえ(元の文字は残して、文字を置く)",false,false);
     box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
 }
 // ===== 自由編集: 文字の上に枠を作ったとき、枠の中の文字を、1文字ずつの部品にして、1文字ずつ直す =====
