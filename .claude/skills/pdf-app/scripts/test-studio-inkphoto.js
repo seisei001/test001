@@ -20,7 +20,7 @@ const {PDFDocument}=require(LIB+'pdf-lib');
   // (1) 机と紙にまたがる、大きな枠(190〜560 x 280〜520 pt)に「あ」を入れる
   const X=v=>ob.x+v*k,Y=v=>ob.y+v*k;
   await page.mouse.move(X(40),Y(150));await page.mouse.down();await page.mouse.move(X(260),Y(400),{steps:8});await page.mouse.up();await page.waitForTimeout(800);
-  await page.keyboard.type('あ');await page.waitForTimeout(1500);await f.evaluate(()=>window.pdfEditorDebug.underAll('erase'));
+  await page.keyboard.type('あ');await page.waitForTimeout(1500);
   const st=await f.evaluate(()=>window.pdfEditorDebug.inkState());console.log('   大きな枠の状態:',JSON.stringify(st));
   await page.mouse.click(ob.x+ob.width-8,ob.y+ob.height-8);await page.waitForTimeout(4500);
   const b=await f.evaluate(()=>window.pdfEditorDebug.bytes());fs.writeFileSync('/tmp/photoscan_big.pdf',Buffer.from(b));
