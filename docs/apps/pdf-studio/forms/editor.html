@@ -301,7 +301,7 @@ body.pt-touch .grip::after{inset:-12px;}
 <p class="hint helptext" style="margin:6px 0 0">枠の中で文字を直接入力・訂正できます。枠は、角をドラッグして自由に大きさを変えられます(文字の大きさは変わりません)。<b>文字の大きさは、文字の最後の右下にある、ピンクの鉛筆(✎)を縦にドラッグして変えます。</b>文字が枠の右端を超えたら折り返して、枠が下に伸びます。</p>
 </div>
 <div class="row" id="nudgeRow" style="margin-top:8px"><span class="sub">位置を微調整(0.5pt)</span><div class="seg"><button id="nL">◀</button><button id="nU">▲</button><button id="nD">▼</button><button id="nR">▶</button></div><span class="sub helptext">(Altキー+矢印でも動かせます。Shiftで2pt)</span></div>
-<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">消去</button><button class="sub-btn" id="sClose">選択を解除</button></div>
+<div class="row" style="margin-top:8px"><button class="danger hidden" id="sErase">元のPDFの文字を消す</button><button class="danger" id="sDel">消去</button><button class="sub-btn hidden" id="sFree" title="枠の中の文字を、1文字ずつの部品にして、1文字ずつ直します">自由編集</button><button class="sub-btn" id="sClose">選択を解除</button></div>
 </div>
 <div class="row xhide" style="margin-top:10px"><button id="bCommit">✔ 確定してPDFに反映</button><span class="sub" id="partsInfo"></span></div>
 <p class="hint helptext"><b>文字として</b>: 選択・コピー・検索・他アプリでの文字変換ができます(フォントはM PLUS 1pで統一)。<b>画像として</b>: 端末のフォントの見た目のまま固定され、スタイルが変わりません。</p>
@@ -1574,6 +1574,7 @@ function syncPanel(){
   $("selKind").textContent=it.type==="img"?"(画像)":it.type==="fix"?"(PDFの文字の訂正)":"(文字)";
   $("selTextBox").classList.toggle("hidden",it.type==="img");
   $("sErase").classList.toggle("hidden",it.type!=="fix");
+  $("sFree").classList.toggle("hidden",!(it.type==="fix"&&!it.ocrMade&&it.sig0));
   $("sColor").value=it.color||"#000000";showSize();
   ["L","C","R"].forEach((k,i)=>$("sA"+k).classList.toggle("on",(it.align||"left")===["left","center","right"][i]));
   $("sFmtT").classList.toggle("on",it.fmt==="text");$("sFmtP").classList.toggle("on",it.fmt==="pic");
@@ -1604,8 +1605,9 @@ function nudge(dx,dy){if(!cs)return;cs.vx+=dx;cs.vy+=dy;clampToPage(cs);const el
 [["nL",-1,0],["nR",1,0],["nU",0,-1],["nD",0,1]].forEach(([id,dx,dy])=>{$(id).onclick=()=>{nudge(dx*0.5,dy*0.5);};});
 document.addEventListener("keydown",e=>{if(!e.altKey||!cs||!/^Arrow/.test(e.key))return;e.preventDefault();const st=e.shiftKey?2:0.5;nudge(e.key==="ArrowLeft"?-st:e.key==="ArrowRight"?st:0,e.key==="ArrowUp"?-st:e.key==="ArrowDown"?st:0);});
 $("sDel").onclick=()=>{if(cs)deleteItem(cs,true);};
-["sDel","sClose","sErase"].forEach(i=>$(i).addEventListener("mousedown",e=>e.preventDefault()));   // ボタンを押しても、入力中の枠から、フォーカスを奪わない(奪うと、確定・画面の組み直しが先に起きて、押した操作が空振りすることがある)
+["sDel","sClose","sErase","sFree"].forEach(i=>$(i).addEventListener("mousedown",e=>e.preventDefault()));   // ボタンを押しても、入力中の枠から、フォーカスを奪わない(奪うと、確定・画面の組み直しが先に起きて、押した操作が空振りすることがある)
 $("sClose").onclick=()=>select(null);
+$("sFree").onclick=()=>{if(cs&&cs.type==="fix")startFree({made:[cs],n:0});};
 
 // --- ドラッグで範囲指定 ---
 let rub=null;
@@ -1648,7 +1650,7 @@ function beginRange(e){
         const inside=runs.filter(q=>{if(taken(q))return false;const bx=runBox(q),cx=bx.x+bx.w/2,cy=bx.y+bx.h/2;return cx>=x&&cx<=x+w&&cy>=y&&cy<=y+h;});
         if(inside.length){const groups=$("fxJoin").checked?[inside]:buildBlocks(inside);
           made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
-          made0.forEach(m=>items.push(m));it=made0[0];showUnderAsk({x,y,w,h,made:made0,n:inside.length});}
+          made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
       }
       if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     }
@@ -3623,6 +3625,23 @@ async function eraseSummary(it){
   }catch(e){console.warn("消す範囲を調べられませんでした",e);}
   return{img,txt:txt||""};
 }
+function confirmKeepOrig(names){   // 確定のとき: 元の文字○○を消去して置き換えるか、元の文字は残して文字を置くかを聞く("erase"/"keep")
+  return new Promise(res=>{
+    const o=document.createElement("div");o.id="keepAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:460px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    const list=names.slice(0,5).map(n=>`<div style="margin:2px 0;padding:4px 8px;border:1px solid var(--border,#ccc);border-radius:6px;word-break:break-all">${esc(n.length>60?n.slice(0,60)+"…":n)}</div>`).join("")+(names.length>5?`<div style="font-size:.85rem;opacity:.8">ほか${names.length-5}件</div>`:"");
+    box.innerHTML=`<p style="margin:0 0 6px;font-weight:600">元の文字は、消去されます</p><p style="margin:0 0 6px;font-size:.88rem;opacity:.85">次の元の文字を消して、入力した文字に置き換えます。</p>${list}<p style="margin:10px 0 12px;font-size:.85rem;opacity:.85">元の文字を残して、そこに文字を置くこともできます(重なって見えることがあります)。</p>`;
+    const bar=document.createElement("div");bar.style.cssText="display:flex;gap:10px;flex-direction:column";
+    const mk=(t,v,primary)=>{const b=document.createElement("button");b.textContent=t;b.style.minHeight="46px";if(!primary)b.className="sub-btn";b.onclick=()=>{o.remove();res(v);};bar.appendChild(b);};
+    mk("はい(元の文字を消去して、置き換える)","erase",true);mk("いいえ(元の文字は残して、文字を置く)","keep",false);
+    box.appendChild(bar);o.appendChild(box);document.body.appendChild(o);});
+}
+async function askKeepOrig(pool){   // 元のPDFの文字を直した枠: 反映する前に、消去するかを聞く。「残す」なら、元の文字に触らない新しい文字の枠(透明)にする
+  const c=pool.filter(it=>it.type==="fix"&&it.sig0&&!it.ocrMade&&fixChanged(it)&&(it.txt||"").trim()&&it._keepAns===undefined);if(!c.length)return;
+  const ans=window.__keepAns||await confirmKeepOrig(c.map(it=>it.ol?it.ol.map(l=>l.txt0).join(" "):(it.t0||"")));
+  c.forEach(it=>{it._keepAns=ans;if(ans==="keep"){it.type="text";it.bgMode="none";it.erase=false;it.covers=null;it.cover=null;it.ol=null;it._ol0=null;it.sig0=null;it.fsig=null;}});
+}
 function confirmPartial(names){   // 入力した文字が、隣のPDFの文字の一部に重なるとき: 勝手に画像にせず、どうするかを聞く("keep"=文字のまま残す / "img"=重なる部分を隠して画像にする)
   return new Promise(res=>{
     const o=document.createElement("div");o.id="partialAsk";o.style.cssText="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
@@ -3775,6 +3794,7 @@ async function commit(only){
   if(!only&&applyP)await applyP;   // 選択を外したときの反映が終わってから、残りを保存する
   {const fr0=(only||items).filter(it=>it.free);   // 自由編集の文字は、先にPDFに書く
    if(fr0.length){await commitFree(fr0);items=items.filter(x=>!fr0.includes(x));if(only)only=only.filter(x=>!fr0.includes(x));closeFreeForm();}}
+  await askKeepOrig(only||items);
   const pool=only||items,rest=only?items.filter(x=>!only.includes(x)):[];   // only: この部品だけをPDFに反映する(ほかの枠は、そのまま)
   const todo=pool.filter(it=>(it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it));   // 変えていない訂正の部品は、PDFに何も書かない(元のまま)
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
