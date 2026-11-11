@@ -855,7 +855,23 @@ function coverRects(it,forScreen){   // 隠す(白抜きする)四角。文字�
   if(m==="ink"){if(!(it._ink&&it._ink.failed))return[];m="text";}   // 「文字だけ消す」は、パッチで消すので、四角は要らない。消せなかったときだけ、「文字だけ白抜き」にする
   if(it.type==="fix"&&!forScreen&&!fixChanged(it))return[];   // 変えていない訂正の部品は、PDFには何もしない(画面では、拾い上げた時点で元の文字を隠す)
   if(m==="all")return[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}];
-  return[...(it.type==="fix"?(it.covers||[it.cover]):[]),...lineRectsOf(it)];
+  return it.type==="fix"?(it.covers||[it.cover]).filter(Boolean):lineRectsOf(it);   // 訂正の枠: 元の文字の位置だけ(新しい文字の行は、下に何があっても、白抜きしない=図に触らない)
+}
+// 訂正の枠(PDFの文字を拾った枠)の、元の文字の位置: 下に画像があるときは、白い四角ではなく「その文字を取り除いたあとのページ」を見せる(図に触らない・確定したあとと同じ見た目)
+async function coverStripped(it){
+  const rects=(it.covers||[it.cover]).filter(Boolean);if(!rects.length||!bytes)return;
+  const key=bytes.length+"|"+JSON.stringify(rects);if(it._covImg&&(it._covImg.key===key||it._covImg.busy===key))return;
+  it._covImg={key:"",busy:key,list:null};let list=null;
+  try{const x0=Math.min(...rects.map(r=>r.x)),y0=Math.min(...rects.map(r=>r.y)),x1=Math.max(...rects.map(r=>r.x+r.w)),y1=Math.max(...rects.map(r=>r.y+r.h));
+    if(await rangeHasImage(x0,y0,x1-x0,y1-y0)){
+      const doc2=await PDFDocument.load(bytes),per=await stripPageText(doc2,it.page,rects);
+      if(per.every(n=>n>0)){const b2=await doc2.save(),pj=await pdfjsLib.getDocument({data:b2.slice()}).promise,pg=await pj.getPage(it.page+1),S=2.5,vp=pg.getViewport({scale:S});list=[];
+        for(const r of rects){const cv=document.createElement("canvas");cv.width=Math.max(1,Math.ceil(r.w*S));cv.height=Math.max(1,Math.ceil(r.h*S));const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);
+          await pg.render({canvasContext:cx,viewport:vp,transform:[1,0,0,1,-r.x*S,-r.y*S]}).promise;list.push({x:r.x,y:r.y,w:r.w,h:r.h,cv});}
+        try{pj.destroy();}catch{}}
+    }
+  }catch(e){console.warn("取り除いたあとの見た目を作れませんでした",e);list=null;}
+  it._covImg={key,list};if(items.includes(it))renderCovers(it);
 }
 function renderCovers(it){   // 画面の、元の文字を隠す四角を作り直す(拾い上げたら、すぐ隠す。赤い点線は出さない)
   ov.querySelectorAll(`.cover[data-for="${it.id}"],.cvo[data-for="${it.id}"]`).forEach(e=>e.remove());
@@ -872,6 +888,11 @@ function renderCovers(it){   // 画面の、元の文字を隠す四角を作り
     rs=st&&st.failed?coverRects(it,true):it.type==="text"?[]:(it.covers||[it.cover]).filter(Boolean);   // 計算の間(と、消せなかったとき)は、背景色の四角
   }else rs=coverRects(it,true);
   if(!rs.length)return;
+  if(it.type==="fix"&&!it.ocrMade&&it.sig0&&bgModeOf(it)!=="all"){   // 下が画像のときは、白ではなく、文字を取り除いたあとのページを見せる
+    const ci=it._covImg,rects=(it.covers||[it.cover]).filter(Boolean),key=bytes?bytes.length+"|"+JSON.stringify(rects):"";
+    if(ci&&ci.key===key&&ci.list){ci.list.forEach(g=>{const c=document.createElement("canvas");c.width=g.cv.width;c.height=g.cv.height;c.getContext("2d").drawImage(g.cv,0,0);c.className="cover";c.dataset.for=it.id;c.style.cssText=`left:${g.x*k}px;top:${g.y*k}px;width:${g.w*k}px;height:${g.h*k}px`;ov.appendChild(c);});return;}
+    if(!ci||(ci.key!==key&&ci.busy!==key))coverStripped(it);   // 作る間は、背景色の四角
+  }
   rs.forEach(cv=>{const c=document.createElement("div");c.className="cover"+(it.ocrMade&&!ocrEdited(it)?" ocrc":"");c.dataset.for=it.id;c.style.cssText=`left:${cv.x*k}px;top:${cv.y*k}px;width:${cv.w*k}px;height:${cv.h*k}px;background:${bg}`;ov.appendChild(c);});
 }
 function fixSync(it,el){   // 文字・位置・大きさを変えたとき
@@ -1656,7 +1677,7 @@ function beginRange(e){
       if(!made0&&!window.__noAutoOcr){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)
         const bx=tap?{x:0,y:Math.max(0,r.sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
         if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
-        if(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)){
+        if(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)||await rangeHasInk(bx.x,bx.y,bx.w,bx.h)){
           const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
           if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
             const dist=o=>{const dx=r.sx<o.vx?o.vx-r.sx:r.sx>o.vx+o.vw?r.sx-o.vx-o.vw:0,dy=r.sy<o.vy?o.vy-r.sy:r.sy>o.vy+o.vh?r.sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
@@ -2459,6 +2480,9 @@ async function getOcr(lang){
 let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
 // ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function rangeHasInk(x,y,w,h){   // 範囲に、文字らしい濃い画素があるか(画像の検出に頼らず、見た目で判断する。図形の文字・画像の文字のどちらも)
+  try{const S=Math.min(2,600/Math.max(w,h)),cv=await renderRegion(x,y,w,h,S),d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]*.3+d[i+1]*.59+d[i+2]*.11<140)n++;return n>=cv.width*cv.height*0.006;}catch{return false;}
+}
 async function rangeHasImage(x,y,w,h){   // 範囲の4分の1以上が、画像の上か
   try{const bs=await imageBoxes();let inter=0;for(const b of bs){const iw=Math.min(b.x+b.w,x+w)-Math.max(b.x,x),ih=Math.min(b.y+b.h,y+h)-Math.max(b.y,y);if(iw>0&&ih>0)inter+=iw*ih;}return inter>=w*h*0.25;}catch{return false;}
 }
