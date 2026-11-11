@@ -1674,17 +1674,7 @@ function beginRange(e){
           made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
           made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
       }
-      if(!made0&&!window.__noAutoOcr){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)
-        const bx=tap?{x:0,y:Math.max(0,r.sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
-        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
-        if(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)||await rangeHasInk(bx.x,bx.y,bx.w,bx.h)){
-          const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
-          if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
-            const dist=o=>{const dx=r.sx<o.vx?o.vx-r.sx:r.sx>o.vx+o.vw?r.sx-o.vx-o.vw:0,dy=r.sy<o.vy?o.vy-r.sy:r.sy>o.vy+o.vh?r.sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
-            const best=got.slice().sort((p,q)=>dist(p)-dist(q))[0];items=items.filter(o=>!got.includes(o)||o===best);got=[best];}
-          if(got.length){got.forEach(o=>{o.autoOcr=true;});select(got[0],true);status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(直さなければ、何も変えません。直したときは、確定のとき、元の画像の文字を消去するか、聞きます)。");return;}
-        }
-      }
+      if(!made0&&!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,tap,r.sx,r.sy);if(got){select(got[0],true);return;}}   // 画像の文字の上に枠を作った: 読み取った文字を入力枠に入れる
       if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     }
     else if(mode==="img"){
@@ -1703,7 +1693,8 @@ function beginRange(e){
       }
       if(!groups.length){
         if(tap){renderOverlay();return;} // 文字のない所のタップは、選択の解除だけ
-        // 文字のない所をドラッグ→新しい文字の枠
+        // 文字のない所をドラッグ→画像の文字なら読み取って入力枠に入れる。何も読み取れなければ、新しい文字の枠
+        if(!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,false,r.sx,r.sy);if(got){select(got[0],true);return;}}
         it=newText(x,y,w,h);items.push(it);
         if(!runs.length)status("このページにはPDFの文字データがありません(スキャン画像など)。画像の文字は「🔍 画像の文字を認識」で文字にできます。今回は新しい文字の枠を作りました。");
       }else{
@@ -2480,6 +2471,19 @@ async function getOcr(lang){
 let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
 // ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function autoOcrFrames(x,y,w,h,tap,sx,sy){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)。入れられなかったら null
+  const bx=tap?{x:0,y:Math.max(0,sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
+  if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+  if(!(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)||await rangeHasInk(bx.x,bx.y,bx.w,bx.h)))return null;
+  const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
+  if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
+    const dist=o=>{const dx=sx<o.vx?o.vx-sx:sx>o.vx+o.vw?sx-o.vx-o.vw:0,dy=sy<o.vy?o.vy-sy:sy>o.vy+o.vh?sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
+    const best=got.slice().sort((p,q)=>dist(p)-dist(q))[0];items=items.filter(o=>!got.includes(o)||o===best);got=[best];}
+  if(!got.length)return null;
+  got.forEach(o=>{o.autoOcr=true;});
+  status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(直さなければ、何も変えません。直したときは、確定のとき、元の画像の文字を消去するか、聞きます)。");
+  return got;
+}
 async function rangeHasInk(x,y,w,h){   // 範囲に、文字らしい濃い画素があるか(画像の検出に頼らず、見た目で判断する。図形の文字・画像の文字のどちらも)
   try{const S=Math.min(2,600/Math.max(w,h)),cv=await renderRegion(x,y,w,h,S),d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]*.3+d[i+1]*.59+d[i+2]*.11<140)n++;return n>=cv.width*cv.height*0.006;}catch{return false;}
 }
@@ -3651,8 +3655,14 @@ function showUnderAsk(info){
 }
 // ===== 枠の下の画像の文字を、消す前の確認 =====
 // 「文字だけ消す」で、枠の下の画像から、文字(のインク)を消す前に、何を消そうとしているか(範囲の画像・読み取った文字)を見せて、「はい/いいえ」を聞く
+async function frameHasInk(it){   // 枠の下(画像)に、文字らしい濃い画素があるか
+  const rs=(typeof lineRectsOf==="function"?lineRectsOf(it):[]).filter(Boolean),r=rs.length?rs:[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}];
+  const x0=Math.max(0,Math.min(...r.map(a=>a.x))),y0=Math.max(0,Math.min(...r.map(a=>a.y))),x1=Math.min(VW,Math.max(...r.map(a=>a.x+a.w))),y1=Math.min(VH,Math.max(...r.map(a=>a.y+a.h)));
+  return x1-x0>2&&y1-y0>2&&await rangeHasInk(x0,y0,x1-x0,y1-y0);
+}
 async function eraseSummary(it){
-  const pcs=(it._ink&&it._ink.patches)||[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  const pcs=((it._ink&&it._ink.patches)||[]).slice();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  if(!pcs.length){const rs=(lineRectsOf(it)||[]).filter(Boolean),r=rs.length?rs:[{x:it.vx,y:it.vy,w:it.vw,h:it.vh}];r.forEach(a=>{x0=Math.min(x0,a.x);y0=Math.min(y0,a.y);x1=Math.max(x1,a.x+a.w);y1=Math.max(y1,a.y+a.h);});pcs.push({x:x0,y:y0,w:x1-x0,h:y1-y0});}   // 消せる文字のインクが見つからなかったときは、枠の範囲を見せる
   pcs.forEach(q=>{x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x+q.w);y1=Math.max(y1,q.y+q.h);});
   x0=Math.max(0,x0-2);y0=Math.max(0,y0-2);x1=Math.min(VW,x1+2);y1=Math.min(VH,y1+2);
   const w=Math.max(4,x1-x0),h=Math.max(4,y1-y0),S=Math.min(4,Math.max(1.5,Math.min(700/w,500/h)));
@@ -3839,11 +3849,13 @@ async function commit(only){
   if(!todo.length||!bytes){items=rest;if(!only)cs=null;renderOverlay();syncPanel();return;}
   todo.forEach(leaveEdit);   // 入力中の枠は、見えている配置のまま固定してから書く
   if(!window.__noEraseAsk){   // 枠の下の画像の文字を消す前に、確認する(一度答えた枠は、聞き直さない)
-    const cand=[];for(const it of todo){if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&it._eraseOK===undefined){const st=await inkCompute(it).catch(()=>null);if(st&&!st.failed&&st.patches&&st.patches.length)cand.push(it);}}
+    const cand=[];for(const it of todo){if((it.type==="fix"||it.type==="text")&&bgModeOf(it)==="ink"&&it._eraseOK===undefined){const st=window.__inkEmpty?{failed:true,patches:[]}:await inkCompute(it).catch(()=>null);
+      if(st&&!st.failed&&st.patches&&st.patches.length)cand.push(it);
+      else if(await frameHasInk(it)){it._eraseForced=true;cand.push(it);}}}   // 消せる文字のインクを見つけられなくても、下に文字らしいものがあれば、必ず聞く(聞かずに、重ねて終わりにしない)
     if(cand.length){
       status("消す範囲を確かめています…");const rows=[];for(const it of cand)rows.push(await eraseSummary(it));
       const yes=await confirmErase(rows);
-      cand.forEach(it=>{it._eraseOK=yes;if(!yes){it.bgMode="none";it.erase=false;it._ink=null;}});   // いいえ: 消さずに、文字だけ置く
+      cand.forEach(it=>{it._eraseOK=yes;if(!yes){it.bgMode="none";it.erase=false;it._ink=null;}else if(it._eraseForced){it.bgMode="text";it._ink=null;}});   // いいえ: 消さずに、文字だけ置く(図には何もしない)。はい(インクを見つけられなかったとき): 文字のある所だけ白抜き
       if(!yes)status("画像の文字は消さずに、文字だけ置きます。");
     }
   }
