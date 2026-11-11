@@ -646,3 +646,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 3.13 の穴: 画面を開いたときの「文字」モード(sel)で、PDFの文字がない所をドラッグすると、空の新しい枠(「あ」の見本)になり、読み取りは「＋文字」モード(text)でしか動かなかった → autoOcrFrames に取り出し、sel のドラッグ・text のドラッグ/タップのどれでも使う。
 - 確定の確認(③): 画像の上の枠(bgMode "ink")は、消せる文字のインク(パッチ)が見つからなくても、下に文字らしい濃い画素(frameHasInk → rangeHasInk)があれば、必ず #eraseAsk で聞く(it._eraseForced)。いいえ=bgMode none(図に何もしない)/はい=パッチがあれば文字のインクだけ消す。見つからなかったときは、文字のある所だけ白抜き(bgMode "text")。eraseSummary は、パッチがないとき、枠の範囲を見せる。テスト用: window.__inkEmpty(パッチなしにする)。
 - テスト: test-studio-selocr.js(写真のユニチカ: 文字モードのドラッグ/＋文字のドラッグ/タップ)、test-studio-askforce.js。fixtures/unitika.png は利用者の写真。
+
+## v155 ページ編集 3.15: 確定の確認に「戻る」
+- 確定のときの確認(#keepAsk 元の文字を消去するか/#eraseAsk 画像の文字を消すか/#partialAsk 隣の文字をどうするか)に、「戻る(確定せず、編集に戻る)」を追加。押すと commit が "cancel" を返し、何も変えずに編集に戻る(PDFにもホストにも反映しない)。呼び出し側(commit() を使うところ全部)は `if((await commit())==="cancel")return;` で止める。反映中の枠(applyNow)は、戻ったら枠を選び直す。もう一度確定すれば、また聞く。
+- テスト: test-studio-askback.js。
+- 既知: 画像の文字を直したあと「下の画像が残る」という報告(3.13の画面)は、再現できていない(3.14の「必ず聞く」で直る可能性。要:実機の確認・PDF)。
