@@ -1674,17 +1674,7 @@ function beginRange(e){
           made0=groups.map(g=>newFix(g)).sort((p,q)=>(Math.abs(p.vy-q.vy)<p.size*0.5?p.vx-q.vx:p.vy-q.vy));
           made0.forEach(m=>items.push(m));it=made0[0];status(`元の文字(${inside.length}個)を、入力枠に入れました。直してから「確定」を押してください(確定のとき、元の文字を消去するか、残すかを聞きます)。`);}
       }
-      if(!made0&&!window.__noAutoOcr){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)
-        const bx=tap?{x:0,y:Math.max(0,r.sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
-        if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
-        if(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)||await rangeHasInk(bx.x,bx.y,bx.w,bx.h)){
-          const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
-          if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
-            const dist=o=>{const dx=r.sx<o.vx?o.vx-r.sx:r.sx>o.vx+o.vw?r.sx-o.vx-o.vw:0,dy=r.sy<o.vy?o.vy-r.sy:r.sy>o.vy+o.vh?r.sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
-            const best=got.slice().sort((p,q)=>dist(p)-dist(q))[0];items=items.filter(o=>!got.includes(o)||o===best);got=[best];}
-          if(got.length){got.forEach(o=>{o.autoOcr=true;});select(got[0],true);status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(直さなければ、何も変えません。直したときは、確定のとき、元の画像の文字を消去するか、聞きます)。");return;}
-        }
-      }
+      if(!made0&&!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,tap,r.sx,r.sy);if(got){select(got[0],true);return;}}   // 画像の文字の上に枠を作った: 読み取った文字を入力枠に入れる
       if(!made0){it=tap?newText(r.sx,r.sy,Math.min(180,VW-r.sx),0):newText(x,y,w,h);items.push(it);}
     }
     else if(mode==="img"){
@@ -1703,7 +1693,8 @@ function beginRange(e){
       }
       if(!groups.length){
         if(tap){renderOverlay();return;} // 文字のない所のタップは、選択の解除だけ
-        // 文字のない所をドラッグ→新しい文字の枠
+        // 文字のない所をドラッグ→画像の文字なら読み取って入力枠に入れる。何も読み取れなければ、新しい文字の枠
+        if(!window.__noAutoOcr){const got=await autoOcrFrames(x,y,w,h,false,r.sx,r.sy);if(got){select(got[0],true);return;}}
         it=newText(x,y,w,h);items.push(it);
         if(!runs.length)status("このページにはPDFの文字データがありません(スキャン画像など)。画像の文字は「🔍 画像の文字を認識」で文字にできます。今回は新しい文字の枠を作りました。");
       }else{
@@ -2480,6 +2471,19 @@ async function getOcr(lang){
 let ocrTextBoxes=null,ocrRetried=false,ocrRetryNote="";
 // このページのPDFの文字データ(横書き)の位置。OCRでは、ここを読まない(元のデータが最優先。文字データのない所だけOCRする)
 // ページに入っている画像(スキャン・写真・二次元コードなど)の場所。PDFの描画命令から集める(表の罫線・枠などの図形は、画像ではない)
+async function autoOcrFrames(x,y,w,h,tap,sx,sy){   // 画像の文字の上に枠を作った(ドラッグ・タップ): その範囲を文字認識して、認識した文字を、入力枠に入れる(「あ」の見本の空の枠ではなく)。入れられなかったら null
+  const bx=tap?{x:0,y:Math.max(0,sy-14),w:VW,h:Math.min(28,VH)}:{x,y,w,h};   // タップは、その行(上下14pt)を読む
+  if(!(runsFor===cur&&curBase===bytes))await loadRuns().catch(()=>{});
+  if(!(!runs.length||await rangeHasImage(bx.x,bx.y,bx.w,bx.h)||await rangeHasInk(bx.x,bx.y,bx.w,bx.h)))return null;
+  const n0=items.length;await doOcr(bx.x,bx.y,bx.w,bx.h).catch(()=>{});let got=items.slice(n0).filter(o=>o.ocrMade);
+  if(tap&&got.length>1){   // タップした所に、いちばん近い1つだけを使う
+    const dist=o=>{const dx=sx<o.vx?o.vx-sx:sx>o.vx+o.vw?sx-o.vx-o.vw:0,dy=sy<o.vy?o.vy-sy:sy>o.vy+o.vh?sy-o.vy-o.vh:0;return Math.hypot(dx,dy);};
+    const best=got.slice().sort((p,q)=>dist(p)-dist(q))[0];items=items.filter(o=>!got.includes(o)||o===best);got=[best];}
+  if(!got.length)return null;
+  got.forEach(o=>{o.autoOcr=true;});
+  status("画像の文字を読み取って、入力枠に入れました。直してから「確定」を押してください(直さなければ、何も変えません。直したときは、確定のとき、元の画像の文字を消去するか、聞きます)。");
+  return got;
+}
 async function rangeHasInk(x,y,w,h){   // 範囲に、文字らしい濃い画素があるか(画像の検出に頼らず、見た目で判断する。図形の文字・画像の文字のどちらも)
   try{const S=Math.min(2,600/Math.max(w,h)),cv=await renderRegion(x,y,w,h,S),d=cv.getContext("2d",{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]*.3+d[i+1]*.59+d[i+2]*.11<140)n++;return n>=cv.width*cv.height*0.006;}catch{return false;}
 }
