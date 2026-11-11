@@ -19,7 +19,7 @@ const {PDFDocument,StandardFonts,rgb}=require(LIB+'pdf-lib');
   let ok=true;const chk=(n,c)=>{console.log((c?'OK  ':'NG  ')+n);if(!c)ok=false;};
   await fr.locator('[data-m=text]').click();
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;
-  const mk=async(x,y,w,h,txt)=>{await page.mouse.move(ob.x+x*k,ob.y+y*k);await page.mouse.down();await page.mouse.move(ob.x+(x+w)*k,ob.y+(y+h)*k,{steps:5});await page.mouse.up();await page.waitForTimeout(400);await page.keyboard.type(txt);await page.waitForTimeout(300);};
+  const mk=async(x,y,w,h,txt)=>{await page.mouse.move(ob.x+x*k,ob.y+y*k);await page.mouse.down();await page.mouse.move(ob.x+(x+w)*k,ob.y+(y+h)*k,{steps:5});await page.mouse.up();await page.waitForTimeout(400);await page.keyboard.type(txt);await page.waitForTimeout(300);await f.evaluate(()=>window.pdfEditorDebug.underAll('erase'));};
   // 1行目(y=842-700=142付近、文字の上端 ~129)の右半分に重ねる
   await mk(130,126,200,22,'ZZZZZ');
   await fr.locator('[data-m=sel]').click();await page.waitForTimeout(300);await page.mouse.click(ob.x+15,ob.y+ob.height-12);await page.waitForTimeout(3500);
@@ -34,7 +34,7 @@ const {PDFDocument,StandardFonts,rgb}=require(LIB+'pdf-lib');
   chk('新しい文字が入っている',txt.includes('ZZZZZ')&&txt.includes('QQQQQ'));
   chk('完全に隠れた下の文字(FULLCOVER)は、PDFから消えている',!txt.includes('FULLCOVER'));
   chk('重ならない文字(KEEPME)は、そのまま',txt.includes('KEEPME'));
-  chk('一部だけ隠れた下の文字は、文字としては残らない(画像になる)',!txt.includes('ABCDEFGHIJ'));
+  chk('一部だけ隠れた下の文字は、文字のまま残る(勝手に画像にしない)',txt.includes('ABCDEFGHIJ'));
   // 見た目: 1行目の左側(隠れない部分)に、画像で文字が残っている
   execSync(`pdftoppm -r 144 -f 1 -l 1 -png ${out} /tmp/overlap2_out`);
   const py=`
@@ -44,7 +44,7 @@ def ink(x0,y0,x1,y1):
     c=im.crop((int(x0*s),int(y0*s),int(x1*s),int(y1*s)));return sum(1 for p in c.getdata() if p<110)
 print(ink(60,126,100,146),ink(60,226,160,246),ink(296,440,320,444))`;
   const r=execSync(`python3 -c "${py.replace(/"/g,'\\"')}"`).toString().trim().split(' ').map(Number);console.log('インク',r);
-  chk('一部だけ隠れた文字の、見えている左側が、画像で残っている(見た目が変わらない)',r[0]>150);
+  chk('一部だけ隠れた文字の、見えている左側が残っている',r[0]>150);
   chk('文字の下の罫線が、欠けていない(罫線の画素 '+r[2]+')',r[2]>=40);
   console.log('置き換えの確認は出ない',dlg.length===0?'OK':dlg);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
