@@ -22,7 +22,7 @@ const {PDFDocument}=require(LIB+'pdf-lib');
   for(const b of targets){   // 文字の上に、文字を覆う枠をドラッグで作り、「.」を入力して、空き地をクリック(=確定)
     const x0=b.x0/SC-2,y0=b.y0/SC-1,x1=b.x1/SC+2,y1=b.y1/SC+1;
     await page.mouse.move(ob.x+x0*k,ob.y+y0*k);await page.mouse.down();await page.mouse.move(ob.x+x1*k,ob.y+y1*k,{steps:6});await page.mouse.up();await page.waitForTimeout(500);
-    await page.keyboard.type('.');await page.waitForTimeout(600);
+    await page.keyboard.type('.');await page.waitForTimeout(600);await f.evaluate(()=>window.pdfEditorDebug.underAll('erase'));
     await page.mouse.click(ob.x+ob.width-8,ob.y+ob.height-8);await page.waitForTimeout(3500);
   }
   console.log('   状態:',await f.evaluate(()=>document.querySelector('#status').textContent));

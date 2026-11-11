@@ -15,5 +15,5 @@ const frameArea=await f.evaluate(()=>{const e=document.querySelector('.ibox.on')
 let maxCover=0;for(let i=0;i<12;i++){await page.waitForTimeout(300);const a=await f.evaluate(()=>Math.max(0,...[...document.querySelectorAll('#ov .cover:not(.inkp)')].map(e=>{const r=e.getBoundingClientRect();return r.width*r.height;})));maxCover=Math.max(maxCover,a);}
 chk('入力中も後も、枠の全体を覆う白い四角は出ない(最大 '+Math.round(maxCover)+' / 枠 '+Math.round(frameArea)+')',maxCover<frameArea*0.5);
 const mode=await f.evaluate(()=>window.pdfEditorDebug.bgModes());
-chk('画像の上の新しい枠は、「文字だけ消す」が既定: '+mode,mode[0]==='ink');
+chk('新しい枠の下地は、「そのまま重ねる」が既定(勝手に消さない): '+mode,mode[0]==='none');
 console.log('errs',errs.slice(0,3));await browser.close();process.exit(ok&&!errs.length?0:1);})();

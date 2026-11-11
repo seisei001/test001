@@ -38,7 +38,7 @@ print(round((d>30).mean()*100,3))"`).toString().trim();
   // (2) 紙の上の、1行の文字(「払込受領証」)を覆う小さな枠なら、その文字が消える
   const bx=boxes.find(q=>/払込/.test(q.s));
   await page.mouse.move(X(bx.x0/SC-2),Y(bx.y0/SC-1));await page.mouse.down();await page.mouse.move(X(bx.x1/SC+2),Y(bx.y1/SC+1),{steps:6});await page.mouse.up();await page.waitForTimeout(800);
-  await page.keyboard.type('.');await page.waitForTimeout(1200);
+  await page.keyboard.type('.');await page.waitForTimeout(1200);await f.evaluate(()=>window.pdfEditorDebug.underAll('erase'));
   console.log('   小さな枠の状態:',JSON.stringify(await f.evaluate(()=>window.pdfEditorDebug.inkState())));
   console.log('   理由:',await f.evaluate(()=>window.pdfEditorDebug.inkWhy&&window.pdfEditorDebug.inkWhy()));
   await page.mouse.click(ob.x+ob.width-8,ob.y+ob.height-8);await page.waitForTimeout(4500);

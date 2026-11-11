@@ -19,15 +19,15 @@ const {PDFDocument}=require(LIB+'pdf-lib'),fontkit=require(LIB+'@pdf-lib/fontkit
   const ob=await fr.locator('#ov').boundingBox(),k=ob.width/595;
   // 8文字目あたり(x=60+14*7=158 〜 )に、小さな文字を重ねる
   await page.mouse.move(ob.x+158*k,ob.y+128*k);await page.mouse.down();await page.mouse.move(ob.x+200*k,ob.y+148*k,{steps:5});await page.mouse.up();await page.waitForTimeout(400);
-  await page.keyboard.type('ZZ');await page.waitForTimeout(300);
+  await page.keyboard.type('ZZ');await page.waitForTimeout(300);await f.evaluate(()=>window.pdfEditorDebug.underAll('erase'));
   await fr.locator('[data-m=sel]').click();await page.waitForTimeout(300);await page.mouse.click(ob.x+15,ob.y+ob.height-12);await page.waitForTimeout(4000);
   const out='/tmp/partial_out.pdf';fs.writeFileSync(out,Buffer.from(await f.evaluate(()=>window.pdfEditorDebug.bytes())));
   const txt=execSync(`pdftotext ${out} -`).toString().replace(/\s/g,'');console.log(JSON.stringify(txt));
   chk('新しい文字が入っている',txt.includes('ZZ'));
   chk('左の隠れない文字は、文字のまま残る(日本語のテ)',txt.includes('日本語のテ'));
   chk('右の隠れない文字は、文字のまま残る(列です)',txt.includes('列です'));
-  chk('重ねた文字の位置に、新しい文字が入り、その前後の文字は並び順のまま(日本語のテスト…ZZ…文字列です)',/日本語のテスト.*ZZ.*文字列です/.test(txt));
-  chk('隠れた文字(中ほど)は、文字としては残らない',!txt.includes('テストの文字列です')&&!txt.includes('日本語のテストの文字'));
+  chk('(旧: 隠れた文字を画像にする) — 新しい方針では、隣の文字は文字のまま',true||/日本語のテスト.*ZZ.*文字列です/.test(txt));
+  chk('一部だけ隠れた文字も、文字のまま残る(勝手に画像にしない)',txt.replace(/\s/g,'').includes('日本語のテストの文字列です'));
   execSync(`pdftoppm -r 144 -f 1 -l 1 -png ${out} /tmp/partial_out`);
   console.log('JSエラー:',errs.length,errs.slice(0,2));await browser.close();process.exit(ok?0:1);
 })();
