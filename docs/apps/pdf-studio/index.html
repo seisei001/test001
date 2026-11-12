@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E">
+
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -140,13 +142,21 @@ button:disabled{opacity:.4;cursor:default;}
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
+// 必要な部品(PDFを扱うライブラリ)をCDNから読み込めなかったとき: 何も出ずに止まらず、理由と再読み込みのボタンを出す
+(function(){const miss=[];if(typeof PDFLib==="undefined")miss.push("pdf-lib");if(typeof pdfjsLib==="undefined")miss.push("pdf.js");if(!miss.length)return;window.__libMissing=miss;
+  function show(){if(document.getElementById("libFail"))return;const d=document.createElement("div");d.id="libFail";d.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:sans-serif";
+    d.innerHTML='<div style="background:#fff;color:#111;border-radius:12px;padding:18px;max-width:440px;width:100%;line-height:1.7"><p style="margin:0 0 8px;font-weight:700">必要な部品を、読み込めませんでした</p><p style="margin:0 0 12px;font-size:.92rem">('+miss.join("・")+')インターネットの接続を確かめてから、「再読み込み」を押してください。直らないときは、少し待ってから、もう一度お試しください。</p><button id="libRetry" style="min-height:46px;width:100%;font-size:1rem;cursor:pointer">再読み込み</button></div>';
+    (document.body||document.documentElement).appendChild(d);d.querySelector("#libRetry").onclick=function(){location.reload();};}
+  if(document.body)show();else document.addEventListener("DOMContentLoaded",show);})();
+</script>
+<script>
 "use strict";
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.29"},
+  desk:{name:"製本デスク",ver:"2.30"},
   menu:{name:"機能メニュー",ver:"2.03"},
-  edit:{name:"ページ編集",ver:"3.16",src:"forms/editor.html?form=edit"},
+  edit:{name:"ページ編集",ver:"3.17",src:"forms/editor.html?form=edit"},
   shape:{name:"整形",ver:"1.15",src:"forms/editor.html?form=shape"},
   rule:{name:"罫線編集",ver:"1.36",src:"forms/editor.html?form=rule"}
 };

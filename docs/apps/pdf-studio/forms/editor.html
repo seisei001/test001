@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E">
+
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -314,6 +316,14 @@ body.pt-touch .grip::after{inset:-12px;}
 <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
+// 必要な部品(PDFを扱うライブラリ)をCDNから読み込めなかったとき: 何も出ずに止まらず、理由と再読み込みのボタンを出す
+(function(){const miss=[];if(typeof PDFLib==="undefined")miss.push("pdf-lib");if(typeof pdfjsLib==="undefined")miss.push("pdf.js");if(!miss.length)return;window.__libMissing=miss;
+  function show(){if(document.getElementById("libFail"))return;const d=document.createElement("div");d.id="libFail";d.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:sans-serif";
+    d.innerHTML='<div style="background:#fff;color:#111;border-radius:12px;padding:18px;max-width:440px;width:100%;line-height:1.7"><p style="margin:0 0 8px;font-weight:700">必要な部品を、読み込めませんでした</p><p style="margin:0 0 12px;font-size:.92rem">('+miss.join("・")+')インターネットの接続を確かめてから、「再読み込み」を押してください。直らないときは、少し待ってから、もう一度お試しください。</p><button id="libRetry" style="min-height:46px;width:100%;font-size:1rem;cursor:pointer">再読み込み</button></div>';
+    (document.body||document.documentElement).appendChild(d);d.querySelector("#libRetry").onclick=function(){location.reload();};}
+  if(document.body)show();else document.addEventListener("DOMContentLoaded",show);})();
+</script>
+<script>
 (function(){
 "use strict";
 const {PDFDocument,degrees,rgb,StandardFonts}=PDFLib;
@@ -606,9 +616,9 @@ function openHelp(){
   h+="<h3>そのほか</h3>";
   document.querySelectorAll(".helptext").forEach(e=>{if(e.id==="modeHint"||!e.innerHTML.trim())return;h+=`<p>${e.innerHTML}</p>`;});
   h+="<p>画面を拡大・移動するには、ふつうに、ドラッグ・2本指の拡大縮小をしてください(枠や操作の上以外)。</p>";
-  o.innerHTML=`<div class="hbox"><div class="hbar"><span style="flex:1">ヘルプ</span><button class="sub-btn" id="helpClose" style="min-height:36px;margin:0">閉じる</button></div><div class="hbody">${h}</div></div>`;
+  o.innerHTML=`<div class="hbox"><div class="hbar"><span style="flex:1">ヘルプ</span><button class="sub-btn" id="helpCloseB" style="min-height:36px;margin:0">閉じる</button></div><div class="hbody">${h}</div></div>`;
   o.addEventListener("pointerdown",e=>{if(e.target===o)closeHelp();});
-  document.body.appendChild(o);o.querySelector("#helpClose").onclick=closeHelp;
+  document.body.appendChild(o);o.querySelector("#helpCloseB").onclick=closeHelp;
 }
 const SPB={size:1,len:60};   // 行間・字間のバー: 大きさの倍率と、スライダーの長さ(px)。設定で変えて、ブラウザに覚えておく
 try{const o=JSON.parse(localStorage.getItem("pdfEditorSpBar")||"null");if(o){SPB.size=Math.min(3,Math.max(0.7,+o.size||1));SPB.len=Math.min(260,Math.max(40,+o.len||60));}}catch{}
@@ -1466,8 +1476,8 @@ function showSizePop(it,anchor){
 <span>背景</span><select id="spBg" style="min-height:30px;font-size:16px;max-width:8.5em"><option value="ink">文字だけ消す(罫線・図形・背景は残す)</option><option value="none">透明(何も消さない)</option><option value="text">文字のところを白抜き</option><option value="all">全体白抜き</option></select>
 <span>字間</span><span style="display:flex;gap:4px;align-items:center"><input id="spLs" type="number" step="0.1" min="-2" max="40" style="min-height:30px;font-size:16px;width:4.2em"><span>pt</span></span>
 ${it.type==="fix"?'<span></span><button id="spErase" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">元のPDFの文字を消す</button>':""}
-<span>枠</span><span style="display:flex;gap:6px"><button id="spCopy" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDel" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button></span>
-<span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">決定</button><button id="spX" class="sub-btn" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">戻る</button></span>`;
+<span>枠</span><span style="display:flex;gap:6px"><button id="spCopyB" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem">コピー</button><button id="spDelB" class="sub-btn" style="min-height:30px;margin:0;padding:2px 8px;font-size:.8rem;color:#dc2626">消去</button></span>
+<span></span><span style="display:flex;gap:6px"><button id="spOk" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">決定</button><button id="spXB" class="sub-btn" style="min-height:30px;margin:0;padding:2px 10px;font-size:.8rem">戻る</button></span>`;
   document.body.appendChild(d);sizePop=d;sizePopRect=popAnchorRect(it,r);placeSizePop();
   const inp=d.querySelector("#spIn"),fsel=d.querySelector("#spFont"),col=d.querySelector("#spColor"),lsIn=d.querySelector("#spLs");lsIn.value=it.ls||0;
   const er=d.querySelector("#spErase");if(er)er.onclick=()=>{hideSizePop();$("sErase").click();};   // 元のPDFの文字を消す(選んでいる枠)
@@ -1483,8 +1493,8 @@ ${it.type==="fix"?'<span></span><button id="spErase" class="sub-btn" style="min-
     const el=itemEls.get(it.id);if(el){const t=el.querySelector(".t");if(t)buildText(it,t,K());growToFit(it);boxStyle(it,el);placeGrip(it,el);}
     syncPanel();
   };
-  d.querySelector("#spCopy").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDel").onclick=()=>{hideSizePop();deleteItem(it);};
-  d.querySelector("#spOk").onclick=ok;d.querySelector("#spX").onclick=hideSizePop;
+  d.querySelector("#spCopyB").onclick=()=>{hideSizePop();dupItem(it);};d.querySelector("#spDelB").onclick=()=>{hideSizePop();deleteItem(it);};
+  d.querySelector("#spOk").onclick=ok;d.querySelector("#spXB").onclick=hideSizePop;
   inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();ok();}else if(e.key==="Escape")hideSizePop();});
   d.addEventListener("pointerdown",e=>e.stopPropagation());
   if(!isTouch())setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},0);   // 指では、キーボードを勝手に出さない(出ると、見えている範囲が狭くなって、窓が入らなくなる)
@@ -1617,7 +1627,7 @@ $("sSize").onchange=()=>{if(cs&&cs.type!=="img"){const v=+$("sSize").value;if(v>
 $("sLs").onchange=()=>{if(cs&&cs.type!=="img"){cs.ls=Math.max(-2,Math.min(40,+$("sLs").value||0))||0;growToFit(cs);renderOverlay();syncPanel();}};   // 字間: 文字と文字の間の空き(元の書式が均等割付などのとき、変換で自動でも入る)
 $("sSize").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("sSize").onchange();}};
 $("sColor").oninput=()=>{if(cs){cs.color=$("sColor").value;refreshSel();}};
-$("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(()=>{});refreshSel();}};
+$("sFmtT").onclick=async()=>{if(cs){cs.fmt="text";syncPanel();await ensureWebFont().catch(fontWarn);refreshSel();}};
 ["L","C","R"].forEach((k,i)=>{$("sA"+k).onclick=()=>{if(cs&&cs.type!=="img"){cs.align=["left","center","right"][i];syncPanel();refreshSel();}};});
 $("sFmtP").onclick=()=>{if(cs){cs.fmt="pic";syncPanel();refreshSel();}};
 $("sErase").onclick=()=>{ // 元の文字を隠すだけにする(新しい文字は置かない)
@@ -1654,7 +1664,7 @@ function beginRange(e){
     const r=rub;rub=null;if(!r)return;r.d.remove();
     // iPhoneは、指を離した操作の流れの中でしか、キーボードを出せない。準備が済んでいれば、待たずに(awaitせずに)進む
     if(mode==="sel"&&!(runsFor===cur&&curBase===bytes))await loadRuns();
-    if(!webFontOK)await ensureWebFont().catch(()=>{});
+    if(!webFontOK)await ensureWebFont().catch(fontWarn);
     const x=Math.max(0,Math.min(r.sx,r.x)),y=Math.max(0,Math.min(r.sy,r.y));
     const w=Math.min(VW-x,Math.abs(r.x-r.sx)),h=Math.min(VH-y,Math.abs(r.y-r.sy));
     const tap=w<6&&h<6;let it=null;
@@ -3283,7 +3293,7 @@ async function doOcrBody(x,y,w,h){
   ocrDiag=`診断: 画像${cv.width}×${cv.height}・文字の塊${nSeg0}個(2回目の探索で追加${nGap})・読めた塊${res.length}個・${nl}行・捨てた行${dropped||0}・${Math.round((performance.now()-tOcr0)/1000)}秒${segThin?"・しきい値を"+segThin+"にして文字を細くした":""}・つながった行を分けた${ocrSplitCount}回・行${segStat.n}本(高さの中央${segStat.med}・最大${segStat.max}・中央の2.2倍超${segStat.tall}本・複数行の塊${segStat.multi})・読み取り${ocrStat.reads}回(白紙の画像${ocrStat.blank}・空の結果${ocrStat.empty}・自信なし${ocrStat.low})。`+engReport(res,engNote);
   return{ok:true,lines:nl,parts:made.length,ref:lastRefine};
 }
-$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(()=>{});await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
+$("bOcrPage").onclick=busy(async()=>{if(!bytes)return;if(cs){cs=null;}await ensureWebFont().catch(fontWarn);await doOcr(0,0,VW,VH);if(items.some(o=>o.ocrMade&&o.page===cur)){setMode("sel");if(lastOcrFirst&&items.includes(lastOcrFirst))select(lastOcrFirst,false);}});
 
 // ====== PDFへの反映(フォントは1回だけ埋め込む) ======
 // 入力中の枠と同じ折り返しで行に分ける(DOMで各文字の位置を測り、x座標が戻った所を行頭とする)
@@ -3821,7 +3831,7 @@ function freeFormShow(){
   $f("ffSize").onchange=()=>upd(c=>{const v=+$f("ffSize").value;if(v>=2)c.q.size=v;});
   $f("ffRot").onchange=()=>upd(c=>{c.q.rot=+$f("ffRot").value||0;});
   $f("ffCol").oninput=()=>upd(c=>{c.q.color=$f("ffCol").value;});
-  $f("ffFont").onchange=async()=>{const v=$f("ffFont").value;if(v!=="orig")await ensureWebFontKey(v).catch(()=>{});upd(c=>{c.q.font=v;});};
+  $f("ffFont").onchange=async()=>{const v=$f("ffFont").value;if(v!=="orig")await ensureWebFontKey(v).catch(fontWarn);upd(c=>{c.q.font=v;});};
   const fm=(id,fl)=>{$f(id).onchange=()=>upd(c=>{c.q.fm=($f(id).checked?(c.q.fm||0)|fl:(c.q.fm||0)&~fl);});};fm("ffB",FM_B);fm("ffUl",FM_U);fm("ffSt",FM_S);
   $f("ffChar").onchange=()=>upd(c=>{   // 文字を替える(2文字以上入れたら、2文字目からは、右に足す)
     const a=Array.from($f("ffChar").value.replace(/\s/g,""));
@@ -4084,6 +4094,8 @@ $("pzM").onclick=()=>setPZ(PZ/1.25);$("pzP").onclick=()=>setPZ(PZ*1.25);$("pzR")
 $("bCommit").onclick=busy(commit);
 // 動作確認用(テストが部品の中身を読む)
 // 超拡大で、枠の上端・左端が画面の外に出たときも、行間・字間のバーが見える位置に寄せる
+let fontFailShown=false;
+const fontWarn=e=>{console.warn("日本語フォントを読み込めませんでした",e);if(fontFailShown)return;fontFailShown=true;status("日本語フォントを読み込めませんでした。ネットワークを確かめてください(文字の見た目・保存が、標準のフォントになることがあります)。");};
 let barRaf=0;
 function barKeepSoon(){if(barRaf)return;barRaf=requestAnimationFrame(()=>{barRaf=0;barKeep();});}
 function barKeep(){
