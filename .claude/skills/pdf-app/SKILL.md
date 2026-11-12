@@ -660,3 +660,8 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - ④確定の確認は1回(#applyAsk「この見た目で確定します」/確定する・戻る)。旧の確認(#keepAsk/#eraseAsk/#partialAsk・枠を作ったときの案内)は使わない。訂正の枠で「そのまま重ねる」は、確定のとき、元の文字に触らない透明な新しい枠に変える(keepOrigAsChosen)。隣のPDFの文字は、勝手に画像にしない(文字のまま)。「文字だけ消す」は、9割以上が枠の中にある元の文字だけを、まるごと取り除く。
 - ⑤確定後: 見えているものが全て。選び直して動かしても、下の図に触らない(3.13の仕組み)。
 - テスト: test-studio-policy.js(写真: 空の枠→読み取り→下地3択の見た目→確定/戻る→そのまま・文字だけ消す・白く塗る)、test-studio-policy2.js(PDFの文字: タップで訂正の枠・文字だけ消す/そのまま重ねる・確定後に動かしても図に触らない)。旧の確認を前提にしたテスト(underask/eraseask/partialask/askforce/askback/autoocr/selocr/mixedocr/keepimg)は削除。ink3/inkphoto/overlap2/partial は debug.underAll('erase') で「文字だけ消す」を選んでから確かめる。harness: window.__noConfirmAsk=true。
+
+## v157 製本デスク 2.30・ページ編集 3.17: 外部の検証報告への対応
+- 報告(外部)の指摘を、コードで確かめた: CDN失敗で無言で止まる(正)/重複ID(正)/空の catch{} 多数(正。ただし大半は destroy・localStorage・setPointerCapture・scrollTo などの無害なもの)/単体起動のヘルプなし(仕様)/フォント追加の見積もり(安全側)/favicon なし(正)。
+- 対応: ①両ページ(index.html・forms/editor.html)で、pdf-lib・pdf.js を読めなかったとき、全面の案内(#libFail: 読めなかった部品名・「再読み込み」#libRetry)を出す(ライブラリのタグの直後のインラインscript)。②重複ID(helpClose・spCopy・spDel・spX)は、2つ目のテンプレートを *B に改名(同時には出ない・querySelectorも合わせた)。③日本語フォントを読めなかったとき、状態欄に案内(fontWarn: ensureWebFont/ensureWebFontKey の .catch に)。空の catch{} のうち、無害なものは、そのまま。④favicon(データURLの絵文字)を追加。
+- テスト: test-studio-robust.js(重複IDなし・正常時は案内なし・pdf-lib を止めると案内と再読み込み)。
