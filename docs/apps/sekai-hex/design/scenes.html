@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>見せ方の動く試作</title>
+<style>
+:root{--bg:#f3ede0;--card:#fbf7ee;--ink:#2b2218;--sub:#6e6050;--line:#d9ccb4;--seal:#a63a26;--wash:#e6dcc6}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1812;--card:#262017;--ink:#efe6d3;--sub:#b3a68e;--line:#3d3426;--seal:#e0765f;--wash:#31291d}}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.7 "Hiragino Sans","Noto Sans JP",sans-serif;padding:14px max(14px,env(safe-area-inset-right,0px)) 40px max(14px,env(safe-area-inset-left,0px))}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+a{color:var(--seal)}
+.crumb{display:flex;flex-wrap:wrap;gap:4px 6px;font-size:.78rem;color:var(--sub);align-items:center;min-height:1.6em}
+.crumb b{color:var(--ink);background:var(--wash);padding:1px 9px;border-radius:10px}
+#stage{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:#222;touch-action:manipulation}
+.scene{position:absolute;inset:0;transition:opacity .6s ease,transform .7s ease;will-change:transform,opacity}
+.scene .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.u{position:absolute;transform:translate(-50%,-100%);display:block;transition:left 1.2s ease,top 1.2s ease}
+.u img{display:block;height:100%;width:auto}
+.t::after{content:"";position:absolute;inset:0;background:var(--c);mix-blend-mode:multiply;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;opacity:var(--o,.55)}
+.lab{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:#3a2a16;background:rgba(251,247,238,.82);border:1px solid #8a7550;border-radius:3px;padding:0 6px;white-space:nowrap}
+.frame{position:absolute;transform:translate(-50%,-50%);border:2px solid var(--seal);border-radius:3px;box-shadow:0 0 0 2px rgba(255,255,255,.6);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.say{position:absolute;left:3%;right:3%;bottom:3%;background:rgba(251,247,238,.93);border:1px solid #8a7550;border-radius:4px;padding:8px 10px 8px 34%;font-size:12px;line-height:1.6;color:#2b2218;min-height:60px}
+.say b{display:block;font-size:11px;color:#a63a26}
+.say img{position:absolute;left:3%;bottom:0;width:27%}
+.ctl{display:flex;gap:8px}
+.ctl button{flex:1;font:inherit;padding:9px 0;border:1px solid var(--seal);background:var(--card);color:var(--seal);border-radius:4px;font-weight:700}
+.ctl button:disabled{opacity:.35}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.card h2{margin:0;font-size:1.1rem}
+.meta{display:grid;grid-template-columns:4.5em 1fr;gap:3px 8px;font-size:.86rem}
+.meta dt{color:var(--sub);font-weight:700}.meta dd{margin:0}
+.dots{display:flex;gap:6px;justify-content:center}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--seal)}
+</style></head><body><main>
+<p style="margin:0"><a href="./">← 見せ方の設計</a></p>
+<div class="crumb" id="crumb"></div>
+<div id="stage"></div>
+<div class="dots" id="dots"></div>
+<div class="ctl"><button id="prev">← 前の場面</button><button id="next">降りる →</button></div>
+<div class="card"><h2 id="ttl"></h2><dl class="meta" id="meta"></dl></div>
+<p style="margin:0;color:var(--sub);font-size:.8rem">絵は第1弾の発注分です。兵の鎧は灰色の絵に国の色を重ねています(赤が自軍、青が敵)。位置と大きさは仮です。</p>
+</main>
+<script>
+const A='../assets/view/';
+const RED='#d4483a',BLUE='#3d6fd1';
+// u: 絵(x,y=足元の位置%, h=高さ%, c=色, flip, tint)
+const U=(f,x,y,h,o={})=>({t:'u',f,x,y,h,...o});
+const SCENES=[
+ {key:'map',crumb:['世界'],title:'場面1 · 勢力図(主語は国)',bg:A+'map_political.jpg',
+  layers:[U('ev_fire.png',47,36,11),U('flag_red.png',42,28,10),U('flag_blue.png',51,46,10),
+          {t:'lab',x:40,y:12,s:'北のカレン国'},{t:'lab',x:58,y:60,s:'湖の連邦'}],
+  frame:{x:47,y:31,w:20,h:20},
+  meta:[['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。羊皮紙の平面で国の塗り分けと境界を主役にし、地形は小さな記号に留める。'],['光らせる','落ちた砦、敵の軍旗、動いた国境。']]},
+ {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',bg:A+'bg_meander.jpg',
+  layers:[{t:'path',d:'M20 80 C 35 72 40 60 50 54 S 62 40 64 30',c:'#a63a26'},U('col_spear.png',36,78,26),U('col_main.png',58,50,26),
+          {t:'lab',x:64,y:24,s:'灰色の橋'},{t:'lab',x:24,y:86,s:'補給が細る'}],
+  frame:{x:64,y:30,w:18,h:18},
+  meta:[['出来事','追撃軍が白瀬川沿いの街道を南へ進む。補給は後ろで細くなる。'],['判断','主語は軍。鳥瞰の絵地図で、道・縦隊・補給線を主役にする。'],['光らせる','縦隊、補給線(赤の点線)、渡河点の橋。']]},
+ {key:'plan',crumb:['国境地方','灰色の橋の隘路'],title:'場面3 · 作戦図(主語は会戦)',bg:A+'map_battle.jpg',
+  layers:[{t:'arrow',d:'M66 22 L56 42',c:BLUE},{t:'arrow',d:'M80 40 L60 50',c:BLUE},
+          U('tk_horse.png',68,30,11,{c:BLUE}),U('tk_spear.png',80,46,11,{c:BLUE}),U('tk_bow.png',60,22,11,{c:BLUE}),
+          U('tk_shield.png',42,66,11,{c:RED}),U('tk_spear.png',34,58,11,{c:RED}),
+          {t:'lab',x:36,y:73,s:'第三百人隊'},{t:'lab',x:52,y:56,s:'橋'}],
+  frame:{x:38,y:62,w:26,h:26},
+  meta:[['出来事','橋の手前の隘路で、追撃軍の先鋒と殿の部隊が接触する。'],['判断','主語は会戦。誰がどこに立ち、どちらから押すかを、駒と矢印で読めるようにする。'],['光らせる','両軍の駒、押してくる向き、橋、主人公の百人隊。']]},
+ {key:'field',crumb:['国境地方','灰色の橋の隘路','第三百人隊'],title:'場面4 · 戦場の場面(主語は百人隊)',bg:A+'bg_meadow_path.jpg',
+  layers:[U('ld_r.png',14,70,22,{c:RED}),U('fl_r.png',22,66,24,{c:RED}),
+          U('bw_r.png',18,78,22,{c:RED}),U('bw_r.png',26,84,24,{c:RED}),
+          U('sp_r.png',33,74,24,{c:RED}),U('sp_r.png',37,86,27,{c:RED}),
+          U('sh_r.png',42,80,25,{c:RED}),U('sh_r.png',43,92,28,{c:RED}),
+          U('sp_l.png',66,74,22,{c:BLUE}),U('sh_l.png',62,80,23,{c:BLUE}),U('sp_l.png',70,88,25,{c:BLUE}),U('sh_l.png',58,92,27,{c:BLUE}),U('bw_l.png',80,82,22,{c:BLUE}),
+          U('dead_a.png',52,95,10),
+          {t:'lab',x:14,y:44,s:'隊長'}],
+  frame:{x:20,y:60,w:30,h:36},
+  meta:[['出来事','殿の百人隊が橋の手前で隊列を組み、敵の先鋒を押しとどめる。'],['判断','主語は百人隊。隊列、向き、隊長の位置が主役。兵の絵は役割ごとに組み替える。'],['光らせる','隊列の厚み、旗手、倒れた兵、隊長。']]},
+ {key:'scene',crumb:['第三百人隊','隊長 · 夜営'],title:'場面5 · 場面絵(主語は主人公)',bg:A+'bg_forest.jpg',
+  layers:[{t:'say',img:'hero_relief.png',who:'隊長',s:'橋は守った。……千人隊長への推薦状が、夜のうちに届いたそうだ。'}],
+  meta:[['出来事','橋を守り切った夜、千人隊長への推薦の知らせが届く。'],['判断','主語は主人公。地図は要らない。背景は場所と時間に合うものを選び、人物の表情を出来事に合わせて切り替える。'],['光らせる','昇進の知らせ、失った部下、次の任務。']]}
+];
+const st=document.getElementById('stage'),cr=document.getElementById('crumb'),dots=document.getElementById('dots');
+let cur=0,busy=false;const els=[];
+function build(s){
+  const d=document.createElement('div');d.className='scene';
+  const im=new Image();im.className='bgimg';im.src=s.bg;d.appendChild(im);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','ov');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');d.appendChild(svg);
+  s.layers.forEach(l=>{
+    if(l.t==='u'){const e=document.createElement('div');e.className='u'+(l.c?' t':'');e.style.cssText=`left:${l.x}%;top:${l.y}%;height:${l.h}%`;
+      const i=new Image();i.src=A+l.f;if(l.flip)i.style.transform='scaleX(-1)';e.appendChild(i);
+      if(l.c){e.style.setProperty('--c',l.c);if(/^(sp|sh|bw|ld|fl)_/.test(l.f))e.style.setProperty('--o','.36');e.style.setProperty('--m',`url(${A+l.f})`);}d.appendChild(e);}
+    else if(l.t==='lab'){const e=document.createElement('div');e.className='lab';e.style.cssText=`left:${l.x}%;top:${l.y}%`;e.textContent=l.s;d.appendChild(e);}
+    else if(l.t==='path'){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',l.d);p.setAttribute('fill','none');p.setAttribute('stroke',l.c);p.setAttribute('stroke-width','0.9');p.setAttribute('stroke-dasharray','2 1.6');svg.appendChild(p);}
+    else if(l.t==='arrow'){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',l.d);p.setAttribute('fill','none');p.setAttribute('stroke',l.c);p.setAttribute('stroke-width','1.4');p.setAttribute('stroke-linecap','round');p.setAttribute('marker-end','url(#ah)');svg.appendChild(p);}
+    else if(l.t==='say'){const e=document.createElement('div');e.className='say';e.innerHTML=`<img src="${A+l.img}" alt=""><b>${l.who}</b>${l.s}`;d.appendChild(e);}
+  });
+  svg.insertAdjacentHTML('afterbegin','<defs><marker id="ah" viewBox="0 0 6 6" refX="4" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L6 3L0 6z" fill="#3d6fd1"/></marker></defs>');
+  return d;
+}
+SCENES.forEach((s,i)=>{const d=build(s);d.style.opacity=i===0?1:0;d.style.pointerEvents='none';st.appendChild(d);els.push(d);dots.insertAdjacentHTML('beforeend','<i></i>');});
+function info(){const s=SCENES[cur];cr.innerHTML=s.crumb.map(c=>`<b>${c}</b>`).join('<span>›</span>');
+  document.getElementById('ttl').textContent=s.title;document.getElementById('meta').innerHTML=s.meta.map(m=>`<dt>${m[0]}</dt><dd>${m[1]}</dd>`).join('');
+  [...dots.children].forEach((d,i)=>d.className=i===cur?'on':'');
+  document.getElementById('prev').disabled=cur===0;const n=document.getElementById('next');n.disabled=cur===SCENES.length-1;
+  n.textContent=cur<SCENES.length-1?'降りる → '+SCENES[cur+1].title.split(' · ')[1].split('(')[0]:'最後の場面';}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function go(to){
+  if(busy||to<0||to>=SCENES.length)return;busy=true;
+  const from=cur,a=els[from],b=els[to],down=to>from;
+  const fr=down?SCENES[from].frame:SCENES[to].frame;
+  if(fr){ // 枠を出し、その枠へ寄る(下る時)/枠から引く(戻る時)
+    const f=document.createElement('div');f.className='frame';f.style.cssText=`left:${fr.x}%;top:${fr.y}%;width:${fr.w}%;height:${fr.h}%`;
+    const host=down?a:b;host.appendChild(f);
+    if(down){await wait(700);const k=100/fr.w;a.style.transformOrigin=`${fr.x}% ${fr.y}%`;a.style.transform=`scale(${k})`;a.style.opacity=0;
+      b.style.transition='none';b.style.transform='scale(.6)';b.style.opacity=0;void b.offsetWidth;b.style.transition='';b.style.transform='scale(1)';b.style.opacity=1;await wait(750);}
+    else{b.style.transition='none';const k=100/fr.w;b.style.transformOrigin=`${fr.x}% ${fr.y}%`;b.style.transform=`scale(${k})`;b.style.opacity=0;a.style.opacity=0;a.style.transform='scale(.6)';void b.offsetWidth;b.style.transition='';b.style.transform='scale(1)';b.style.opacity=1;await wait(750);}
+    f.remove();
+  }else{a.style.opacity=0;b.style.opacity=1;await wait(600);}
+  a.style.transform='scale(1)';a.style.transformOrigin='50% 50%';
+  cur=to;busy=false;info();
+}
+document.getElementById('next').onclick=()=>go(cur+1);document.getElementById('prev').onclick=()=>go(cur-1);
+info();
+</script></body></html>
