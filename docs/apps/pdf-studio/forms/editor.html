@@ -199,7 +199,7 @@ body.pt-touch .grip::after{inset:-12px;}
 </style>
 </head>
 <body>
-<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embPrint" title="いま見ているページを印刷">印刷</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzF" title="ページ全体が見える大きさにします">全体</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave">保存</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
+<div id="embHead"><span class="sub helptext" id="embMsg"></span><div id="embRow1"><span class="embL"><button class="sub-btn" id="embSet" title="設定">設定</button><button class="sub-btn" id="embPrint" title="いま見ているページを印刷">印刷</button><button class="sub-btn" id="embHelp" title="ヘルプ(キーボードは F1)">ヘルプ</button><span id="pz"><button class="sub-btn" id="pzM" title="ページを小さく">－</button><button class="sub-btn" id="pzR" title="ページの大きさを標準(100%)に戻す">100%</button><button class="sub-btn" id="pzF" title="ページ全体が見える大きさにします">全体</button><button class="sub-btn" id="pzP" title="ページを大きく">＋</button></span></span><span class="embR"><button id="embSave" title="編集した内容を、束に戻します(ファイルへの保存は、製本デスクの「保存」)">完了</button><button class="sub-btn" id="embCancel">戻る</button></span></div><div id="embRow2"></div><div id="embRow3"></div><div id="embRow4"></div></div>
 <header>
 <div id="ver" title="バージョン">1.02</div>   <!-- バージョン: 公開のたびに 0.01 ずつ上げる(1.00 → 1.01 → …)。PDFアプリ スキル §4 -->
 <a class="back-link" href="../../">← ハブに戻る</a>
@@ -4965,7 +4965,7 @@ if(EMBED){
   }
   const send=m=>parent.postMessage(m,"*");
   ["touchstart","touchend","touchcancel"].forEach(n=>document.addEventListener(n,e=>send({type:"touch",n:e.touches.length}),{capture:true,passive:true}));   // 指の数を親に伝える(親が、拡大・位置の勝手な変化を見分けるため)
-  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="shape"?"ページの形を整えて、「保存」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「保存して束に戻す」を押すと、束のサムネイルも変わります";
+  $("embMsg").textContent=FORMKIND==="warp"?"歪みを直して「補正する」を押すと、束に戻ります":FORMKIND==="shape"?"ページの形を整えて、「完了」を押すと、束に戻ります":FORMKIND==="rule"?"消したい罫線をタップして選び、「選んだ罫線を消す」を押してください。保存すると束に戻ります":"このページを編集して「完了」を押すと、束のサムネイルも変わります";
   window.addEventListener("message",e=>{const m=e.data;if(m&&m.type==="panres"){panRes=m.t;return;}
     if(m&&m.type==="zoom"){GEO.set(m);applyZoom();clearTimeout(jobPlT);jobPlT=setTimeout(placeJob,300);onGeoChange();}});   // 拡大率は、処理中でも必ず受け取る
   window.addEventListener("message",busy(async e=>{
@@ -4977,6 +4977,7 @@ if(EMBED){
   }));
   $("embHelp").onclick=openHelp;
   document.addEventListener("keydown",e=>{if(e.key==="F1"){e.preventDefault();openHelp();}});   // パソコン: F1 でヘルプ
+  document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==="s"||e.key==="S")){e.preventDefault();$("embSave").click();}});   // Ctrl+S: 完了(束に戻す)
   $("embSave").onclick=busy(async()=>{if(!bytes)return;if((await commit())==="cancel")return;send({type:"result",bytes:bytes.slice()});});
   $("embPrint").onclick=busy(async()=>{if(!bytes)return;if((await commit())==="cancel")return;send({type:"print",bytes:bytes.slice()});});   // 親の画面(製本デスク)から印刷する
   $("embCancel").onclick=()=>{const changed=hist.length>0||RULE.ovals.length>0||items.some(it=>it.free||((it.type==="img"||it.txt.trim()||it.type==="fix")&&fixChanged(it)));if(changed&&!confirm("編集した内容は束に戻りません。破棄して閉じますか?"))return;send({type:"close"});};   // 変更があるときは確認する

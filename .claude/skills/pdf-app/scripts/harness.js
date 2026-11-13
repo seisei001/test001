@@ -34,7 +34,7 @@ async function launch(opts={}){
   const browser=await playwright.chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
   const page=await browser.newPage({viewport:{width:900,height:1400},acceptDownloads:true});
   page.on('pageerror',e=>console.log('PAGEERR',e.message));
-  await page.addInitScript(()=>{window.__noEraseAsk=true;window.__noUnderAsk=true;window.__noFreeAsk=true;window.__noConfirmAsk=true;window.__noSaveAsk=true;window.__warpAutoLock=true;window.__keepAns="erase";window.__noAutoOcr=true;});   // 画像の文字を消す前の確認の画面は、ふだんのテストでは出さない(test-studio-eraseask.js だけで確かめる)
+  await page.addInitScript(()=>{window.__noEraseAsk=true;window.__noUnderAsk=true;window.__noFreeAsk=true;window.__noConfirmAsk=true;window.__warpAutoLock=true;window.__keepAns="erase";window.__noAutoOcr=true;});   // 画像の文字を消す前の確認の画面は、ふだんのテストでは出さない(test-studio-eraseask.js だけで確かめる)
   if(opts.log)page.on('console',m=>{const t=m.text();if(!/^Canvas2D|Warning: Parameter/.test(t))console.log('LOG',t.slice(0,200));});
   // NDLOCR-Lite のモデル(GitHub rawの実体)は、setup.sh で取得した $PDFAPP_WORK/ndl/ から返す
   await page.route('https://raw.githubusercontent.com/ndl-lab/ndlocr-lite/**',r=>{
