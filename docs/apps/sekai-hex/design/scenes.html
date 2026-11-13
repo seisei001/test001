@@ -20,6 +20,8 @@ a{color:var(--seal)}
 .frame{position:absolute;transform:translate(-50%,-50%);border:2px solid var(--seal);border-radius:3px;box-shadow:0 0 0 2px rgba(255,255,255,.6);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.phbox{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:12%;background:#f6e9c9;border:3px dashed var(--seal)}
+.phbox strong{font-size:16px;color:#a63a26}.phbox span{font-size:12px;color:#5b4a35;line-height:1.7}
 .tilemap{filter:sepia(.28) saturate(.85);position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)}
 .tl{overflow:hidden;background-position:center;margin:-.5px}
 .scene.vig::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 38px 14px rgba(110,80,40,.6);pointer-events:none}
@@ -55,21 +57,23 @@ const RED='#d4483a',BLUE='#3d6fd1';
 const U=(f,x,y,h,o={})=>({t:'u',f,x,y,h,...o});
 const T=(f,x,y,h,c,o={})=>({t:'u',f,x,y,h,c,...o});
 const SCENES=[
- {key:'map',crumb:['世界'],title:'場面1 · 勢力図(主語は国)',bg:A+'map_political.jpg',
-  layers:[U('ev_fire.png',47,36,11),U('flag_red.png',42,28,10),U('flag_blue.png',51,46,10),
-          U('s_galley.png',10,62,10),U('s_galley.png',20,76,9,{flip:1}),U('s_island.png',16,88,9),
+ {key:'map',crumb:['世界'],title:'場面1 · 世界の地図(主語は国)',bg:A+'map_political.jpg',
+  layers:[U('ev_fire.png',47,36,7),U('flag_red.png',42,28,7),U('flag_blue.png',51,46,7),
+          U('s_galley.png',10,62,8),U('s_galley.png',20,76,7,{flip:1}),U('s_island.png',16,88,8),
           {t:'lab',x:40,y:12,s:'北のカレン国'},{t:'lab',x:58,y:60,s:'湖の連邦'},
           {t:'crest',x:8,y:12,sd:'sd_kite.png',ch:'ch_wolf.png',c:RED},{t:'crest',x:19,y:12,sd:'sd_round.png',ch:'ch_swords.png',c:BLUE}],
-  frame:{x:47,y:31,w:20,h:20},
-  meta:[['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。羊皮紙の平面で、国の塗り分けと境界を主役にする。国の見分けは紋章(盾の形と図柄の組み合わせ)で出す。'],['光らせる','落ちた砦、敵の軍旗、動いた国境。']]},
- {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',vig:1,
-  layers:[{t:'tiles'},{t:'path',d:'M4 56 L50 56 L50 84',c:'#a63a26'},
-          U('sym_fort.png',50,58,24),U('ev_fire.png',55,40,12),U('flag_blue.png',44,56,9),
-          U('col_spear.png',24,58,19),U('col_main.png',54,80,19),
-          {t:'lab',x:50,y:28,s:'北の砦(陥落)'},{t:'lab',x:62,y:96,s:'灰色の橋'},{t:'lab',x:16,y:70,s:'補給が細る'}],
-  frame:{x:50,y:88,w:24,h:24},
-  meta:[['出来事','陥落した北の砦から、追撃軍が街道を南の橋へ進む。補給は後ろで細くなる。'],['判断','主語は軍。勢力図で光っていた砦を、同じ位置に残したまま、道・縦隊・補給線を主役にした絵地図に切り替える。道の種類(土・石畳・雪・砂漠・泥)は地形で変わる。'],['光らせる','砦(引き継ぎ)、縦隊、補給線(赤の点線)、渡河点の橋。']]},
- {key:'plan',crumb:['国境地方','灰色の橋の隘路'],title:'場面3 · 作戦図(主語は会戦)',bg:A+'map_battle.jpg',
+  frame:{x:42,y:26,w:44,h:44},
+  meta:[['縮尺','大陸ぜんたい。国は色の面、街は点、砦は小さな印。'],['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。国の塗り分けと境界が主役。国の見分けは紋章(盾の形と図柄の組み合わせ)で出す。'],['次','カレン国ぜんたいへ寄る。']]},
+ {key:'country',crumb:['世界','北のカレン国'],title:'場面2 · 国の地図(主語は一つの国)',ph:'絵待ち: 一つの国の地図',phn:'国の中の州境、主な街(小さな建物の絵)、砦、街道、川、山、森。国境の外は余白。軍の旗と、出来事の印を重ねる。',
+  frame:{x:50,y:34,w:34,h:34},
+  meta:[['縮尺','一つの国。街は小さな建物の絵、大きな都市と砦は少し大きく。道は線で引く。'],['出来事','国境の砦が落ち、国内の街道を敵軍が南へ進む。'],['判断','主語は国の中の動き。どの街が、どの道で、いつ危うくなるかを見せる。'],['次','白瀬川沿いの国境地方へ寄る。']]},
+ {key:'region',crumb:['世界','北のカレン国','国境地方'],title:'場面3 · 地方の地図(主語は軍)',ph:'絵待ち: 地方の地図',phn:'町が3つ、村、砦、街道、白瀬川と橋、畑、森、丘。街も村も建物の絵で、道と畑の区画がわかる。縦隊の絵を重ねる。',
+  frame:{x:56,y:58,w:30,h:30},
+  meta:[['縮尺','地方。町・村・砦を一つずつ、建物の絵で描く。街道、畑、森、川と橋。'],['出来事','追撃軍が白瀬川沿いの街道を進み、白瀬の町へ向かう。補給は後ろで細くなる。'],['判断','主語は軍。道・縦隊・補給線が主役。道の種類(土・石畳・雪・砂漠・泥)は地形で変わる。'],['次','白瀬の町へ寄る。']]},
+ {key:'town',crumb:['北のカレン国','国境地方','白瀬の町'],title:'場面4 · 都市の地図(主語は町)',ph:'絵待ち: 都市の地図',phn:'城壁に囲まれた町を真上から。区画ごとの家並み、通り、広場、城門、町の外れの川と灰色の橋。',
+  frame:{x:78,y:66,w:26,h:26},
+  meta:[['縮尺','都市。家並みの区画、通り、広場、城壁、門。'],['出来事','敵の先鋒が町に迫り、町外れの灰色の橋が最後の防衛線になる。'],['判断','主語は町。どこから入られるか、どこを守るかが主役。'],['次','橋の隘路へ寄る。']]},
+ {key:'plan',crumb:['国境地方','白瀬の町','灰色の橋の隘路'],title:'場面5 · 作戦図(主語は会戦)',bg:A+'map_battle.jpg',
   layers:[{t:'arrow',d:'M66 22 L56 42',c:BLUE},{t:'arrow',d:'M80 40 L60 50',c:BLUE},
           U('tk_horse.png',68,30,11,{c:BLUE}),U('tk_spear.png',80,46,11,{c:BLUE}),U('tk_bow.png',60,22,11,{c:BLUE}),
           U('tk_shield.png',42,66,11,{c:RED}),U('tk_spear.png',34,58,11,{c:RED}),
@@ -77,7 +81,7 @@ const SCENES=[
           {t:'lab',x:36,y:73,s:'第三百人隊'},{t:'lab',x:52,y:56,s:'橋'}],
   frame:{x:38,y:62,w:26,h:26},
   meta:[['出来事','橋の手前の隘路で、追撃軍の先鋒と殿の部隊が接触する。'],['判断','主語は会戦。誰がどこに立ち、どちらから押すかを、駒と矢印で読めるようにする。矢が飛ぶ向きも重ねる。'],['光らせる','両軍の駒、押してくる向き、橋、主人公の百人隊。']]},
- {key:'field',crumb:['国境地方','灰色の橋の隘路','第三百人隊'],title:'場面4 · 戦場の場面(主語は百人隊)',bg:A+'bg_meadow_path.jpg',
+ {key:'field',crumb:['白瀬の町','灰色の橋の隘路','第三百人隊'],title:'場面6 · 戦場の場面(主語は百人隊)',bg:A+'bg_meadow_path.jpg',
   layers:[U('fx_shieldwall.png',44,80,17),U('fx_dust.png',52,70,14),U('fx_smoke.png',92,40,26),U('fx_arrows.png',48,38,18),
           U('ld_r.png',12,66,22,{c:RED}),U('fl_r.png',22,62,24,{c:RED}),U('x_horn.png',9,82,24,{c:RED,g:1}),U('x_officer.png',17,92,28,{c:RED,g:1}),
           U('bw_r.png',27,70,21,{c:RED}),U('x_crossbow.png',31,82,22,{c:RED,g:1}),
@@ -87,10 +91,10 @@ const SCENES=[
           {t:'lab',x:12,y:40,s:'隊長'}],
   frame:{x:20,y:60,w:30,h:36},
   meta:[['出来事','殿の百人隊が橋の手前で隊列を組み、敵の先鋒を押しとどめる。'],['判断','主語は百人隊。隊列、向き、隊長の位置が主役。兵の絵は役割ごとに組み替え、矢・土煙・盾の壁などの効果を重ねる。'],['光らせる','隊列の厚み、旗手、倒れた兵、隊長。']]},
- {key:'scene',crumb:['第三百人隊','隊長 · 夜営'],title:'場面5 · 場面絵(主語は主人公)',bg:A+'pic_0.jpg',
+ {key:'scene',crumb:['第三百人隊','隊長 · 夜営'],title:'場面7 · 場面絵(主語は主人公)',bg:A+'pic_0.jpg',
   layers:[{t:'say',img:'hero_relief.png',who:'隊長',s:'橋は守った。……千人隊長への推薦状が、夜のうちに届いたそうだ。'}],
   meta:[['出来事','橋を守り切った夜、千人隊長への推薦の知らせが届く。'],['判断','主語は主人公。地図は要らない。出来事に合う場面絵を背景にし、人物の表情を切り替える。'],['光らせる','昇進の知らせ、失った部下、次の任務。']]},
- {key:'chron',crumb:['世界','年代記'],title:'場面6 · 年代記(主語は世界)',bg:A+'page_chronicle.jpg',
+ {key:'chron',crumb:['世界','年代記'],title:'場面8 · 年代記(主語は世界)',bg:A+'page_chronicle.jpg',
   layers:[{t:'text',x:50,y:20,w:62,h:'<b style="font-size:15px">第三章 灰色の橋</b>'},{t:'u',f:'o_divider.png',x:50,y:31,h:5,},
           {t:'text',x:50,y:56,w:58,h:'北のカレン国は国境の砦を失い、追撃軍は白瀬川を南へ下った。灰色の橋の隘路で、第三百人隊が殿を務め、橋を守り切った。その夜、隊長に千人隊長への推薦が届く。'},
           {t:'u',f:'o_seal.png',x:74,y:86,h:12},{t:'u',f:'o_swords.png',x:30,y:86,h:12}],
@@ -102,7 +106,8 @@ function build(s){
   const d=document.createElement('div');d.className='scene'+(s.vig?' vig':'');
   if(s.bg){const im=new Image();im.className='bgimg';im.src=s.bg;d.appendChild(im);}
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','ov');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');d.appendChild(svg);
-  s.layers.forEach(l=>{
+  if(s.ph){const e=document.createElement('div');e.className='phbox';e.innerHTML=`<strong>${s.ph}</strong><span>${s.phn}</span>`;d.appendChild(e);}
+  (s.layers||[]).forEach(l=>{
     if(l.t==='tiles'){const g=document.createElement('div');g.className='tilemap';
       // 5x5。道(左から入り、中央の十字路で上の橋へ)、奥の行は川
       const R=(f,r)=>({f,r:r||0}),G=n=>({f:'rd_grass.jpg',r:0,fl:n%2});
