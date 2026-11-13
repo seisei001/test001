@@ -665,3 +665,10 @@ node .claude/skills/pdf-app/scripts/test-ocr-receipt.js    # 実写真(レシー
 - 報告(外部)の指摘を、コードで確かめた: CDN失敗で無言で止まる(正)/重複ID(正)/空の catch{} 多数(正。ただし大半は destroy・localStorage・setPointerCapture・scrollTo などの無害なもの)/単体起動のヘルプなし(仕様)/フォント追加の見積もり(安全側)/favicon なし(正)。
 - 対応: ①両ページ(index.html・forms/editor.html)で、pdf-lib・pdf.js を読めなかったとき、全面の案内(#libFail: 読めなかった部品名・「再読み込み」#libRetry)を出す(ライブラリのタグの直後のインラインscript)。②重複ID(helpClose・spCopy・spDel・spX)は、2つ目のテンプレートを *B に改名(同時には出ない・querySelectorも合わせた)。③日本語フォントを読めなかったとき、状態欄に案内(fontWarn: ensureWebFont/ensureWebFontKey の .catch に)。空の catch{} のうち、無害なものは、そのまま。④favicon(データURLの絵文字)を追加。
 - テスト: test-studio-robust.js(重複IDなし・正常時は案内なし・pdf-lib を止めると案内と再読み込み)。
+
+## v158 製本デスク 2.31 / ページ編集 3.18・3.19: 保存を普通のアプリに/フォントの切り出しの不具合を駆除
+- 保存(製本デスク 2.31): クリックごとの確認(2.29)はやめた(普通のアプリは、保存=すぐ上書き)。束を選ばなくても保存できる(saveTargets: 選んだ束→変更のある束→束が1つならその束)。保存=元のファイル(handle)があれば確認なしで上書き(変更がなければ「保存済み」)/なければ保存先を選ぶ。名前を付けて保存=必ず保存先を選ぶ。Ctrl+S・Ctrl+Shift+S(編集の画面が開いているときは、その画面の操作)。ツールバーに「保存」(#bSaveTop、変更があると青い)。タイトルに●。編集の画面の「保存」は「完了」に改名(ファイルへの保存と混同しない)。閉じるときの確認(askSave)は、保存先の行つきで残す。
+- **フォントの切り出し(subset)の不具合の原因**(以前のメモ「pdf-libの subset:true は日本語で欠字する」は、原因の特定が足りなかった): fontkit 1.1.1 の TTFSubset.encode は、切り出したフォントの合計が小さいと loca を「短い形式」(位置÷2)で書くが、字形のデータを偶数の長さにそろえない。このフォントの字形は約半分が奇数長(元の loca は長い形式なので許されていた)ので、奇数長の字形のあと、位置が1バイトずつずれ、字形が空・別の字形になる(英字のAでも起きる。pdftotext の抽出は正しいので気づきにくい)。**直し**: fixFontkitSubset(font) で、TTFSubset.prototype._addGlyph に、字形のデータの長さを偶数にそろえる(0を1つ足し、offset+=1)を差し込む。embedJp(doc,key) で、subset:true + 修正。見た目は、まるごと入れたときと0画素差(gothic/mincho/maru)、PDFの増加は 1MB超→6〜16KB。
+- フォントを埋め込む箇所(全部): editor.html の commit(通常の枠・元のフォントとの混在)と commitFree(自由編集の1文字)=embedJp に統一/index.html の addInvisibleText(パスワード付きPDFを画像にした見えない文字データ。subset:true + 修正)。元のフォントを使う書き込み(drawOrigText)は、PDFにあるフォントを使うだけで、増えない。
+- 確認ダイアログの「約2MB」は、「数KB」に直した。
+- テスト: test-studio-save2.js(保存)/test-studio-fontsub.js(3フォント・見た目0画素差・数KB・文字として読める。window.pdfEditorDebug.fontTest)。
