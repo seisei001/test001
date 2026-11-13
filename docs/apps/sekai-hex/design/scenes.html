@@ -20,8 +20,9 @@ a{color:var(--seal)}
 .frame{position:absolute;transform:translate(-50%,-50%);border:2px solid var(--seal);border-radius:3px;box-shadow:0 0 0 2px rgba(255,255,255,.6);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.tilemap{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)}
-.tl{overflow:hidden;background-position:center}
+.tilemap{filter:sepia(.28) saturate(.85);position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)}
+.tl{overflow:hidden;background-position:center;margin:-.5px}
+.scene.vig::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 38px 14px rgba(110,80,40,.6);pointer-events:none}
 .crest{position:absolute;transform:translate(-50%,-50%);width:9%;aspect-ratio:.9}
 .crest .t{position:absolute;inset:0;display:block}.crest .t img{width:100%;height:100%;object-fit:contain;display:block}
 .crest .t::after{content:"";position:absolute;inset:0;background:var(--c);mix-blend-mode:multiply;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;opacity:.5}
@@ -61,11 +62,13 @@ const SCENES=[
           {t:'crest',x:8,y:12,sd:'sd_kite.png',ch:'ch_wolf.png',c:RED},{t:'crest',x:19,y:12,sd:'sd_round.png',ch:'ch_swords.png',c:BLUE}],
   frame:{x:47,y:31,w:20,h:20},
   meta:[['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。羊皮紙の平面で、国の塗り分けと境界を主役にする。国の見分けは紋章(盾の形と図柄の組み合わせ)で出す。'],['光らせる','落ちた砦、敵の軍旗、動いた国境。']]},
- {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',
-  layers:[{t:'tiles'},{t:'path',d:'M8 70 L50 70 L50 30',c:'#a63a26'},U('col_spear.png',32,76,22),U('col_main.png',52,60,22),
-          {t:'lab',x:50,y:12,s:'灰色の橋'},{t:'lab',x:20,y:88,s:'補給が細る'}],
-  frame:{x:50,y:10,w:20,h:20},
-  meta:[['出来事','追撃軍が白瀬川沿いの街道を進み、橋へ向かう。補給は後ろで細くなる。'],['判断','主語は軍。道のタイルを並べた絵地図で、道・縦隊・補給線を主役にする。道の種類(土・石畳・雪・砂漠・泥)は地形で変わる。'],['光らせる','縦隊、補給線(赤の点線)、渡河点の橋。']]},
+ {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',vig:1,
+  layers:[{t:'tiles'},{t:'path',d:'M4 56 L50 56 L50 84',c:'#a63a26'},
+          U('sym_fort.png',50,58,24),U('ev_fire.png',55,40,12),U('flag_blue.png',44,56,9),
+          U('col_spear.png',24,58,19),U('col_main.png',54,80,19),
+          {t:'lab',x:50,y:28,s:'北の砦(陥落)'},{t:'lab',x:62,y:96,s:'灰色の橋'},{t:'lab',x:16,y:70,s:'補給が細る'}],
+  frame:{x:50,y:88,w:24,h:24},
+  meta:[['出来事','陥落した北の砦から、追撃軍が街道を南の橋へ進む。補給は後ろで細くなる。'],['判断','主語は軍。勢力図で光っていた砦を、同じ位置に残したまま、道・縦隊・補給線を主役にした絵地図に切り替える。道の種類(土・石畳・雪・砂漠・泥)は地形で変わる。'],['光らせる','砦(引き継ぎ)、縦隊、補給線(赤の点線)、渡河点の橋。']]},
  {key:'plan',crumb:['国境地方','灰色の橋の隘路'],title:'場面3 · 作戦図(主語は会戦)',bg:A+'map_battle.jpg',
   layers:[{t:'arrow',d:'M66 22 L56 42',c:BLUE},{t:'arrow',d:'M80 40 L60 50',c:BLUE},
           U('tk_horse.png',68,30,11,{c:BLUE}),U('tk_spear.png',80,46,11,{c:BLUE}),U('tk_bow.png',60,22,11,{c:BLUE}),
@@ -96,7 +99,7 @@ const SCENES=[
 const st=document.getElementById('stage'),cr=document.getElementById('crumb'),dots=document.getElementById('dots');
 let cur=0,busy=false;const els=[];
 function build(s){
-  const d=document.createElement('div');d.className='scene';
+  const d=document.createElement('div');d.className='scene'+(s.vig?' vig':'');
   if(s.bg){const im=new Image();im.className='bgimg';im.src=s.bg;d.appendChild(im);}
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','ov');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');d.appendChild(svg);
   s.layers.forEach(l=>{
@@ -104,11 +107,11 @@ function build(s){
       // 5x5。道(左から入り、中央の十字路で上の橋へ)、奥の行は川
       const R=(f,r)=>({f,r:r||0}),G=n=>({f:'rd_grass.jpg',r:0,fl:n%2});
       const grid=[
-       [R('rd_river.jpg'),R('rd_river.jpg'),R('rd_bridge.jpg',90),R('rd_river.jpg'),R('rd_river.jpg')],
-       [G(0),G(1),R('rd_dirt_s.jpg',90),G(0),G(1)],
-       [G(1),G(0),R('rd_dirt_s.jpg',90),G(1),G(0)],
+       [G(0),G(1),G(0),G(1),G(0)],
+       [G(1),G(0),G(1),G(0),G(1)],
        [R('rd_dirt_s.jpg'),R('rd_dirt_s.jpg'),R('rd_dirt_x.jpg'),R('rd_dirt_s.jpg'),R('rd_dirt_s.jpg')],
-       [G(0),G(1),G(0),G(1),G(0)]];
+       [G(0),G(1),R('rd_dirt_s.jpg',90),G(1),G(0)],
+       [R('rd_river.jpg'),R('rd_river.jpg'),R('rd_bridge.jpg',90),R('rd_river.jpg'),R('rd_river.jpg')]];
       grid.forEach((row,ri)=>row.forEach(c=>{const e=document.createElement('div');e.className='tl';
         if(c.f==='rd_river.jpg'){e.style.backgroundImage=`url(${A}rd_river.jpg)`;e.style.backgroundSize='100% auto';e.style.backgroundRepeat='repeat-y';e.style.transform='rotate(90deg)';}
         else{e.style.backgroundImage=`url(${A}${c.f})`;e.style.backgroundSize='cover';e.style.transform=`rotate(${c.r}deg)${c.fl?' scaleX(-1)':''}`;}
