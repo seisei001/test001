@@ -20,6 +20,13 @@ a{color:var(--seal)}
 .frame{position:absolute;transform:translate(-50%,-50%);border:2px solid var(--seal);border-radius:3px;box-shadow:0 0 0 2px rgba(255,255,255,.6);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tilemap{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)}
+.tl{overflow:hidden;background-position:center}
+.crest{position:absolute;transform:translate(-50%,-50%);width:9%;aspect-ratio:.9}
+.crest .t{position:absolute;inset:0;display:block}.crest .t img{width:100%;height:100%;object-fit:contain;display:block}
+.crest .t::after{content:"";position:absolute;inset:0;background:var(--c);mix-blend-mode:multiply;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;opacity:.5}
+.crest .cg{position:absolute;left:22%;top:20%;width:56%;height:56%;object-fit:contain;mix-blend-mode:multiply}
+.ptxt{position:absolute;transform:translate(-50%,-50%);text-align:center;font:500 12px/1.9 "Hiragino Mincho ProN","Yu Mincho",serif;color:#3a2a16}
 .say{position:absolute;left:3%;right:3%;bottom:3%;background:rgba(251,247,238,.93);border:1px solid #8a7550;border-radius:4px;padding:8px 10px 8px 34%;font-size:12px;line-height:1.6;color:#2b2218;min-height:60px}
 .say b{display:block;font-size:11px;color:#a63a26}
 .say img{position:absolute;left:3%;bottom:0;width:27%}
@@ -45,48 +52,73 @@ const A='../assets/view/';
 const RED='#d4483a',BLUE='#3d6fd1';
 // u: 絵(x,y=足元の位置%, h=高さ%, c=色, flip, tint)
 const U=(f,x,y,h,o={})=>({t:'u',f,x,y,h,...o});
+const T=(f,x,y,h,c,o={})=>({t:'u',f,x,y,h,c,...o});
 const SCENES=[
  {key:'map',crumb:['世界'],title:'場面1 · 勢力図(主語は国)',bg:A+'map_political.jpg',
   layers:[U('ev_fire.png',47,36,11),U('flag_red.png',42,28,10),U('flag_blue.png',51,46,10),
-          {t:'lab',x:40,y:12,s:'北のカレン国'},{t:'lab',x:58,y:60,s:'湖の連邦'}],
+          U('s_galley.png',10,62,10),U('s_galley.png',20,76,9,{flip:1}),U('s_island.png',16,88,9),
+          {t:'lab',x:40,y:12,s:'北のカレン国'},{t:'lab',x:58,y:60,s:'湖の連邦'},
+          {t:'crest',x:8,y:12,sd:'sd_kite.png',ch:'ch_wolf.png',c:RED},{t:'crest',x:19,y:12,sd:'sd_round.png',ch:'ch_swords.png',c:BLUE}],
   frame:{x:47,y:31,w:20,h:20},
-  meta:[['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。羊皮紙の平面で国の塗り分けと境界を主役にし、地形は小さな記号に留める。'],['光らせる','落ちた砦、敵の軍旗、動いた国境。']]},
- {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',bg:A+'bg_meander.jpg',
-  layers:[{t:'path',d:'M20 80 C 35 72 40 60 50 54 S 62 40 64 30',c:'#a63a26'},U('col_spear.png',36,78,26),U('col_main.png',58,50,26),
-          {t:'lab',x:64,y:24,s:'灰色の橋'},{t:'lab',x:24,y:86,s:'補給が細る'}],
-  frame:{x:64,y:30,w:18,h:18},
-  meta:[['出来事','追撃軍が白瀬川沿いの街道を南へ進む。補給は後ろで細くなる。'],['判断','主語は軍。鳥瞰の絵地図で、道・縦隊・補給線を主役にする。'],['光らせる','縦隊、補給線(赤の点線)、渡河点の橋。']]},
+  meta:[['出来事','北のカレン国が国境の砦を失い、国境線が南へ動く。'],['判断','主語は国。羊皮紙の平面で、国の塗り分けと境界を主役にする。国の見分けは紋章(盾の形と図柄の組み合わせ)で出す。'],['光らせる','落ちた砦、敵の軍旗、動いた国境。']]},
+ {key:'march',crumb:['北方の国','国境地方'],title:'場面2 · 進軍図(主語は軍)',
+  layers:[{t:'tiles'},{t:'path',d:'M8 70 L50 70 L50 30',c:'#a63a26'},U('col_spear.png',32,76,22),U('col_main.png',52,60,22),
+          {t:'lab',x:50,y:12,s:'灰色の橋'},{t:'lab',x:20,y:88,s:'補給が細る'}],
+  frame:{x:50,y:10,w:20,h:20},
+  meta:[['出来事','追撃軍が白瀬川沿いの街道を進み、橋へ向かう。補給は後ろで細くなる。'],['判断','主語は軍。道のタイルを並べた絵地図で、道・縦隊・補給線を主役にする。道の種類(土・石畳・雪・砂漠・泥)は地形で変わる。'],['光らせる','縦隊、補給線(赤の点線)、渡河点の橋。']]},
  {key:'plan',crumb:['国境地方','灰色の橋の隘路'],title:'場面3 · 作戦図(主語は会戦)',bg:A+'map_battle.jpg',
   layers:[{t:'arrow',d:'M66 22 L56 42',c:BLUE},{t:'arrow',d:'M80 40 L60 50',c:BLUE},
           U('tk_horse.png',68,30,11,{c:BLUE}),U('tk_spear.png',80,46,11,{c:BLUE}),U('tk_bow.png',60,22,11,{c:BLUE}),
           U('tk_shield.png',42,66,11,{c:RED}),U('tk_spear.png',34,58,11,{c:RED}),
+          U('fx_arrows.png',58,40,12),
           {t:'lab',x:36,y:73,s:'第三百人隊'},{t:'lab',x:52,y:56,s:'橋'}],
   frame:{x:38,y:62,w:26,h:26},
-  meta:[['出来事','橋の手前の隘路で、追撃軍の先鋒と殿の部隊が接触する。'],['判断','主語は会戦。誰がどこに立ち、どちらから押すかを、駒と矢印で読めるようにする。'],['光らせる','両軍の駒、押してくる向き、橋、主人公の百人隊。']]},
+  meta:[['出来事','橋の手前の隘路で、追撃軍の先鋒と殿の部隊が接触する。'],['判断','主語は会戦。誰がどこに立ち、どちらから押すかを、駒と矢印で読めるようにする。矢が飛ぶ向きも重ねる。'],['光らせる','両軍の駒、押してくる向き、橋、主人公の百人隊。']]},
  {key:'field',crumb:['国境地方','灰色の橋の隘路','第三百人隊'],title:'場面4 · 戦場の場面(主語は百人隊)',bg:A+'bg_meadow_path.jpg',
-  layers:[U('ld_r.png',14,70,22,{c:RED}),U('fl_r.png',22,66,24,{c:RED}),
-          U('bw_r.png',18,78,22,{c:RED}),U('bw_r.png',26,84,24,{c:RED}),
-          U('sp_r.png',33,74,24,{c:RED}),U('sp_r.png',37,86,27,{c:RED}),
-          U('sh_r.png',42,80,25,{c:RED}),U('sh_r.png',43,92,28,{c:RED}),
-          U('sp_l.png',66,74,22,{c:BLUE}),U('sh_l.png',62,80,23,{c:BLUE}),U('sp_l.png',70,88,25,{c:BLUE}),U('sh_l.png',58,92,27,{c:BLUE}),U('bw_l.png',80,82,22,{c:BLUE}),
-          U('dead_a.png',52,95,10),
-          {t:'lab',x:14,y:44,s:'隊長'}],
+  layers:[U('fx_shieldwall.png',44,80,17),U('fx_dust.png',52,70,14),U('fx_smoke.png',92,40,26),U('fx_arrows.png',48,38,18),
+          U('ld_r.png',12,66,22,{c:RED}),U('fl_r.png',22,62,24,{c:RED}),U('x_horn.png',9,82,24,{c:RED,g:1}),U('x_officer.png',17,92,28,{c:RED,g:1}),
+          U('bw_r.png',27,70,21,{c:RED}),U('x_crossbow.png',31,82,22,{c:RED,g:1}),
+          U('sp_r.png',37,76,24,{c:RED}),U('sp_r.png',40,90,28,{c:RED}),U('sh_r.png',46,86,25,{c:RED}),
+          U('sp_l.png',70,72,22,{c:BLUE}),U('sh_l.png',65,82,24,{c:BLUE}),U('sp_l.png',74,90,27,{c:BLUE}),U('x_halberd.png',82,80,24,{c:BLUE,g:1}),U('bw_l.png',90,88,25,{c:BLUE}),
+          U('dead_a.png',56,95,9),
+          {t:'lab',x:12,y:40,s:'隊長'}],
   frame:{x:20,y:60,w:30,h:36},
-  meta:[['出来事','殿の百人隊が橋の手前で隊列を組み、敵の先鋒を押しとどめる。'],['判断','主語は百人隊。隊列、向き、隊長の位置が主役。兵の絵は役割ごとに組み替える。'],['光らせる','隊列の厚み、旗手、倒れた兵、隊長。']]},
- {key:'scene',crumb:['第三百人隊','隊長 · 夜営'],title:'場面5 · 場面絵(主語は主人公)',bg:A+'bg_forest.jpg',
+  meta:[['出来事','殿の百人隊が橋の手前で隊列を組み、敵の先鋒を押しとどめる。'],['判断','主語は百人隊。隊列、向き、隊長の位置が主役。兵の絵は役割ごとに組み替え、矢・土煙・盾の壁などの効果を重ねる。'],['光らせる','隊列の厚み、旗手、倒れた兵、隊長。']]},
+ {key:'scene',crumb:['第三百人隊','隊長 · 夜営'],title:'場面5 · 場面絵(主語は主人公)',bg:A+'pic_0.jpg',
   layers:[{t:'say',img:'hero_relief.png',who:'隊長',s:'橋は守った。……千人隊長への推薦状が、夜のうちに届いたそうだ。'}],
-  meta:[['出来事','橋を守り切った夜、千人隊長への推薦の知らせが届く。'],['判断','主語は主人公。地図は要らない。背景は場所と時間に合うものを選び、人物の表情を出来事に合わせて切り替える。'],['光らせる','昇進の知らせ、失った部下、次の任務。']]}
+  meta:[['出来事','橋を守り切った夜、千人隊長への推薦の知らせが届く。'],['判断','主語は主人公。地図は要らない。出来事に合う場面絵を背景にし、人物の表情を切り替える。'],['光らせる','昇進の知らせ、失った部下、次の任務。']]},
+ {key:'chron',crumb:['世界','年代記'],title:'場面6 · 年代記(主語は世界)',bg:A+'page_chronicle.jpg',
+  layers:[{t:'text',x:50,y:20,w:62,h:'<b style="font-size:15px">第三章 灰色の橋</b>'},{t:'u',f:'o_divider.png',x:50,y:31,h:5,},
+          {t:'text',x:50,y:56,w:58,h:'北のカレン国は国境の砦を失い、追撃軍は白瀬川を南へ下った。灰色の橋の隘路で、第三百人隊が殿を務め、橋を守り切った。その夜、隊長に千人隊長への推薦が届く。'},
+          {t:'u',f:'o_seal.png',x:74,y:86,h:12},{t:'u',f:'o_swords.png',x:30,y:86,h:12}],
+  meta:[['出来事','この出来事が、世界の歴史の一行になる。'],['判断','主語は世界。年代記の紙面に、出来事を文章で残す。勢力の変遷と主人公の経歴は、ここに積み重なる。'],['光らせる','章の見出し、本文、印。']]}
 ];
 const st=document.getElementById('stage'),cr=document.getElementById('crumb'),dots=document.getElementById('dots');
 let cur=0,busy=false;const els=[];
 function build(s){
   const d=document.createElement('div');d.className='scene';
-  const im=new Image();im.className='bgimg';im.src=s.bg;d.appendChild(im);
+  if(s.bg){const im=new Image();im.className='bgimg';im.src=s.bg;d.appendChild(im);}
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','ov');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');d.appendChild(svg);
   s.layers.forEach(l=>{
-    if(l.t==='u'){const e=document.createElement('div');e.className='u'+(l.c?' t':'');e.style.cssText=`left:${l.x}%;top:${l.y}%;height:${l.h}%`;
-      const i=new Image();i.src=A+l.f;if(l.flip)i.style.transform='scaleX(-1)';e.appendChild(i);
-      if(l.c){e.style.setProperty('--c',l.c);if(/^(sp|sh|bw|ld|fl)_/.test(l.f))e.style.setProperty('--o','.36');e.style.setProperty('--m',`url(${A+l.f})`);}d.appendChild(e);}
+    if(l.t==='tiles'){const g=document.createElement('div');g.className='tilemap';
+      // 5x5。道(左から入り、中央の十字路で上の橋へ)、奥の行は川
+      const R=(f,r)=>({f,r:r||0}),G=n=>({f:'rd_grass.jpg',r:0,fl:n%2});
+      const grid=[
+       [R('rd_river.jpg'),R('rd_river.jpg'),R('rd_bridge.jpg',90),R('rd_river.jpg'),R('rd_river.jpg')],
+       [G(0),G(1),R('rd_dirt_s.jpg',90),G(0),G(1)],
+       [G(1),G(0),R('rd_dirt_s.jpg',90),G(1),G(0)],
+       [R('rd_dirt_s.jpg'),R('rd_dirt_s.jpg'),R('rd_dirt_x.jpg'),R('rd_dirt_s.jpg'),R('rd_dirt_s.jpg')],
+       [G(0),G(1),G(0),G(1),G(0)]];
+      grid.forEach((row,ri)=>row.forEach(c=>{const e=document.createElement('div');e.className='tl';
+        if(c.f==='rd_river.jpg'){e.style.backgroundImage=`url(${A}rd_river.jpg)`;e.style.backgroundSize='100% auto';e.style.backgroundRepeat='repeat-y';e.style.transform='rotate(90deg)';}
+        else{e.style.backgroundImage=`url(${A}${c.f})`;e.style.backgroundSize='cover';e.style.transform=`rotate(${c.r}deg)${c.fl?' scaleX(-1)':''}`;}
+        g.appendChild(e);}));d.appendChild(g);}
+    else if(l.t==='crest'){const e=document.createElement('div');e.className='crest';e.style.cssText=`left:${l.x}%;top:${l.y}%`;
+      e.innerHTML=`<span class="t" style="--c:${l.c};--m:url(${A+l.sd});--o:.5"><img src="${A+l.sd}" alt=""></span><img class="cg" src="${A+l.ch}" alt="">`;d.appendChild(e);}
+    else if(l.t==='text'){const e=document.createElement('div');e.className='ptxt';e.style.cssText=`left:${l.x}%;top:${l.y}%;width:${l.w}%`;e.innerHTML=l.h;d.appendChild(e);}
+    else if(l.t==='u'){const e=document.createElement('div');e.className='u'+(l.c?' t':'');e.style.cssText=`left:${l.x}%;top:${l.y}%;height:${l.h}%`;
+      const i=new Image();i.src=A+l.f;if(l.flip)i.style.transform='scaleX(-1)';if(l.g)i.style.filter='grayscale(1) contrast(1.05)';e.appendChild(i);
+      if(l.c){e.style.setProperty('--c',l.c);if(/^(sp|sh|bw|ld|fl|x)_/.test(l.f))e.style.setProperty('--o','.36');e.style.setProperty('--m',`url(${A+l.f})`);}d.appendChild(e);}
     else if(l.t==='lab'){const e=document.createElement('div');e.className='lab';e.style.cssText=`left:${l.x}%;top:${l.y}%`;e.textContent=l.s;d.appendChild(e);}
     else if(l.t==='path'){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',l.d);p.setAttribute('fill','none');p.setAttribute('stroke',l.c);p.setAttribute('stroke-width','0.9');p.setAttribute('stroke-dasharray','2 1.6');svg.appendChild(p);}
     else if(l.t==='arrow'){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',l.d);p.setAttribute('fill','none');p.setAttribute('stroke',l.c);p.setAttribute('stroke-width','1.4');p.setAttribute('stroke-linecap','round');p.setAttribute('marker-end','url(#ah)');svg.appendChild(p);}
