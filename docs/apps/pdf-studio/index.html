@@ -455,6 +455,7 @@ function paintCard(b){
     el.querySelector(".pg").textContent=`${b.cur+1} / ${n}`;
     el.querySelector(".prev").disabled=b.cur<=0;el.querySelector(".next").disabled=b.cur>=n-1;
   }
+  try{$("bSaveTop").classList.toggle("hot",bundles.some(x=>x.dirty));document.title=(bundles.some(x=>x.dirty)?"● ":"")+"PDFスタジオ";}catch{}   // 保存・変更のたびに、ツールバーの保存(青い表示)とタイトルの●も合わせる
 }
 function render(){
   const desk=$("desk");
