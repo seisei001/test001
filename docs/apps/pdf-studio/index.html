@@ -42,6 +42,7 @@ button:disabled{opacity:.4;cursor:default;}
 .menubar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:4px 12px;border-bottom:1px solid var(--border);position:relative;z-index:40;}
 .menubar .mg{position:relative;}
 .menubar .mtop{background:transparent;color:var(--text);border:0;min-height:38px;padding:4px 10px;white-space:nowrap;border-radius:6px;font-size:.95rem;}
+.menubar .mtop.hot{background:#2563eb;color:#fff;}.menubar .mtop.hot:hover{background:#1d4ed8;}
 .menubar .mtop.on,.menubar .mtop:hover{background:var(--hover,rgba(37,99,235,.12));}
 .mdrop{position:absolute;left:0;top:100%;min-width:160px;display:flex;flex-direction:column;background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:4px;z-index:50;}
 .mdrop.hidden{display:none;}
@@ -100,11 +101,12 @@ button:disabled{opacity:.4;cursor:default;}
   <div class="formhead"><h1 id="fnDesk">製本デスク</h1><span class="ver" id="verDesk">2.0</span><a class="back-link" href="../../">← ハブに戻る</a></div>
   <div class="menubar" id="menubar">
     <div class="mg"><button class="mtop" data-d="mdFile">ファイル</button><div class="mdrop hidden" id="mdFile">
-      <button id="bNew">新規作成(白紙)</button><button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="読み込んだ元のファイルがあれば上書きして保存します。なければ、保存先を選んで保存します">保存</button><button id="bSaveAs" disabled title="保存先と名前を選んで、PDFファイルとして保存します">名前を付けて保存</button><button id="bPrint" disabled title="選んでいる束を、印刷">印刷</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
+      <button id="bNew">新規作成(白紙)</button><button id="bAdd">PDFを開く</button><button id="bClose" disabled title="選んでいる束を閉じる(変更があれば、保存するか確認します。元のファイルは消えません)">閉じる</button><button id="bSave" disabled title="読み込んだ元のファイルがあれば、そこに上書きして保存します。なければ、保存先を選んで保存します(Ctrl+S)">保存 (Ctrl+S)</button><button id="bSaveAs" disabled title="保存先と名前を選んで、PDFファイルとして保存します(Ctrl+Shift+S)">名前を付けて保存 (Ctrl+Shift+S)</button><button id="bPrint" disabled title="選んでいる束を、印刷">印刷</button><button id="bUndo" disabled>元に戻す</button><input id="fAdd" type="file" accept="application/pdf,.pdf" multiple class="hidden">
     </div></div>
     <div class="mg"><button class="mtop" data-d="mdEdit">編集</button><div class="mdrop hidden" id="mdEdit">
       <button id="bRotCur" disabled title="選んでいる束の、いま表示しているページを、右に90度">回転</button><button id="bPgPrev" disabled title="表示しているページを、束の中で1つ前へ">前に移動</button><button id="bPgNext" disabled title="表示しているページを、束の中で1つ後ろへ">後に移動</button><button id="bPgOut" disabled title="表示しているページだけを、別の束として外に出す">切り離し</button><button id="bPrintPg" disabled title="表示しているページだけを、印刷">このページを印刷</button>
     </div></div>
+    <div class="mg"><button class="mtop" id="bSaveTop" title="ファイルに保存します(Ctrl+S)。変更があると青くなります">保存</button></div>
     <div class="mg"><button class="mtop" id="bHelp">ヘルプ</button></div>
     <div class="mg selbtns"><button class="mtop" id="bAll">全選択</button><button class="mtop" id="bNone">全解除</button><button class="mtop" id="bRotAll" disabled title="選んでいる束の全ページを、右に90度">回転</button><button class="mtop" id="bBurst" disabled title="選んでいる束を、1ページずつのPDFにする">全部バラす</button><button class="mtop" id="bSplit" disabled title="表示しているページの前で、束を2つに分ける">分割</button><button class="mtop" id="bMerge" disabled title="選んでいる束を、1つにまとめる">結合</button></div>
     <label class="msz">大きさ <input id="rSize" type="range" min="40" max="800" step="10" value="170"></label>
@@ -154,11 +156,11 @@ button:disabled{opacity:.4;cursor:default;}
 // ===== 画面(フォーム)の名前とバージョン。変えたフォームだけ、バージョンを0.01上げる =====
 const FORMS={
   splash:{name:"PDFスタジオ",ver:"2.07"},
-  desk:{name:"製本デスク",ver:"2.30"},
+  desk:{name:"製本デスク",ver:"2.31"},
   menu:{name:"機能メニュー",ver:"2.03"},
-  edit:{name:"ページ編集",ver:"3.17",src:"forms/editor.html?form=edit"},
-  shape:{name:"整形",ver:"1.15",src:"forms/editor.html?form=shape"},
-  rule:{name:"罫線編集",ver:"1.36",src:"forms/editor.html?form=rule"}
+  edit:{name:"ページ編集",ver:"3.19",src:"forms/editor.html?form=edit"},
+  shape:{name:"整形",ver:"1.16",src:"forms/editor.html?form=shape"},
+  rule:{name:"罫線編集",ver:"1.37",src:"forms/editor.html?form=rule"}
 };
 const $=id=>document.getElementById(id);
 const {PDFDocument}=PDFLib;
@@ -236,11 +238,14 @@ async function decryptWithPrompt(bytes,name){
   }
   return null;
 }
+// fontkit 1.1.1 の切り出しの不具合の修正(字形の位置を、いつも長い形式で書く)。詳しくは forms/editor.html の fixFontkitSubset
+function fixFontkitSubset(font){const sub=font&&font.embedder&&font.embedder.subset,P=sub&&Object.getPrototypeOf(sub);if(!P||P.__longLoca||typeof P._addGlyph!=="function")return;const orig=P._addGlyph;
+  P._addGlyph=function(gid){const r=orig.call(this,gid);this.loca.version=1;return r;};P.__longLoca=true;}
 async function addInvisibleText(out,pages,textRuns,name){
   const total=textRuns.reduce((a,r)=>a+r.length,0);if(!total)return 0;
   status(`「${name}」の文字データ(${total}個)を残しています…`);
   await loadFontkit();out.registerFontkit(window.fontkit);
-  const fb=await (await fetch(TXT_FONT_URL)).arrayBuffer(),font=await out.embedFont(fb,{subset:true});
+  const fb=await (await fetch(TXT_FONT_URL)).arrayBuffer(),font=await out.embedFont(fb,{subset:true});fixFontkitSubset(font);
   const L=PDFLib;let done=0;
   pages.forEach((pg,i)=>{
     pg.setFont(font);const key=pg.fontKey;
@@ -426,7 +431,7 @@ function thumb(b){
 
 // ===== 画面の描画 =====
 function selCount(){return bundles.filter(b=>b.sel).length;}
-function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bPrint").disabled=$("bPrintPg").disabled=$("bSave").disabled=$("bSaveAs").disabled=$("bClose").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=$("bBurst").disabled=!bundles.some(b=>b.sel&&b.n>1);$("bSplit").disabled=!(c===1&&bundles.some(b=>b.sel&&b.n>1&&b.cur>=1));$("empty").classList.toggle("hidden",bundles.length>0);}
+function refreshBar(){const c=selCount();bundles.forEach(b=>{if(b.card)b.card.classList.toggle("mv",b.sel&&c===1);});$("bMerge").disabled=c<2;$("bRotAll").disabled=$("bRotCur").disabled=$("bSave").disabled=$("bSaveAs").disabled=!bundles.length;$("bSaveTop").classList.toggle("hot",bundles.some(b=>b.dirty));try{document.title=(bundles.some(b=>b.dirty)?"● ":"")+"PDFスタジオ";}catch{}$("bClose").disabled=!bundles.length;$("bPrint").disabled=$("bPrintPg").disabled=$("bPgPrev").disabled=$("bPgNext").disabled=c<1;$("bPgOut").disabled=$("bBurst").disabled=!bundles.some(b=>b.sel&&b.n>1);$("bSplit").disabled=!(c===1&&bundles.some(b=>b.sel&&b.n>1&&b.cur>=1));$("empty").classList.toggle("hidden",bundles.length>0);}
 function buildCard(b){
   const el=document.createElement("div");el.className="card";el.dataset.id=b.id;
   el.innerHTML=`<label class="chk" title="選択"><input type="checkbox"></label><button class="sub mnb" aria-label="機能メニュー" title="機能メニュー">⋮</button><div class="stackwrap"><div class="stack"><canvas width="10" height="14"></canvas></div></div><div class="nav"><button class="sub prev" aria-label="前ページ">＜</button><span class="pg"></span><button class="sub next" aria-label="次ページ">＞</button></div><div class="nm"></div>`;
@@ -450,6 +455,7 @@ function paintCard(b){
     el.querySelector(".pg").textContent=`${b.cur+1} / ${n}`;
     el.querySelector(".prev").disabled=b.cur<=0;el.querySelector(".next").disabled=b.cur>=n-1;
   }
+  try{$("bSaveTop").classList.toggle("hot",bundles.some(x=>x.dirty));document.title=(bundles.some(x=>x.dirty)?"● ":"")+"PDFスタジオ";}catch{}   // 保存・変更のたびに、ツールバーの保存(青い表示)とタイトルの●も合わせる
 }
 function render(){
   const desk=$("desk");
@@ -584,26 +590,12 @@ function saveIos(b,name){return new Promise(res=>{
   bt("やめる",()=>{status("保存をやめました。");done(false);},"sub-btn");
   o.appendChild(box);document.body.appendChild(o);});}
 const esc0=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-// 保存の前の確認: 「変更を保存しますか?」+ 保存先(どこに保存されるか)を見せる。asNew=名前を付けて保存
+// 保存先の説明(閉じるときの確認に出す)
 function saveDestText(b,asNew){
   if(b.handle&&!asNew)return`読み込んだ元のファイル「${b.handle.name}」に上書きします。元のファイルは、この内容に書き換わります(元に戻せません)。`;
   if(window.showSaveFilePicker)return"次の画面で、保存先のフォルダとファイル名を選びます。";
   if(isIOS())return"共有メニューの「\"ファイル\"に保存」で、保存先(ファイルアプリ内の場所)を選びます。";
   return"このブラウザのダウンロードフォルダに保存されます(保存先は、ブラウザの設定で変わります)。";
-}
-function confirmSave(b,asNew){return new Promise(res=>{
-  if(window.__noSaveAsk)return res(b.handle&&!asNew?"over":"as");   // テスト用
-  const o=document.createElement("div");o.id="saveAsk";o.style.cssText="position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;";
-  const box=document.createElement("div");box.style.cssText="background:var(--panel-bg,#fff);color:var(--text,#000);border-radius:12px;padding:18px;max-width:440px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4);line-height:1.7";
-  const name=b.name.endsWith(".pdf")?b.name:b.name+".pdf",over=!!(b.handle&&!asNew);
-  box.innerHTML=`<p style="margin:0 0 4px;font-weight:600">変更を保存しますか?</p><p style="margin:0 0 8px;font-size:.92rem">「${esc0(name)}」(${b.n}ページ・${b.dirty?"変更あり・未保存":"変更なし"})</p><div style="margin:0 0 12px;padding:8px 10px;border:1px solid var(--border,#ccc);border-radius:8px;font-size:.88rem"><b>保存先</b><br>${esc0(saveDestText(b,asNew))}</div><div id="saveAskBtns" style="display:flex;flex-direction:column;gap:8px"></div>`;
-  const done=v=>{o.remove();res(v);},bt=(t,v,primary)=>{const x=document.createElement("button");x.textContent=t;x.style.minHeight="46px";if(!primary)x.className="sub-btn";x.onclick=()=>done(v);box.querySelector("#saveAskBtns").appendChild(x);};
-  if(over){bt("上書き保存する","over",true);bt("名前を付けて、別の場所に保存","as",false);}else bt("保存する","as",true);
-  bt("やめる(保存しない)","cancel",false);
-  o.appendChild(box);document.body.appendChild(o);});}
-async function saveWithConfirm(b,asNew){   // 保存の前に確認する
-  const a=await confirmSave(b,asNew);if(a==="cancel"){status("保存をやめました。");return false;}
-  return a==="over"&&b.handle?overwriteBundle(b):saveBundle(b);
 }
 async function overwriteBundle(b){   // 読み込んだ元のファイルに上書き。保存できたらtrue
   if(!b.handle)return saveBundle(b);
@@ -676,9 +668,18 @@ $("bSplit").onclick=()=>{const b=bundles.find(x=>x.sel);if(b)splitAt(b).catch(e=
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
   $("bHelp").onclick=()=>{closeAll();$("deskHelp").classList.remove("hidden");};$("deskHelpClose").onclick=()=>$("deskHelp").classList.add("hidden");$("deskHelp").addEventListener("pointerdown",e=>{if(e.target===$("deskHelp"))$("deskHelp").classList.add("hidden");});
 }
-$("bClose").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){if(await removeBundle(b)===false)break;}};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
-$("bSave").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){try{await saveWithConfirm(b,false);}catch(e){status("保存できませんでした: "+(e&&e.message?e.message:e));}}};   // 元のファイル(読み込んだときに覚えた)があれば上書き。なければ、保存先を選ぶ
-$("bSaveAs").onclick=async()=>{for(const b of bundles.filter(x=>x.sel)){try{await saveWithConfirm(b,true);}catch(e){status("保存できませんでした: "+(e&&e.message?e.message:e));}}};   // 選んでいる束を、PDFとして保存
+$("bClose").onclick=async()=>{for(const b of (selCount()?bundles.filter(x=>x.sel):bundles.length===1?bundles.slice():[])){if(await removeBundle(b)===false)break;}};   // 選んでいる束を閉じる(変更があれば、保存の確認が出る)
+// 保存の対象: 選んでいる束。何も選んでいなければ、変更のある束(束が1つだけなら、その束)。普通のアプリと同じく、選ばなくても保存できる
+const saveTargets=()=>{const sel=bundles.filter(x=>x.sel);if(sel.length)return sel;const d=bundles.filter(x=>x.dirty);if(d.length)return d;return bundles.length===1?bundles.slice():[];};
+async function saveNow(b,asNew){   // 保存: 元のファイルがあれば、確認なしで上書き(変更がなければ、何もしない)。なければ、保存先を選ぶ。名前を付けて保存: 必ず保存先を選ぶ
+  if(!asNew&&b.handle&&!b.dirty){status(`「${b.handle.name}」は、保存済みです(変更はありません)。`);return true;}
+  return(!asNew&&b.handle)?overwriteBundle(b):saveBundle(b);
+}
+async function runSave(asNew){const ts=saveTargets();if(!ts.length){status("保存するPDFがありません。");return;}for(const b of ts){try{await saveNow(b,asNew);}catch(e){status("保存できませんでした: "+(e&&e.message?e.message:e));}}}
+$("bSaveTop").onclick=()=>runSave(false);
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&(e.key==="s"||e.key==="S")){e.preventDefault();if(!$("formHost").classList.contains("hidden"))return;runSave(e.shiftKey);}});   // Ctrl+S=保存 / Ctrl+Shift+S=名前を付けて保存(編集の画面が開いているときは、その画面の操作)
+$("bSave").onclick=async()=>{for(const b of saveTargets()){try{await saveNow(b,false);}catch(e){status("保存できませんでした: "+(e&&e.message?e.message:e));}}};   // 元のファイル(読み込んだときに覚えた)があれば上書き。なければ、保存先を選ぶ
+$("bSaveAs").onclick=async()=>{for(const b of saveTargets()){try{await saveNow(b,true);}catch(e){status("保存できませんでした: "+(e&&e.message?e.message:e));}}};   // 選んでいる束を、PDFとして保存
 // ===== 機能メニュー(⋮ ボタン。マウスはダブルクリックでも) =====
 let menuB=null;
 function openMenu(b){
@@ -762,7 +763,7 @@ window.addEventListener("message",async e=>{
     const before=[...Array(b.cur).keys()],after=[...Array(b.n-b.cur-1).keys()].map(i=>i+b.cur+1);
     (await out.copyPages(src,before)).forEach(p=>out.addPage(p));(await out.copyPages(ed,[0])).forEach(p=>out.addPage(p));(await out.copyPages(src,after)).forEach(p=>out.addPage(p));
     snap();b.bytes=new Uint8Array(await out.save());b.ver=(b.ver||0)+1;b.dirty=true;if(b.doc){try{b.doc.destroy();}catch{}b.doc=null;}
-    closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました。「元に戻す」で戻せます。");
+    closeForm();render();thumb(b);persist();status("編集したページを、束に戻しました(まだファイルには保存されていません。「保存」を押すと、ファイルに書き込みます)。「元に戻す」で戻せます。");
   }else if(m.type==="pan"){const v=window.visualViewport,b0=v?{l:v.pageLeft,t:v.pageTop,ol:v.offsetLeft,ot:v.offsetTop}:null,sx0=scrollX,sy0=scrollY,src=e.source;
     const now=Date.now();if(!panPos||now-panPos.t>600)panPos={x:scrollX,y:scrollY,t:now};   // 小数の位置を覚えて、端数が切り捨てられないようにする
     panPos.x+=+m.dx||0;panPos.y+=+m.dy||0;panPos.t=now;
