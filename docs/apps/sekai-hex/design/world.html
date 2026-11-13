@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>百人隊長戦記 世界と筋の設計</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+
+/* 配置: 1つの出来事を縦に通して見る絵コンテ。各コマに「見せ方担当AIの判断」を付ける */
+:root{
+  --bg:#f3ede0; --card:#fbf7ee; --ink:#2b2218; --sub:#6e6050; --line:#d9ccb4;
+  --seal:#a63a26; --wash:#e6dcc6; --gap:#fff3d9;
+  --ff-d:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --ff-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--ff-b);line-height:1.75;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--ff-d);font-size:1.7rem;line-height:1.35;margin:0;text-wrap:balance}
+h2{font-family:var(--ff-d);font-size:1.25rem;margin:0;text-wrap:balance}
+p{margin:0}
+.lead{color:var(--sub)}
+.kicker{font-size:.75rem;letter-spacing:.12em;color:var(--seal);font-weight:700}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.box ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.crumb{display:flex;flex-wrap:wrap;gap:4px 6px;font-size:.78rem;color:var(--sub);align-items:center}
+.crumb b{color:var(--ink);background:var(--wash);padding:1px 8px;border-radius:10px;font-weight:700}
+.crumb span.s{opacity:.6}
+.frame{display:flex;flex-direction:column;gap:10px}
+.frame .view{position:relative;aspect-ratio:16/9;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--wash)}
+.frame .view img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .tag{position:absolute;left:8px;top:8px;background:rgba(43,34,24,.78);color:#fff;font-size:.72rem;padding:2px 8px;border-radius:3px}
+.frame .box.wait{aspect-ratio:16/9;justify-content:center;align-items:center;text-align:center;border:2px dashed var(--seal);background:var(--gap);border-radius:4px}
+.wait strong{font-family:var(--ff-d);font-size:1.05rem}
+.meta{display:grid;grid-template-columns:5.5em 1fr;gap:4px 10px;font-size:.88rem}
+.meta dt{color:var(--sub);font-weight:700}
+.meta dd{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips li{list-style:none;border:1px solid var(--seal);color:var(--seal);padding:0 9px;border-radius:12px;font-size:.78rem}
+.chips{margin:0;padding:0}
+.link{display:flex;gap:10px;align-items:center;color:var(--sub);font-size:.82rem;padding-left:4px}
+.link::before{content:"";width:2px;height:26px;background:var(--seal);display:block}
+table{border-collapse:collapse;font-size:.82rem;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:700}
+.scroll{overflow-x:auto}
+pre.p{white-space:pre-wrap;margin:0;font:inherit;font-size:.8rem;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:8px 10px;user-select:all}
+.ask ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px}
+
+table{border-collapse:collapse;width:100%;font-size:.82rem}th,td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}th{background:var(--wash)}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;padding:0 6px;border-radius:8px;background:var(--seal);color:#fff}
+.tag.a{background:#b07a1d}.tag.b{background:#7a7a6a}
+.sc{overflow-x:auto}
+</style></head><body><main>
+<div><div class="kicker">世界と筋の設計(たたき台)</div><h1>世界の構成・筋・詳細度の3階級</h1>
+<p class="lead"><a href="index.html">← 見せ方の試作へ</a> / <a href="scenes.html">場面の試作</a></p></div>
+
+<div class="box"><h2>要点</h2><ul>
+<li>世界は<b>人間12国+湖の連邦+商業都市国家+亜人8国</b>。全部は作り込まない。</li>
+<li><b>筋</b>(主人公アウレリア軍団の百人隊長の出世)に絡む所だけ詳細絵を作る。</li>
+<li>国は<b>S(筋)・A(勝ち得る)・B(背景)</b>の3階級。階級でかける絵の量を変える。</li>
+<li>見せ方は既存ゲームの手法を<b>模倣</b>する(下の表)。</li>
+<li>シミュレーションの結果、Bの国が台頭したら、その時点でAへ昇格させる(絵はその時に発注)。</li>
+</ul></div>
+
+<hr class="rule">
+<h2>1. 世界の構成</h2>
+<div class="sc"><table>
+<tr><th>区分</th><th>国(案)</th><th>特徴・兵の見た目</th><th>階級</th></tr>
+<tr><td rowspan="4">大国(都市3)</td><td>アウレリア帝国</td><td>軍団国家。赤マント、四角い盾、整列。<b>主人公の国</b></td><td><span class="tag">S</span></td></tr>
+<tr><td>ヴァルガ王国</td><td>北の騎馬王国。毛皮と円盾、騎兵主体。主敵</td><td><span class="tag">S</span></td></tr>
+<tr><td>ソレン教国</td><td>東の神権国家。白い法衣鎧、聖印旗、聖騎士</td><td><span class="tag a">A</span></td></tr>
+<tr><td>ミラ=ハン海洋帝国</td><td>南の海洋国。湾曲刀、軽装、艦隊</td><td><span class="tag a">A</span></td></tr>
+<tr><td rowspan="4">中国(都市2)</td><td>ブレンデ公国</td><td>鉱山と鍛冶。重装、ハンマー</td><td><span class="tag a">A</span></td></tr>
+<tr><td>ケルシア王国</td><td>深い森。弓と緑の外套</td><td><span class="tag a">A</span></td></tr>
+<tr><td>ハザル王国</td><td>砂漠のオアシス。ターバン、槍、ラクダ</td><td><span class="tag b">B</span></td></tr>
+<tr><td>ノルドハイム諸侯国</td><td>氷海。斧、毛皮、長船</td><td><span class="tag b">B</span></td></tr>
+<tr><td rowspan="4">小国(都市1)</td><td>ティラ(塔の国)</td><td>魔法使いの塔。ローブ兵</td><td><span class="tag b">B</span></td></tr>
+<tr><td>ルーナ神殿国</td><td>月の湖の神殿。巫女兵</td><td><span class="tag b">B</span></td></tr>
+<tr><td>ガルド傭兵国</td><td>山城。傭兵の寄せ集め装備(売り手として登場)</td><td><span class="tag a">A</span></td></tr>
+<tr><td>ベネ公国</td><td>葡萄畑。民兵</td><td><span class="tag b">B</span></td></tr>
+<tr><td>連合</td><td>湖の連邦(小国連合)</td><td>小さな旗を重ねた連合旗。民兵</td><td><span class="tag b">B</span></td></tr>
+<tr><td>都市国家</td><td>商業都市国家ヴェルカ</td><td>金で兵を雇う。軍は持たず、取引と補給の舞台</td><td><span class="tag a">A</span></td></tr>
+<tr><td rowspan="8">亜人(各1)</td><td>エルフ:シルヴァナ</td><td>世界樹。弓と魔法、軽装</td><td><span class="tag b">B</span></td></tr>
+<tr><td>ドワーフ:カザド=ロク</td><td>地下王国。重装、斧、鉱山と交易</td><td><span class="tag a">A</span></td></tr>
+<tr><td>ゴブリン:ゲズ氏族</td><td>数で押す。粗末な鎧</td><td><span class="tag b">B</span></td></tr>
+<tr><td>オーク:ガルマク</td><td>力の国。大型、鉄塊の武器</td><td><span class="tag b">B</span></td></tr>
+<tr><td>ハーフリング:丘の郷</td><td>平和で豊か。投石</td><td><span class="tag b">B</span></td></tr>
+<tr><td>獣人:ラクシャ</td><td>草原。俊足の軽騎</td><td><span class="tag b">B</span></td></tr>
+<tr><td>リザードマン:スクス</td><td>沼地。槍と盾</td><td><span class="tag b">B</span></td></tr>
+<tr><td>翼人:エアリア</td><td>空中都市。空からの偵察と奇襲</td><td><span class="tag b">B</span></td></tr>
+</table></div>
+<p class="lead">名所(ランドマーク):古代遺跡、魔法使いの塔、空中都市、世界樹、巨人の骨、沈んだ神殿、竜の巣など。国とは別に世界へ散らす。階級の分け方は国と同じ。</p>
+
+<hr class="rule">
+<h2>2. 筋の骨組み(主人公視点)</h2>
+<div class="box"><ul>
+<li><b>序</b> 辺境守備。百人隊長に着任。兵站と飢えが最初の敵。(S:アウレリア北辺の砦と町)</li>
+<li><b>破</b> ヴァルガとの国境戦争。砦が落ち殿を務める。昇進。(S:ヴァルガ、隘路、戦場)</li>
+<li><b>転</b> 亜人との接触。ドワーフ交易路、エルフの森、ゴブリンの襲撃。(A:ブレンデ、ドワーフ、ケルシア)</li>
+<li><b>承</b> 政変。皇帝の死、教国の介入、傭兵国との取引。(A:ソレン、ガルド、ヴェルカ)</li>
+<li><b>結</b> 将軍に成り上がるか、戦死するか、野に下るか。年代記が世界の変遷とともに記録。</li>
+</ul></div>
+<p class="lead">筋はあくまで「前提」。出来事の起こり方はシミュレーションで決まる。筋は、どこに絵を厚くかけるかを決める地図として使う。</p>
+
+<hr class="rule">
+<h2>3. 詳細度の3階級</h2>
+<div class="sc"><table>
+<tr><th>階級</th><th>対象</th><th>作る絵</th></tr>
+<tr><td><span class="tag">S</span></td><td>筋に絡む国・場所</td><td>国・地方・都市の地図、専用の兵と指揮官、場面絵を個別に作る</td></tr>
+<tr><td><span class="tag a">A</span></td><td>勝ち得る国、重要な取引先</td><td>国の見た目セット(兵の1シート、旗と紋章、都市の外観各1枚)</td></tr>
+<tr><td><span class="tag b">B</span></td><td>背景の国</td><td>世界地図上の色と紋章、文章のみ。絵は作らない</td></tr>
+</table></div>
+<p class="lead">昇格:見せ方担当AIが「この国の出来事を見せたい」と判断したとき、B→A→Sへ上げる。その時点でその国の絵を発注する。勝ち得ない国は最後までBのまま。</p>
+
+<hr class="rule">
+<h2>4. 模倣する既存ゲームの手法</h2>
+<div class="sc"><table>
+<tr><th>手法</th><th>元のゲーム</th><th>ここでの使い方</th></tr>
+<tr><td>戦略地図から会戦へ、地図上の位置で戦場の地形が決まる</td><td>Total War / Bannerlord</td><td>作戦図→戦場。位置の地形から戦場の背景を選ぶ</td></tr>
+<tr><td>出来事カード(絵+文+選択)、中隊の成長</td><td>Battle Brothers</td><td>主人公の場面絵と年代記</td></tr>
+<tr><td>文化ごとに兵と街の見た目が変わる</td><td>Humankind</td><td>国別の兵・旗・街</td></tr>
+<tr><td>地図の切替(政治・地形・補給)</td><td>CK3 / Victoria 3</td><td>世界・国の地図で表示モードを切替</td></tr>
+<tr><td>歴史の自動記録</td><td>Dwarf Fortress</td><td>年代記</td></tr>
+</table></div>
+<p class="lead">参考にした資料(検索で確認済みの公開記事):<a href="https://battlebrothersgame.com/dev-blog-43-event-system/">Battle Brothers イベント</a>、<a href="https://pcgamer.com/mount-and-blade-2-announces-stunning-update-to-how-battle-terrain-is-picked">Bannerlord 戦場地形の選び方</a>、<a href="https://wiki.totalwar.com/w/Mastering_Battles.html">Total War 会戦</a>。本文までは読めていないため、上の表は一般に知られた特徴の整理で、細部は未確認。</p>
+
+<hr class="rule">
+<h2>5. 絵の見積もり(最初の山場まで)</h2>
+<div class="box"><ul>
+<li>S(アウレリア・ヴァルガ):国の地図2、地方の地図2、都市の地図2、兵シート2、指揮官・主人公</li>
+<li>A(約8国):兵シート1、旗と紋章1、都市外観1、計約24枚</li>
+<li>名所:優先6か所を1枚ずつ</li>
+<li>B:絵は作らない</li>
+</ul></div>
+<p class="lead">承認いただければ、Sの絵から発注文(コピペ形式)を出します。</p>
+</main></body></html>
