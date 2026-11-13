@@ -238,9 +238,9 @@ async function decryptWithPrompt(bytes,name){
   }
   return null;
 }
-// fontkit 1.1.1 の切り出しの不具合の修正(字形のデータを偶数の長さにそろえる)。詳しくは forms/editor.html の fixFontkitSubset
-function fixFontkitSubset(font){const sub=font&&font.embedder&&font.embedder.subset,P=sub&&Object.getPrototypeOf(sub);if(!P||P.__evenFix||typeof P._addGlyph!=="function")return;const orig=P._addGlyph;
-  P._addGlyph=function(gid){const r=orig.call(this,gid);const k=this.glyf.length-1,g=this.glyf[k];if(g&&g.length&1){const nb=new g.constructor(g.length+1);for(let i=0;i<g.length;i++)nb[i]=g[i];nb[g.length]=0;this.glyf[k]=nb;this.offset+=1;}return r;};P.__evenFix=true;}
+// fontkit 1.1.1 の切り出しの不具合の修正(字形の位置を、いつも長い形式で書く)。詳しくは forms/editor.html の fixFontkitSubset
+function fixFontkitSubset(font){const sub=font&&font.embedder&&font.embedder.subset,P=sub&&Object.getPrototypeOf(sub);if(!P||P.__longLoca||typeof P._addGlyph!=="function")return;const orig=P._addGlyph;
+  P._addGlyph=function(gid){const r=orig.call(this,gid);this.loca.version=1;return r;};P.__longLoca=true;}
 async function addInvisibleText(out,pages,textRuns,name){
   const total=textRuns.reduce((a,r)=>a+r.length,0);if(!total)return 0;
   status(`「${name}」の文字データ(${total}個)を残しています…`);
