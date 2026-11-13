@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>百人隊長戦記 世界地図のデータ一覧</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+
+/* 配置: 1つの出来事を縦に通して見る絵コンテ。各コマに「見せ方担当AIの判断」を付ける */
+:root{
+  --bg:#f3ede0; --card:#fbf7ee; --ink:#2b2218; --sub:#6e6050; --line:#d9ccb4;
+  --seal:#a63a26; --wash:#e6dcc6; --gap:#fff3d9;
+  --ff-d:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --ff-b:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1812; --card:#262017; --ink:#efe6d3; --sub:#b3a68e; --line:#3d3426; --seal:#e0765f; --wash:#31291d; --gap:#3a2f1a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--ff-b);line-height:1.75;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--ff-d);font-size:1.7rem;line-height:1.35;margin:0;text-wrap:balance}
+h2{font-family:var(--ff-d);font-size:1.25rem;margin:0;text-wrap:balance}
+p{margin:0}
+.lead{color:var(--sub)}
+.kicker{font-size:.75rem;letter-spacing:.12em;color:var(--seal);font-weight:700}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.box ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.crumb{display:flex;flex-wrap:wrap;gap:4px 6px;font-size:.78rem;color:var(--sub);align-items:center}
+.crumb b{color:var(--ink);background:var(--wash);padding:1px 8px;border-radius:10px;font-weight:700}
+.crumb span.s{opacity:.6}
+.frame{display:flex;flex-direction:column;gap:10px}
+.frame .view{position:relative;aspect-ratio:16/9;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--wash)}
+.frame .view img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .tag{position:absolute;left:8px;top:8px;background:rgba(43,34,24,.78);color:#fff;font-size:.72rem;padding:2px 8px;border-radius:3px}
+.frame .box.wait{aspect-ratio:16/9;justify-content:center;align-items:center;text-align:center;border:2px dashed var(--seal);background:var(--gap);border-radius:4px}
+.wait strong{font-family:var(--ff-d);font-size:1.05rem}
+.meta{display:grid;grid-template-columns:5.5em 1fr;gap:4px 10px;font-size:.88rem}
+.meta dt{color:var(--sub);font-weight:700}
+.meta dd{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips li{list-style:none;border:1px solid var(--seal);color:var(--seal);padding:0 9px;border-radius:12px;font-size:.78rem}
+.chips{margin:0;padding:0}
+.link{display:flex;gap:10px;align-items:center;color:var(--sub);font-size:.82rem;padding-left:4px}
+.link::before{content:"";width:2px;height:26px;background:var(--seal);display:block}
+table{border-collapse:collapse;font-size:.82rem;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:700}
+.scroll{overflow-x:auto}
+pre.p{white-space:pre-wrap;margin:0;font:inherit;font-size:.8rem;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:8px 10px;user-select:all}
+.ask ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px}
+
+table{border-collapse:collapse;width:100%;font-size:.82rem}th,td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}th{background:var(--wash)}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;padding:0 6px;border-radius:8px;background:var(--seal);color:#fff}
+.tag.a{background:#b07a1d}.tag.b{background:#7a7a6a}
+.sc{overflow-x:auto}
+
+</style></head><body><main>
+<div><div class="kicker">世界地図のデータ一覧(たたき台)</div><h1>世界地図に必要なデータ</h1>
+<p class="lead"><a href="index.html">← 見せ方の試作へ</a> / <a href="world.html">世界と筋の設計</a></p></div>
+<div class="box"><h2>前提</h2><ul>
+<li>作るのは、戦略シミュレーターのエンジンを積んだ、<b>見て楽しめるアプリ</b>。</li>
+<li>世界は生成ソフト(Azgaar、MIT)を組み込み、<b>毎回ランダムに作る</b>。</li>
+<li>亜人は<b>個人の能力</b>。割合の初期値は、文明が発達しやすい所が最小(2%)で、辺境ほど増え、70%超で亜人の国。</li>
+<li>初期値を決めたら、あとは人口動態と経済のシミュレーターに任せる。<b>逆転も止めない</b>(辺境への物資供給で中心と辺境が入れ替わるなど)。</li>
+<li>戦略シミュレーターに不要なデータは作らない。必要なものを積み上げる。</li>
+</ul></div>
+
+<h2>1. 世界を作る時に決める(初期値)</h2>
+<div class="sc"><table>
+<tr><th>データ</th><th>中身</th><th>入手</th></tr>
+<tr><td>地形</td><td>標高、海と陸、川(大河・小川)、湖、気候帯と植生</td><td>Azgaar</td></tr>
+<tr><td>通行性</td><td>山脈、峠(大軍が通れる所)、渡れる川と橋</td><td>地図ラボの考え方を移す</td></tr>
+<tr><td>資源の産地</td><td>鉄、木材、塩、馬、穀物の向き不向き</td><td>Azgaarの産物データを確認して使う</td></tr>
+<tr><td>文明の発達しやすさ</td><td>肥沃度、水、気候から決める。亜人の割合の中央を決める元</td><td>自作</td></tr>
+<tr><td>居住地</td><td>都市(位置・規模・港・城壁)、村、砦・関</td><td>Azgaar+砦は自作</td></tr>
+<tr><td>街道・海路</td><td>街道、海路、川の舟運</td><td>Azgaar</td></tr>
+<tr><td>国</td><td>領土、国境、首都、政体、地方(州)</td><td>Azgaar</td></tr>
+<tr><td>民族・文化</td><td>文化の区分(兵と街の見た目の元)</td><td>Azgaar</td></tr>
+<tr><td>人口の初期値</td><td>区画ごとの人口と、亜人の割合</td><td>人口はAzgaar、亜人の割合は自作</td></tr>
+<tr><td>経済の初期値</td><td>都市の生産物、税、交易相手</td><td>Azgaar</td></tr>
+</table></div>
+
+<h2>2. 時間とともに変わる(シミュレーターが動かす)</h2>
+<div class="sc"><table>
+<tr><th>データ</th><th>変わり方</th></tr>
+<tr><td>人口</td><td>食糧と出生・死亡・移住・戦争で増減。亜人の割合も同じ</td></tr>
+<tr><td>食糧</td><td>収穫、輸送、備蓄、飢え</td></tr>
+<tr><td>経済</td><td>生産、税収、交易、物資の流れ(どこへ供給するか)</td></tr>
+<tr><td>国の強さ</td><td>人口、経済、軍から決まる。国土の広さでは決まらない</td></tr>
+<tr><td>国境と都市の規模</td><td>戦争や成長で変わる</td></tr>
+</table></div>
+
+<h2>3. シミュレーターが生む(最初は作らない)</h2>
+<div class="box"><ul><li>軍(連隊、艦隊)、戦争、外交関係、財庫と予算、兵站の経路</li></ul></div>
+
+<h2>4. 見て楽しむために、あとで足す</h2>
+<div class="box"><ul><li>名所(遺跡、魔法使いの塔、空中都市)</li><li>国の紋章と旗、人物(主人公・将軍・王)、宗教、年表と戦いの名前</li></ul></div>
+
+<h2>5. 作らない</h2>
+<div class="box"><ul><li>気温の細かい値、3D表示、メモや印、軍と戦争の履歴の自動生成</li></ul></div>
+
+<p class="lead">次の段階: 1の各データを、生成ソフトの出力から読み出す部分を作り、世界ごとに確認する。</p>
+</main></body></html>
