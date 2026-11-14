@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],east:['east_a','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
 const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
   const TL=new THREE.TextureLoader(),texs={};
@@ -112,6 +112,7 @@ function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
 /* 家の正面を、中心に近い方向の道(格子)に向ける: 90度単位 */
 const gridTh=(cx,cz)=>{const a=Math.abs(cx)>Math.abs(cz);return Math.atan2(a?-Math.sign(cx):0,a?0:(-Math.sign(cz)||-1))};
 function house(B,cu,cx,cz,rng,seedI){
+  if(cu==='e'&&AIMAT&&AIG.east&&rng()<.55){B.aiHouse('east',TR(cx,0,cz,gridTh(cx,cz),.8*(.92+rng()*.16)));return}
   if((cu==='w'||cu==='e')&&LOMAT[cu+'atlas_0.jpg']&&rng()<(cu==='w'?.65:.8)){
     /* 街の格子に沿って、中心に近い方向の道に正面を向ける(斜めに向けない) */
     const sx=Math.abs(cx)>Math.abs(cz)?-Math.sign(cx):0,sz=Math.abs(cx)>Math.abs(cz)?0:-Math.sign(cz)||-1;
