@@ -70,13 +70,6 @@
     "icon": "📚"
   },
   {
-    "id": "sakaguchi-office",
-    "name": "坂口誠税理士事務所",
-    "description": "坂口誠個人の税理士事務所サイト。国税局37年の経験・調査への備え・リスク診断を重厚なデザインとスクロール演出で紹介(顔写真なし・提携は名称のみ)",
-    "path": "apps/sakaguchi-office/",
-    "icon": "⚖️"
-  },
-  {
     "id": "sakaguchi-site",
     "name": "坂口誠税理士事務所(SEO版ひな形)",
     "description": "ページごとに独立したURL・本文HTML直書き・ブログ機能つきの、検索対象を意識した静的サイトのひな形(現在は検索除外の試作)",
@@ -109,7 +102,8 @@
     "name": "PDFエディタ",
     "description": "PDFの結合・分割・並べ替え・回転・削除。ドラッグで範囲を指定してその場で文字・画像を置き、選択して訂正・削除。PDF内の既存の文字の訂正にも対応(端末内で処理)",
     "path": "apps/pdf-editor/",
-    "icon": "📄"
+    "icon": "📄",
+    "archive": true
   },
   {
     "id": "pdf-studio",
@@ -137,7 +131,8 @@
     "name": "連合戦記",
     "description": "二万の暁軍が三十万の大連合へ――異世界の大地を舞台に、決まった戦記を観戦して楽しむ戦争スペクタクル。兵は小さな姿と大きな姿に切り替わる",
     "path": "apps/rengo-senki/",
-    "icon": "⚔️"
+    "icon": "⚔️",
+    "archive": true
   },
   {
     "id": "hyakunin-senki",
@@ -151,7 +146,8 @@
     "name": "地図ラボ",
     "description": "約300km×450kmの世界を乱数から作る試作。大軍が通れる峠は少なく、そこに関(砦)がある地形。山の拠点、街道、川、肥沃度も見られる。同じ世界を世界→国→地方→都市→作戦図の五段で描き分けて見られる",
     "path": "apps/chizu-lab/",
-    "icon": "🗺️"
+    "icon": "🗺️",
+    "archive": true
   },
   {
     "id": "sekai-hex",

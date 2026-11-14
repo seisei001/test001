@@ -23,6 +23,10 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 48px;display:flex;flex-direc
 .app-icon{font-size:1.8rem;line-height:1;flex-shrink:0;}
 .app-name{margin:0 0 2px;font-size:1.05rem;font-weight:600;}
 .app-desc{margin:0;color:var(--muted);font-size:0.85rem;}
+.archive-btn{display:flex;align-items:center;gap:14px;background:transparent;border:1px dashed var(--border);border-radius:12px;padding:14px 16px;color:var(--muted);font:inherit;font-size:0.95rem;min-height:44px;width:100%;text-align:left;cursor:pointer;}
+.archive-list{display:none;flex-direction:column;gap:10px;}
+.archive-list.open{display:flex;}
+.archive-list .app-card{opacity:.8;}
 .empty,.error{color:var(--muted);font-size:0.9rem;padding:16px;}
 footer{max-width:640px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:0.8rem;}
 @media (prefers-color-scheme: dark){
@@ -53,7 +57,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font
       return;
     }
     listEl.innerHTML = '';
-    for (const app of apps) {
+    const card = (app) => {
       const a = document.createElement('a');
       a.className = 'app-card';
       a.href = app.path;
@@ -64,7 +68,22 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font
           <p class="app-desc">${app.description || ''}</p>
         </span>
       `;
-      listEl.appendChild(a);
+      return a;
+    };
+    const main = apps.filter(x => !x.archive), old = apps.filter(x => x.archive);
+    for (const app of main) listEl.appendChild(card(app));
+    if (old.length) {
+      const btn = document.createElement('button');
+      btn.className = 'archive-btn';
+      btn.type = 'button';
+      const box = document.createElement('div');
+      box.className = 'archive-list';
+      const label = (open) => `<span class="app-icon">🗄️</span><span>過去の作品(${old.length})　${open ? '▲ とじる' : '▼ ひらく'}</span>`;
+      btn.innerHTML = label(false);
+      btn.onclick = () => { const o = box.classList.toggle('open'); btn.innerHTML = label(o); };
+      for (const app of old) box.appendChild(card(app));
+      listEl.appendChild(btn);
+      listEl.appendChild(box);
     }
   } catch (err) {
     listEl.innerHTML = `<p class="error">読み込みエラー: ${err.message}</p>`;
