@@ -1,0 +1,48 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>土台データの案</title>
+<style>:root{color-scheme:light dark;--l:#dcdce0}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){:root{--l:#3a3b41}body{background:#17181c;color:#eaeaec}.c{background:#1f2024!important}}
+main{max-width:760px;margin:0 auto;padding:12px 16px 48px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.6em 0 .4em}
+.c{background:#fff;border-radius:10px;padding:10px 12px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid var(--l);padding:5px 6px;text-align:left;vertical-align:top}th{white-space:nowrap}
+small{color:#888}.tag{display:inline-block;font-size:11px;border:1px solid var(--l);border-radius:99px;padding:0 7px;margin-right:4px}svg{width:100%;height:auto}</style></head><body><main>
+<a href="./">← 管理ページへ</a> ・ <a href="mapcheck-azgaar.html">Azgaar の検証</a>
+<h1>シミュレーターの土台データの案(たたき台)</h1>
+<p><b>概要:</b> 天候・経済・地政学の3つが、同じ土台のデータを読み書きして回る形を考えました。土台は「場所・勢力・物・できごと・記録」の5種類に絞り、それぞれ最小限の項目だけを持ちます。まだ案で、決まったものではありません。</p>
+<p><small>方針:Azgaar は「何を持つか」の見本にしただけで、計算の手順や実装は写さず、自前で考えます。</small></p>
+
+<h2>1. 3つのシミュレーターは、輪になって回る</h2>
+<div class="c"><svg viewBox="0 0 640 250" role="img" aria-label="天候→収穫→経済→国力→地政学→被害→経済 の循環">
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="#888"/></marker></defs>
+<g font-size="14" text-anchor="middle" fill="currentColor">
+<rect x="20" y="95" width="130" height="56" rx="10" fill="none" stroke="#2563eb" stroke-width="2"/><text x="85" y="120">天候</text><text x="85" y="140" font-size="11">気温・降水・季節</text>
+<rect x="255" y="20" width="130" height="56" rx="10" fill="none" stroke="#16a34a" stroke-width="2"/><text x="320" y="45">経済</text><text x="320" y="65" font-size="11">生産・価格・国庫</text>
+<rect x="490" y="95" width="130" height="56" rx="10" fill="none" stroke="#dc2626" stroke-width="2"/><text x="555" y="120">地政学</text><text x="555" y="140" font-size="11">関係・宣戦・戦争</text>
+<rect x="255" y="175" width="130" height="56" rx="10" fill="none" stroke="#888" stroke-width="2"/><text x="320" y="200">土台のデータ</text><text x="320" y="220" font-size="11">場所・勢力・物・記録</text>
+</g>
+<g stroke="#888" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M150 105 L250 62"/><path d="M385 62 L485 105"/><path d="M490 140 C440 190 440 195 392 200"/><path d="M255 200 C200 195 190 190 150 140"/></g>
+<g font-size="11" fill="#888"><text x="170" y="75">収穫・疫病</text><text x="450" y="75">国力</text><text x="438" y="178">被害・人口</text><text x="190" y="190">土地の変化</text></g></svg>
+<small>天候が収穫を決め、経済が国力を決め、地政学が戦争を起こし、被害が経済と土地に返ります。全部が土台のデータを通じて回ります。</small></div>
+
+<h2>2. 土台に持つもの(最小の案)</h2>
+<table>
+<tr><th>種類</th><th>持つ項目(最小)</th><th>誰が使うか</th></tr>
+<tr><th>場所<br><small>区画ごと</small></th><td>標高/海からの距離/気温/降水/地形の種類(森・砂漠など)/肥沃さ/川/人口/所属する国</td><td>天候が気温・降水を書き、経済が肥沃さと人口を読む。地政学は国境を読む</td></tr>
+<tr><th>勢力<br><small>国ごと</small></th><td>名前/政体/首都/国力(人口+生産+兵力)/国庫/他国との関係(同盟〜敵の段階)</td><td>地政学が関係を書き、経済が国庫を書く</td></tr>
+<tr><th>物<br><small>少数に絞る</small></th><td>食糧・武具・木材・交易品など5〜6種。拠点ごとに生産・在庫・価格</td><td>経済が書き、兵力と飢饉に効く</td></tr>
+<tr><th>軍<br><small>隊ごと</small></th><td>兵種(少数)ごとの人数/位置/士気/所属する国</td><td>地政学が動かし、隊と兵の層につながる</td></tr>
+<tr><th>できごと</th><td>種類(侵攻・疫病・飢饉・災害・反乱)/場所/期間/影響</td><td>天候・経済・地政学のどれからでも起き、どれにも効く</td></tr>
+<tr><th>記録<br><small>戦記の原料</small></th><td>いつ・誰が・どこで・何をした、の年表</td><td>全員が書き、「自動戦記」と画面が読む</td></tr>
+<tr><th>時間</th><td>年・季節・技術の時代</td><td>全員が読む</td></tr>
+</table>
+<p><small>「記録」が、このソフトの「自動で戦記を作る」の原料になります。Azgaar にも戦争の名前・年・攻守の記録がありましたが、私たちは、動いた結果として記録が溜まる形にします。</small></p>
+
+<h2>3. 今は持たないもの(後で足せる)</h2>
+<p><span class="tag">国章</span><span class="tag">宗教の神の名</span><span class="tag">文化の細かい違い</span><span class="tag">名所</span><span class="tag">旅の記録</span><span class="tag">商品の多種化(20種以上)</span><span class="tag">税の細目・関税</span><br><small>Azgaar が持っているが、まず無くても回るもの。単純に保つため、後回しにします。</small></p>
+
+<h2>4. 決めてほしい点(私の案つき)</h2>
+<div class="c"><b>① 時間の進み方</b><br>1ターンを何にするか。<br><b>案:</b> 1ターン=1か月(季節は12か月で一巡)。天候は季節で、経済は月ごとに、戦争は数か月単位で動く。</div>
+<div class="c"><b>② 物の種類</b><br><b>案:</b> まず食糧・武具・木材・交易品の4〜5種。足りなければ増やす。</div>
+<div class="c"><b>③ 国の数と規模</b><br><b>案:</b> 世界全体で5〜10か国。戦記として追いやすく、軽さも保てる。</div>
+<div class="c"><b>④ 区画の形</b>(前から未決)<br>不規則な区画か、六角形か、細かい格子か。決め方:②と③が決まれば、必要な細かさが見える。</div>
+</main></body></html>
