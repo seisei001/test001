@@ -1,0 +1,66 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>街の試作</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#6f8a4e;font:14px system-ui,sans-serif;color:#fff;touch-action:none}canvas{display:block;width:100vw;height:100vh}
+#ui{position:fixed;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}#ui a,#ui button{background:#0009;color:#fff;border:0;border-radius:18px;padding:8px 14px;font-size:14px;text-decoration:none}#ui button.on{background:#c8742a}
+#cap{position:fixed;left:10px;bottom:10px;background:#0008;border-radius:10px;padding:6px 12px}</style>
+<canvas id=c></canvas><div id=ui><a href="index.html">←設計</a><button data-c=w class=on>西洋</button><button data-c=e>東洋</button><button data-c=d>砂漠</button><button data-c=n>北方</button></div><div id=cap>見取り図(格子)に沿って、集めた絵を並べています。ドラッグで動かせます。</div>
+<script>
+const A='../assets/',CUL={
+ w:[...[1,2,3,4,5,6,7,8].map(i=>'town2/d0g_'+i),...[1,2,3,4,5,6,7,8].map(i=>'town2/d1m_'+i),'town3/hansa','town3/m_tudor'],
+ e:['town3/machiya','town3/cn_a','town3/cn_b','town2/d4e_3','town2/d4e_4','town2/d4e_5','town2/d4e_6','town2/d4e_1'],
+ d:['town3/medina','town3/inca','town3/kraal','town3/greek','town3/roman','town2/d3a_4','town2/d3a_5','town2/d3a_6'],
+ n:['town3/igloo','town3/turf_log','town3/yurt','town2/d2c_3','town2/d2c_6','town2/d3a_2']};
+const FIX=['struct_hi/castle_a','town/church','town/shop_blue','town/windmill','wall/wall_straight','wall/wall_tower','wall/watchtower','wall/gate_towers','town/cottage_red','town/inn_green'];
+const IM={};
+function trim(img){const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');g.drawImage(img,0,0);
+ const d=g.getImageData(0,0,c.width,c.height).data;let x0=1e9,y0=1e9,x1=-1,y1=-1;for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(d[(y*c.width+x)*4+3]>20){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);return o}
+const load=n=>new Promise(r=>{const i=new Image();i.onload=()=>{IM[n]=trim(i);r()};i.onerror=()=>r();i.src=A+n+'.png'});
+const cv=document.getElementById('c'),g=cv.getContext('2d');let W,H,DPR;
+const TW=64,TH=32,N=28,sx=(a,b)=>(a-b)*TW/2,sy=(a,b)=>(a+b)*TH/2;
+const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
+let culture='w',ents=[],road=new Set(),plaza=new Set(),cam={x:0,y:0,k:1};
+const R=(x,y,w,h)=>({x,y,w,h}),hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+function layout(){
+  ents=[];road.clear();plaza.clear();
+  const res=[R(2,2,6,6),R(16,4,3,3),R(23,3,2,2),R(10,10,8,8)];
+  for(let x=10;x<18;x++)for(let y=10;y<18;y++)plaza.add(x+','+y);
+  for(let i=0;i<N;i++)for(const k of [13,14]){road.add(i+','+k);road.add(k+','+i)}
+  const xs=[2,5,8,11,15,18,21,24];
+  for(const gx of xs)for(const gy of xs){const r=R(gx,gy,2,2);if(res.some(q=>hit(r,q)))continue;
+    if(hash(gx,gy)>.8)continue;const list=CUL[culture],near=Math.abs(gx-13.5)<5&&Math.abs(gy-13.5)<5;
+    const name=(culture==='w'&&near&&hash(gy,gx)<.4)?'town/shop_blue':list[Math.floor(hash(gx*7,gy*3)*list.length)];
+    ents.push({n:name,gx:gx,gy:gy,w:2,h:2,wid:TW*2*.88})}
+  ents.push({n:'struct_hi/castle_a',gx:2,gy:2,w:6,h:6,wid:TW*6*.98});
+  ents.push({n:'town/church',gx:16,gy:4,w:3,h:3,wid:TW*3*.98});
+  ents.push({n:'town/windmill',gx:23,gy:3,w:2,h:2,wid:TW*1.5});
+  /* 城壁(奥の2辺) */
+  for(let k=0;k<N;k+=5){ents.push({n:'wall/wall_straight',wall:1,gx:0,gy:k,w:0,h:5,len:5});if(k>0)ents.push({n:'wall/wall_straight',wall:2,gx:k,gy:0,w:5,h:0,len:5})}
+  ents.push({n:'wall/wall_tower',gx:0,gy:0,w:0,h:0,wid:150,tw:1});
+  ents.push({n:'wall/watchtower',gx:N-1,gy:2,w:1,h:1,wid:90});
+  ents.push({n:'wall/watchtower',gx:2,gy:N-1,w:1,h:1,wid:90});
+}
+function draw(){
+  g.setTransform(DPR,0,0,DPR,0,0);g.fillStyle='#6f8a4e';g.fillRect(0,0,W,H);
+  g.save();g.translate(W/2+cam.x,H*.3+cam.y);g.scale(cam.k,cam.k);
+  const M=3;
+  for(let a=-M;a<N+M;a++)for(let b=-M;b<N+M;b++){const k=a+','+b,x=sx(a,b),y=sy(a,b);
+    let c,r=hash(a,b);
+    if(plaza.has(k))c=`hsl(35,${8+r*6}%,${58+r*10}%)`;
+    else if(road.has(k))c=`hsl(34,${28+r*10}%,${50+r*8}%)`;
+    else if(a>=0&&a<N&&b>=0&&b<N&&((a%3===1)||(b%3===1))&&a>1&&b>1)c=`hsl(36,${24+r*10}%,${46+r*8}%)`;
+    else c=`hsl(${92+r*5},${34+r*4}%,${38+r*4}%)`;
+    g.fillStyle=c;g.beginPath();g.moveTo(x,y);g.lineTo(x+TW/2,y+TH/2);g.lineTo(x,y+TH);g.lineTo(x-TW/2,y+TH/2);g.closePath();g.fill()}
+  const L=[...ents].sort((p,q)=>(p.gx+p.w+p.gy+p.h)-(q.gx+q.w+q.gy+q.h));
+  for(const e of L){const im=IM[e.n];if(!im)continue;
+    if(e.wall){const len=e.len,x0=sx(e.gx,e.gy),y0=sy(e.gx,e.gy),x1=sx(e.gx+e.w,e.gy+e.h),y1=sy(e.gx+e.w,e.gy+e.h),cx=(x0+x1)/2,cy=(y0+y1)/2;
+      const wid=len*TW/2*1.0+14,hh=wid*im.height/im.width;g.save();g.translate(cx,cy+TH*.45);g.rotate(e.wall===1?-.26:.26);if(e.wall===2)g.scale(-1,1);g.drawImage(im,-wid/2,-hh*.8,wid,hh);g.restore();continue}
+    const bx=sx(e.gx+e.w,e.gy+e.h),by=sy(e.gx+e.w,e.gy+e.h),wid=e.wid,hh=wid*im.height/im.width;
+    g.fillStyle='#0003';g.beginPath();g.ellipse(bx,by-TH*(e.w+e.h)/4*.7,wid*.42,wid*.12,0,0,7);g.fill();
+    g.drawImage(im,bx-wid/2,by-hh-TH*.5*(e.w+e.h)/2*.0,wid,hh)}
+  g.restore()}
+function fit(){DPR=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cam.k=Math.min(W/(N*TW*1.05),H/(N*TH*1.25));cam.x=0;cam.y=0;draw()}
+addEventListener('resize',fit);
+let dr=null;cv.onpointerdown=e=>{dr=[e.clientX,e.clientY,cam.x,cam.y];cv.setPointerCapture(e.pointerId)};cv.onpointermove=e=>{if(!dr)return;cam.x=dr[2]+e.clientX-dr[0];cam.y=dr[3]+e.clientY-dr[1];draw()};cv.onpointerup=()=>dr=null;
+document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{culture=b.dataset.c;document.querySelectorAll('[data-c]').forEach(x=>x.classList.toggle('on',x===b));layout();draw()});
+(async()=>{const all=new Set([...FIX,...Object.values(CUL).flat()]);await Promise.all([...all].map(load));layout();fit();window.__ready=1})();
+</script></html>
