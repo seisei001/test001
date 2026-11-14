@@ -1,0 +1,9 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>世界を毎回つくる</title>
+<style>body{margin:0;font:16px/1.7 system-ui,sans-serif;background:#f4f1ea;color:#222}main{max-width:900px;margin:0 auto;padding:16px}h1{font-size:1.3rem}.c{background:#fff;border-radius:12px;padding:10px;margin:14px 0;box-shadow:0 1px 4px #0002}.c img{width:100%;border-radius:8px;display:block}.c b{display:block;margin-top:6px}a{color:#1a5fb4}</style>
+<main><a href="index.html">← 設計ページへ</a><h1>世界を毎回つくると、こうなる</h1>
+<p>種(シード)を変えるだけで、国の数・形・大陸の割れ方が毎回違う世界ができます。6回分です。</p>
+<div id="l"></div></main>
+<script>
+const D=[[101,19,809,'二つの大陸。大国が南北に並ぶ'],[202,21,716,'横長の一つの大陸。国が密集'],[303,13,341,'島だらけ。国が少なく海が主役'],[404,18,791,'巨大な一国と小国が混在'],[505,21,490,'細長く割れた大陸'],[606,20,609,'北に帝国、南に王国']];
+l.innerHTML=D.map(([s,n,b,t])=>`<div class=c><img src="gen/w${s}.jpg" loading=lazy><b>世界${s}：国${n}・拠点${b}</b>${t}</div>`).join('')
+</script></html>
