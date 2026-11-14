@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ローポリ建物 発注仕様書</title>
+<style>
+:root{--bg:#f6f1e4;--ink:#2b2418;--seal:#a8321f;--line:#d8cdb0;--card:#fffaf0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 -apple-system,"Hiragino Sans",sans-serif;padding:16px;max-width:760px;margin:auto}
+h1{font-size:1.3rem;margin:.2em 0}h2{font-size:1.05rem;border-left:5px solid var(--seal);padding-left:.5em;margin:1.6em 0 .5em}
+.sum{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.8em 1em}
+table{border-collapse:collapse;width:100%;font-size:.85rem;background:var(--card)}
+td,th{border:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+code,pre{font-family:ui-monospace,Menlo,monospace;font-size:.8rem}
+pre{background:#2b2418;color:#f3e9cf;padding:.8em;border-radius:8px;overflow:auto}
+select,button{font-size:1rem;padding:.5em .8em;border-radius:8px;border:1px solid var(--line);background:#fff}
+button{background:var(--seal);color:#fff;border:0;font-weight:bold}
+textarea{width:100%;height:26em;font:12.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:.6em;background:#fff}
+a{color:var(--seal)}
+</style></head><body>
+<p style="margin:0"><a href="index.html">← 設計ページに戻る</a></p>
+<h1>ローポリ建物 発注仕様書</h1>
+<div class="sum"><b>概要</b>:AIに「絵(テクスチャ)」と「形の数値データ(頂点・面・UV)」を一緒に作らせるための注文書です。
+下で建物の種類を選ぶと、<b>そのまま貼れる完結した注文文</b>が出ます。返ってきた <code>atlas.png</code> と <code>model.json</code> をこちらに渡せば、街に置けます。</div>
+
+<h2>1. 注文文を作る</h2>
+<p><select id="sel"></select> <button id="cp">コピー</button> <span id="ok"></span></p>
+<textarea id="out" readonly></textarea>
+
+<h2>2. 仕様の要点(注文文に全部入っています)</h2>
+<table>
+<tr><th>項目</th><th>決めごと</th></tr>
+<tr><td>座標</td><td>単位メートル / 上が +Y / 玄関は +Z / 原点は建物中央の地面</td></tr>
+<tr><td>形のデータ</td><td>頂点の座標・UV(絵のどこを貼るか)・面の並び を数字の配列で</td></tr>
+<tr><td>絵</td><td>1024×1024 の1枚。どこに何を描くかを固定の割り付け表で指定(形とUVが必ず合う)</td></tr>
+<tr><td>重さ</td><td>三角形 300〜800 個</td></tr>
+<tr><td>必須部品</td><td>屋根の出・煙突(屋根を貫通)・庇や窓出っ張りなど、種類ごとに指定</td></tr>
+<tr><td>自己検査</td><td>AI自身に、個数・範囲・寸法を確認させ結果を報告させる</td></tr>
+</table>
+
+<h2>3. 絵の割り付け(1024×1024、左上が原点)</h2>
+<table id="atl"></table>
+
+<script>
+const ATLAS=[
+["A 正面の壁","0,0,512,320","玄関・窓を描く。壁の全面を使う"],
+["B 背面の壁","512,0,512,320","窓・裏口"],
+["C 左の妻面","0,320,384,384","壁と、その上の三角の破風まで一続きで描く"],
+["D 右の妻面","384,320,384,384","同上"],
+["E 屋根の面","768,320,256,384","屋根材(瓦など)。縦横に繰り返せる絵"],
+["F 煙突・塔の肌","0,704,256,320","煙突や塔の壁材"],
+["G 木・梁","256,704,256,320","庇・窓出っ張り・梁の木材"],
+["H 土台の石","512,704,256,320","基礎・石積み"],
+["I 戸・扉・小屋根","768,704,256,320","扉、小さな屋根、旗など"]
+];
+document.getElementById('atl').innerHTML='<tr><th>記号</th><th>x,y,幅,高さ(px)</th><th>描く内容</th></tr>'+ATLAS.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+const atlasTxt=ATLAS.map(r=>`  ${r[0]}: 左上x,y,幅,高さ = ${r[1]} … ${r[2]}`).join('\n');
+
+const TYPES=[
+ {n:'西洋の民家(木骨造)',id:'w_house',size:'幅7〜9 × 奥行5〜7 × 軒高4.5 × 棟高7〜9 m',form:'2階建て。切妻屋根(軒の出0.5m)。2階が1階より前に0.3m張り出す。屋根の上に屋根窓を1つ。玄関に小さな庇。煙突は屋根を貫通して棟より1.2m高く、頂部に笠。',style:'白い漆喰壁に濃い茶の木骨(ハーフティンバー)、赤茶の瓦屋根、石の土台'},
+ {n:'西洋の商店',id:'w_shop',size:'幅8〜10 × 奥行6〜8 × 棟高7〜8 m',form:'2階建て。1階正面に大きな店の窓と日よけ庇(前に1.2m出る)。看板を横向きに突き出す(板1枚)。切妻屋根、煙突1本。',style:'漆喰と木骨、青緑の屋根、木の看板'},
+ {n:'西洋の教会',id:'w_church',size:'身廊 幅8 × 奥行18 × 壁高8、塔 幅5 × 高さ22 m',form:'細長い身廊(切妻屋根)の正面側に四角い鐘塔。塔の頂は四角錐の尖塔。入口に小さな張り出し玄関。両側壁に控え壁(出っ張り柱)を各3本。',style:'灰色の石壁、暗い青灰の屋根'},
+ {n:'兵舎',id:'barracks',size:'幅14 × 奥行7 × 軒高4 × 棟高6.5 m',form:'平屋の細長い建物。切妻屋根(軒の出0.6m)。長い壁に同じ間隔で戸口3つ(小さな庇つき)。両端に煙突。',style:'粗い石と木、暗い赤茶の屋根'},
+ {n:'倉庫・蔵',id:'storehouse',size:'幅8 × 奥行6 × 軒高4 × 棟高6.5 m',form:'窓が少ない大きな箱型。正面に大きな両開き扉と、上に荷揚げ梁(前に1m出る)。切妻屋根、煙突なし。',style:'木板壁、鈍い茶の屋根'},
+ {n:'工廠(鍛冶・工房)',id:'workshop',size:'幅10 × 奥行8 × 棟高7 m',form:'片側に差し掛け屋根の張り出し作業場(前が開いている)。本体は切妻屋根。大きな煙突を屋根貫通で1本(太め、頂は広がる)。',style:'黒ずんだ石と木、煤けた屋根'},
+ {n:'東洋の民家',id:'e_house',size:'幅8 × 奥行6 × 棟高6 m',form:'入母屋に近い屋根(大きく反り上がらず直線でよい、軒の出1m)。縁側の庇が前に1.2m。屋根の棟に小さな飾り。煙突は作らない。',style:'白壁と黒い柱、黒灰の瓦屋根、木の縁側'},
+ {n:'東洋の寺',id:'e_temple',size:'幅14 × 奥行12 × 棟高10 m',form:'二重の屋根(下の屋根が大きく張り出し、上に小さな屋根)。正面に階段3段と柱6本。棟の両端に飾り。',style:'赤い柱、白壁、暗い瓦屋根'},
+ {n:'砂漠の民家',id:'d_house',size:'幅7 × 奥行6 × 高さ5 m',form:'平らな屋根(縁に低い立ち上がり30cm)。屋上に小部屋を1つ。壁は少し内側に傾ける(上が10%細い)。小さな丸屋根の塔を1つ角に。',style:'日干し煉瓦の砂色、青い戸'},
+ {n:'砦の塔',id:'tower',size:'底 6×6 × 高さ16 m',form:'四角い塔。上部が0.6m張り出した胸壁(ぎざぎざ)。上に低い四角錐の屋根。入口は高さ3mに戸口と階段。',style:'灰色の石積み'}
+];
+function order(t){
+return `【依頼】ゲームの街に置く、ローポリ建物「${t.n}」を作ってください。
+絵(テクスチャ)と、形の数値データの「両方」を、同じ設計で作ります。次の2つを必ず出してください。
+
+■成果物1:テクスチャ画像 atlas.png
+・1024×1024ピクセルの1枚。左上が原点。画風は手描き風の絵(${t.style})。
+・下の割り付けどおりの位置に描く。領域をはみ出さない。
+${atlasTxt}
+・壁や屋根は、光や影を絵に焼き込まず、フラットな色で描く(ゲーム内で光を当てるため)。
+
+■成果物2:形のデータ model.json
+・画像生成ではなく、Python等のコード実行で、数字から作る。
+・形式(キー名はこのとおり。値は数字の配列):
+{
+  "name": "${t.id}_a",
+  "unit": "m",
+  "atlas": "atlas.png",
+  "atlasSize": 1024,
+  "bbox": {"w": 幅, "d": 奥行, "h": 高さ},
+  "positions": [x,y,z, x,y,z, …],
+  "uvs": [u,v, u,v, …],
+  "indices": [i,j,k, i,j,k, …],
+  "parts": [{"name":"walls","start":0,"count":◯}, {"name":"roof",…}, {"name":"chimney",…}, …]
+}
+・座標:単位メートル。上が+Y、建物の正面(玄関)が+Z。原点は建物の中心の地面の位置。
+・positions と uvs は同じ頂点数。面ごとに頂点を分けてよい(共有しない)。
+・uvs は「atlas.png 上のピクセル座標(左上原点、u=横、v=縦)」で書く。
+・indices は三角形。外側から見て反時計回りに並べる。底面は作らない。
+・parts は indices の何番目から何個(3の倍数)かで区切り、部品名をつける。
+・各面のUVは、その面に合う割り付け領域の中へ、面の形に比例して貼る。
+  - 壁と妻面:壁の全体をその領域いっぱいに使う。三角の破風も同じ領域の上側に収める。
+  - 屋根の面:E領域。煙突:F領域。梁・庇の木:G領域。基礎:H領域。扉・小屋根:I領域。
+・三角形の数は 300〜800個(indices の長さ÷3)。
+
+■形の指定(省略せず、立体のモデルにする。壁の絵だけで済ませない)
+・大きさ:${t.size}
+・${t.form}
+・煙突や庇のような出っ張りは、壁に絵を描くのではなく、別の立体として作る。
+・建物の裏側も、見られても破綻しない形にする。
+
+■出す前の自己検査(結果を文章で報告)
+1. 三角形の数は300〜800か
+2. indices の最大値が頂点数未満か、positions と uvs の頂点数が一致するか
+3. 全uvが 0〜1024 の範囲に入っているか
+4. bbox の値と、実際の頂点の最小・最大が一致しているか
+5. 煙突など指定の部品が、parts に全部あるか
+
+■渡し方
+model.json と atlas.png をファイルでダウンロードできる形で出してください。
+ファイルが出せない場合は、model.json の全文をコードブロックで出し、省略しないでください。`;
+}
+const sel=document.getElementById('sel'),out=document.getElementById('out');
+TYPES.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.n;sel.appendChild(o)});
+function show(){out.value=order(TYPES[sel.value])}
+sel.onchange=show;show();
+document.getElementById('cp').onclick=async()=>{
+  try{await navigator.clipboard.writeText(out.value)}catch(e){out.select();document.execCommand('copy')}
+  const ok=document.getElementById('ok');ok.textContent='コピーしました';setTimeout(()=>ok.textContent='',1800)};
+</script>
+</body></html>
