@@ -38,13 +38,13 @@ const by=(k,v)=>D.items.filter(i=>i[k]===v&&i.who);
 const kids=i=>D.items.filter(x=>x.parent===i.id);
 const leaves=i=>{const k=kids(i);return k.length?k.reduce((n,x)=>n+leaves(x),0):(i.who?1:0)};
 const anc=i=>{const a=[];let p=i.parent&&D.items.find(x=>x.id===i.parent);while(p){a.unshift(p);p=p.parent&&D.items.find(x=>x.id===p.parent)}return a};
-function row(i,show){const g=!i.who;const sub=g?'残り'+leaves(i)+'件':(show==='layer'?'概念: '+L(i.layer).t+(i.parent?' › '+D.items.find(x=>x.id===i.parent).t:''):'作業: '+W(i.who).t);
+function row(i,show){const g=!i.who;const PH=n=>(D.phases.find(x=>x.id===n)||{}).t;const sub=g?(i.ph?'工程: '+PH(i.ph)+'　':'')+'残り'+leaves(i)+'件':(show==='layer'?'概念: '+L(i.layer).t+(i.parent?' › '+D.items.find(x=>x.id===i.parent).t:''):'作業: '+W(i.who).t);
  return '<a class="btn" href="#i/'+i.id+'"><span class="n">'+(i.st==='now'?'🟠 ':'')+(g?'📂 ':'')+esc(i.t)+'<small>'+esc(sub)+'</small></span>'+(g?'':'<span class="tag t-'+i.who+'">'+esc(W(i.who).t.replace('あなたの','').replace('(作った物)','').replace('(次の指示)','(指示)'))+'</span>')+'<span class="go">›</span></a>'}
 function render(){
   const h=(location.hash.slice(1)||'c').split('/');const v=h[0],k=h[1];
   let o='<div class="crumb"><a href="../../">ハブ</a> › <a href="#c">ファンタジー世界戦争</a>';
   let body='';
-  const tabs=(on)=>'<div class="tabs"><a href="#c" class="'+(on==='c'?'on':'')+'">概念で見る</a><a href="#w" class="'+(on==='w'?'on':'')+'">作業で見る</a></div>';
+  const tabs=(on)=>'<div class="tabs"><a href="#c" class="'+(on==='c'?'on':'')+'">概念</a><a href="#w" class="'+(on==='w'?'on':'')+'">作業</a><a href="#p" class="'+(on==='p'?'on':'')+'">工程</a></div>';
   if(v==='c'&&!k){
     o+='</div><div class="meth">階層型課題解消管理法</div><h1>ファンタジー世界戦争</h1>'+tabs('c');
     if(D.phase)o+='<div class="box" style="border-left:4px solid var(--ac)"><b>いまの段階</b>'+esc(D.phase)+'</div>';
@@ -57,6 +57,12 @@ function render(){
     const l=L(k);if(!l){location.hash='c';return}
     o+=' › <a href="#c/'+k+'">'+esc(l.t)+'</a></div><h1>'+esc(l.t)+'の層</h1>'+tabs('c')+'<div class="empty">'+esc(l.d)+'</div>';
     const its=D.items.filter(i=>i.layer===k&&!i.parent);o+=its.length?its.map(i=>row(i,'work')).join(''):'<div class="empty">✅ いまこの層でやることはありません</div>';
+  }else if(v==='p'){
+    const n=Number(k);
+    o+=' › <a href="#p">工程で見る</a>'+(n?' › <a href="#p/'+n+'">'+esc(D.phases[n-1].t)+'</a>':'')+'</div><div class="meth">階層型課題解消管理法</div><h1>'+(n?esc(D.phases[n-1].t):'工程で見る')+'</h1>'+tabs('p');
+    if(!n){o+='<div class="empty">概念→仕様の詰め→仕様の完成→詳細設計→詳細の実装→試験。試験で外れたら戻すループです。</div><div style="height:8px"></div>';
+      for(const p of D.phases){const c=D.items.filter(x=>!x.who&&x.ph===p.id);o+='<a class="btn" href="#p/'+p.id+'"><span class="n">'+p.id+'. '+esc(p.t)+'<small>'+esc(p.d)+'</small></span><span class="cnt">'+c.length+'</span><span class="go">›</span></a>'}}
+    else{const p=D.phases[n-1];o+='<div class="box"><b>この工程の終わりの条件</b>'+esc(p.gate)+'</div>';const c=D.items.filter(x=>!x.who&&x.ph===n);o+=c.length?c.map(x=>row(x,'layer')).join(''):'<div class="empty">いまこの工程にある分類はありません</div>'}
   }else if(v==='w'&&!k){
     o+=' › <a href="#w">作業で見る</a></div><div class="meth">階層型課題解消管理法</div><h1>作業で見る</h1>'+tabs('w');
     for(const w of D.works){const n=by('who',w.id).length;o+='<a class="btn" href="#w/'+w.id+'"><span class="n">'+esc(w.t)+'<small>'+esc(w.d)+'</small></span><span class="cnt'+(w.id==='hand'&&n?' hot':'')+'">'+n+'</span><span class="go">›</span></a>'}
@@ -68,6 +74,7 @@ function render(){
     const i=D.items.find(x=>x.id===k);if(!i){location.hash='c';return}
     o+=' › <a href="#c/'+i.layer+'">'+esc(L(i.layer).t)+'</a>'+anc(i).map(p=>' › <a href="#i/'+p.id+'">'+esc(p.t)+'</a>').join('')+' › <a href="#i/'+k+'">'+esc(i.t)+'</a></div><h1>'+esc(i.t)+'</h1>';
     o+='<div class="cross"><a href="#c/'+i.layer+'">概念: '+esc(L(i.layer).t)+'の層</a>'+(i.who?'<a href="#w/'+i.who+'">作業: '+esc(W(i.who).t)+'</a>':'')+'</div><div style="height:12px"></div>';
+    if(i.ph)o+='<div class="box"><b>工程(いまここ)</b>'+D.phases.map(p=>(p.id===i.ph?'<span style="background:var(--ac);color:#fff;border-radius:99px;padding:2px 9px">'+p.t+'</span>':'<span style="color:var(--mu)">'+p.t+'</span>')).join(' › ')+'<div style="margin-top:6px;font-size:.85rem;color:var(--mu)">終わりの条件: '+esc(D.phases[i.ph-1].gate)+'</div></div>';
     o+='<div class="box" style="border-left:4px solid var(--wip)"><b>いまの内容</b>'+esc(i.now)+'</div>';
     if(kids(i).length){o+='<h2>この中の項目('+leaves(i)+'件)</h2>'+kids(i).map(x=>row(x,'work')).join('')}
     if(i.who)o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
