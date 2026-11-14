@@ -11,7 +11,7 @@ import * as THREE from 'three';
 const cv=document.getElementById('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
 const S=new THREE.Scene();S.background=new THREE.Color('#cfd8c4');
 S.add(new THREE.HemisphereLight('#fff','#8a8a6a',1.1));const D=new THREE.DirectionalLight('#fff',1.3);D.position.set(6,10,8);S.add(D);
-const g=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshLambertMaterial({color:'#9aab7e'}));g.rotation.x=-Math.PI/2;S.add(g);
+const gt=await new THREE.TextureLoader().loadAsync('../assets/terrain/ground.jpg');gt.colorSpace=THREE.SRGBColorSpace;gt.wrapS=gt.wrapT=THREE.RepeatWrapping;gt.anisotropy=4;const g=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshLambertMaterial({map:gt}));g.rotation.x=-Math.PI/2;S.add(g);
 const cam=new THREE.PerspectiveCamera(40,1,.1,300);
 const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/hf1/atlas.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
 const mat=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
