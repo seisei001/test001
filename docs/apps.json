@@ -158,9 +158,17 @@
   },
   {
     "id": "sekai-hex",
-    "name": "世界ハニカム",
-    "description": "6層の階層六角形世界(世界→地方→戦域→戦場→隊→兵)を斜め3Dで見る試作。見ている所だけ生成",
-    "path": "apps/sekai-hex/",
+    "name": "世界ハニカム(制作中・試作)",
+    "description": "今つくっている最新の試作集。街が近づくと立ち上がる3D・ローポリ建物・地形など",
+    "path": "apps/sekai-hex/design/",
     "icon": "🌐"
+  },
+  {
+    "id": "sekai-hex-old",
+    "name": "世界ハニカム(旧版)",
+    "description": "6層の階層六角形世界(世界→地方→戦域→戦場→隊→兵)を斜め3Dで見る旧版。見ている所だけ生成",
+    "path": "apps/sekai-hex/",
+    "icon": "🌐",
+    "archive": true
   }
 ]
