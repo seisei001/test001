@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],east:['east_a','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],east:['east_a','model','atlas.png'],church:['church1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
 const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
   const TL=new THREE.TextureLoader(),texs={};
@@ -158,7 +158,7 @@ function castle(B,cx,cz){const w=21,t=1.4,hh=6;
   for(const [x,z,lx,lz] of [[0,-w/2,w,t],[0,w/2,w,t],[-w/2,0,t,w],[w/2,0,t,w]])B.box('#b9bdd6',cx+x,0,cz+z,lx,hh,lz);
   for(const [x,z] of [[-1,-1],[1,-1],[-1,1],[1,1]]){B.cyl('#aeb2cf',cx+x*w/2,0,cz+z*w/2,2.6,10,14);B.cyl('#c4473f',cx+x*w/2,10,cz+z*w/2,3.1,4.2,14,null,.05)}
   B.box('#b9bdd6',cx,0,cz,8,12,8);B.cyl('#3b4a8c',cx,12,cz,6.2,4.5,4,TR(cx,0,cz,Math.PI/4).multiply(new THREE.Matrix4()).clone().multiply(new THREE.Matrix4().makeTranslation(-cx,0,-cz)),.05)}
-function church(B,cx,cz,rng){B.box('#d7ccb4',cx,0,cz,6,5,11);gableRoof(B,'#c4473f',6,11,5,.5,3.2);const t=new Builder();gableRoof(t,'#c4473f',6,11,5,.5,3.2);
+function church(B,cx,cz,rng){if(AIMAT&&AIG.church){B.aiHouse('church',TR(cx,0,cz,Math.atan2(-cx,-cz),.62));return}B.box('#d7ccb4',cx,0,cz,6,5,11);gableRoof(B,'#c4473f',6,11,5,.5,3.2);const t=new Builder();gableRoof(t,'#c4473f',6,11,5,.5,3.2);
   B.box('#d7ccb4',cx,0,cz-6.5,3.4,14,3.4);B.cyl('#3b4a8c',cx,14,cz-6.5,2.6,6,4,TR(0,0,0),.05)}
 function plan(cu,idx){const rng=(()=>{let st=idx*7919+17;return()=>{st=(st*16807)%2147483647;return st/2147483647}})();
   const res=[RC(2,2,6,6),RC(16,4,3,3),RC(23,3,2,2),RC(10,10,8,8)],xs=[2,5,8,11,15,18,21,24],half=N*TILE/2,B=new Builder();
