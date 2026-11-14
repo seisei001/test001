@@ -5,49 +5,66 @@
 <style>
 :root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--ok:#16a34a;--wip:#d97706;--todo:#9ca3af}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.6}
+body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
 .w{max-width:640px;margin:0 auto;padding:16px}
-a.back{color:var(--mu);font-size:.85rem;text-decoration:none}
-h1{margin:8px 0 4px;font-size:1.4rem}.sub{color:var(--mu);font-size:.9rem;margin:0 0 16px}
-a.big{display:flex;align-items:center;gap:14px;background:var(--ac);color:#fff;border-radius:14px;padding:18px 16px;text-decoration:none;min-height:56px}
-a.big b{font-size:1.1rem}a.big small{display:block;opacity:.85}
-.ic{font-size:1.8rem}
-h2{font-size:.95rem;color:var(--mu);margin:22px 0 8px;font-weight:600}
-.layer{background:var(--p);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
-.row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--bd);font-size:.95rem}
-.row:first-child{border-top:0}
-.row.l2{padding-left:34px;font-size:.9rem}
-.row .n{flex:1}
+.crumb{display:flex;flex-wrap:wrap;gap:4px;font-size:.82rem;color:var(--mu);margin-bottom:8px}
+.crumb a{color:var(--ac);text-decoration:none;padding:4px 2px}
+h1{margin:4px 0 8px;font-size:1.35rem}
+.bar{height:8px;background:var(--bd);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.stat{font-size:.82rem;color:var(--mu);margin:6px 0 16px}
+.btn{display:flex;align-items:center;gap:10px;width:100%;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:0 0 10px;color:var(--tx);font:inherit;text-align:left;text-decoration:none;min-height:52px;cursor:pointer}
+.btn .n{flex:1;font-weight:600}.btn small{color:var(--mu);font-weight:400}
+.btn .go{color:var(--mu)}
 .tag{font-size:.72rem;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
-.ok{background:var(--ok)}.wip{background:var(--wip)}.todo{background:var(--todo)}
-a.lnk{display:flex;align-items:center;gap:12px;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx);text-decoration:none;margin-bottom:8px;opacity:.85}
-a.lnk small{display:block;color:var(--mu)}
+.wip{background:var(--wip)}.todo{background:var(--todo)}.ok{background:var(--ok)}
+a.main{background:var(--ac);color:#fff;border:0}.main .n{font-weight:700}
+h2{font-size:.88rem;color:var(--mu);margin:20px 0 8px;font-weight:600}
+.done-box{display:none}.done-box.open{display:block}
+.done-box .btn{opacity:.7}
+.leaf{cursor:default}
+.done-complete{background:var(--p);border:1px solid var(--ok);border-radius:12px;padding:16px;text-align:center;color:var(--ok);font-weight:700}
 @media(prefers-color-scheme:dark){:root{--bg:#17181c;--p:#1f2024;--bd:#303136;--tx:#eaeaec;--mu:#9a9aa2}}
-</style></head><body><div class="w">
-<a class="back" href="../../">← アプリハブ</a>
-<h1>🌐 ファンタジー世界戦争</h1>
-<p class="sub">世界→地方→戦場→隊→兵と、近づくほど細かくなる戦争の世界を作っています。</p>
-
-<a class="big" href="../sekai-hex/design/"><span class="ic">🔨</span><span><b>制作中の試作を見る</b><small>街・建物・地形など、いま作っている最新版</small></span></a>
-
-<h2>いま何を作っているか(層で見る)</h2>
-<div class="layer">
- <div class="row"><span class="n"><b>🏘️ 街(建物)</b></span></div>
- <div class="row l2"><span class="n">西洋の民家・商店・教会</span><span class="tag ok">できた</span></div>
- <div class="row l2"><span class="n">倉庫・兵舎・工廠・砂漠の家</span><span class="tag ok">できた</span></div>
- <div class="row l2"><span class="n">東洋の民家・寺</span><span class="tag wip">民家は1種のみ</span></div>
- <div class="row l2"><span class="n">砦の塔・砦(木の柵と櫓)</span><span class="tag wip">発注中</span></div>
- <div class="row l2"><span class="n">要塞・城・城壁・堀と橋</span><span class="tag todo">これから</span></div>
- <div class="row"><span class="n"><b>⛰️ 地形・世界</b></span></div>
- <div class="row l2"><span class="n">階層ハニカム・地形生成</span><span class="tag ok">試作あり</span></div>
- <div class="row"><span class="n"><b>⚔️ 軍と戦い</b></span></div>
- <div class="row l2"><span class="n">百人隊・隊長AI・戦闘の見せ方</span><span class="tag wip">試作中</span></div>
-</div>
-
-<h2>🗄️ 過去の作品(ここで見られます)</h2>
-<a class="lnk" href="../sekai-hex/"><span class="ic">🌐</span><span>世界ハニカム(旧版)<small>6層の六角形世界を斜め3Dで見る旧トップ</small></span></a>
-<a class="lnk" href="../hyakunin-senki/"><span class="ic">🛡️</span><span>百人隊長戦記<small>隊長たちが動かす戦争の観戦</small></span></a>
-<a class="lnk" href="../rengo-senki/"><span class="ic">⚔️</span><span>連合戦記<small>決まった戦記を観戦する戦争スペクタクル</small></span></a>
-<a class="lnk" href="../chibi-war/"><span class="ic">🏰</span><span>ちびっこ大合戦<small>スマホ向けリアルタイム戦略バトル</small></span></a>
-<a class="lnk" href="../chizu-lab/"><span class="ic">🗺️</span><span>地図ラボ<small>乱数から世界地形を作る試作</small></span></a>
-</div></body></html>
+</style></head><body><div class="w" id="app">読み込み中…</div>
+<script>
+let T;
+const done=n=>n.c?n.c.every(done):!!n.done;
+const left=n=>n.c?n.c.reduce((s,x)=>s+left(x),0):(n.done?0:1);
+const total=n=>n.c?n.c.reduce((s,x)=>s+total(x),0):1;
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function node(path){let n=T;for(const i of path)n=n.c[i];return n}
+function render(){
+  const path=(location.hash.slice(1)||'').split('/').filter(x=>x!=='').map(Number);
+  let n;try{n=node(path)}catch(e){location.hash='';return}
+  if(!n||!n.c&&path.length){location.hash=path.slice(0,-1).join('/');return}
+  const A=document.getElementById('app');
+  let h='<div class="crumb"><a href="../../">ハブ</a>';
+  let cur=T;h+=' › <a href="#">'+esc(T.t)+'</a>';
+  path.forEach((i,k)=>{cur=cur.c[i];h+=' › <a href="#'+path.slice(0,k+1).join('/')+'">'+esc(cur.t)+'</a>'});
+  h+='</div><h1>'+esc(n.t)+'</h1>';
+  const tt=total(n),ll=left(n);
+  h+='<div class="bar"><i style="width:'+Math.round((tt-ll)/tt*100)+'%"></i></div><div class="stat">残り '+ll+' / 全部で '+tt+'</div>';
+  if(n.href)h+='<a class="btn main" href="'+n.href+'"><span class="n">🔨 '+esc(n.hrefLabel||'見る')+'</span><span class="go">›</span></a>';
+  const kids=n.c.map((x,i)=>[x,i]);
+  const open=kids.filter(([x])=>!done(x)),fin=kids.filter(([x])=>done(x));
+  if(!open.length)h+='<div class="done-complete">✅ ここは全部できあがり</div>';
+  for(const [x,i] of open){
+    const p=path.concat(i).join('/');
+    if(x.c)h+='<a class="btn" href="#'+p+'"><span class="n">'+esc(x.t)+' <small>残り'+left(x)+'</small></span><span class="go">›</span></a>';
+    else h+='<div class="btn leaf"><span class="n">'+esc(x.t)+'</span>'+(x.href?'<a href="'+x.href+'" class="go">見る ›</a>':'')+'<span class="tag '+(x.st==='wip'?'wip':'todo')+'">'+(x.st==='wip'?'作業中':'これから')+'</span></div>';
+  }
+  if(fin.length){
+    h+='<h2><a href="#" id="tg" style="color:inherit;text-decoration:none">✅ できあがり '+fin.length+'件 ▼</a></h2><div class="done-box" id="db">';
+    for(const [x] of fin)h+='<div class="btn leaf"><span class="n">'+esc(x.t)+'</span>'+(x.href?'<a href="'+x.href+'" class="go">見る ›</a>':'')+'<span class="tag ok">完成</span></div>';
+    h+='</div>';
+  }
+  if(!path.length&&T.past){
+    h+='<h2>🗄️ 過去の作品</h2>';
+    for(const x of T.past)h+='<a class="btn" style="opacity:.85" href="'+x.href+'"><span>'+x.icon+'</span><span class="n">'+esc(x.t)+'</span><span class="go">›</span></a>';
+  }
+  A.innerHTML=h;
+  const tg=document.getElementById('tg');
+  if(tg)tg.onclick=e=>{e.preventDefault();document.getElementById('db').classList.toggle('open')};
+  window.scrollTo(0,0);
+}
+fetch('tree.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{T=j;render();addEventListener('hashchange',render)});
+</script></body></html>
