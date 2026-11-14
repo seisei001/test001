@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
 const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
   const TL=new THREE.TextureLoader(),texs={};
@@ -122,8 +122,8 @@ function house(B,cu,cx,cz,rng,seedI){
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
-    if(r<pShop)nm=rng()<.65?'shop2':'shop';else if(r<pShop+(d>60?.1:.04))nm='store';else if(r<pShop+.3)nm='whouse';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
-    const th=gridTh(cx,cz),s=(nm==='shop2'?.8:nm==='whouse'?.85:nm==='store'?.9:.95)*(.9+rng()*.2);
+    if(r<pShop)nm=rng()<.65?'shop2':'shop';else if(r<pShop+(d>60?.1:.04))nm=d>60&&rng()<.45?'barracks':'store';else if(r<pShop+.3)nm='whouse';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
+    const th=gridTh(cx,cz),s=(nm==='shop2'?.8:nm==='whouse'?.85:nm==='store'?.9:nm==='barracks'?.62:.95)*(.9+rng()*.2);
     B.aiHouse(nm,TR(cx,0,cz,th,s));return}
   if(cu==='w'&&rng()<.85){
     const th=gridTh(cx,cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
