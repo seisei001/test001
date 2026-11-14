@@ -45,7 +45,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 ## 過去の作品(保管)
 - `apps.json` の項目に `"archive": true` を付けると、ハブのトップでは「🗄️ 過去の作品」ボタンの中にまとめて表示される(アプリ自体は残る)。
 - 旧版の整理済み: `sakaguchi-office`(旧・個人サイト)は削除し、Googleドライブ「ハブ保管(旧アプリ・元データ)」に zip を保管。`pdf-editor`(旧版)は pdf-app スキルが対象にしているため、過去の作品に移して残している。
-- `sekai-hex/assets` の使っていない元データ(`*_src`、`house_hi` 約300MB)は、まだリポジトリにある(Driveへのアップロードが1ファイル10MBまでのため、移せていない)。
+- `sekai-hex/assets` の元画像(bg_src, new_src, new_src2〜4, mtn_src 約227MB)はGoogleドライブ「ハブ保管(旧アプリ・元データ)」に82分割で保管済み(リポジトリからは削除)。復元: `cat sekai-hex_assets_orig.tar.part* | tar x`。house_hi, view_src, house_src(約73MB)は3D発注の参照用に残している。
 
 ## 新しいアプリを追加する手順
 1. `docs/apps/<新アプリid>/index.html` を作成する。
