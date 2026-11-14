@@ -13,19 +13,17 @@ import * as THREE from 'three';import {GLTFLoader} from './vendor/GLTFLoader.js'
 const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
-/* AI製ローポリ建物: 1GLB=1つの統合geometry(ワールド変換焼き込み)。assets/ai3d/fixed/ を先に試す */
-const AIN=['cottage_hut','two_story','L_shaped','tower_house','shop'];const AIG={};let AIMAT=null;
-async function loadAI(){const L=new GLTFLoader();
-  const load=async n=>{let g;try{g=await L.loadAsync('../assets/ai3d/fixed/'+n+'.glb')}catch(e){g=await L.loadAsync('../assets/ai3d/'+n+'.glb')}
-    g.scene.updateMatrixWorld(true);const gs=[];let map=null;
-    g.scene.traverse(o=>{if(!o.isMesh)return;if(!map&&o.material&&o.material.map)map=o.material.map;
-      let q=o.geometry.clone();if(q.index){const c=q.attributes.position.count,a=q.index.array,k=[];for(let i=0;i+2<a.length;i+=3)if(a[i]<c&&a[i+1]<c&&a[i+2]<c)k.push(a[i],a[i+1],a[i+2]);q.setIndex(k)}q.applyMatrix4(o.matrixWorld);q=q.index?q.toNonIndexed():q;
-      for(const k of Object.keys(q.attributes))if(!['position','normal','uv'].includes(k))q.deleteAttribute(k);
-      if(!q.attributes.normal)q.computeVertexNormals();if(!q.attributes.uv)q.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(q.attributes.position.count*2),2));gs.push(q)});
-    const m=mergeGeometries(gs);m.computeBoundingBox();AIG[n]=m;return map};
-  const maps=await Promise.all(AIN.map(load));const map=maps.find(x=>x);
-  if(map){map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=8;map.needsUpdate=true}
-  AIMAT=new THREE.MeshLambertMaterial({map,side:THREE.DoubleSide})}
+/* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
+const AIFILE={shop:'a',two:'b',tower:'c',balcony:'d',L:'e'};const AIG={};let AIMAT=null;
+async function loadAI(){
+  const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/set1/atlas_clean.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
+  AIMAT=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
+  await Promise.all(Object.entries(AIFILE).map(async([n,f])=>{
+    const d=await (await fetch('../assets/ai3d/set1/w_set_'+f+'.json')).json();
+    const c=d.positions.length/3,k=[];for(let i=0;i+2<d.indices.length;i+=3){const a=d.indices[i],b=d.indices[i+1],e=d.indices[i+2];if(a<c&&b<c&&e<c)k.push(a,b,e)}
+    const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/1024;uv[i+1]=1-d.uvs[i+1]/1024}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(k);
+    const q=g.toNonIndexed();q.computeVertexNormals();q.computeBoundingBox();AIG[n]=q}))}
 async function loadKit(){const L=new GLTFLoader();{const t=await new THREE.TextureLoader().loadAsync('../assets/sheets/w_tudor_a.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;SHEET=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})}await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
 const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
 /* ---- 画面 ---- */
@@ -101,8 +99,8 @@ function house(B,cu,cx,cz,rng,seedI){
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
-    if(r<pShop)nm='shop';else{const q=rng();nm=q<.3?'cottage_hut':q<.58?'two_story':q<.86?'L_shaped':'tower_house';if(nm==='tower_house'&&rng()<.5)nm='two_story'}
-    const th=Math.atan2(-cx,-cz),s=1.7*(.9+rng()*.2);
+    if(r<pShop)nm='shop';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
+    const th=Math.atan2(-cx,-cz),s=.95*(.9+rng()*.2);
     B.aiHouse(nm,TR(cx,0,cz,th,s));return}
   if(cu==='w'&&rng()<.85){
     const th=Math.atan2(-cx,-cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
