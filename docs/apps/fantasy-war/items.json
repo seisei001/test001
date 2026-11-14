@@ -69,7 +69,7 @@
     "注文文は渡し済み。結果待ち。"
    ],
    "st": "now",
-   "href": "../sekai-hex/design/town3d.html"
+   "links": []
   },
   {
    "id": "fort-palisade",
@@ -81,7 +81,7 @@
     "注文文は渡し済み。結果待ち。"
    ],
    "st": "now",
-   "href": "../sekai-hex/design/town3d.html"
+   "links": []
   },
   {
    "id": "east-house",
@@ -93,7 +93,12 @@
     "再発注の文を渡し済み。結果待ち。"
    ],
    "st": "now",
-   "href": "../sekai-hex/design/town3d.html"
+   "links": [
+    {
+     "l": "いまある東洋の家を見る",
+     "h": "view.html?b=east"
+    }
+   ]
   },
   {
    "id": "barracks-roof",
@@ -104,7 +109,16 @@
    "log": [
     "原因の特定はこれから。"
    ],
-   "href": "../sekai-hex/design/town3d.html"
+   "links": [
+    {
+     "l": "兵舎を見る",
+     "h": "view.html?b=barracks"
+    },
+    {
+     "l": "街の中で見る",
+     "h": "../sekai-hex/design/town3d.html"
+    }
+   ]
   },
   {
    "id": "east-black",
@@ -115,7 +129,16 @@
    "log": [
     "原因の特定はこれから。"
    ],
-   "href": "../sekai-hex/design/town3d.html"
+   "links": [
+    {
+     "l": "東洋の家を見る",
+     "h": "view.html?b=east"
+    },
+    {
+     "l": "街の中で見る",
+     "h": "../sekai-hex/design/town3d.html"
+    }
+   ]
   },
   {
    "id": "shop-awning",
@@ -124,7 +147,16 @@
    "who": "me",
    "now": "庇・看板の貼り方を見直す。",
    "log": [],
-   "href": "../sekai-hex/design/town3d.html"
+   "links": [
+    {
+     "l": "商店を見る",
+     "h": "view.html?b=shop2"
+    },
+    {
+     "l": "街の中で見る",
+     "h": "../sekai-hex/design/town3d.html"
+    }
+   ]
   },
   {
    "id": "old-houses",
@@ -135,7 +167,12 @@
    "log": [
     "東洋の民家待ち。"
    ],
-   "href": "../sekai-hex/design/town3d.html"
+   "links": [
+    {
+     "l": "街の中で見る",
+     "h": "../sekai-hex/design/town3d.html"
+    }
+   ]
   },
   {
    "id": "bld-check",
@@ -146,8 +183,17 @@
    "log": [
     "全部、街の3Dに組み込み済み。"
    ],
-   "href": "../sekai-hex/design/town3d.html",
-   "st": "now"
+   "st": "now",
+   "links": [
+    {
+     "l": "建物を1つずつ見る(上のボタンで切替)",
+     "h": "view.html?b=store"
+    },
+    {
+     "l": "街の中で見る",
+     "h": "../sekai-hex/design/town3d.html"
+    }
+   ]
   },
   {
    "id": "hub-check",
@@ -158,7 +204,7 @@
    "log": [
     "いま作った版を公開した。"
    ],
-   "href": "./"
+   "links": []
   },
   {
    "id": "past-check",
@@ -166,7 +212,8 @@
    "layer": "common",
    "who": "check",
    "now": "過去の作品に入れた物が合っているか。PDFエディタは「PDFアプリ」スキルが使うので保管のまま。",
-   "log": []
+   "log": [],
+   "links": []
   },
   {
    "id": "fort-order",
@@ -175,7 +222,7 @@
    "who": "next",
    "now": "要塞・城・城壁の部品・堀と橋のどれから注文文を作るか。兵・隊の絵に進むかも含めて決める。",
    "log": [],
-   "href": "../sekai-hex/design/town3d.html"
+   "links": []
   }
  ],
  "past": [
@@ -204,7 +251,5 @@
    "href": "../chizu-lab/",
    "icon": "🗺️"
   }
- ],
- "protoHref": "../sekai-hex/design/",
- "townHref": "../sekai-hex/design/town3d.html"
+ ]
 }
