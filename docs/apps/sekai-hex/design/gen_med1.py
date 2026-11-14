@@ -172,7 +172,8 @@ def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=.45):
     m.part('chimney');abox(m,cx-.42,cx+.42,cy-.8,cy+1.7,cz-.42,cz+.42,'brick','y')
     m.part('chimney_cap');abox(m,cx-.55,cx+.55,cy+1.7,cy+1.9,cz-.55,cz+.55,'stone','y')
     P=m.p;xs=P[0::3];ys=P[1::3];zs=P[2::3]
-    return dict(name=name,unit='m',atlas='atlas.png',atlasSize=1024,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),
+    dims=dict(hx=hx,hz=hz,uz=top_hz,h1=h1,h2=h2,fh=fh,yE=yE,yR=yR,zE=zE,xo=xo,yP=yPlate,cx=cx,cz=cz,cy=cy,floors=floors,ymax=max(ys),th=th)
+    return dict(dims=dims,name=name,unit='m',atlas='atlas.png',atlasSize=1024,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),
       positions=P,uvs=m.uv,indices=m.i,parts=[dict(name=a,start=b,count=c) for a,b,c in m.parts if c])
 if __name__=='__main__':
     make_atlas()
