@@ -40,7 +40,7 @@ function render(){
   let h='<div class="crumb"><a href="../../">ハブ</a>';
   let cur=T;h+=' › <a href="#">'+esc(T.t)+'</a>';
   path.forEach((i,k)=>{cur=cur.c[i];h+=' › <a href="#'+path.slice(0,k+1).join('/')+'">'+esc(cur.t)+'</a>'});
-  h+='</div><h1>'+esc(n.t)+'</h1>';
+  h+='</div><div style="font-size:.75rem;color:var(--mu)">階層型課題解消管理法</div><h1>'+esc(n.t)+'</h1>';
   const tt=total(n),ll=left(n);
   h+='<div class="bar"><i style="width:'+Math.round((tt-ll)/tt*100)+'%"></i></div><div class="stat">残り '+ll+' / 全部で '+tt+'</div>';
   if(n.href)h+='<a class="btn main" href="'+n.href+'"><span class="n">🔨 '+esc(n.hrefLabel||'見る')+'</span><span class="go">›</span></a>';
