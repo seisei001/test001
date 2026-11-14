@@ -13,6 +13,19 @@ import * as THREE from 'three';import {GLTFLoader} from './vendor/GLTFLoader.js'
 const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
+/* AI製ローポリ建物: 1GLB=1つの統合geometry(ワールド変換焼き込み)。assets/ai3d/fixed/ を先に試す */
+const AIN=['cottage_hut','two_story','L_shaped','tower_house','shop'];const AIG={};let AIMAT=null;
+async function loadAI(){const L=new GLTFLoader();
+  const load=async n=>{let g;try{g=await L.loadAsync('../assets/ai3d/fixed/'+n+'.glb')}catch(e){g=await L.loadAsync('../assets/ai3d/'+n+'.glb')}
+    g.scene.updateMatrixWorld(true);const gs=[];let map=null;
+    g.scene.traverse(o=>{if(!o.isMesh)return;if(!map&&o.material&&o.material.map)map=o.material.map;
+      let q=o.geometry.clone();if(q.index){const c=q.attributes.position.count,a=q.index.array,k=[];for(let i=0;i+2<a.length;i+=3)if(a[i]<c&&a[i+1]<c&&a[i+2]<c)k.push(a[i],a[i+1],a[i+2]);q.setIndex(k)}q.applyMatrix4(o.matrixWorld);q=q.index?q.toNonIndexed():q;
+      for(const k of Object.keys(q.attributes))if(!['position','normal','uv'].includes(k))q.deleteAttribute(k);
+      if(!q.attributes.normal)q.computeVertexNormals();if(!q.attributes.uv)q.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(q.attributes.position.count*2),2));gs.push(q)});
+    const m=mergeGeometries(gs);m.computeBoundingBox();AIG[n]=m;return map};
+  const maps=await Promise.all(AIN.map(load));const map=maps.find(x=>x);
+  if(map){map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=8;map.needsUpdate=true}
+  AIMAT=new THREE.MeshLambertMaterial({map,side:THREE.DoubleSide})}
 async function loadKit(){const L=new GLTFLoader();{const t=await new THREE.TextureLoader().loadAsync('../assets/sheets/w_tudor_a.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;SHEET=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})}await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
 const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
 /* ---- 画面 ---- */
@@ -40,13 +53,15 @@ function groundPatch(){const c=document.createElement('canvas');c.width=c.height
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 const patchTex=groundPatch();
 /* 部品を置く: 結果は1つの形(1回の描画)にまとめる */
-class Builder{constructor(){this.kit=[];this.col={};this.sheet=[]}
+class Builder{constructor(){this.kit=[];this.col={};this.sheet=[];this.ai=[]}
   part(name,M){for(const p of PARTS[name]||[]){const g=p.geo.clone();g.applyMatrix4(mulM(M,p.m));this.kit.push(g)}}
   poly(color,P,idx){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));if(idx)g.setIndex(idx);const n=g.index?g.toNonIndexed():g;n.computeVertexNormals();(this.col[color]=this.col[color]||[]).push(n)}
   box(color,cx,cy,cz,w,h,d,M){const g=new THREE.BoxGeometry(w,h,d);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   cyl(color,cx,cy,cz,r,h,seg,M,top=r){const g=new THREE.CylinderGeometry(top,r,h,seg);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   sheetHouse(M){const g=sheetGeo().clone();g.applyMatrix4(M);this.sheet.push(g)}
+  aiHouse(name,M){const g=AIG[name].clone();g.applyMatrix4(M);this.ai.push(g)}
   build(){const grp=new THREE.Group();
+    if(this.ai.length){const m=new THREE.Mesh(mergeGeometries(this.ai),AIMAT);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     if(this.sheet.length){const m=new THREE.Mesh(mergeGeometries(this.sheet),SHEET);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     const clean=g=>{const n=g.index?g.toNonIndexed():g;for(const k of Object.keys(n.attributes))if(!['position','normal','uv'].includes(k))n.deleteAttribute(k);return n};
     if(this.kit.length){const m=new THREE.Mesh(mergeGeometries(this.kit.map(clean)),KMAT);m.userData.own=1;grp.add(m)}
@@ -83,6 +98,12 @@ function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
   quad([X,Hw-.25,-d-o],[-X,Hw-.25,-d-o],[-X,Hw+rh,0],[X,Hw+rh,0],[884,150,1202,288]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();_sg=g;return g}
 function house(B,cu,cx,cz,rng,seedI){
+  if(cu==='w'&&AIMAT&&rng()<.9){
+    const d=Math.hypot(cx,cz),r=rng();let nm;
+    const pShop=d<48?.42:d<80?.2:.07;
+    if(r<pShop)nm='shop';else{const q=rng();nm=q<.3?'cottage_hut':q<.58?'two_story':q<.86?'L_shaped':'tower_house';if(nm==='tower_house'&&rng()<.5)nm='two_story'}
+    const th=Math.atan2(-cx,-cz),s=1.7*(.9+rng()*.2);
+    B.aiHouse(nm,TR(cx,0,cz,th,s));return}
   if(cu==='w'&&rng()<.85){
     const th=Math.atan2(-cx,-cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
     B.sheetHouse(M);
@@ -159,6 +180,6 @@ function frame(){requestAnimationFrame(frame);
   const dd=Math.hypot(cam.position.x-cur.x,cam.position.z-cur.z);
   st.innerHTML='<b>'+layerName(L)+'</b><br>高さ '+Math.round(cam.position.y)+' m ／ 町まで '+Math.round(dd)+' m<br>町: '+TOWNS.map(T=>T.grp?'●':'○').join(' ')+'<br>'+msg;
   R.render(S,cam)}
-(async()=>{await loadKit();window.__ready=1;frame()})();
+(async()=>{await loadKit();try{await loadAI()}catch(e){console.warn("ai3d load failed",e)}window.__ready=1;frame()})();
 window.__setL=v=>{Lt=v;L=v};window.__az=v=>az=v;
 </script></html>
