@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>風景の試作・合成版 | 世界ハニカム</title>
+<style>
+html,body{margin:0;height:100%;background:#9cc0dc;overflow:hidden;font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+canvas#c{display:block;width:100vw;height:100vh;touch-action:none;filter:saturate(1.12) contrast(1.04)}
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(20,25,50,.38) 100%)}
+#ui{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center}
+#ui button{border:0;border-radius:999px;padding:8px 16px;font-size:14px;background:rgba(255,255,255,.82);color:#223;cursor:pointer}
+#ui button.on{background:#223;color:#fff}
+#cap{position:fixed;left:14px;top:calc(12px + env(safe-area-inset-top));color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.45);font-size:13px;line-height:1.5}
+#cap b{font-size:16px;letter-spacing:.08em}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:rgba(156,192,220,.9);color:#fff;font-size:15px;z-index:5}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vig"></div>
+<div id="cap"><b>山のふもと(遠景=円筒、近景=3D)</b><br><span id="info"></span></div>
+<div id="ui"><button data-t="dawn">朝</button><button data-t="noon" class="on">昼</button><button data-t="dusk">夕</button></div>
+<div id="load">絵を描いています…</div>
+<script src="landscape-data.js"></script>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ================= データと地形(3D版と同じ) ================= */
+const dec=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const DW=LS.w,DH=LS.h,HM=dec(LS.hm),BI=dec(LS.bi);
+const SIZE_X=400,SIZE_Z=SIZE_X*DH/DW,HS=0.78,sea=20;
+function hash(x,y){let h=x*374761393+y*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295}
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+function fbm(x,y,o=4){let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*vnoise(x*f,y*f);f*=2.03;a*=.5}return s}
+function ridged(x,y,o=4){let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*(1-Math.abs(vnoise(x*f,y*f)*2-1));f*=2.1;a*=.5}return s}
+const sstep=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+function dataH(gx,gy){gx=Math.min(DW-1.001,Math.max(0,gx));gy=Math.min(DH-1.001,Math.max(0,gy));
+  const x=gx|0,y=gy|0,fx=gx-x,fy=gy-y,i=y*DW+x,a=HM[i],b=HM[i+1],c=HM[i+DW],d=HM[i+DW+1];return(a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy)/2.55}
+function levelAt(wx,wz){const gx=(wx/SIZE_X+.5)*(DW-1),gy=(wz/SIZE_Z+.5)*(DH-1);let h=dataH(gx,gy);
+  const land=sstep(19,26,h),rough=sstep(28,60,h);
+  h+=land*((fbm(wx*.05+9,wz*.05)-.5)*5*(.35+rough));h+=rough*(ridged(wx*.028,wz*.028+4,4)-.5)*34*sstep(50,85,h);h+=rough*(fbm(wx*.16,wz*.16,3)-.5)*5;return h}
+const Y=(x,z)=>(levelAt(x,z)-sea)*HS;
+const biomeAt=(x,z)=>{const gx=Math.round((x/SIZE_X+.5)*(DW-1)),gy=Math.round((z/SIZE_Z+.5)*(DH-1));return BI[Math.min(DH-1,Math.max(0,gy))*DW+Math.min(DW-1,Math.max(0,gx))]};
+
+/* ================= 色 ================= */
+const hx=c=>{const n=parseInt(c.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]};
+const BC=['#4a8fb0','#d9b673','#b9ab8e','#a9b455','#7fb34b','#63a03e','#5d9642','#40883b','#3e7d46','#4b7d5a','#a8a78c','#e9f2f6','#6c9c6c'].map(hx);
+const ROCK=hx('#8d8579'),ROCKD=hx('#6d675f'),SNOW=hx('#f4f8fb'),SAND=hx('#e2cf94'),WSH=hx('#79c8c0'),WDP=hx('#2f7f9f');
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const T={
+ dawn:{az:2.6,el:.16,sun:'#ffc9a0',sky:'#6d8fcf',hor:'#ffd9bd',fog:'#f2cbb8',amb:.58,cloud:'#ffe2d0'},
+ noon:{az:2.2,el:.72,sun:'#fff3d6',sky:'#3f86d6',hor:'#d3e8f6',fog:'#bfd9ec',amb:.6,cloud:'#ffffff'},
+ dusk:{az:1.55,el:.2,sun:'#ffb27a',sky:'#4f64b8',hor:'#ffc08a',fog:'#e7b496',amb:.5,cloud:'#ffd2b0'}};
+
+/* ================= 円筒に貼る絵を描く ================= */
+const ARC=2.1,CW=2048,CH=768,tTop=Math.tan(.5),tBot=-Math.tan(.75);
+const BANDS=[200,340,620], RAD=[150,270,470], NB=BANDS.length;
+const rowOf=t=>(tTop-t)/(tTop-tBot)*CH;
+const bandOf=d=>{for(let k=0;k<NB;k++)if(d<BANDS[k])return k;return NB-1};
+// 距離の刻み
+const dist=[];{let d=3;while(d<BANDS[NB-1]){dist.push(d);d+=Math.max(.8,d*.012)}}
+const NS=dist.length;
+
+// カメラの位置(いちばん高い所を、南のふもとから見る)
+let pk={x:0,z:0,l:0};for(let z=-SIZE_Z/2;z<SIZE_Z/2;z+=3)for(let x=-SIZE_X/2;x<SIZE_X/2;x+=3){const l=levelAt(x,z);if(l>pk.l)pk={x,z,l}}
+let cx=Math.max(-150,Math.min(150,pk.x*.6)),cz=Math.min(SIZE_Z/2-14,pk.z+150);
+let base=Y(cx,cz);for(let i=0;i<40&&base<1.5;i++){cz-=4;base=Y(cx,cz)}
+const eye={x:cx,y:Math.max(base,1)+24,z:cz};
+const tgtY=Y(pk.x,pk.z)*.55+10;
+const heading=Math.atan2(pk.x-eye.x,pk.z-eye.z);
+const pitch0=Math.max(-.1,Math.min(.25,Math.atan2(tgtY-eye.y,Math.hypot(pk.x-eye.x,pk.z-eye.z))));
+
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+const treeCols=['#3f7f3a','#4c8c3d','#2f6f45','#5b9a44','#6a9a3a'].map(hx);
+
+function bake(key){
+  const t=T[key],sunC=hx(t.sun),fogC=hx(t.fog);
+  const sd=[Math.cos(t.az)*Math.cos(t.el),Math.sin(t.el),Math.sin(t.az)*Math.cos(t.el)];
+  const imgs=BANDS.map(()=>{const im=new ImageData(CW,CH),d=im.data;for(let p=0;p<d.length;p+=4){d[p]=fogC[0];d[p+1]=fogC[1];d[p+2]=fogC[2]}return im});
+  const hzTab=new Float32Array(CW*NS);
+  const shade=(l)=>l<.12?.55:l<.4?.76:l<.72?.92:1;
+  const colorAt=(x,z,lvl,d)=>{
+    let c,water=lvl<sea;
+    if(water){c=mix(WSH,WDP,sstep(sea,sea-12,lvl));return mix(c,fogC,sstep(30,420,d)*.85)}
+    const e=Math.max(1.2,d*.008),gx=(Y(x+e,z)-Y(x-e,z))/(2*e),gz=(Y(x,z+e)-Y(x,z-e))/(2*e);
+    const il=1/Math.hypot(gx,1,gz),nx=-gx*il,ny=il,nz=-gz*il,slope=1-ny;
+    c=BC[biomeAt(x,z)].slice();
+    if(d<260){const n=fbm(x*.045,z*.045+3,2);const k=.86+n*.28;c=[c[0]*k,c[1]*k,c[2]*k]}
+    if(lvl<sea+1.3)c=mix(c,SAND,sstep(sea+1.3,sea-.2,lvl)*.9);
+    const rk=sstep(.30,.50,slope+(fbm(x*.09,z*.09,2)-.5)*.08)*(lvl>30?1:.6);
+    c=mix(c,ROCK,rk*.85);c=mix(c,ROCKD,rk*sstep(.45,.7,slope)*.4);
+    const sn=sstep(70+(fbm(x*.05,z*.05+8,2)-.5)*14,82,lvl)*(1-rk*.45);c=mix(c,SNOW,sn);
+    const lam=Math.max(0,nx*sd[0]+ny*sd[1]+nz*sd[2]),s=shade(lam);
+    const k=t.amb+(1-t.amb)*s;
+    c=[c[0]*k*(0.9+0.1*sunC[0]/255)*(s>.9?1.02:1),c[1]*k*(0.9+0.1*sunC[1]/255),c[2]*k*(0.88+0.12*sunC[2]/255)];
+    if(key!=='noon'&&s>.9)c=[c[0]*1.06,c[1]*1.0,c[2]*.92];
+    return mix(c,fogC,sstep(35,540,d)*.9)};
+  for(let c=0;c<CW;c++){
+    const a=heading-(c/CW-.5)*ARC,dx=Math.sin(a),dz=Math.cos(a);let hz=tBot;
+    for(let i=0;i<NS;i++){
+      const d=dist[i],x=eye.x+dx*d,z=eye.z+dz*d,lvl=levelAt(x,z),y=Math.max(lvl-sea,0)*HS,tt=(y-eye.y)/d;
+      if(tt>hz){
+        const col=colorAt(x,z,lvl,d),img=imgs[bandOf(d)].data;
+        const r0=Math.max(0,Math.ceil(rowOf(tt))),r1=Math.min(CH-1,Math.floor(rowOf(hz)));
+        for(let r=r0;r<=r1;r++){const p=(r*CW+c)*4;img[p]=col[0];img[p+1]=col[1];img[p+2]=col[2];img[p+3]=255}
+        hz=tt}
+      hzTab[c*NS+i]=hz}}
+  const cvs=imgs.map(im=>{const cv=document.createElement('canvas');cv.width=CW;cv.height=CH;cv.getContext('2d').putImageData(im,0,0);return cv});
+  /* 木を絵として描き込む */
+  const ctxs=cvs.map(cv=>cv.getContext('2d'));const trees=[];seed=7;
+  for(let k=0;k<260000&&trees.length<17000;k++){
+    const ang=heading+(rnd()-.5)*ARC*1.02,d=100+Math.pow(rnd(),1.5)*400,x=eye.x+Math.sin(ang)*d,z=eye.z+Math.cos(ang)*d;
+    if(Math.abs(x)>SIZE_X*.49||Math.abs(z)>SIZE_Z*.49)continue;
+    const y=Y(x,z),lv=y/HS+sea;if(lv<sea+1.6||lv>66)continue;
+    const dxh=Y(x+1.5,z)-Y(x-1.5,z),dzh=Y(x,z+1.5)-Y(x,z-1.5);if(Math.hypot(dxh,dzh)/3>.6)continue;
+    const bi=biomeAt(x,z),cl=fbm(x*.03+40,z*.03);let p=0,kind='b';
+    if(bi===6||bi===8||bi===5||bi===7)p=.95*sstep(.32,.5,cl)+.05;
+    else if(bi===9||bi===10||bi===2){p=.7*sstep(.28,.45,cl)+.04;kind='c'}
+    else if(bi===4||bi===12)p=.4*sstep(.42,.62,cl);else if(bi===3)p=.35*sstep(.42,.62,cl)+.02;
+    if(lv>48){kind='c';p*=1-sstep(48,66,lv)}
+    if(rnd()>p)continue;
+    trees.push({x,z,y,d,kind,s:(.55+rnd()*.7)*(kind==='c'?1.2:1)*1.35,ci:(rnd()*5)|0,v:rnd()})}
+  trees.sort((a,b)=>b.d-a.d);
+  const pxRad=CW/ARC,tpx=CH/(tTop-tBot);let drawn=0;
+  for(const tr of trees){
+    const dxw=tr.x-eye.x,dzw=tr.z-eye.z,d=tr.d,a=Math.atan2(dxw,dzw);let rel=a-heading;while(rel>Math.PI)rel-=2*Math.PI;while(rel<-Math.PI)rel+=2*Math.PI;
+    const c=(.5-rel/ARC)*CW;if(c<0||c>=CW)continue;
+    const i=Math.max(0,Math.min(NS-1,dist.findIndex(v=>v>=d)-2));
+    const hh=tr.s*(tr.kind==='c'?4.4:3.9),ttop=(tr.y+hh-eye.y)/d;
+    if(ttop<=hzTab[(c|0)*NS+i]+0.0005)continue;
+    const k=bandOf(d),ctx=ctxs[k],rb=rowOf((tr.y-eye.y)/d),rt=rowOf(ttop),w=tr.s*(tr.kind==='c'?1.0:1.35)/d*pxRad;
+    let col=treeCols[tr.ci].slice();if(tr.kind==='c')col=[col[0]*.82,col[1]*.9,col[2]*.88];
+    const lit=[Math.min(255,col[0]*1.25),Math.min(255,col[1]*1.25),Math.min(255,col[2]*1.2)];
+    const f=sstep(35,540,d)*.9,dark=t.amb+(1-t.amb)*.85;
+    const base2=mix([col[0]*dark,col[1]*dark,col[2]*dark],fogC,f),lit2=mix([lit[0]*dark,lit[1]*dark,lit[2]*dark],fogC,f);
+    const rgb=q=>`rgb(${q[0]|0},${q[1]|0},${q[2]|0})`,right=Math.sin(t.az-heading)<0?1:-1;
+    ctx.fillStyle=rgb(base2);
+    if(tr.kind==='c'){
+      for(let j=0;j<3;j++){const y1=rb+(rt-rb)*(.18+j*.28),y0=rb+(rt-rb)*(.5+j*.28),ww=w*(1.05-j*.3);
+        ctx.beginPath();ctx.moveTo(c-ww,y1);ctx.lineTo(c,rb+(rt-rb)*(.62+j*.3));ctx.lineTo(c+ww,y1);ctx.closePath();ctx.fill()}
+      ctx.fillStyle=rgb(lit2);ctx.beginPath();ctx.moveTo(c,rt);ctx.lineTo(c+right*w*.5,rb+(rt-rb)*.5);ctx.lineTo(c,rb+(rt-rb)*.5);ctx.closePath();ctx.fill()
+    }else{
+      ctx.beginPath();ctx.ellipse(c,rb+(rt-rb)*.62,w,Math.abs(rb-rt)*.42,0,0,7);ctx.fill();
+      ctx.fillStyle=rgb(lit2);ctx.beginPath();ctx.ellipse(c+right*w*.28,rb+(rt-rb)*.7,w*.55,Math.abs(rb-rt)*.28,0,0,7);ctx.fill()}
+    drawn++}
+  return {cvs,drawn,sd,t}}
+
+/* ================= 画面(遠景=円筒の絵 / 近景=3D の2段) ================= */
+const canvas=document.getElementById('c');
+const R=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.outputColorSpace=THREE.SRGBColorSpace;R.autoClear=false;
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+const sceneA=new THREE.Scene(),sceneB=new THREE.Scene();
+const camA=new THREE.PerspectiveCamera(52,1,1,3000),camB=new THREE.PerspectiveCamera(52,1,.5,1200);
+
+/* --- 遠景: 空・雲・円筒3枚 --- */
+const skyU={top:{value:new THREE.Color()},hor:{value:new THREE.Color()},sunDir:{value:new THREE.Vector3()},sunCol:{value:new THREE.Color()}};
+const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false,uniforms:skyU,
+ vertexShader:'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+ fragmentShader:'varying vec3 v;uniform vec3 top,hor,sunDir,sunCol;void main(){float h=clamp(v.y,0.,1.);vec3 c=mix(hor,top,pow(h,.55));float s=max(dot(normalize(v),sunDir),0.);c+=sunCol*(pow(s,900.)*1.6+pow(s,24.)*.28);gl_FragColor=vec4(c,1.);}'}));
+sky.renderOrder=-3;sceneA.add(sky);
+function cloudTex(){const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');
+  [[60,80,34],[100,60,42],[150,58,46],[196,78,36],[128,84,40],[90,88,30],[170,90,30]].forEach(([x,y,r])=>{const gr=g.createRadialGradient(x,y-r*.25,r*.1,x,y,r);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.7,'rgba(255,255,255,.96)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill()});
+  g.globalCompositeOperation='source-atop';const sh=g.createLinearGradient(0,40,0,125);sh.addColorStop(0,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(150,170,205,.85)');g.fillStyle=sh;g.fillRect(0,0,256,128);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+const ct=cloudTex(),clouds=[];
+for(let i=0;i<26;i++){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:ct,transparent:true,depthWrite:false,depthTest:false,fog:false,opacity:.95}));
+  const a=heading+(rnd()-.5)*2.6,d=900+rnd()*900;m.position.set(Math.sin(a)*d,260+rnd()*330,Math.cos(a)*d);
+  const s=150+rnd()*210;m.scale.set(s,s*.5,1);m.userData.sp=.4+rnd()*1.2;m.renderOrder=-2;sceneA.add(m);clouds.push(m)}
+const layers=[];
+
+/* --- 近景: 3Dの地形・木・水(半径130。外側へ向かって透明に消えて、円筒の絵とつながる) --- */
+const gm=(()=>{const t=new THREE.DataTexture(new Uint8Array([88,88,88,255,150,150,150,255,215,215,215,255,255,255,255,255]),4,1,THREE.RGBAFormat);t.minFilter=t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t})();
+const NR=130;
+function fade(mat){mat.transparent=true;mat.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','#include <dithering_fragment>\n gl_FragColor.a*=1.0-smoothstep(82.0,128.0,length(vViewPosition));')};return mat}
+const NV=300,geo=new THREE.PlaneGeometry(2*NR,2*NR,NV-1,NV-1);geo.rotateX(-Math.PI/2).translate(eye.x,0,eye.z);
+{const pos=geo.attributes.position;for(let i=0;i<pos.count;i++)pos.setY(i,Y(pos.getX(i),pos.getZ(i)));geo.computeVertexNormals();
+ const nrm=geo.attributes.normal,col=new Float32Array(pos.count*3),tc=new THREE.Color();
+ for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),lv=pos.getY(i)/HS+sea,slope=1-nrm.getY(i);let c=BC[biomeAt(x,z)].slice();
+  const n=fbm(x*.045,z*.045+3,3),k=.86+n*.28;c=[c[0]*k,c[1]*k,c[2]*k];
+  if(lv<sea+1.3)c=mix(c,SAND,sstep(sea+1.3,sea-.2,lv)*.9);
+  if(lv<sea)c=mix(WSH,WDP,sstep(sea,sea-12,lv));
+  const rk=sstep(.30,.50,slope+(fbm(x*.09,z*.09)-.5)*.08)*(lv>30?1:.6);c=mix(c,ROCK,rk*.85);c=mix(c,ROCKD,rk*sstep(.45,.7,slope)*.4);
+  const sn=sstep(70+(fbm(x*.05,z*.05+8)-.5)*14,82,lv)*(1-rk*.45);c=mix(c,SNOW,sn);
+  tc.setRGB(c[0]/255,c[1]/255,c[2]/255,THREE.SRGBColorSpace);col[i*3]=tc.r;col[i*3+1]=tc.g;col[i*3+2]=tc.b}
+ geo.setAttribute('color',new THREE.BufferAttribute(col,3))}
+const terrain=new THREE.Mesh(geo,fade(new THREE.MeshToonMaterial({vertexColors:true,gradientMap:gm})));terrain.receiveShadow=true;terrain.castShadow=true;sceneB.add(terrain);
+const water=new THREE.Mesh(new THREE.PlaneGeometry(2*NR*1.1,2*NR*1.1).rotateX(-Math.PI/2),fade(new THREE.MeshToonMaterial({color:'#3f93b5',opacity:.72,gradientMap:gm})));
+water.material.opacity=.72;water.position.set(eye.x,-.05,eye.z);sceneB.add(water);
+function merge(list){const gs=list.map(g=>g.index?g.toNonIndexed():g);let n=0;gs.forEach(g=>n+=g.attributes.position.count);
+  const p=new Float32Array(n*3),nr=new Float32Array(n*3);let o=0;gs.forEach(g=>{p.set(g.attributes.position.array,o*3);nr.set(g.attributes.normal.array,o*3);o+=g.attributes.position.count});
+  const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.BufferAttribute(p,3));r.setAttribute('normal',new THREE.BufferAttribute(nr,3));return r}
+const conif=new THREE.InstancedMesh(merge([new THREE.ConeGeometry(1,2.2,6).translate(0,2.2,0),new THREE.ConeGeometry(.78,1.8,6).translate(0,3.3,0),new THREE.ConeGeometry(.5,1.4,6).translate(0,4.2,0)]),fade(new THREE.MeshToonMaterial({gradientMap:gm})),6000);
+const broad=new THREE.InstancedMesh(merge([new THREE.IcosahedronGeometry(1.25,0).translate(0,2.6,0),new THREE.IcosahedronGeometry(.9,0).translate(.7,3.3,.2)]),fade(new THREE.MeshToonMaterial({gradientMap:gm})),6000);
+{let nc=0,nb=0;const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),sv=new THREE.Vector3(),pv=new THREE.Vector3(),cc=new THREE.Color();seed=11;
+ for(let k=0;k<120000&&(nc<6000||nb<6000);k++){
+  const ang=rnd()*6.283,d=30+Math.sqrt(rnd())*(NR-30),x=eye.x+Math.cos(ang)*d,z=eye.z+Math.sin(ang)*d;
+  if(Math.abs(x)>SIZE_X*.49||Math.abs(z)>SIZE_Z*.49)continue;
+  const y=Y(x,z),lv=y/HS+sea;if(lv<sea+1.6||lv>66)continue;
+  const dx=Y(x+1.5,z)-Y(x-1.5,z),dz=Y(x,z+1.5)-Y(x,z-1.5);if(Math.hypot(dx,dz)/3>.6)continue;
+  const bi=biomeAt(x,z),cl=fbm(x*.03+40,z*.03);let p=0,kind='b';
+  if(bi===6||bi===8||bi===5||bi===7)p=.95*sstep(.32,.5,cl)+.05;
+  else if(bi===9||bi===10||bi===2){p=.7*sstep(.28,.45,cl)+.04;kind='c'}
+  else if(bi===4||bi===12)p=.4*sstep(.42,.62,cl);else if(bi===3)p=.35*sstep(.42,.62,cl)+.02;
+  if(lv>48){kind='c';p*=1-sstep(48,66,lv)}
+  if(rnd()>p)continue;
+  const s=(.55+rnd()*.7)*(kind==='c'?1.2:1);q.setFromAxisAngle(new THREE.Vector3(0,1,0),rnd()*6.28);sv.set(s,s*(.9+rnd()*.5),s);pv.set(x,y-.2,z);m4.compose(pv,q,sv);
+  const tcol=treeCols[(rnd()*5)|0];cc.setRGB(tcol[0]/255,tcol[1]/255,tcol[2]/255,THREE.SRGBColorSpace);if(kind==='c')cc.multiplyScalar(.78);cc.offsetHSL((rnd()-.5)*.03,0,0);cc.multiplyScalar(.88+rnd()*.24);
+  if(kind==='c'){if(nc<6000){conif.setMatrixAt(nc,m4);conif.setColorAt(nc,cc);nc++}}else if(nb<6000){broad.setMatrixAt(nb,m4);broad.setColorAt(nb,cc);nb++}}
+ conif.count=nc;broad.count=nb;[conif,broad].forEach(m=>{m.instanceMatrix.needsUpdate=true;m.instanceColor.needsUpdate=true;m.castShadow=true;m.receiveShadow=true;sceneB.add(m)});window.__near=nc+nb}
+const sun=new THREE.DirectionalLight('#fff',2.2);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-140,right:140,top:140,bottom:-140,near:10,far:700});sun.shadow.bias=-.0006;sun.shadow.normalBias=.5;
+sceneB.add(sun,sun.target);const hemi=new THREE.HemisphereLight('#cfe4ff','#6f7f55',1.0);sceneB.add(hemi);
+const TB={dawn:{sI:2.0,h1:'#c7d6ff',h2:'#8a7a63',hI:.95},noon:{sI:2.6,h1:'#cfe6ff',h2:'#6f8a55',hI:1.1},dusk:{sI:2.1,h1:'#b8b6ec',h2:'#7a6552',hI:.9}};
+
+function build(key){
+  const t0=performance.now(),res=bake(key),t=res.t,tb=TB[key];
+  layers.forEach(m=>{m.material.map.dispose();m.material.dispose();m.geometry.dispose();sceneA.remove(m)});layers.length=0;
+  res.cvs.forEach((cv,k)=>{
+    const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.generateMipmaps=false;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;
+    tex.wrapS=THREE.RepeatWrapping;tex.repeat.x=-1;tex.offset.x=1;
+    const r=RAD[k],g=new THREE.CylinderGeometry(r,r,r*(tTop-tBot),96,1,true,heading-ARC/2,ARC);
+    const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.BackSide,depthTest:false,depthWrite:false,fog:false}));
+    m.position.y=r*(tTop+tBot)/2;m.renderOrder=1+k;sceneA.add(m);layers.push(m)});
+  const d=new THREE.Vector3(...res.sd).normalize();
+  skyU.top.value.set(t.sky);skyU.hor.value.set(t.hor);skyU.sunDir.value.copy(d);skyU.sunCol.value.set(t.sun);
+  clouds.forEach(c=>c.material.color.set(t.cloud));
+  sun.position.set(eye.x+d.x*300,d.y*300,eye.z+d.z*300);sun.target.position.set(eye.x,0,eye.z);sun.color.set(t.sun);sun.intensity=tb.sI;
+  hemi.color.set(tb.h1);hemi.groundColor.set(tb.h2);hemi.intensity=tb.hI;sceneB.fog=new THREE.Fog(t.fog,70,420);
+  document.querySelectorAll('#ui button').forEach(b=>b.classList.toggle('on',b.dataset.t===key));
+  const sec=((performance.now()-t0)/1000).toFixed(1);window.__bake=sec;
+  document.getElementById('info').textContent='遠景=3枚の絵を円筒に貼る(木'+res.drawn+'本つき・描き込み'+sec+'秒)、近景=半径130を3Dで描画(木'+window.__near+'本)'}
+const load=document.getElementById('load');
+function go(key){load.style.display='grid';setTimeout(()=>{build(key);load.style.display='none';window.__ready=true},30)}
+document.querySelectorAll('#ui button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+
+let yaw=0,pitch=0,drag=null;
+canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY,yaw,pitch];canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw=Math.max(-.5,Math.min(.5,drag[2]-(e.clientX-drag[0])*.004));pitch=Math.max(-.25,Math.min(.35,drag[3]+(e.clientY-drag[1])*.002))});
+canvas.addEventListener('pointerup',()=>drag=null);
+function size(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);[camA,camB].forEach(c=>{c.aspect=w/h;c.updateProjectionMatrix()})}
+addEventListener('resize',size);size();
+const clock=new THREE.Clock();
+function frame(){const t=clock.getElapsedTime(),sx=Math.sin(t*.35)*2.2,sy=Math.sin(t*.5)*.5;
+  camA.position.set(sx,sy,0);camB.position.set(eye.x+sx,eye.y+sy,eye.z);
+  const a=heading+yaw,p=pitch0+pitch,dx=Math.sin(a)*Math.cos(p)*100,dy=Math.sin(p)*100,dz=Math.cos(a)*Math.cos(p)*100;
+  camA.lookAt(camA.position.x+dx,camA.position.y+dy,camA.position.z+dz);camB.lookAt(camB.position.x+dx,camB.position.y+dy,camB.position.z+dz);
+  clouds.forEach(c=>{c.position.x+=c.userData.sp*.05});
+  R.clear();R.render(sceneA,camA);R.clearDepth();R.render(sceneB,camB);requestAnimationFrame(frame)}
+const qs=new URLSearchParams(location.search);go(qs.get('t')||'noon');frame();
+</script>
+</body>
+</html>
