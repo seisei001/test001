@@ -32,7 +32,8 @@
     "name": "育てる質問箱",
     "description": "会話やWebページを取り込み、質問のたびに関連情報を探してAIに渡す学習型メモ",
     "path": "apps/raglog/",
-    "icon": "🧠"
+    "icon": "🧠",
+    "archive": true
   },
   {
     "id": "neon-dash",
@@ -53,7 +54,8 @@
     "name": "賢い箱",
     "description": "会話するたびにLoRAとRAGで賢くなっていく、ブラウザ完結の小さな会話AI(開発中・公開準備段階)",
     "path": "apps/smart-box/src/ui/",
-    "icon": "🎙️"
+    "icon": "🎙️",
+    "archive": true
   },
   {
     "id": "text-avatar",
@@ -74,7 +76,8 @@
     "name": "坂口誠税理士事務所(SEO版ひな形)",
     "description": "ページごとに独立したURL・本文HTML直書き・ブログ機能つきの、検索対象を意識した静的サイトのひな形(現在は検索除外の試作)",
     "path": "apps/sakaguchi-site/",
-    "icon": "📰"
+    "icon": "📰",
+    "archive": true
   },
   {
     "id": "sakaguchi-preview",
@@ -127,7 +130,8 @@
     "name": "ちびっこ大合戦",
     "description": "かわいい兵隊が列をなして戦う、スマホ向けリアルタイム・ファンタジー戦略バトル。部隊を出し、魔法とスキルで魔王城をたおす",
     "path": "apps/chibi-war/",
-    "icon": "🏰"
+    "icon": "🏰",
+    "archive": true
   },
   {
     "id": "rengo-senki",
