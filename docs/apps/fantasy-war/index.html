@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb"><title>ファンタジー世界戦争</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--ok:#16a34a;--wip:#d97706;--todo:#9ca3af}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.6}
+.w{max-width:640px;margin:0 auto;padding:16px}
+a.back{color:var(--mu);font-size:.85rem;text-decoration:none}
+h1{margin:8px 0 4px;font-size:1.4rem}.sub{color:var(--mu);font-size:.9rem;margin:0 0 16px}
+a.big{display:flex;align-items:center;gap:14px;background:var(--ac);color:#fff;border-radius:14px;padding:18px 16px;text-decoration:none;min-height:56px}
+a.big b{font-size:1.1rem}a.big small{display:block;opacity:.85}
+.ic{font-size:1.8rem}
+h2{font-size:.95rem;color:var(--mu);margin:22px 0 8px;font-weight:600}
+.layer{background:var(--p);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--bd);font-size:.95rem}
+.row:first-child{border-top:0}
+.row.l2{padding-left:34px;font-size:.9rem}
+.row .n{flex:1}
+.tag{font-size:.72rem;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+.ok{background:var(--ok)}.wip{background:var(--wip)}.todo{background:var(--todo)}
+a.lnk{display:flex;align-items:center;gap:12px;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;color:var(--tx);text-decoration:none;margin-bottom:8px;opacity:.85}
+a.lnk small{display:block;color:var(--mu)}
+@media(prefers-color-scheme:dark){:root{--bg:#17181c;--p:#1f2024;--bd:#303136;--tx:#eaeaec;--mu:#9a9aa2}}
+</style></head><body><div class="w">
+<a class="back" href="../../">← アプリハブ</a>
+<h1>🌐 ファンタジー世界戦争</h1>
+<p class="sub">世界→地方→戦場→隊→兵と、近づくほど細かくなる戦争の世界を作っています。</p>
+
+<a class="big" href="../sekai-hex/design/"><span class="ic">🔨</span><span><b>制作中の試作を見る</b><small>街・建物・地形など、いま作っている最新版</small></span></a>
+
+<h2>いま何を作っているか(層で見る)</h2>
+<div class="layer">
+ <div class="row"><span class="n"><b>🏘️ 街(建物)</b></span></div>
+ <div class="row l2"><span class="n">西洋の民家・商店・教会</span><span class="tag ok">できた</span></div>
+ <div class="row l2"><span class="n">倉庫・兵舎・工廠・砂漠の家</span><span class="tag ok">できた</span></div>
+ <div class="row l2"><span class="n">東洋の民家・寺</span><span class="tag wip">民家は1種のみ</span></div>
+ <div class="row l2"><span class="n">砦の塔・砦(木の柵と櫓)</span><span class="tag wip">発注中</span></div>
+ <div class="row l2"><span class="n">要塞・城・城壁・堀と橋</span><span class="tag todo">これから</span></div>
+ <div class="row"><span class="n"><b>⛰️ 地形・世界</b></span></div>
+ <div class="row l2"><span class="n">階層ハニカム・地形生成</span><span class="tag ok">試作あり</span></div>
+ <div class="row"><span class="n"><b>⚔️ 軍と戦い</b></span></div>
+ <div class="row l2"><span class="n">百人隊・隊長AI・戦闘の見せ方</span><span class="tag wip">試作中</span></div>
+</div>
+
+<h2>🗄️ 過去の作品(ここで見られます)</h2>
+<a class="lnk" href="../sekai-hex/"><span class="ic">🌐</span><span>世界ハニカム(旧版)<small>6層の六角形世界を斜め3Dで見る旧トップ</small></span></a>
+<a class="lnk" href="../hyakunin-senki/"><span class="ic">🛡️</span><span>百人隊長戦記<small>隊長たちが動かす戦争の観戦</small></span></a>
+<a class="lnk" href="../rengo-senki/"><span class="ic">⚔️</span><span>連合戦記<small>決まった戦記を観戦する戦争スペクタクル</small></span></a>
+<a class="lnk" href="../chibi-war/"><span class="ic">🏰</span><span>ちびっこ大合戦<small>スマホ向けリアルタイム戦略バトル</small></span></a>
+<a class="lnk" href="../chizu-lab/"><span class="ic">🗺️</span><span>地図ラボ<small>乱数から世界地形を作る試作</small></span></a>
+</div></body></html>
