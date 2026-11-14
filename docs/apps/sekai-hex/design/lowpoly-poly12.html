@@ -1,0 +1,42 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUSE製ローポリ12棟の確認</title>
+<style>html,body{margin:0;height:100%;background:#cfd8c4;overflow:hidden;font-family:-apple-system,sans-serif}
+#c{width:100%;height:100%;display:block;touch-action:none}
+#ui{position:fixed;left:8px;top:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap}
+#ui button{padding:7px 10px;border:0;border-radius:8px;background:#fffaf0;color:#2b2418;font-size:13px}#ui button.on{background:#2563eb;color:#fff}
+#info{position:fixed;left:8px;bottom:8px;background:#fffaf0cc;padding:5px 9px;border-radius:8px;font-size:12px}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script></head><body>
+<canvas id="c"></canvas><div id="ui"></div><div id="info"></div>
+<script type="module">
+import * as THREE from 'three';
+const NAMES={western_house:'西洋の民家',western_shop:'西洋の商店',western_church:'教会',storehouse:'倉庫',fortress_tower:'砦の塔',desert_house:'砂漠の民家',oriental_house_a:'東洋民家A',oriental_house_b:'東洋民家B',oriental_house_c:'東洋民家C',oriental_house_d:'東洋民家D',oriental_house_e:'東洋民家E',oriental_temple:'寺'};
+const cv=document.getElementById('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene();S.background=new THREE.Color('#cfd8c4');
+S.add(new THREE.HemisphereLight('#fff','#8a8a6a',1.1));const D=new THREE.DirectionalLight('#fff',1.3);D.position.set(6,10,8);S.add(D);
+const g=new THREE.Mesh(new THREE.PlaneGeometry(160,160),new THREE.MeshLambertMaterial({color:'#9aab7e'}));g.rotation.x=-Math.PI/2;S.add(g);
+const cam=new THREE.PerspectiveCamera(40,1,.1,400);const grp=new THREE.Group();S.add(grp);
+const q=new URLSearchParams(location.search);let cur=q.get('b')||'western_house',size=[10,8,10],tri=0;
+async function load(n){cur=n;grp.clear();
+ const d=await (await fetch(`../assets/ai3d/poly12/${n}/model.json`)).json();
+ const tex=await new THREE.TextureLoader().loadAsync(`../assets/ai3d/poly12/${n}/atlas.png`);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));
+ const uv=[];for(let k=0;k<d.uvs.length;k+=2)uv.push(d.uvs[k]/1024,1-d.uvs[k+1]/1024);
+ geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(d.indices);geo.computeVertexNormals();
+ grp.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide})));
+ size=[d.bbox.w,d.bbox.h,d.bbox.d];tri=d.indices.length/3;
+ document.getElementById('info').textContent=`${NAMES[n]||n}  三角形${tri}  幅${d.bbox.w}×奥${d.bbox.d}×高${d.bbox.h}m`;
+ [...document.querySelectorAll('#ui button[data-b]')].forEach(b=>b.classList.toggle('on',b.dataset.b===n));view(0.6,0.25);}
+let az=.6,el=.25,dist=20;
+function view(a,e){az=a;el=e;dist=Math.max(...size)*2.1;set()}
+function set(){const h=size[1]/2;cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist+h,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,h,0)}
+const ui=document.getElementById('ui');
+for(const n in NAMES){const b=document.createElement('button');b.textContent=NAMES[n];b.dataset.b=n;b.onclick=()=>load(n);ui.appendChild(b)}
+[['斜め',()=>view(.6,.25)],['正面',()=>view(0,.08)],['右',()=>view(Math.PI/2,.08)],['裏',()=>view(Math.PI+.4,.2)],['上',()=>view(.3,1.2)]].forEach(([t,f])=>{const b=document.createElement('button');b.textContent='◎'+t;b.onclick=f;ui.appendChild(b)});
+let dr=null;cv.onpointerdown=e=>{dr=[e.clientX,e.clientY]};addEventListener('pointerup',()=>dr=null);
+addEventListener('pointermove',e=>{if(!dr)return;az-=(e.clientX-dr[0])*.008;el=Math.max(.02,Math.min(1.45,el+(e.clientY-dr[1])*.006));dr=[e.clientX,e.clientY];set()});
+cv.addEventListener('wheel',e=>{dist=Math.max(5,dist*(1+e.deltaY*.001));set();e.preventDefault()},{passive:false});
+function rs(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',rs);rs();
+await load(cur);
+(function loop(){R.render(S,cam);requestAnimationFrame(loop)})();
+window.__v=(a,e)=>view(a,e);window.__load=load;window.__ready=true;
+</script></body></html>
