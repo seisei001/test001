@@ -14,16 +14,18 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AIFILE={shop:'a',two:'b',tower:'c',balcony:'d',L:'e'};const AIG={};let AIMAT=null;const LOG={};const LOMAT={};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png']};
+const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
-  const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/set1/atlas_photo.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
-  AIMAT=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
-  await Promise.all(Object.entries(AIFILE).map(async([n,f])=>{
-    const d=await (await fetch('../assets/ai3d/set1/w_set_'+f+'.json')).json();
+  const TL=new THREE.TextureLoader(),texs={};
+  await Promise.all([...new Set(Object.values(AISET).map(v=>v[0]+'/'+v[2]))].map(async k=>{const t=await TL.loadAsync('../assets/ai3d/'+k);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;texs[k]=new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide})}));
+  await Promise.all(Object.entries(AISET).map(async([n,[dir,f,at]])=>{
+    AIMATS[dir]=texs[dir+'/'+at];AIMAT=AIMATS[dir];
+    const d=await (await fetch('../assets/ai3d/'+dir+'/'+f+'.json')).json();const A=d.atlasSize||1024;
     const c=d.positions.length/3,k=[];for(let i=0;i+2<d.indices.length;i+=3){const a=d.indices[i],b=d.indices[i+1],e=d.indices[i+2];if(a<c&&b<c&&e<c)k.push(a,b,e)}
-    const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/1024;uv[i+1]=1-d.uvs[i+1]/1024}
+    const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/A;uv[i+1]=1-d.uvs[i+1]/A}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(k);
-    const q=g.toNonIndexed();q.computeVertexNormals();q.computeBoundingBox();AIG[n]=q}))}
+    const q=g.toNonIndexed();q.computeVertexNormals();q.computeBoundingBox();q.userData.dir=dir;AIG[n]=q}))}
 /* 立体で組んだ中世の木骨造りを撮影して簡単な形に貼った軽量版(22〜34面): assets/ai3d/lo1/ */
 async function loadLO(){
   const T=new THREE.TextureLoader();
@@ -61,17 +63,17 @@ function groundPatch(){const c=document.createElement('canvas');c.width=c.height
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 const patchTex=groundPatch();
 /* 部品を置く: 結果は1つの形(1回の描画)にまとめる */
-class Builder{constructor(){this.kit=[];this.col={};this.sheet=[];this.ai=[];this.lo={}}
+class Builder{constructor(){this.kit=[];this.col={};this.sheet=[];this.ai={};this.lo={}}
   part(name,M){for(const p of PARTS[name]||[]){const g=p.geo.clone();g.applyMatrix4(mulM(M,p.m));this.kit.push(g)}}
   poly(color,P,idx){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));if(idx)g.setIndex(idx);const n=g.index?g.toNonIndexed():g;n.computeVertexNormals();(this.col[color]=this.col[color]||[]).push(n)}
   box(color,cx,cy,cz,w,h,d,M){const g=new THREE.BoxGeometry(w,h,d);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   cyl(color,cx,cy,cz,r,h,seg,M,top=r){const g=new THREE.CylinderGeometry(top,r,h,seg);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   sheetHouse(M){const g=sheetGeo().clone();g.applyMatrix4(M);this.sheet.push(g)}
   loHouse(name,M){const g=LOG[name].clone();g.applyMatrix4(M);(this.lo[LOG[name].userData.atlas]=this.lo[LOG[name].userData.atlas]||[]).push(g)}
-  aiHouse(name,M){const g=AIG[name].clone();g.applyMatrix4(M);this.ai.push(g)}
+  aiHouse(name,M){const g=AIG[name].clone();g.applyMatrix4(M);const dr=AIG[name].userData.dir;(this.ai[dr]=this.ai[dr]||[]).push(g)}
   build(){const grp=new THREE.Group();
     for(const a in this.lo){const m=new THREE.Mesh(mergeGeometries(this.lo[a]),LOMAT[a]);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
-    if(this.ai.length){const m=new THREE.Mesh(mergeGeometries(this.ai),AIMAT);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
+    for(const dr in this.ai){const m=new THREE.Mesh(mergeGeometries(this.ai[dr]),AIMATS[dr]);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     if(this.sheet.length){const m=new THREE.Mesh(mergeGeometries(this.sheet),SHEET);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     const clean=g=>{const n=g.index?g.toNonIndexed():g;for(const k of Object.keys(n.attributes))if(!['position','normal','uv'].includes(k))n.deleteAttribute(k);return n};
     if(this.kit.length){const m=new THREE.Mesh(mergeGeometries(this.kit.map(clean)),KMAT);m.userData.own=1;grp.add(m)}
@@ -119,8 +121,8 @@ function house(B,cu,cx,cz,rng,seedI){
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
-    if(r<pShop)nm='shop';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
-    const th=gridTh(cx,cz),s=.95*(.9+rng()*.2);
+    if(r<pShop)nm=rng()<.65?'shop2':'shop';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
+    const th=gridTh(cx,cz),s=(nm==='shop2'?.8:.95)*(.9+rng()*.2);
     B.aiHouse(nm,TR(cx,0,cz,th,s));return}
   if(cu==='w'&&rng()<.85){
     const th=gridTh(cx,cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
