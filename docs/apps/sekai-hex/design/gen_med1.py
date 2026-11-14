@@ -2,11 +2,35 @@
 import json,os,math,sys
 from PIL import Image,ImageDraw
 HERE=os.path.dirname(os.path.abspath(__file__));OUT=os.path.join(HERE,'..','assets','ai3d','med1')
-STYLE=dict(diag=True,shut=True,pitch=1.05,chim=True,east=False)
+STYLE=dict(diag=True,shut=True,pitch=1.05,chim=True,east=False,ref=False,dormer=False)
+SHEET=Image.open(os.path.join(HERE,'..','assets','sheets','w_tudor_a.png')).convert('RGB')
 SRC=Image.open(os.path.join(HERE,'..','assets','ai3d','set1','atlas_clean.png')).convert('RGB')
 REG={'plaster':(0,0,512,256),'roof':(512,0,512,512),'stone':(0,256,512,256),'brick':(0,512,256,256),'wood':(256,512,256,256),'door':(512,512,256,256),'glass':(768,512,256,256)}
+def make_atlas_ref():
+    import numpy as np
+    rng=np.random.default_rng(3)
+    at=Image.new('RGB',(1024,1024),(200,170,130))
+    def crop(b,size):return SHEET.crop((b[0],b[1],b[0]+b[2],b[1]+b[3])).resize(size,Image.LANCZOS)
+    def put(name,img):x,y,w,h=REG[name];at.paste(img.resize((w,h),Image.LANCZOS),(x,y))
+    put('roof',crop((470,785,150,215),(512,512)))                 # 見本の屋根(橙の丸瓦)
+    put('stone',crop((316,112,22,52),(512,256)));put('brick',crop((316,112,22,52),(256,256)))   # 見本の石(煙突)
+    put('door',crop((196,424,42,70),(256,256)))                    # 見本の扉の板
+    put('glass',crop((198,216,36,34),(256,256)))                   # 見本の窓(青い格子)
+    # 漆喰: 見本の色(クリーム)+むら / 木: 見本の茶+木目
+    def noisy(base,var,w,h,vert):
+        n=rng.normal(0,1,(h,w));
+        from PIL import ImageFilter
+        im=Image.fromarray(((n*40)+128).clip(0,255).astype('uint8')).filter(ImageFilter.GaussianBlur(6 if not vert else 1.5))
+        a=np.asarray(im,float)/255-.5
+        if vert:a=np.asarray(Image.fromarray(((rng.normal(0,1,(1,w))*40+128).clip(0,255).astype('uint8'))).resize((w,h)).filter(ImageFilter.GaussianBlur(1.2)),float)/255-.5
+        out=np.stack([np.full((h,w),base[i],float)+a*var[i] for i in range(3)],-1)
+        return Image.fromarray(out.clip(0,255).astype('uint8'))
+    put('plaster',noisy((255,246,222),(30,30,34),512,256,False))
+    put('wood',noisy((142,100,62),(70,60,44),256,256,True))
+    at.save(os.path.join(OUT,'atlas.png'))
 def make_atlas():
     import numpy as np
+    if STYLE.get('ref'):return make_atlas_ref()
     at=Image.new('RGB',(1024,1024),(120,100,80))
     def put(name,box):
         x,y,w,h=REG[name];at.paste(SRC.crop((box[0],box[1],box[0]+box[2],box[1]+box[3])).resize((w,h),Image.LANCZOS),(x,y))
@@ -110,6 +134,10 @@ def build_wall(m,W,L,h,nb,opens,door_bay,y0,gable_h=0,is_front=False):
             m.part('door');W.lbox(cx-dw/2,cx+dw/2,0,dh,0,.08,'door','v')
             m.part('window_frames')
             W.lbox(cx-dw/2-.1,cx-dw/2,0,dh+.12,-.02,.16,'wood','v');W.lbox(cx+dw/2,cx+dw/2+.1,0,dh+.12,-.02,.16,'wood','v');W.lbox(cx-dw/2-.1,cx+dw/2+.1,dh,dh+.12,-.02,.16,'wood','u')
+            if STYLE.get('ref'):
+                m.part('door_arch')
+                W.lbox(cx-dw/2-.2,cx-dw/2,0,dh+.1,-.04,.18,'stone','v');W.lbox(cx+dw/2,cx+dw/2+.2,0,dh+.1,-.04,.18,'stone','v')
+                W.lbox(cx-dw/2-.2,cx+dw/2+.2,dh,dh+.32,-.04,.18,'stone','u');W.lbox(cx-dw/2+.05,cx+dw/2-.05,dh+.32,dh+.46,-.04,.14,'stone','u')
             m.part('porch_hood')
             W.lbox(cx-dw/2-.25,cx+dw/2+.25,dh+.16,dh+.22,.0,.55,'roof','u')
     # 筋かい(窓のない区画に斜め材)
@@ -180,13 +208,37 @@ def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=None):
         W2.beam(0,0,L/2,gh,.16,.16,.06);W2.beam(L,0,L/2,gh,.16,.16,.06)
         W2.lbox(L*.2,L*.8,gh*.38,gh*.38+.13,-.02,.08,'wood','u');W2.lbox(L/2-.07,L/2+.07,0,gh*.38,-.02,.08,'wood','v')
         m.part('gable')
+    dorm=[]
+    if STYLE.get('dormer') and floors==2:
+        wd=1.7;zd=zE*.62;hw=1.25
+        yroof=lambda z:yE+rise*(1-z/zE)
+        yb=yroof(zd)-.15;yt=yroof(zd)+hw;ydr=yt+.75
+        ze=zE*(1-(yt-yE)/rise);zh=zE*(1-(ydr-yE)/rise)
+        for dx in ((0,) if Wd<9 else (-Wd/4,Wd/4)):
+            Wl=Wall(m,(dx-wd/2,zd),(1,0),(0,1),yb)
+            m.part('dormer_wall');Wl.lbox(0,wd,0,yt-yb,-.25,0,'plaster','u')
+            m.part('dormer_frame');Wl.lbox(0,.16,0,yt-yb,-.1,.1,'wood','v');Wl.lbox(wd-.16,wd,0,yt-yb,-.1,.1,'wood','v');Wl.lbox(0,wd,0,.14,-.1,.1,'wood','u');Wl.lbox(0,wd,yt-yb-.16,yt-yb,-.1,.1,'wood','u')
+            m.part('window_glass');Wl.lbox(wd/2-.38,wd/2+.38,.3,hw-.2,0,.03,'glass','v')
+            m.part('window_frames');Wl.lbox(wd/2-.45,wd/2+.45,hw-.2,hw-.1,-.02,.12,'wood','u');Wl.lbox(wd/2-.45,wd/2+.45,.22,.3,-.02,.14,'wood','u')
+            Wl.lbox(wd/2-.45,wd/2-.38,.3,hw-.2,-.02,.12,'wood','v');Wl.lbox(wd/2+.38,wd/2+.45,.3,hw-.2,-.02,.12,'wood','v')
+            m.part('shutters');Wl.lbox(wd/2-.45-.28,wd/2-.45,.3,hw-.2,0,.06,'wood','v');Wl.lbox(wd/2+.45,wd/2+.45+.28,.3,hw-.2,0,.06,'wood','v')
+            m.part('dormer_gable')
+            m.tri([(dx-wd/2,yt,zd),(dx+wd/2,yt,zd),(dx,ydr-.1,zd)],[U('plaster',0,0),U('plaster',1,0),U('plaster',.5,1)],(0,0,1))
+            for sg in(-1,1):
+                m.tri([(dx+sg*wd/2,yb,zd),(dx+sg*wd/2,yt,zd),(dx+sg*wd/2,yt,ze)],[U('plaster',0,1),U('plaster',0,0),U('plaster',1,0)],(sg,0,0))
+            m.part('dormer_roof');xw=wd/2+.2
+            for sg in(-1,1):
+                E0=(dx+sg*xw,yt,zd+.2);E1=(dx+sg*xw,yt,ze);R1=(dx,ydr,zh);R0=(dx,ydr,zd+.2)
+                m.face([R0,R1,E1,E0],'roof',(sg,1,.3))
+            m.part('ridge');abox(m,dx-.06,dx+.06,ydr-.05,ydr+.06,zh,zd+.25,'wood','z')
+            dorm.append(dict(dx=dx,wd=wd,zd=zd,yb=yb,yt=yt,ydr=ydr,ze=ze,zh=zh))
     # 煙突
     cx,cz=chim;cy=yR-(abs(cz)/zE)*rise if abs(cz)<zE else yE
     if STYLE['chim']:
         m.part('chimney');abox(m,cx-.42,cx+.42,cy-.8,cy+1.7,cz-.42,cz+.42,'brick','y')
         m.part('chimney_cap');abox(m,cx-.55,cx+.55,cy+1.7,cy+1.9,cz-.55,cz+.55,'stone','y')
     P=m.p;xs=P[0::3];ys=P[1::3];zs=P[2::3]
-    dims=dict(hx=hx,hz=hz,uz=top_hz,h1=h1,h2=h2,fh=fh,yE=yE,yR=yR,zE=zE,xo=xo,yP=yPlate,cx=cx,cz=cz,cy=cy,floors=floors,ymax=max(ys),th=th,nochim=not STYLE['chim'])
+    dims=dict(hx=hx,hz=hz,uz=top_hz,h1=h1,h2=h2,fh=fh,yE=yE,yR=yR,zE=zE,xo=xo,yP=yPlate,cx=cx,cz=cz,cy=cy,floors=floors,ymax=max(ys),th=th,nochim=not STYLE['chim'],dorm=dorm)
     return dict(dims=dims,name=name,unit='m',atlas='atlas.png',atlasSize=1024,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),
       positions=P,uvs=m.uv,indices=m.i,parts=[dict(name=a,start=b,count=c) for a,b,c in m.parts if c])
 EAST_SPECS=[('w_east_a',8.0,5.0,1,0,4,2,1,(0,0),0),('w_east_b',6.0,7.0,2,0,3,3,1,(0,0),1),('w_east_c',9.0,5.5,1,0,5,2,2,(0,0),0),
@@ -196,7 +248,7 @@ WEST_SPECS=[('w_med_a',7.0,5.0,1,0,3,2,1,(1.8,-1.0),0),('w_med_b',8.0,5.5,2,.5,4
 def setstyle(east):
     global OUT
     if east:STYLE.update(diag=False,shut=False,pitch=.72,chim=False,east=True,ov=1.0);OUT=os.path.join(HERE,'..','assets','ai3d','med2')
-    else:STYLE.update(diag=True,shut=True,pitch=1.05,chim=True,east=False,ov=.45);OUT=os.path.join(HERE,'..','assets','ai3d','med1')
+    else:STYLE.update(diag=True,shut=True,pitch=1.05,chim=True,east=False,ov=.45,ref=True,dormer=True);OUT=os.path.join(HERE,'..','assets','ai3d','med1')
     os.makedirs(OUT,exist_ok=True)
 if __name__=='__main__':
     setstyle(len(sys.argv)>1 and sys.argv[1]=='east')

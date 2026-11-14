@@ -106,6 +106,22 @@ def do_pack(gi,g,pxm):
         for sg,k in((1,'R'),(-1,'L')):tri([(sg*hx,yP,-uz),(sg*hx,yP,uz),(sg*hx,yR-.2,0)],k,(sg,0,0))
         part('roof_front');quad([(-xo,yE,zE),(xo,yE,zE),(xo,yR,0),(-xo,yR,0)],'RF',(0,1,1))
         part('roof_back');quad([(xo,yE,-zE),(-xo,yE,-zE),(-xo,yR,0),(xo,yR,0)],'RB',(0,1,-1))
+        for dmr in dm.get('dorm',[]):
+            part('dormer')
+            dx,wd,zd,yb,yt,ydr,ze,zh=dmr['dx'],dmr['wd'],dmr['zd'],dmr['yb'],dmr['yt'],dmr['ydr'],dmr['ze'],dmr['zh']
+            quad([(dx-wd/2,yb,zd),(dx+wd/2,yb,zd),(dx+wd/2,yt,zd),(dx-wd/2,yt,zd)],'F',(0,0,1))
+            tri([(dx-wd/2,yt,zd),(dx+wd/2,yt,zd),(dx,ydr-.1,zd)],'F',(0,0,1))
+            for sg,k in((1,'R'),(-1,'L')):tri([(dx+sg*wd/2,yb,zd),(dx+sg*wd/2,yt,zd),(dx+sg*wd/2,yt,ze)],k,(sg,0,0))
+            xw=wd/2+.2
+            rx,ry,riw,rih=R[(n,'RF')]
+            def ruv(fu,fv):return (rx+fu*riw,ry+fv*rih)
+            for sg in(-1,1):
+                pts=[(dx,ydr,zd+.2),(dx,ydr,zh),(dx+sg*xw,yt,ze),(dx+sg*xw,yt,zd+.2)]
+                base=len(P)//3
+                for p,(fu,fv) in zip(pts,[(.3,.30),(.3,.55),(.5,.55),(.5,.30)]):P.extend([round(q,4) for q in p]);U.extend([round(t,2) for t in ruv(fu,fv)])
+                a_,b_,c_=pts[0],pts[1],pts[2];ux=[b_[i]-a_[i] for i in range(3)];vx=[c_[i]-a_[i] for i in range(3)]
+                nn=[ux[1]*vx[2]-ux[2]*vx[1],ux[2]*vx[0]-ux[0]*vx[2],ux[0]*vx[1]-ux[1]*vx[0]];seq=[0,1,2,0,2,3] if sum(nn[i]*o for i,o in enumerate((sg,1,.3)))>=0 else [0,2,1,0,3,2]
+                I.extend(base+i for i in seq);parts[-1][2]+=len(seq)
         cx,cz,cy=dm['cx'],dm['cz'],dm['cy']
         if not dm.get('nochim'):part('chimney')
         # 煙突は専用に撮った絵(CF=正面,CR=側面)を貼る。頂部は笠を含めて全高を撮影
