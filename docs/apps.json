@@ -81,7 +81,8 @@
     "name": "坂口誠税理士事務所(下書き確認用)",
     "description": "公開前のブログ記事の下書きを確認するための非公開ページ(検索に載らない設定。公開サイトとは別)",
     "path": "apps/sakaguchi-preview/blog/",
-    "icon": "📝"
+    "icon": "📝",
+    "archive": true
   },
   {
     "id": "bspl",
