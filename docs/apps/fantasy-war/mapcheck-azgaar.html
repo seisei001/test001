@@ -1,0 +1,57 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Azgaar の検証</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}td,th{border-color:#3a3b41!important}.c{background:#1f2024!important}}
+main{max-width:760px;margin:0 auto;padding:12px 16px 48px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.6em 0 .4em}
+img{width:100%;border-radius:8px;display:block}.c{background:#fff;border-radius:10px;padding:10px 12px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #dcdce0;padding:5px 6px;text-align:left;vertical-align:top}th{white-space:nowrap}
+small{color:#888}</style></head><body><main>
+<a href="./">← 管理ページへ</a> ・ <a href="mapcheck.html">3候補の比較</a>
+<h1>Azgaar の検証(2026-11-15)</h1>
+<p><b>概要:</b> 地図ソフトというより、「ある時点の世界の記録」を丸ごと作る道具でした。地形・気候だけでなく、国・外交・軍・経済・市場・出来事・戦役の記録まで持っています。重さの正体は、この経済と軍の計算です。地政学シミュレーターの「何を持つか」の見本として、非常に参考になります。</p>
+
+<h2>1. 持っているデータ(実際に動かして取り出した)</h2>
+<table>
+<tr><th>分野</th><th>持っているもの</th></tr>
+<tr><th>地形・気候</th><td>標高、気温、降水、川(源流・河口・流量・長さ・流域)、湖、氷、生物の分布(13種。居住のしやすさと開発の度合いつき)</td></tr>
+<tr><th>人</th><td>区画ごとの人口、文化(10前後。開発度・拡張力)、宗教(14前後。神の名・種類)</td></tr>
+<tr><th>国</th><td>名前、政体(帝国・共和国など)、首都、拡張主義の強さ、隣国、国土、<b>予算</b>(宮廷・行政・インフラ・軍・汚職の配分)、<b>税</b>(売上税・人頭税・市場手数料)、<b>関税</b>(国ごと)、国庫、警戒度</td></tr>
+<tr><th>外交</th><td>国どうしの関係を段階で持つ(同盟・友好・中立・疑念・ライバル・敵・宗主・不明)</td></tr>
+<tr><th>軍</th><td>部隊ごとに、民兵・歩兵・弓兵・騎兵・砲兵の人数、駐屯地、結成の経緯の文章。国ごとに艦隊・戦力・警戒度も集計</td></tr>
+<tr><th>戦役の記録</th><td>戦争の名前、開始・終了の年、攻めた国・守った国(例:「ヨルドゥヴュルト十字軍」7〜14年)</td></tr>
+<tr><th>都市</th><td>人口、港・城塞・城壁・神殿などの有無、商品ごとの<b>生産量</b>、国庫、繁栄度</td></tr>
+<tr><th>経済</th><td>市場(約25〜50)、商品ごとの在庫と価格、市場どうしの<b>取引</b>(1万件前後)、街道・小道・航路(450〜1,000本)</td></tr>
+<tr><th>出来事</th><td>区域として、侵攻・布教・十字軍・疫病・災害・噴火・断層・洪水・津波・飢饉。影響を受けた人口つき</td></tr>
+<tr><th>時間</th><td>年号と時代区分(旧石器から科学革命まで)、区画ごとの技術水準(開発度)</td></tr>
+<tr><th>その他</th><td>名所(火山・温泉・鉱山・ギルドなど)、旅の記録(襲撃など)、国章</td></tr>
+</table>
+<p><small>取り出した世界は毎回ランダムで、数は世界ごとに違います。</small></p>
+
+<h2>2. 画面で見られる機能</h2>
+<div class="c"><img src="mapcheck/azui_sheet.jpg" alt="Azgaar の機能画面"><small>左上から:国の一覧、外交、軍、市場、都市、技術水準、区域(出来事)、グラフ、街道</small></div>
+<div class="c"><b>外交</b>(国を選ぶと、関係が色で地図に出る)<img src="mapcheck/azui_diplo.jpg" alt="外交"></div>
+<div class="c"><b>軍</b>(国ごとの兵種と戦力)<img src="mapcheck/azui_mil.jpg" alt="軍"></div>
+<div class="c"><b>市場</b>(在庫・売り・買い・価値)<img src="mapcheck/azui_market.jpg" alt="市場"></div>
+<div class="c"><b>技術水準</b>(時代区分と、地図上の開発の度合い)<img src="mapcheck/azui_dev.jpg" alt="技術水準"></div>
+<p>出力は、地図ファイル、JSON、GeoJSON、画像(PNG・JPEG・SVG・タイル)、CSV(経済など)に対応しています(ソースで確認)。</p>
+
+<h2>3. 重さの検証</h2>
+<table>
+<tr><th>項目</th><th>結果</th></tr>
+<tr><th>読み込み</th><td>2.5MB・71ファイル、0.9秒</td></tr>
+<tr><th>世界を作る</th><td>6つの世界で、2.1〜3.9秒(作成1.4〜3.0秒+描画0.3秒)。陸地の区画数(3,900〜10,200)におおむね比例</td></tr>
+<tr><th>メモリ</th><td>約37〜57MB、画面の部品は3,400〜5,000個</td></tr>
+<tr><th>操作の滑らかさ</th><td>画面をドラッグして約70コマ/秒(ソフトウェア描画での目安)</td></tr>
+</table>
+<p><b>重さの内訳</b>(標準の世界、作成1.4秒のうち): 生産の計算が約4割(0.5秒)、軍が約1割、道と川がそれぞれ1割弱。<b>生産・市場・税・軍といった経済の計算で、全体の半分以上</b>になります。重いのには意味があり、経済と軍を丸ごと計算している代償です。</p>
+<p><small>測った環境:クラウド上の2コアの計算機。iPhone での実測ではありません。</small></p>
+<p><b>できなかった検証:</b> 区画数を5万〜10万に増やした場合の重さは、設定の変更が効かず、測れていません(すべて標準の約1万点で測定)。改めて方法を調べる必要があります。</p>
+
+<h2>4. シミュレーターへの使い道(私の見立て)</h2>
+<ul>
+<li><b>地政学:</b> 国の持ち物(政体・拡張主義・予算・軍の兵種構成・警戒度)、外交の段階、戦役の記録(戦争名・年・攻守)、区域の出来事が、そのまま「何を持つか」の見本になります。</li>
+<li><b>経済:</b> 商品・市場・在庫・価格・取引・関税・予算の持ち方が見本になります。</li>
+<li><b>天候:</b> 気温と降水を区画ごとに持ち、生物の分布へつなげる形が見本になります。季節や天気の変化は持っていないので、そこは自前です。</li>
+<li><b>注意:</b> 生成時に一時点の結果を計算して記録する作りで、世界を時間とともに動かし続ける仕組みは見当たりませんでした(私の見立て)。「何を持つか」は参考になりますが、「どう動かすか」は自前で考える部分です。</li>
+</ul>
+</main></body></html>
