@@ -16,7 +16,7 @@ const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
 const AIFILE={shop:'a',two:'b',tower:'c',balcony:'d',L:'e'};const AIG={};let AIMAT=null;const LOG={};const LOMAT={};
 async function loadAI(){
-  const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/set1/atlas_clean.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
+  const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/set1/atlas_photo.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
   AIMAT=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
   await Promise.all(Object.entries(AIFILE).map(async([n,f])=>{
     const d=await (await fetch('../assets/ai3d/set1/w_set_'+f+'.json')).json();
