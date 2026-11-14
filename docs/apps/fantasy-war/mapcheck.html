@@ -1,0 +1,51 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地図データの候補の検証</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}td,th{border-color:#3a3b41!important}.c{background:#1f2024!important}}
+main{max-width:720px;margin:0 auto;padding:12px 16px 48px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.6em 0 .4em}
+img{width:100%;border-radius:8px;display:block}.c{background:#fff;border-radius:10px;padding:10px 12px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #dcdce0;padding:5px 6px;text-align:left;vertical-align:top}th{white-space:nowrap}
+small{color:#888}</style></head><body><main>
+<a href="./">← 管理ページへ</a>
+<h1>地図データの候補の検証(2026-11-15)</h1>
+<p><b>概要:</b> 3つを同じ条件で動かして比べました。軽さは Worldsmith が最良、地形の本格さは procedural-world-generation が最良、国や国境があるのは Azgaar だけです。どれも一長一短で、決め手はまだありません。</p>
+
+<h2>比べた結果</h2>
+<table>
+<tr><th></th><th>Azgaar</th><th>procedural-world-generation</th><th>Worldsmith</th></tr>
+<tr><th>ライセンス</th><td>MIT</td><td>MIT</td><td>MIT</td></tr>
+<tr><th>転送サイズ</th><td>2.5MB(71ファイル)</td><td>0.75MB(4ファイル)</td><td>0.15MB(8ファイル)</td></tr>
+<tr><th>読み込み</th><td>0.9秒</td><td>0.3秒</td><td>0.3秒</td></tr>
+<tr><th>世界ができるまで</th><td>約2.6秒(約4,400区画)</td><td>約33秒(1024×1024、標準品質)</td><td>約1.3秒</td></tr>
+<tr><th>メモリ(JS)</th><td>約39MB</td><td>約226MB</td><td>約12MB</td></tr>
+<tr><th>動かした時のコマ数</th><td>約70/秒</td><td>約31/秒(立体)</td><td>約80/秒</td></tr>
+<tr><th>国・国境</th><td>あり(国名・街道・都市まで)</td><td>なし(地名のみ)</td><td>なし(地名のみ)</td></tr>
+<tr><th>立体表示</th><td>あり(標準)</td><td>あり(凹凸の強調つき)</td><td>なし</td></tr>
+<tr><th>取り出せるもの</th><td>地図の全データ、画像</td><td>標高画像、色画像、世界のデータ</td><td>画像、SVG、世界のデータ、標高画像</td></tr>
+<tr><th>iPhone の画面</th><td>表示できた(説明窓が大きい)</td><td>表示できた(操作は画面上部に折りたたみ)</td><td>表示できた</td></tr>
+</table>
+<p><small>測った環境:クラウド上の2コアの計算機、画面描画はソフトウェア処理。数字は相対的な目安で、iPhone での実測ではありません。コマ数は、画面をドラッグした3秒間の目安です。</small></p>
+
+<h2>見た目</h2>
+<div class="c"><b>Azgaar</b>(平面。国と国境が分かる)<img src="mapcheck/az.jpg" alt="Azgaar"></div>
+<div class="c"><b>Azgaar の立体</b>(前に貼ったもの)<img src="world3d.jpg" alt="Azgaar 3D"></div>
+<div class="c"><b>procedural-world-generation</b>(立体。山の凹凸と陰影が本格的)<img src="mapcheck/pwg3d.jpg" alt="PWG 3D"></div>
+<div class="c"><b>同・平面</b><img src="mapcheck/pwg2d.jpg" alt="PWG 2D"></div>
+<div class="c"><b>Worldsmith</b>(平面。軽くて速い。山の陰影がきれい)<img src="mapcheck/ws.jpg" alt="Worldsmith"></div>
+<div class="c"><b>iPhone サイズ</b>(左から Worldsmith、Azgaar、procedural-world-generation)<img src="mapcheck/mob.jpg" alt="iPhone"></div>
+
+<h2>気づいたこと</h2>
+<ul>
+<li><b>procedural-world-generation:</b> 世界を作るのに時間がかかり、メモリも大きいです。見せる場面では、作った結果を保存して使う形が現実的です。見た目は写実寄りで、「稚拙な立体の味」とは逆の方向です。</li>
+<li><b>Worldsmith:</b> 最も軽く、速いです。ただし国と立体表示がありません。標高画像を取り出して、立体は私たちで作る使い方になります。</li>
+<li><b>Azgaar:</b> 世界に国と国境があり、戦記に必要な骨格が揃っています。立体は荒い味があります。</li>
+</ul>
+
+<h2>検証できなかったこと</h2>
+<ul>
+<li>Loremapper は、編集にパソコン用のブラウザが要り、試作版でもあるため、今回は動かしていません。</li>
+<li>procedural-world-generation の品質を下げた場合の速さは、測っていません。</li>
+<li>iPhone での実際の速さ、メモリ制限は、測っていません。</li>
+<li>Azgaar の区画を増やした大きな世界での重さは、測っていません。</li>
+</ul>
+</main></body></html>
