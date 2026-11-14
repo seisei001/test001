@@ -3,11 +3,14 @@
 import json,os,sys,math
 from PIL import Image
 import numpy as np
-HERE=os.path.dirname(os.path.abspath(__file__));MED=os.path.join(HERE,'..','assets','ai3d','med1');LO=os.path.join(HERE,'..','assets','ai3d','lo1')
-TMP='/tmp/claude-0/hf/bake';os.makedirs(TMP,exist_ok=True);os.makedirs(LO,exist_ok=True)
+HERE=os.path.dirname(os.path.abspath(__file__))
+EAST=len(sys.argv)>2 and sys.argv[2]=='east'
+MED=os.path.join(HERE,'..','assets','ai3d','med2' if EAST else 'med1');LO=os.path.join(HERE,'..','assets','ai3d','lo2' if EAST else 'lo1')
+TMP='/tmp/claude-0/hf/bake'+('_e' if EAST else '')+'';os.makedirs(TMP,exist_ok=True);os.makedirs(LO,exist_ok=True)
 sys.path.insert(0,HERE);import gen_med1 as G
-SPECS=G.SPECS if hasattr(G,'SPECS') else None
-SPECS=[('w_med_a',7.0,5.0,1,0,3,2,1,(1.8,-1.0),0),('w_med_b',8.0,5.5,2,.5,4,2,1,(-2.5,-1.2),1),('w_med_c',6.0,5.0,2,.45,3,2,1,(1.4,-1.0),0),
+G.setstyle(EAST)
+SPECS=G.EAST_SPECS if EAST else G.WEST_SPECS
+_OLD=[('w_med_a',7.0,5.0,1,0,3,2,1,(1.8,-1.0),0),('w_med_b',8.0,5.5,2,.5,4,2,1,(-2.5,-1.2),1),('w_med_c',6.0,5.0,2,.45,3,2,1,(1.4,-1.0),0),
        ('w_med_d',11.0,5.5,2,.5,5,2,2,(3.5,-1.2),1),('w_med_e',9.0,6.0,2,.55,4,3,2,(-3.0,-1.4),0)]
 def dims_of(n):return json.load(open(os.path.join(MED,n+'.json')))['dims']
 def views(dm):
@@ -37,7 +40,9 @@ def allsizes(pxm,specs):
     L=[];keys=[]
     for sp in specs:
         V,_=views(dims_of(sp[0]))
-        for k,v in V.items():L.append((round(v['w']*pxm),round(v['h']*pxm)));keys.append((sp[0],k))
+        for k,v in V.items():
+            if k[0]=='C' and dims_of(sp[0]).get('nochim'):continue
+            L.append((round(v['w']*pxm),round(v['h']*pxm)));keys.append((sp[0],k))
     return L,keys
 if sys.argv[1]=='views':
     for sp in SPECS:json.dump(G.house(*sp),open(os.path.join(MED,sp[0]+'.json'),'w'))
@@ -52,7 +57,8 @@ if sys.argv[1]=='views':
         for sp in g:
             V,_=views(dims_of(sp[0]))
             for k,v in V.items():out.append(dict(house=sp[0],key=k,view=v,pxm=pxm,only=['chimney','chimney_cap'] if k[0]=='C' else None))
-    json.dump(dict(px=PX,jobs=out),open(TMP+'/jobs.json','w'))
+            if dims_of(sp[0]).get('nochim'):out=[o for o in out if not (o['house']==sp[0] and o['key'][0]=='C')]
+    json.dump(dict(px=PX,med='med2' if EAST else 'med1',jobs=out),open(TMP+'/jobs.json','w'))
 def do_pack(gi,g,pxm):
     L,keys=allsizes(pxm,g);pos=pack(L);N=2048
     at=np.zeros((N,N,3),np.uint8)+np.array([217,210,192],np.uint8);R={}
@@ -100,7 +106,8 @@ def do_pack(gi,g,pxm):
         for sg,k in((1,'R'),(-1,'L')):tri([(sg*hx,yP,-uz),(sg*hx,yP,uz),(sg*hx,yR-.2,0)],k,(sg,0,0))
         part('roof_front');quad([(-xo,yE,zE),(xo,yE,zE),(xo,yR,0),(-xo,yR,0)],'RF',(0,1,1))
         part('roof_back');quad([(xo,yE,-zE),(-xo,yE,-zE),(-xo,yR,0),(xo,yR,0)],'RB',(0,1,-1))
-        cx,cz,cy=dm['cx'],dm['cz'],dm['cy'];part('chimney')
+        cx,cz,cy=dm['cx'],dm['cz'],dm['cy']
+        if not dm.get('nochim'):part('chimney')
         # 煙突は専用に撮った絵(CF=正面,CR=側面)を貼る。頂部は笠を含めて全高を撮影
         def cuv(k,p):
             x,y,iw,ih=R[(n,k)];v=V[k];X,Y,Z=p
@@ -112,11 +119,12 @@ def do_pack(gi,g,pxm):
             seq=[0,1,2,0,2,3] if sum(nn[i]*out[i] for i in range(3))>=0 else [0,2,1,0,3,2];base=len(P)//3
             for p in pts:P.extend([round(q,4) for q in p]);U.extend([round(t,2) for t in cuv(k,p)])
             I.extend(base+i for i in seq);parts[-1][2]+=len(seq)
-        cw=.5;ya=cy-.8;yb=cy+1.9
-        cq([(cx-cw,ya,cz+cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx-cw,yb,cz+cw)],'CF',(0,0,1));cq([(cx-cw,ya,cz-cw),(cx+cw,ya,cz-cw),(cx+cw,yb,cz-cw),(cx-cw,yb,cz-cw)],'CF',(0,0,-1))
-        cq([(cx+cw,ya,cz-cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx+cw,yb,cz-cw)],'CR',(1,0,0));cq([(cx-cw,ya,cz-cw),(cx-cw,ya,cz+cw),(cx-cw,yb,cz+cw),(cx-cw,yb,cz-cw)],'CR',(-1,0,0))
+        if not dm.get('nochim'):
+            cw=.5;ya=cy-.8;yb=cy+1.9
+            cq([(cx-cw,ya,cz+cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx-cw,yb,cz+cw)],'CF',(0,0,1));cq([(cx-cw,ya,cz-cw),(cx+cw,ya,cz-cw),(cx+cw,yb,cz-cw),(cx-cw,yb,cz-cw)],'CF',(0,0,-1))
+            cq([(cx+cw,ya,cz-cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx+cw,yb,cz-cw)],'CR',(1,0,0));cq([(cx-cw,ya,cz-cw),(cx-cw,ya,cz+cw),(cx-cw,yb,cz+cw),(cx-cw,yb,cz-cw)],'CR',(-1,0,0))
         xs=P[0::3];ys=P[1::3];zs=P[2::3]
-        j=dict(name=n.replace('med','lo'),unit='m',atlas=f'atlas_{gi}.jpg',atlasSize=2048,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),positions=P,uvs=U,indices=I,parts=[dict(name=a,start=b,count=c) for a,b,c in parts if c])
+        j=dict(name=n.replace('med','lo').replace('east','eastlo'),unit='m',atlas=f'atlas_{gi}.jpg',atlasSize=2048,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),positions=P,uvs=U,indices=I,parts=[dict(name=a,start=b,count=c) for a,b,c in parts if c])
         json.dump(j,open(os.path.join(LO,j['name']+'.json'),'w'))
         print(j['name'],'tri',len(I)//3,'maxidx',max(I),'<',len(P)//3,'uv',min(U),max(U))
 

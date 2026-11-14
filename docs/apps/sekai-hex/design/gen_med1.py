@@ -1,10 +1,12 @@
 # 中世の木骨造り(ハーフティンバー)を、柱・梁・筋かい・張り出し2階・厚い屋根・窓枠・鎧戸まで実際に立体で組む
-import json,os,math
+import json,os,math,sys
 from PIL import Image,ImageDraw
 HERE=os.path.dirname(os.path.abspath(__file__));OUT=os.path.join(HERE,'..','assets','ai3d','med1')
+STYLE=dict(diag=True,shut=True,pitch=1.05,chim=True,east=False)
 SRC=Image.open(os.path.join(HERE,'..','assets','ai3d','set1','atlas_clean.png')).convert('RGB')
 REG={'plaster':(0,0,512,256),'roof':(512,0,512,512),'stone':(0,256,512,256),'brick':(0,512,256,256),'wood':(256,512,256,256),'door':(512,512,256,256),'glass':(768,512,256,256)}
 def make_atlas():
+    import numpy as np
     at=Image.new('RGB',(1024,1024),(120,100,80))
     def put(name,box):
         x,y,w,h=REG[name];at.paste(SRC.crop((box[0],box[1],box[0]+box[2],box[1]+box[3])).resize((w,h),Image.LANCZOS),(x,y))
@@ -14,6 +16,16 @@ def make_atlas():
     for i in range(0,h,64):d.line([0,i,w,i],fill=(40,40,44),width=5)
     for i in range(0,w,64):d.line([i,0,i,h],fill=(40,40,44),width=5)
     d.polygon([(0,200),(60,0),(110,0),(30,256)],fill=(150,178,195));at.paste(g,(x,y))
+    if STYLE['east']:
+        a=np.asarray(at,float)
+        def tint(name,mul):
+            x,y,w,h=REG[name];a[y:y+h,x:x+w]=(a[y:y+h,x:x+w]*mul).clip(0,255)
+        tint('roof',[.58,.60,.66]);tint('wood',[.42,.40,.40]);tint('plaster',[1.12,1.12,1.10]);tint('brick',[.8,.8,.8])
+        x,y,w,h=REG['glass'];g=Image.new('RGB',(w,h),(238,230,208));d=ImageDraw.Draw(g)   # 障子: 白い紙+黒い桟
+        for i in range(0,h,64):d.line([0,i,w,i],fill=(30,26,24),width=9)
+        for i in range(0,w,64):d.line([i,0,i,h],fill=(30,26,24),width=9)
+        a[y:y+h,x:x+w]=np.asarray(g,float)
+        at=Image.fromarray(a.astype('uint8'))
     at.save(os.path.join(OUT,'atlas.png'))
 def U(reg,fu,fv):
     x,y,w,h=REG[reg];return (x+2+fu*(w-4),y+2+fv*(h-4))
@@ -90,9 +102,9 @@ def build_wall(m,W,L,h,nb,opens,door_bay,y0,gable_h=0,is_front=False):
             e=.07
             W.lbox(cx-ww/2-e,cx+ww/2+e,t1,t1+e+.03,-.02,.14,'wood','u');W.lbox(cx-ww/2-e,cx+ww/2+e,t0-e-.03,t0,-.02,.16,'wood','u')
             W.lbox(cx-ww/2-e,cx-ww/2,t0,t1,-.02,.14,'wood','v');W.lbox(cx+ww/2,cx+ww/2+e,t0,t1,-.02,.14,'wood','v');W.lbox(cx-.02,cx+.02,t0,t1,0,.08,'wood','v')
-            m.part('shutters')
-            sw=ww*.5
-            W.lbox(cx-ww/2-e-sw,cx-ww/2-e,t0,t1,0,.07,'wood','v');W.lbox(cx+ww/2+e,cx+ww/2+e+sw,t0,t1,0,.07,'wood','v')
+            if STYLE['shut']:
+                m.part('shutters');sw=ww*.5
+                W.lbox(cx-ww/2-e-sw,cx-ww/2-e,t0,t1,0,.07,'wood','v');W.lbox(cx+ww/2+e,cx+ww/2+e+sw,t0,t1,0,.07,'wood','v')
         elif o=='door':
             cx=(s0+s1)/2;dw=.55;dh=min(h*.82,2.0)
             m.part('door');W.lbox(cx-dw/2,cx+dw/2,0,dh,0,.08,'door','v')
@@ -102,14 +114,15 @@ def build_wall(m,W,L,h,nb,opens,door_bay,y0,gable_h=0,is_front=False):
             W.lbox(cx-dw/2-.25,cx+dw/2+.25,dh+.16,dh+.22,.0,.55,'roof','u')
     # 筋かい(窓のない区画に斜め材)
     m.part('timber_frame')
-    for k in range(nb):
+    for k in range(nb if STYLE['diag'] else 0):
         if opens[k]=='none':
             s0=k*bay;s1=s0+bay
             if k%2==0:W.beam(s0+fr/2,.22,s0+bay*.42,h*.55,.14,.12,.10)
             else:W.beam(s1-fr/2,.22,s1-bay*.42,h*.55,.14,.12,.10)
             if k%2==0:W.beam(s1-fr/2,h-.24,s1-bay*.40,h*.55+.14,.14,.12,.10)
             else:W.beam(s0+fr/2,h-.24,s0+bay*.40,h*.55+.14,.14,.12,.10)
-def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=.45):
+def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=None):
+    if roofov is None:roofov=STYLE.get('ov',.45)
     m=M();hx=Wd/2;hz=Dp/2;fh=.45;h1=2.55;h2=2.25
     m.part('stone_foundation');abox(m,-hx-.08,hx+.08,0,fh,-hz-.08,hz+.08,'stone')
     rng=lambda k:((seed*7+k*13)%5)
@@ -137,7 +150,7 @@ def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=.45):
             build_wall(m,Wall(m,o,u,n,y),L,h2,nb,opens_for(nb,False),None,y)
         top_hz=uz;yPlate=y+h2
     # 屋根
-    th=.16;ov=roofov;zE=top_hz+ov;xo=hx+ov*.7;yE=yPlate+.12;rise=zE*1.05;yR=yE+rise
+    th=.16;ov=roofov;zE=top_hz+ov;xo=hx+ov*.7;yE=yPlate+.12;rise=zE*STYLE['pitch'];yR=yE+rise
     m.part('roof_front');nrm=norm(cross([2*xo,0,0],[0,rise,-zE]))
     R0=(-xo,yR,0);R1=(xo,yR,0);E1=(xo,yE,zE);E0=(-xo,yE,zE);tn=norm(cross(sub(R1,R0),sub(E0,R0)))
     def off(p,k):return (p[0]+tn[0]*k,p[1]+tn[1]*k,p[2]+tn[2]*k)
@@ -169,20 +182,25 @@ def house(name,Wd,Dp,floors,jet,nbx,nbz,door_bay,chim,seed=0,roofov=.45):
         m.part('gable')
     # 煙突
     cx,cz=chim;cy=yR-(abs(cz)/zE)*rise if abs(cz)<zE else yE
-    m.part('chimney');abox(m,cx-.42,cx+.42,cy-.8,cy+1.7,cz-.42,cz+.42,'brick','y')
-    m.part('chimney_cap');abox(m,cx-.55,cx+.55,cy+1.7,cy+1.9,cz-.55,cz+.55,'stone','y')
+    if STYLE['chim']:
+        m.part('chimney');abox(m,cx-.42,cx+.42,cy-.8,cy+1.7,cz-.42,cz+.42,'brick','y')
+        m.part('chimney_cap');abox(m,cx-.55,cx+.55,cy+1.7,cy+1.9,cz-.55,cz+.55,'stone','y')
     P=m.p;xs=P[0::3];ys=P[1::3];zs=P[2::3]
-    dims=dict(hx=hx,hz=hz,uz=top_hz,h1=h1,h2=h2,fh=fh,yE=yE,yR=yR,zE=zE,xo=xo,yP=yPlate,cx=cx,cz=cz,cy=cy,floors=floors,ymax=max(ys),th=th)
+    dims=dict(hx=hx,hz=hz,uz=top_hz,h1=h1,h2=h2,fh=fh,yE=yE,yR=yR,zE=zE,xo=xo,yP=yPlate,cx=cx,cz=cz,cy=cy,floors=floors,ymax=max(ys),th=th,nochim=not STYLE['chim'])
     return dict(dims=dims,name=name,unit='m',atlas='atlas.png',atlasSize=1024,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),
       positions=P,uvs=m.uv,indices=m.i,parts=[dict(name=a,start=b,count=c) for a,b,c in m.parts if c])
+EAST_SPECS=[('w_east_a',8.0,5.0,1,0,4,2,1,(0,0),0),('w_east_b',6.0,7.0,2,0,3,3,1,(0,0),1),('w_east_c',9.0,5.5,1,0,5,2,2,(0,0),0),
+            ('w_east_d',7.0,6.0,2,0,3,3,1,(0,0),1),('w_east_e',10.0,6.0,1,0,5,3,2,(0,0),1)]
+WEST_SPECS=[('w_med_a',7.0,5.0,1,0,3,2,1,(1.8,-1.0),0),('w_med_b',8.0,5.5,2,.5,4,2,1,(-2.5,-1.2),1),('w_med_c',6.0,5.0,2,.45,3,2,1,(1.4,-1.0),0),
+           ('w_med_d',11.0,5.5,2,.5,5,2,2,(3.5,-1.2),1),('w_med_e',9.0,6.0,2,.55,4,3,2,(-3.0,-1.4),0)]
+def setstyle(east):
+    global OUT
+    if east:STYLE.update(diag=False,shut=False,pitch=.72,chim=False,east=True,ov=1.0);OUT=os.path.join(HERE,'..','assets','ai3d','med2')
+    else:STYLE.update(diag=True,shut=True,pitch=1.05,chim=True,east=False,ov=.45);OUT=os.path.join(HERE,'..','assets','ai3d','med1')
+    os.makedirs(OUT,exist_ok=True)
 if __name__=='__main__':
+    setstyle(len(sys.argv)>1 and sys.argv[1]=='east')
     make_atlas()
-    specs=[('w_med_a',7.0,5.0,1,0,3,2,1,(1.8,-1.0),0),
-           ('w_med_b',8.0,5.5,2,.5,4,2,1,(-2.5,-1.2),1),
-           ('w_med_c',6.0,5.0,2,.45,3,2,1,(1.4,-1.0),0),
-           ('w_med_d',11.0,5.5,2,.5,5,2,2,(3.5,-1.2),1),
-           ('w_med_e',9.0,6.0,2,.55,4,3,2,(-3.0,-1.4),0)]
-    for n,W,D,fl,j,nbx,nbz,db,ch,sd in specs:
-        j=house(n,W,D,fl,j,nbx,nbz,db,ch,sd);json.dump(j,open(os.path.join(OUT,n+'.json'),'w'))
-        v=len(j['positions'])//3
-        print(n,'tri',len(j['indices'])//3,'maxidx',max(j['indices']),'<',v,'uv',min(j['uvs']),max(j['uvs']),j['bbox'])
+    for sp in (EAST_SPECS if STYLE['east'] else WEST_SPECS):
+        j=house(*sp);json.dump(j,open(os.path.join(OUT,sp[0]+'.json'),'w'))
+        print(sp[0],'tri',len(j['indices'])//3,j['bbox'])

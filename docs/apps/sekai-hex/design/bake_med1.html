@@ -4,10 +4,11 @@
 import * as THREE from 'three';
 const R=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,preserveDrawingBuffer:true});
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
-const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/med1/atlas.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
+const SD=new URLSearchParams(location.search).get('s')||'med1';
+const tex=await new THREE.TextureLoader().loadAsync(`../assets/ai3d/${SD}/atlas.png`);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
 const mat=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
 const cache={};
-async function load(n){if(cache[n])return cache[n];cache[n]=await (await fetch(`../assets/ai3d/med1/${n}.json`)).json();return cache[n]}
+async function load(n){if(cache[n])return cache[n];cache[n]=await (await fetch(`../assets/ai3d/${SD}/${n}.json`)).json();return cache[n]}
 function geo(d,names){
   const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/1024;uv[i+1]=1-d.uvs[i+1]/1024}
   let idx=d.indices;if(names){idx=[];for(const p of d.parts)if(names.includes(p.name))for(let i=p.start;i<p.start+p.count;i++)idx.push(d.indices[i])}
