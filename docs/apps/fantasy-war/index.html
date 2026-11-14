@@ -3,57 +3,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2563eb"><title>ファンタジー世界戦争</title>
 <style>
-:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--ok:#16a34a;--wip:#d97706;--todo:#9ca3af}
+:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--ok:#16a34a;--wip:#d97706;--hand:#dc2626}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
 .w{max-width:640px;margin:0 auto;padding:16px}
-.crumb{display:flex;flex-wrap:wrap;gap:4px;font-size:.82rem;color:var(--mu);margin-bottom:8px}
+.crumb{display:flex;flex-wrap:wrap;gap:4px;font-size:.82rem;color:var(--mu);margin-bottom:6px}
 .crumb a{color:var(--ac);text-decoration:none;padding:4px 2px}
-h1{margin:4px 0 8px;font-size:1.35rem}
-.bar{height:8px;background:var(--bd);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
-.stat{font-size:.82rem;color:var(--mu);margin:6px 0 16px}
-.btn{display:flex;align-items:center;gap:10px;width:100%;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:0 0 10px;color:var(--tx);font:inherit;text-align:left;text-decoration:none;min-height:52px;cursor:pointer}
-.btn .n{flex:1;font-weight:600}.btn small{color:var(--mu);font-weight:400}
-.btn .go{color:var(--mu)}
-.tag{font-size:.72rem;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
-.wip{background:var(--wip)}.todo{background:var(--todo)}.ok{background:var(--ok)}
-a.main{background:var(--ac);color:#fff;border:0}.main .n{font-weight:700}
+.meth{font-size:.75rem;color:var(--mu)}
+h1{margin:4px 0 10px;font-size:1.3rem}
+.tabs{display:flex;gap:8px;margin:0 0 14px}
+.tabs a{flex:1;text-align:center;padding:11px 6px;border:1px solid var(--bd);border-radius:12px;background:var(--p);color:var(--tx);text-decoration:none;font-weight:600;font-size:.95rem}
+.tabs a.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn{display:flex;align-items:center;gap:10px;width:100%;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;margin:0 0 10px;color:var(--tx);text-decoration:none;min-height:52px}
+.btn .n{flex:1;font-weight:600}.btn small{display:block;color:var(--mu);font-weight:400;font-size:.8rem}
+.go{color:var(--mu)}
+.cnt{font-size:.8rem;min-width:26px;text-align:center;padding:2px 8px;border-radius:99px;background:var(--bd);color:var(--tx)}
+.cnt.hot{background:var(--hand);color:#fff}
+.tag{font-size:.7rem;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+.t-hand{background:var(--hand)}.t-check{background:var(--wip)}.t-next{background:#7c3aed}.t-me{background:var(--ac)}
+.main{background:var(--ac);color:#fff;border:0}
 h2{font-size:.88rem;color:var(--mu);margin:20px 0 8px;font-weight:600}
-.done-box{display:none}.done-box.open{display:block}
-.done-box .btn{opacity:.7}
-.leaf{cursor:default}
-.meth{font-size:.75rem;color:var(--mu)}.now{background:var(--p);border-left:4px solid var(--wip);border-radius:8px;padding:12px 14px;margin:0 0 14px}.now b{display:block;font-size:.8rem;color:var(--wip);margin-bottom:4px}.clear{color:var(--ok);font-weight:700;padding:8px 0}.done-complete{background:var(--p);border:1px solid var(--ok);border-radius:12px;padding:16px;text-align:center;color:var(--ok);font-weight:700}
+.box{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.box b{display:block;font-size:.78rem;color:var(--mu);margin-bottom:4px}
+.empty{color:var(--mu);font-size:.9rem;padding:6px 2px}
+.log div{padding:6px 0;border-top:1px solid var(--bd);font-size:.92rem}.log div:first-of-type{border-top:0}
+.cross{display:flex;gap:8px;flex-wrap:wrap}.cross a{padding:8px 12px;border-radius:99px;border:1px solid var(--ac);color:var(--ac);text-decoration:none;font-size:.88rem}
 @media(prefers-color-scheme:dark){:root{--bg:#17181c;--p:#1f2024;--bd:#303136;--tx:#eaeaec;--mu:#9a9aa2}}
 </style></head><body><div class="w" id="app">読み込み中…</div>
 <script>
-let T;
-const cnt=n=>n.c?n.c.reduce((s,x)=>s+cnt(x),0):1;
+let D;
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function node(path){let n=T;for(const i of path)n=n.c[i];return n}
+const L=id=>D.layers.find(x=>x.id===id),W=id=>D.works.find(x=>x.id===id);
+const by=(k,v)=>D.items.filter(i=>i[k]===v);
+function row(i,show){return '<a class="btn" href="#i/'+i.id+'"><span class="n">'+(i.st==='now'?'🟠 ':'')+esc(i.t)+'<small>'+esc(show==='layer'?'概念: '+L(i.layer).t:'作業: '+W(i.who).t)+'</small></span><span class="tag t-'+i.who+'">'+esc(W(i.who).t.replace('あなたの','').replace('(作った物)','').replace('(次の指示)','(指示)'))+'</span><span class="go">›</span></a>'}
 function render(){
-  const path=(location.hash.slice(1)||'').split('/').filter(x=>x!=='').map(Number);
-  let n;try{n=node(path)}catch(e){n=null}
-  if(!n){location.hash='';return}
-  const A=document.getElementById('app');
-  let h='<div class="crumb"><a href="../../">ハブ</a> › <a href="#">'+esc(T.t)+'</a>';
-  let cur=T;
-  path.forEach((i,k)=>{cur=cur.c[i];h+=' › <a href="#'+path.slice(0,k+1).join('/')+'">'+esc(cur.t)+'</a>'});
-  h+='</div><div class="meth">階層型課題解消管理法</div><h1>'+esc(n.t)+'</h1>';
-  if(n.now)h+='<div class="now"><b>いま解消しようとしていること</b>'+esc(n.now)+'</div>';
-  if(n.href)h+='<a class="btn main" href="'+n.href+'"><span class="n">🔨 '+esc(n.hrefLabel||'見る')+'</span><span class="go">›</span></a>';
-  if(n.c){
-    if(!n.c.length)h+='<div class="clear">✅ 課題はありません</div>';
-    else h+='<div class="stat">解消待ちの課題 '+cnt(n)+'件</div>';
-    n.c.forEach((x,i)=>{
-      const p=path.concat(i).join('/');
-      h+='<a class="btn" href="#'+p+'"><span class="n">'+(x.st==='now'?'🟠 ':'')+esc(x.t)+(x.c?' <small>('+cnt(x)+')</small>':'')+'</span><span class="go">›</span></a>';
-    });
+  const h=(location.hash.slice(1)||'c').split('/');const v=h[0],k=h[1];
+  let o='<div class="crumb"><a href="../../">ハブ</a> › <a href="#c">ファンタジー世界戦争</a>';
+  let body='';
+  const tabs=(on)=>'<div class="tabs"><a href="#c" class="'+(on==='c'?'on':'')+'">概念で見る</a><a href="#w" class="'+(on==='w'?'on':'')+'">作業で見る</a></div>';
+  if(v==='c'&&!k){
+    o+='</div><div class="meth">階層型課題解消管理法</div><h1>ファンタジー世界戦争</h1>'+tabs('c');
+    o+='<a class="btn main" href="'+D.protoHref+'"><span class="n">🔨 制作中の試作を見る</span><span class="go">›</span></a>';
+    const hand=by('who','hand').length;
+    if(hand)o+='<a class="btn" href="#w/hand" style="border-color:var(--hand)"><span class="n">✋ あなたの手作業が'+hand+'件あります</span><span class="go">›</span></a>';
+    o+='<h2>世界のしくみの層(大きい→小さい)</h2>';
+    for(const l of D.layers){const n=by('layer',l.id).length;o+='<a class="btn" href="#c/'+l.id+'"><span class="n">'+esc(l.t)+'<small>'+esc(l.d)+'</small></span><span class="cnt">'+n+'</span><span class="go">›</span></a>'}
+    o+='<h2>🗄️ 過去の作品</h2>';for(const x of D.past)o+='<a class="btn" style="opacity:.85" href="'+x.href+'"><span>'+x.icon+'</span><span class="n">'+esc(x.t)+'</span><span class="go">›</span></a>';
+  }else if(v==='c'){
+    const l=L(k);if(!l){location.hash='c';return}
+    o+=' › <a href="#c/'+k+'">'+esc(l.t)+'</a></div><h1>'+esc(l.t)+'の層</h1>'+tabs('c')+'<div class="empty">'+esc(l.d)+'</div>';
+    const its=by('layer',k);o+=its.length?its.map(i=>row(i,'work')).join(''):'<div class="empty">✅ いまこの層でやることはありません</div>';
+  }else if(v==='w'&&!k){
+    o+=' › <a href="#w">作業で見る</a></div><div class="meth">階層型課題解消管理法</div><h1>作業で見る</h1>'+tabs('w');
+    for(const w of D.works){const n=by('who',w.id).length;o+='<a class="btn" href="#w/'+w.id+'"><span class="n">'+esc(w.t)+'<small>'+esc(w.d)+'</small></span><span class="cnt'+(w.id==='hand'&&n?' hot':'')+'">'+n+'</span><span class="go">›</span></a>'}
+  }else if(v==='w'){
+    const w=W(k);if(!w){location.hash='w';return}
+    o+=' › <a href="#w">作業</a> › <a href="#w/'+k+'">'+esc(w.t)+'</a></div><h1>'+esc(w.t)+'</h1>'+tabs('w')+'<div class="empty">'+esc(w.d)+'</div>';
+    const its=by('who',k);o+=its.length?its.map(i=>row(i,'layer')).join(''):'<div class="empty">✅ いまはありません</div>';
+  }else if(v==='i'){
+    const i=D.items.find(x=>x.id===k);if(!i){location.hash='c';return}
+    o+=' › <a href="#c/'+i.layer+'">'+esc(L(i.layer).t)+'</a> › <a href="#i/'+k+'">'+esc(i.t)+'</a></div><h1>'+esc(i.t)+'</h1>';
+    o+='<div class="cross"><a href="#c/'+i.layer+'">概念: '+esc(L(i.layer).t)+'の層</a><a href="#w/'+i.who+'">作業: '+esc(W(i.who).t)+'</a></div><div style="height:12px"></div>';
+    o+='<div class="box" style="border-left:4px solid var(--wip)"><b>いまの内容</b>'+esc(i.now)+'</div>';
+    o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
+    if(i.href)o+='<a class="btn main" href="'+i.href+'"><span class="n">見る</span><span class="go">›</span></a>';
   }
-  if(!path.length&&T.past){
-    h+='<h2>🗄️ 過去の作品</h2>';
-    for(const x of T.past)h+='<a class="btn" style="opacity:.85" href="'+x.href+'"><span>'+x.icon+'</span><span class="n">'+esc(x.t)+'</span><span class="go">›</span></a>';
-  }
-  A.innerHTML=h;window.scrollTo(0,0);
+  document.getElementById('app').innerHTML=o+body;scrollTo(0,0);
 }
-fetch('tree.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{T=j;render();addEventListener('hashchange',render)});
+fetch('items.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{D=j;render();addEventListener('hashchange',render)});
 </script></body></html>
