@@ -13,14 +13,13 @@ const S=new THREE.Scene();S.background=new THREE.Color('#cfd8c4');
 S.add(new THREE.HemisphereLight("#fff","#8a8a6a",1.0));const D=new THREE.DirectionalLight('#fff',1.3);D.position.set(18,22,-4);D.castShadow=true;D.shadow.mapSize.set(2048,2048);{const c=D.shadow.camera;c.left=-34;c.right=34;c.top=20;c.bottom=-20;c.near=1;c.far=90}D.shadow.bias=-0.0005;D.shadow.normalBias=0.04;S.add(D);
 const gt=await new THREE.TextureLoader().loadAsync('../assets/terrain/ground.jpg');gt.colorSpace=THREE.SRGBColorSpace;gt.wrapS=gt.wrapT=THREE.RepeatWrapping;gt.repeat.set(3,3);gt.anisotropy=4;const g=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshLambertMaterial({map:gt}));g.rotation.x=-Math.PI/2;g.receiveShadow=true;S.add(g);
 const cam=new THREE.PerspectiveCamera(40,1,.1,300);
-const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/lo1/atlas.jpg');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
-const mat=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
+const MATS={};for(const f of['atlas_0.jpg','atlas_1.jpg']){const t=await new THREE.TextureLoader().loadAsync('../assets/ai3d/lo1/'+f);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;MATS[f]=new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide})}
 const NAMES=['a','b','c','d','e'],grp=new THREE.Group();S.add(grp);
 for(let i=0;i<5;i++){const d=await (await fetch(`../assets/ai3d/lo1/w_lo_${NAMES[i]}.json`)).json();
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));
  const uv=[];for(let k=0;k<d.uvs.length;k+=2)uv.push(d.uvs[k]/2048,1-d.uvs[k+1]/2048);
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(d.indices);geo.computeVertexNormals();
- const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;m.position.x=(i-2)*10;grp.add(m)}
+ const m=new THREE.Mesh(geo,MATS[d.atlas]);m.castShadow=true;m.receiveShadow=true;m.position.x=(i-2)*10;grp.add(m)}
 let az=.5,el=.28,dist=30;const set=()=>{cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist+2,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,3,0)};
 const ui=document.getElementById('ui');
 [['全体',()=>{az=.3;el=.3;dist=36;grp.position.x=0}],['正面',()=>{az=0;el=.1;dist=34;grp.position.x=0}],['裏',()=>{az=Math.PI+.4;el=.2;dist=34;grp.position.x=0}]].forEach(([t,f])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{f();set()};ui.appendChild(b)});

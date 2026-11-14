@@ -32,35 +32,36 @@ def pack(sizes,N=2048,pad=4):
         if y+h>N:return None
         pos[i]=(x+pad,y+pad);x+=w;sh=max(sh,h)
     return pos
-def allsizes(pxm):
+GROUPS=[SPECS[:3],SPECS[3:]]
+def allsizes(pxm,specs):
     L=[];keys=[]
-    for sp in SPECS:
+    for sp in specs:
         V,_=views(dims_of(sp[0]))
         for k,v in V.items():L.append((round(v['w']*pxm),round(v['h']*pxm)));keys.append((sp[0],k))
     return L,keys
 if sys.argv[1]=='views':
     for sp in SPECS:json.dump(G.house(*sp),open(os.path.join(MED,sp[0]+'.json'),'w'))
-    pxm=80
-    while pxm>20:
-        L,keys=allsizes(pxm)
-        if pack(L):break
-        pxm-=1
-    print('px/m',pxm)
-    out=[]
-    for sp in SPECS:
-        V,_=views(dims_of(sp[0]))
-        for k,v in V.items():out.append(dict(house=sp[0],key=k,view=v,pxm=pxm,only=['chimney','chimney_cap'] if k[0]=='C' else None))
-    json.dump(dict(pxm=pxm,jobs=out),open(TMP+'/jobs.json','w'))
-elif sys.argv[1]=='pack':
-    J=json.load(open(TMP+'/jobs.json'));pxm=J['pxm']
-    L,keys=allsizes(pxm);pos=pack(L);N=2048
+    out=[];PX={}
+    for gi,g in enumerate(GROUPS):
+        pxm=90
+        while pxm>20:
+            L,keys=allsizes(pxm,g)
+            if pack(L):break
+            pxm-=1
+        PX[gi]=pxm;print('group',gi,'px/m',pxm)
+        for sp in g:
+            V,_=views(dims_of(sp[0]))
+            for k,v in V.items():out.append(dict(house=sp[0],key=k,view=v,pxm=pxm,only=['chimney','chimney_cap'] if k[0]=='C' else None))
+    json.dump(dict(px=PX,jobs=out),open(TMP+'/jobs.json','w'))
+def do_pack(gi,g,pxm):
+    L,keys=allsizes(pxm,g);pos=pack(L);N=2048
     at=np.zeros((N,N,3),np.uint8)+np.array([217,210,192],np.uint8);R={}
     for i,(h,k) in enumerate(keys):
         im=np.asarray(Image.open(f'{TMP}/{h}_{k}.png').convert('RGB'));ih,iw=im.shape[:2];x,y=pos[i]
         pad=4;pim=np.pad(im,((pad,pad),(pad,pad),(0,0)),mode='edge');at[y-pad:y+ih+pad,x-pad:x+iw+pad]=pim
         R[(h,k)]=(x,y,iw,ih)
-    Image.fromarray(at).save(LO+'/atlas.jpg',quality=90)
-    for sp in SPECS:
+    Image.fromarray(at).save(LO+f'/atlas_{gi}.jpg',quality=88)
+    for sp in g:
         n=sp[0];dm=dims_of(n);V,sl=views(dm);xo,zE,hx,uz,hz,yR,yE=dm['xo'],dm['zE'],dm['hx'],dm['uz'],dm['hz'],dm['yR'],dm['yE']
         y1=dm['fh']+dm['h1'];yP=dm['yP'];two=dm['floors']==2
         def uvF(k,p):
@@ -115,6 +116,10 @@ elif sys.argv[1]=='pack':
         cq([(cx-cw,ya,cz+cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx-cw,yb,cz+cw)],'CF',(0,0,1));cq([(cx-cw,ya,cz-cw),(cx+cw,ya,cz-cw),(cx+cw,yb,cz-cw),(cx-cw,yb,cz-cw)],'CF',(0,0,-1))
         cq([(cx+cw,ya,cz-cw),(cx+cw,ya,cz+cw),(cx+cw,yb,cz+cw),(cx+cw,yb,cz-cw)],'CR',(1,0,0));cq([(cx-cw,ya,cz-cw),(cx-cw,ya,cz+cw),(cx-cw,yb,cz+cw),(cx-cw,yb,cz-cw)],'CR',(-1,0,0))
         xs=P[0::3];ys=P[1::3];zs=P[2::3]
-        j=dict(name=n.replace('med','lo'),unit='m',atlas='atlas.jpg',atlasSize=2048,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),positions=P,uvs=U,indices=I,parts=[dict(name=a,start=b,count=c) for a,b,c in parts if c])
+        j=dict(name=n.replace('med','lo'),unit='m',atlas=f'atlas_{gi}.jpg',atlasSize=2048,bbox=dict(w=round(max(xs)-min(xs),3),d=round(max(zs)-min(zs),3),h=round(max(ys)-min(ys),3)),positions=P,uvs=U,indices=I,parts=[dict(name=a,start=b,count=c) for a,b,c in parts if c])
         json.dump(j,open(os.path.join(LO,j['name']+'.json'),'w'))
         print(j['name'],'tri',len(I)//3,'maxidx',max(I),'<',len(P)//3,'uv',min(U),max(U))
+
+if sys.argv[1]=='pack':
+    J=json.load(open(TMP+'/jobs.json'))
+    for gi,g in enumerate(GROUPS):do_pack(gi,g,J['px'][str(gi)])

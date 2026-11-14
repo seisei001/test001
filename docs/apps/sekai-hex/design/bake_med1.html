@@ -19,8 +19,8 @@ window.shot=async(name,v,pxm,only)=>{
   const f=new THREE.Vector3(...v.forward).normalize(),up=new THREE.Vector3(...v.up).normalize(),c=new THREE.Vector3(...v.center);
   const right=new THREE.Vector3().crossVectors(f,up).normalize();
   const cam=new THREE.OrthographicCamera(-v.w/2,v.w/2,v.h/2,-v.h/2,.1,200);cam.up.copy(up);cam.position.copy(c).addScaledVector(f,-60);cam.lookAt(c);
-  S.add(new THREE.AmbientLight('#fff',.95));
-  const L=new THREE.DirectionalLight('#fff',.8);L.position.copy(c).addScaledVector(f,-40).addScaledVector(up,22).addScaledVector(right,-18);L.target.position.copy(c);S.add(L,L.target);
+  S.add(new THREE.AmbientLight('#fff',1.25));
+  const L=new THREE.DirectionalLight('#fff',.4);L.position.copy(c).addScaledVector(f,-40).addScaledVector(up,22).addScaledVector(right,-18);L.target.position.copy(c);S.add(L,L.target);
   L.castShadow=true;L.shadow.mapSize.set(4096,4096);const sc=L.shadow.camera;sc.left=-22;sc.right=22;sc.top=22;sc.bottom=-22;sc.near=1;sc.far=120;L.shadow.bias=-.0004;L.shadow.normalBias=.03;
   R.render(S,cam);return R.domElement.toDataURL('image/png')};
 window.__ready=true;

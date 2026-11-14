@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AIFILE={shop:'a',two:'b',tower:'c',balcony:'d',L:'e'};const AIG={};let AIMAT=null;
+const AIFILE={shop:'a',two:'b',tower:'c',balcony:'d',L:'e'};const AIG={};let AIMAT=null;const LOG={};const LOMAT={};
 async function loadAI(){
   const tex=await new THREE.TextureLoader().loadAsync('../assets/ai3d/set1/atlas_clean.png');tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
   AIMAT=new THREE.MeshLambertMaterial({map:tex,side:THREE.DoubleSide});
@@ -24,6 +24,15 @@ async function loadAI(){
     const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/1024;uv[i+1]=1-d.uvs[i+1]/1024}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(k);
     const q=g.toNonIndexed();q.computeVertexNormals();q.computeBoundingBox();AIG[n]=q}))}
+/* 立体で組んだ中世の木骨造りを撮影して簡単な形に貼った軽量版(22〜34面): assets/ai3d/lo1/ */
+async function loadLO(){
+  const T=new THREE.TextureLoader();
+  for(const f of ['atlas_0.jpg','atlas_1.jpg']){const t=await T.loadAsync('../assets/ai3d/lo1/'+f);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;LOMAT[f]=new THREE.MeshLambertMaterial({map:t,side:THREE.DoubleSide})}
+  await Promise.all('abcde'.split('').map(async f=>{
+    const d=await (await fetch('../assets/ai3d/lo1/w_lo_'+f+'.json')).json();
+    const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/d.atlasSize;uv[i+1]=1-d.uvs[i+1]/d.atlasSize}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(d.indices);
+    const q=g.toNonIndexed();q.computeVertexNormals();q.userData.atlas=d.atlas;LOG[f]=q}))}
 async function loadKit(){const L=new GLTFLoader();{const t=await new THREE.TextureLoader().loadAsync('../assets/sheets/w_tudor_a.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;SHEET=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})}await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
 const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
 /* ---- 画面 ---- */
@@ -51,14 +60,16 @@ function groundPatch(){const c=document.createElement('canvas');c.width=c.height
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 const patchTex=groundPatch();
 /* 部品を置く: 結果は1つの形(1回の描画)にまとめる */
-class Builder{constructor(){this.kit=[];this.col={};this.sheet=[];this.ai=[]}
+class Builder{constructor(){this.kit=[];this.col={};this.sheet=[];this.ai=[];this.lo={}}
   part(name,M){for(const p of PARTS[name]||[]){const g=p.geo.clone();g.applyMatrix4(mulM(M,p.m));this.kit.push(g)}}
   poly(color,P,idx){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));if(idx)g.setIndex(idx);const n=g.index?g.toNonIndexed():g;n.computeVertexNormals();(this.col[color]=this.col[color]||[]).push(n)}
   box(color,cx,cy,cz,w,h,d,M){const g=new THREE.BoxGeometry(w,h,d);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   cyl(color,cx,cy,cz,r,h,seg,M,top=r){const g=new THREE.CylinderGeometry(top,r,h,seg);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   sheetHouse(M){const g=sheetGeo().clone();g.applyMatrix4(M);this.sheet.push(g)}
+  loHouse(name,M){const g=LOG[name].clone();g.applyMatrix4(M);(this.lo[LOG[name].userData.atlas]=this.lo[LOG[name].userData.atlas]||[]).push(g)}
   aiHouse(name,M){const g=AIG[name].clone();g.applyMatrix4(M);this.ai.push(g)}
   build(){const grp=new THREE.Group();
+    for(const a in this.lo){const m=new THREE.Mesh(mergeGeometries(this.lo[a]),LOMAT[a]);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     if(this.ai.length){const m=new THREE.Mesh(mergeGeometries(this.ai),AIMAT);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     if(this.sheet.length){const m=new THREE.Mesh(mergeGeometries(this.sheet),SHEET);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     const clean=g=>{const n=g.index?g.toNonIndexed():g;for(const k of Object.keys(n.attributes))if(!['position','normal','uv'].includes(k))n.deleteAttribute(k);return n};
@@ -96,6 +107,10 @@ function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
   quad([X,Hw-.25,-d-o],[-X,Hw-.25,-d-o],[-X,Hw+rh,0],[X,Hw+rh,0],[884,150,1202,288]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();_sg=g;return g}
 function house(B,cu,cx,cz,rng,seedI){
+  if(cu==='w'&&LOMAT['atlas_0.jpg']&&rng()<.65){
+    /* 街の格子に沿って、中心に近い方向の道に正面を向ける(斜めに向けない) */
+    const sx=Math.abs(cx)>Math.abs(cz)?-Math.sign(cx):0,sz=Math.abs(cx)>Math.abs(cz)?0:-Math.sign(cz)||-1;
+    B.loHouse('abcde'[Math.floor(rng()*5)],TR(cx,0,cz,Math.atan2(sx,sz),.68));return}
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
@@ -178,6 +193,6 @@ function frame(){requestAnimationFrame(frame);
   const dd=Math.hypot(cam.position.x-cur.x,cam.position.z-cur.z);
   st.innerHTML='<b>'+layerName(L)+'</b><br>高さ '+Math.round(cam.position.y)+' m ／ 町まで '+Math.round(dd)+' m<br>町: '+TOWNS.map(T=>T.grp?'●':'○').join(' ')+'<br>'+msg;
   R.render(S,cam)}
-(async()=>{await loadKit();try{await loadAI()}catch(e){console.warn("ai3d load failed",e)}window.__ready=1;frame()})();
+(async()=>{await loadKit();try{await loadAI()}catch(e){console.warn("ai3d load failed",e)}try{await loadLO()}catch(e){console.warn("lo load failed",e)}window.__ready=1;frame()})();
 window.__setL=v=>{Lt=v;L=v};window.__az=v=>az=v;
 </script></html>
