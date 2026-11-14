@@ -61,8 +61,9 @@ const HM=new Uint8Array(DW*DH),BI=new Uint8Array(DW*DH),ST=new Uint8Array(DW*DH)
 $('mapimg').src=mapImg.src;
 const BIOME_JP=['海','熱帯の砂漠','寒冷な砂漠','サバンナ','草原','熱帯の季節林','温帯の落葉樹林','熱帯雨林','温帯雨林','タイガ','ツンドラ','氷河','湿地'];
 
-/* ================= 地形(世界の座標 = 地図の座標) ================= */
-const HS=.78,sea=20;
+/* ================= 地形(兵の目の縮尺。地図1マス ≒ 4.8km、画面の単位はメートル) ================= */
+const sea=20,M=4800;
+let ex=0,ez=0,H0=0;   /* 立っている場所(メートル)と、そこの地面の高さ */
 function hash(x,y){let h=x*374761393+y*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295}
 function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
   const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
@@ -71,12 +72,22 @@ function ridged(x,y,o=4){let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*(1-Math.abs(
 const sstep=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
 function dataH(gx,gy){gx=Math.min(DW-1.001,Math.max(0,gx-.5));gy=Math.min(DH-1.001,Math.max(0,gy-.5));
   const x=gx|0,y=gy|0,fx=gx-x,fy=gy-y,i=y*DW+x,a=HM[i],b=HM[i+1],c=HM[i+DW],d=HM[i+DW+1];return(a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy)/2.55}
-function levelAt(wx,wz){let h=dataH(wx,wz);if(wx<0||wz<0||wx>=DW||wz>=DH)h=Math.min(8,h);
+function levelAt(wx,wz){let h=dataH(wx,wz);if(wx<0||wz<0||wx>=DW||wz>=DH)h=Math.min(8,h);return h}
+/* 標高(m)。地図の高さ(0〜100,海面20)を実際のメートルに直し、その上に人の目で見える細かい起伏を足す。lod=細かさ */
+function Hm(sx,sz,lod=3){
+  const ax=ex+sx,az=ez+sz,h=levelAt(ax/M,az/M);
+  if(h<20)return-(20-h)*5-.3;
   const land=sstep(19,26,h),rough=sstep(28,60,h);
-  h+=land*((fbm(wx*.05+9,wz*.05)-.5)*5*(.35+rough));h+=rough*(ridged(wx*.028,wz*.028+4,4)-.5)*34*sstep(50,85,h);h+=rough*(fbm(wx*.16,wz*.16,3)-.5)*5;return h}
-const Y=(x,z)=>(levelAt(x,z)-sea)*HS;
+  let v=Math.pow(h-sea,1.8)*.9+(h-sea)*2.5;
+  let d=(fbm(ax/1400+9,az/1400)-.5)*2*(5+rough*45);
+  d+=rough*(ridged(ax/3200,az/3200+4,4)-.5)*900*sstep(48,85,h);
+  if(lod>=1){d+=(fbm(ax/230,az/230+3,2)-.5)*2*(1.5+rough*9);d+=rough*(ridged(ax/900,az/900+11,3)-.5)*170*sstep(45,85,h)}
+  if(lod>=2)d+=(fbm(ax/38+7,az/38,2)-.5)*(.6+rough*2.5);
+  if(lod>=3)d+=(fbm(ax/7,az/7+5,2)-.5)*.35;
+  return v+d*land}
 const idx=(x,z)=>Math.min(DH-1,Math.max(0,Math.floor(z)))*DW+Math.min(DW-1,Math.max(0,Math.floor(x)));
 const biomeAt=(x,z)=>BI[idx(x,z)];
+const biomeL=(sx,sz)=>BI[idx((ex+sx)/M,(ez+sz)/M)];
 
 /* ================= 色 ================= */
 const hx=c=>{const n=parseInt(c.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]};
@@ -89,14 +100,34 @@ const T={
  dusk:{az:1.55,el:.2,sun:'#ffb27a',sky:'#4f64b8',hor:'#ffc08a',fog:'#e7b496',amb:.5,cloud:'#ffd2b0'}};
 const TB={dawn:{sI:2.0,h1:'#c7d6ff',h2:'#8a7a63',hI:1.3},noon:{sI:2.5,h1:'#cfe6ff',h2:'#6f8a55',hI:1.5},dusk:{sI:2.1,h1:'#b8b6ec',h2:'#7a6552',hI:1.2}};
 const treeCols=['#3f7f3a','#4c8c3d','#2f6f45','#5b9a44','#6a9a3a'].map(hx);
+/* 木の生える所(標高が高いと針葉樹だけになり、森林限界で消える) */
+function forestP(bi,cl,hm){let p=0,kind='b';
+  if(bi===6||bi===8||bi===5||bi===7)p=.95*sstep(.32,.5,cl)+.05;
+  else if(bi===9||bi===10||bi===2){p=.7*sstep(.28,.45,cl)+.04;kind='c'}
+  else if(bi===4||bi===12)p=.4*sstep(.42,.62,cl);else if(bi===3)p=.35*sstep(.42,.62,cl)+.02;
+  if(hm>900){kind='c';p*=1-sstep(900,1500,hm)}
+  if(hm<1.5)p=0;return{p,kind}}
+/* 地面の色(光は含まない)。d=見ている所までの距離(m) */
+function baseColor(ax,az,hm,slope,bi,d){
+  let c=BC[bi].slice();
+  const fine=d<400?(fbm(ax/6,az/6,2)-.5)*.16:0,k=.86+fbm(ax/60,az/60+3,2)*.28+fine;c=[c[0]*k,c[1]*k,c[2]*k];
+  if(hm<2.5)c=mix(c,SAND,sstep(2.5,.3,hm)*.9);
+  const rk=sstep(.38,.62,slope+(fbm(ax/20,az/20,2)-.5)*.1)*(hm>150?1:.5);
+  c=mix(c,ROCK,rk*.85);c=mix(c,ROCKD,rk*sstep(.6,.9,slope)*.4);
+  c=mix(c,ROCK,sstep(1250,1650,hm)*.7);
+  const sn=sstep(1650+(fbm(ax/400,az/400+8,2)-.5)*300,2050,hm)*(1-rk*.4);c=mix(c,SNOW,sn);
+  if(d>250){const fp=forestP(bi,fbm(ax/600+40,az/600),hm).p;c=mix(c,[56,102,50],Math.min(.75,fp)*sstep(250,900,d))}
+  return c}
 let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
 
 /* ================= 遠景: 360度の円筒に貼る絵 ================= */
 const ARC=Math.PI*2,BH=0,CW=4096,CH=640,tTop=Math.tan(.5),tBot=-Math.tan(.75);
-const BANDS=[200,340,620],RAD=[150,270,470],NB=BANDS.length;
+const EYEH=1.7;                       /* 兵の目の高さ(m)。この画面の単位はすべてメートル */
+const BANDS=[300,2500,30000],RAD=[150,270,470],NB=BANDS.length;   /* 円筒に描く距離(m) */
 const rowOf=t=>(tTop-t)/(tTop-tBot)*CH;
 const bandOf=d=>{for(let k=0;k<NB;k++)if(d<BANDS[k])return k;return NB-1};
-const dist=[];{let d=3;while(d<BANDS[NB-1]){dist.push(d);d+=Math.max(.8,d*.012)}}
+const lodOf=d=>d<600?2:d<6000?1:0, curv=d=>d*d/1.1e7;   /* 遠いほど細かい起伏を省く／地球の丸み */
+const dist=[];{let d=14;while(d<BANDS[NB-1]){dist.push(d);d+=Math.max(.8,d*.02)}}
 const NS=dist.length;
 const eye={x:0,y:0,z:0};
 const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -107,27 +138,22 @@ async function bake(key,prog){
   const imgs=Array.from({length:NB},()=>{const im=new ImageData(CW,CH),d=im.data;for(let p=0;p<d.length;p+=4){d[p]=fogC[0];d[p+1]=fogC[1];d[p+2]=fogC[2]}return im});
   const hzTab=new Float32Array(CW*NS),top=new Float32Array(CW);
   const shade=l=>l<.12?.55:l<.4?.76:l<.72?.92:1;
-  const colorAt=(x,z,lvl,d)=>{
-    let c;
-    if(lvl<sea){c=mix(WSH,WDP,sstep(sea,sea-12,lvl));return mix(c,fogC,sstep(30,420,d)*.85)}
-    const e=Math.max(1.2,d*.008),gx=(Y(x+e,z)-Y(x-e,z))/(2*e),gz=(Y(x,z+e)-Y(x,z-e))/(2*e);
+  const colorAt=(sx,sz,hm,d)=>{
+    const ax=ex+sx,az=ez+sz,fogK=sstep(300,26000,d)*.9;
+    if(hm<=0)return mix(mix(WSH,WDP,sstep(0,-25,hm)),fogC,fogK);
+    const e=Math.max(2,d*.01),lod=lodOf(d),gx=(Hm(sx+e,sz,lod)-Hm(sx-e,sz,lod))/(2*e),gz=(Hm(sx,sz+e,lod)-Hm(sx,sz-e,lod))/(2*e);
     const il=1/Math.hypot(gx,1,gz),nx=-gx*il,ny=il,nz=-gz*il,slope=1-ny;
-    c=BC[biomeAt(x,z)].slice();
-    if(d<260){const n=fbm(x*.045,z*.045+3,2),k=.86+n*.28;c=[c[0]*k,c[1]*k,c[2]*k]}
-    if(lvl<sea+1.3)c=mix(c,SAND,sstep(sea+1.3,sea-.2,lvl)*.9);
-    const rk=sstep(.30,.50,slope+(fbm(x*.09,z*.09,2)-.5)*.08)*(lvl>30?1:.6);
-    c=mix(c,ROCK,rk*.85);c=mix(c,ROCKD,rk*sstep(.45,.7,slope)*.4);
-    const sn=sstep(70+(fbm(x*.05,z*.05+8,2)-.5)*14,82,lvl)*(1-rk*.45);c=mix(c,SNOW,sn);
+    let c=baseColor(ax,az,hm,slope,biomeL(sx,sz),d);
     const lam=Math.max(0,nx*sd[0]+ny*sd[1]+nz*sd[2]),s=shade(lam),k=t.amb+(1-t.amb)*s;
     c=[c[0]*k*(.9+.1*sunC[0]/255)*(s>.9?1.02:1),c[1]*k*(.9+.1*sunC[1]/255),c[2]*k*(.88+.12*sunC[2]/255)];
     if(key!=='noon'&&s>.9)c=[c[0]*1.06,c[1],c[2]*.92];
-    return mix(c,fogC,sstep(35,540,d)*.9)};
+    return mix(c,fogC,fogK)};
   for(let c=0;c<CW;c++){
     const a=BH-(c/CW-.5)*ARC,dx=Math.sin(a),dz=Math.cos(a);let hz=tBot;
     for(let i=0;i<NS;i++){
-      const d=dist[i],x=eye.x+dx*d,z=eye.z+dz*d,lvl=levelAt(x,z),y=Math.max(lvl-sea,0)*HS,tt=(y-eye.y)/d;
+      const d=dist[i],sx=dx*d,sz=dz*d,hm=Hm(sx,sz,lodOf(d)),y=Math.max(hm,0)-H0-curv(d),tt=(y-EYEH)/d;
       if(tt>hz){
-        const col=colorAt(x,z,lvl,d),img=imgs[bandOf(d)].data;
+        const col=colorAt(sx,sz,hm,d),img=imgs[bandOf(d)].data;
         const r0=Math.max(0,Math.ceil(rowOf(tt))),r1=Math.min(CH-1,Math.floor(rowOf(hz)));
         for(let r=r0;r<=r1;r++){const p=(r*CW+c)*4;img[p]=col[0];img[p+1]=col[1];img[p+2]=col[2];img[p+3]=255}
         hz=tt}
@@ -136,45 +162,42 @@ async function bake(key,prog){
     if((c&255)===255){prog&&prog(c/CW*.8);await tick()}}
   const cvs=imgs.map(im=>{const cv=document.createElement('canvas');cv.width=CW;cv.height=CH;cv.getContext('2d').putImageData(im,0,0);return cv});
   const ctxs=cvs.map(cv=>cv.getContext('2d'));
-  /* 木を絵として描き込む */
-  const trees=[];seed=Math.floor(eye.x*7+eye.z*13)%2147483 +7;
-  for(let k=0;k<420000&&trees.length<22000;k++){
-    const ang=rnd()*ARC,d=100+Math.pow(rnd(),1.5)*400,x=eye.x+Math.sin(ang)*d,z=eye.z+Math.cos(ang)*d;
-    if(x<0||z<0||x>=DW||z>=DH)continue;
-    const y=Y(x,z),lv=y/HS+sea;if(lv<sea+1.6||lv>66)continue;
-    const bi=biomeAt(x,z);let p=0,kind='b';const cl=fbm(x*.03+40,z*.03);
-    if(bi===6||bi===8||bi===5||bi===7)p=.95*sstep(.32,.5,cl)+.05;
-    else if(bi===9||bi===10||bi===2){p=.7*sstep(.28,.45,cl)+.04;kind='c'}
-    else if(bi===4||bi===12)p=.4*sstep(.42,.62,cl);else if(bi===3)p=.35*sstep(.42,.62,cl)+.02;
-    if(lv>48){kind='c';p*=1-sstep(48,66,lv)}
-    if(rnd()>p)continue;
-    const dxh=Y(x+1.5,z)-Y(x-1.5,z),dzh=Y(x,z+1.5)-Y(x,z-1.5);if(Math.hypot(dxh,dzh)/3>.6)continue;
-    trees.push({x,z,y,d,a:ang,kind,s:(.55+rnd()*.7)*(kind==='c'?1.2:1)*1.35,ci:(rnd()*5)|0})}
+  /* 木を絵として描き込む(150m〜3km。高さ12〜24mの実寸) */
+  const trees=[];seed=Math.floor(ex*.37+ez*.53)%2147483+7;
+  for(let k=0;k<400000&&trees.length<42000;k++){
+    const ang=rnd()*ARC,d=150+Math.pow(rnd(),1.8)*2850,sx=Math.sin(ang)*d,sz=Math.cos(ang)*d,ax=ex+sx,az=ez+sz;
+    const hm=Hm(sx,sz,lodOf(d));if(hm<1.5)continue;
+    const bi=biomeL(sx,sz),cl=fbm(ax/600+40,az/600),fp=forestP(bi,cl,hm);if(rnd()>fp.p)continue;
+    const e=4,dxh=Hm(sx+e,sz,1)-Hm(sx-e,sz,1),dzh=Hm(sx,sz+e,1)-Hm(sx,sz-e,1);if(Math.hypot(dxh,dzh)/(2*e)>.7)continue;
+    const kind=fp.kind,h=(kind==='c'?15+rnd()*10:11+rnd()*9);
+    trees.push({sx,sz,y:hm-H0-curv(d),d,a:ang,kind,h,hw:h*(kind==='c'?.2:.3),ci:(rnd()*5)|0})}
   trees.sort((a,b)=>b.d-a.d);prog&&prog(.88);await tick();
   const pxRad=CW/ARC,rgb=q=>`rgb(${q[0]|0},${q[1]|0},${q[2]|0})`;let drawn=0;
-  const ci=new Int32Array(1);const idxOf=d=>{let lo=0,hi=NS-1;while(lo<hi){const m=(lo+hi)>>1;if(dist[m]>=d)hi=m;else lo=m+1}return lo};
+  const idxOf=d=>{let lo=0,hi=NS-1;while(lo<hi){const m=(lo+hi)>>1;if(dist[m]>=d)hi=m;else lo=m+1}return lo};
   for(const tr of trees){
     const d=tr.d;let rel=tr.a-BH;while(rel>Math.PI)rel-=2*Math.PI;while(rel<-Math.PI)rel+=2*Math.PI;
     const c=(.5-rel/ARC)*CW,i=Math.max(0,Math.min(NS-1,idxOf(d)-2));
-    const hh=tr.s*(tr.kind==='c'?4.4:3.9),ttop=(tr.y+hh-eye.y)/d;
-    if(ttop<=hzTab[Math.min(CW-1,Math.max(0,c|0))*NS+i]+.0005)continue;
-    const k=bandOf(d),ctx=ctxs[k],rb=rowOf((tr.y-eye.y)/d),rt=rowOf(ttop),w=tr.s*(tr.kind==='c'?1.0:1.35)/d*pxRad;
+    const ttop=(tr.y+tr.h-EYEH)/d;
+    if(ttop<=hzTab[Math.min(CW-1,Math.max(0,c|0))*NS+i]+.0003)continue;
+    const k=bandOf(d),ctx=ctxs[k],rb=rowOf((tr.y-EYEH)/d),rt=rowOf(ttop),w=tr.hw/d*pxRad;
+    if(rb-rt<1.2)continue;
     let col=treeCols[tr.ci].slice();if(tr.kind==='c')col=[col[0]*.82,col[1]*.9,col[2]*.88];
     const lit=[Math.min(255,col[0]*1.25),Math.min(255,col[1]*1.25),Math.min(255,col[2]*1.2)];
-    const f=sstep(35,540,d)*.9,dark=t.amb+(1-t.amb)*.85;
+    const f=sstep(300,26000,d)*.9,dark=t.amb+(1-t.amb)*.85;
     const b2=mix([col[0]*dark,col[1]*dark,col[2]*dark],fogC,f),l2=mix([lit[0]*dark,lit[1]*dark,lit[2]*dark],fogC,f);
-    const right=Math.sin(t.az-tr.a)<0?1:-1;
+    const right=Math.sin(t.az-tr.a)<0?1:-1,tH=rb-rt;
     for(const off of [0,CW,-CW]){const cc=c+off;if(cc<-w-2||cc>CW+w+2)continue;
+      ctx.fillStyle='rgb(92,68,46)';ctx.fillRect(cc-Math.max(.6,w*.12),rb-tH*.35,Math.max(1.2,w*.24),tH*.35);
       ctx.fillStyle=rgb(b2);
       if(tr.kind==='c'){
-        for(let j=0;j<3;j++){const y1=rb+(rt-rb)*(.18+j*.28),ww=w*(1.05-j*.3);ctx.beginPath();ctx.moveTo(cc-ww,y1);ctx.lineTo(cc,rb+(rt-rb)*(.62+j*.3));ctx.lineTo(cc+ww,y1);ctx.closePath();ctx.fill()}
-        ctx.fillStyle=rgb(l2);ctx.beginPath();ctx.moveTo(cc,rt);ctx.lineTo(cc+right*w*.5,rb+(rt-rb)*.5);ctx.lineTo(cc,rb+(rt-rb)*.5);ctx.closePath();ctx.fill()
+        for(let j=0;j<3;j++){const y1=rb-tH*.2-tH*.26*j,ww=w*(1.05-j*.3);ctx.beginPath();ctx.moveTo(cc-ww,y1);ctx.lineTo(cc,rb-tH*(.55+j*.22));ctx.lineTo(cc+ww,y1);ctx.closePath();ctx.fill()}
+        ctx.fillStyle=rgb(l2);ctx.beginPath();ctx.moveTo(cc,rt);ctx.lineTo(cc+right*w*.5,rb-tH*.5);ctx.lineTo(cc,rb-tH*.5);ctx.closePath();ctx.fill()
       }else{
-        ctx.beginPath();ctx.ellipse(cc,rb+(rt-rb)*.62,w,Math.abs(rb-rt)*.42,0,0,7);ctx.fill();
-        ctx.fillStyle=rgb(l2);ctx.beginPath();ctx.ellipse(cc+right*w*.28,rb+(rt-rb)*.7,w*.55,Math.abs(rb-rt)*.28,0,0,7);ctx.fill()}}
+        ctx.beginPath();ctx.ellipse(cc,rb-tH*.62,w,tH*.38,0,0,7);ctx.fill();
+        ctx.fillStyle=rgb(l2);ctx.beginPath();ctx.ellipse(cc+right*w*.28,rb-tH*.7,w*.55,tH*.25,0,0,7);ctx.fill()}}
     drawn++}
   /* 山がいちばん高く見える方向 */
-  const iN=idxOf(110),iF=NS-1;let best=0,bv=-9;for(let c=0;c<CW;c++){let s=0;for(let j=-60;j<=60;j+=12){const cc=(c+j+CW)%CW;s+=(hzTab[cc*NS+iF]-hzTab[cc*NS+iN])*1.0+(hzTab[cc*NS+iN]<.25?.15:-.3)}if(s>bv){bv=s;best=c}}
+  const iN=idxOf(600),iF=NS-1;let best=0,bv=-9;for(let c=0;c<CW;c++){let s=0;for(let j=-60;j<=60;j+=12){const cc=(c+j+CW)%CW;s+=(hzTab[cc*NS+iF]-hzTab[cc*NS+iN])*8+(hzTab[cc*NS+iN]<.05?.1:-.1)}if(s>bv){bv=s;best=c}}
   prog&&prog(1);
   return {cvs,drawn,sd,t,bestA:BH-(best/CW-.5)*ARC}}
 
@@ -184,7 +207,7 @@ const R=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:tru
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.outputColorSpace=THREE.SRGBColorSpace;R.autoClear=false;
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 const sceneA=new THREE.Scene(),sceneB=new THREE.Scene();
-const camA=new THREE.PerspectiveCamera(52,1,1,3000),camB=new THREE.PerspectiveCamera(52,1,.5,1200);
+const camA=new THREE.PerspectiveCamera(52,1,1,3000),camB=new THREE.PerspectiveCamera(52,1,.2,900);
 
 /* --- 遠景: 空・雲・円筒 --- */
 const skyU={top:{value:new THREE.Color()},hor:{value:new THREE.Color()},sunDir:{value:new THREE.Vector3()},sunCol:{value:new THREE.Color()}};
@@ -204,7 +227,7 @@ const layers=[];
 
 /* --- 近景: 3D(半径130。外側へ透明に消えて円筒の絵とつながる) --- */
 const gm=(()=>{const t=new THREE.DataTexture(new Uint8Array([105,105,105,255,160,160,160,255,220,220,220,255,255,255,255,255]),4,1,THREE.RGBAFormat);t.minFilter=t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t})();
-const NR=130,NV=300;
+const NR=150,NV=300;
 const eyeU={value:new THREE.Vector2()};
 function fade(mat){mat.transparent=true;mat.onBeforeCompile=sh=>{sh.uniforms.uEye=eyeU;
   sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vW;').replace('#include <project_vertex>','#include <project_vertex>\n vec4 wp=vec4(transformed,1.0);\n#ifdef USE_INSTANCING\n wp=instanceMatrix*wp;\n#endif\n vW=(modelMatrix*wp).xyz;');
@@ -220,40 +243,33 @@ function merge(list){const gs=list.map(g=>g.index?g.toNonIndexed():g);let n=0;gs
   const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.BufferAttribute(p,3));r.setAttribute('normal',new THREE.BufferAttribute(nr,3));return r}
 const conif=new THREE.InstancedMesh(merge([new THREE.ConeGeometry(1,2.2,6).translate(0,2.2,0),new THREE.ConeGeometry(.78,1.8,6).translate(0,3.3,0),new THREE.ConeGeometry(.5,1.4,6).translate(0,4.2,0)]),fade(new THREE.MeshToonMaterial({gradientMap:gm})),6000);
 const broad=new THREE.InstancedMesh(merge([new THREE.IcosahedronGeometry(1.25,0).translate(0,2.6,0),new THREE.IcosahedronGeometry(.9,0).translate(.7,3.3,.2)]),fade(new THREE.MeshToonMaterial({gradientMap:gm})),6000);
-[conif,broad].forEach(m=>{m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;sceneB.add(m)});
+const trunk=new THREE.InstancedMesh(new THREE.CylinderGeometry(.045,.075,3.4,6).translate(0,1.7,0),fade(new THREE.MeshToonMaterial({color:'#6b4f33',gradientMap:gm})),12000);
+[conif,broad,trunk].forEach(m=>{m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;sceneB.add(m)});
 const sun=new THREE.DirectionalLight('#fff',2.2);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
-Object.assign(sun.shadow.camera,{left:-140,right:140,top:140,bottom:-140,near:10,far:700});sun.shadow.bias=-.0006;sun.shadow.normalBias=.5;
+Object.assign(sun.shadow.camera,{left:-170,right:170,top:170,bottom:-170,near:10,far:1200});sun.shadow.bias=-.0006;sun.shadow.normalBias=.15;
 sceneB.add(sun,sun.target);const hemi=new THREE.HemisphereLight('#cfe4ff','#6f7f55',1.0);sceneB.add(hemi);
 
 function buildNear(){
-  eyeU.value.set(eye.x,eye.z);terrain.position.set(eye.x,0,eye.z);water.position.x=eye.x;water.position.z=eye.z;
-  water.visible=false;const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const yy=Y(eye.x+pos.getX(i),eye.z+pos.getZ(i));pos.setY(i,yy<0?-.05:yy)}
+  eyeU.value.set(0,0);terrain.position.set(0,0,0);water.visible=false;
+  const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const hm=Hm(pos.getX(i),pos.getZ(i),3);pos.setY(i,Math.max(hm,0)-H0-(hm<=0?.08:0))}
   pos.needsUpdate=true;geo.computeVertexNormals();
   const nrm=geo.attributes.normal,col=geo.attributes.color.array,tc=new THREE.Color();
-  for(let i=0;i<pos.count;i++){const x=eye.x+pos.getX(i),z=eye.z+pos.getZ(i),lv=levelAt(x,z),slope=1-nrm.getY(i);let c=BC[biomeAt(x,z)].slice();
-    const n=fbm(x*.045,z*.045+3,3),k=.86+n*.28;c=[c[0]*k,c[1]*k,c[2]*k];
-    if(lv<sea+1.3)c=mix(c,SAND,sstep(sea+1.3,sea-.2,lv)*.9);
-    if(lv<sea)c=mix(WSH,WDP,sstep(sea,sea-12,lv));
-    const rk=sstep(.30,.50,slope+(fbm(x*.09,z*.09)-.5)*.08)*(lv>30?1:.6);c=mix(c,ROCK,rk*.85);c=mix(c,ROCKD,rk*sstep(.45,.7,slope)*.4);
-    const sn=sstep(70+(fbm(x*.05,z*.05+8)-.5)*14,82,lv)*(1-rk*.45);c=mix(c,SNOW,sn);
+  for(let i=0;i<pos.count;i++){const sx=pos.getX(i),sz=pos.getZ(i),ax=ex+sx,az=ez+sz,hm=Hm(sx,sz,3),slope=1-nrm.getY(i);let c;
+    if(hm<=0)c=mix(WSH,WDP,sstep(0,-25,hm));else c=baseColor(ax,az,hm,slope,biomeL(sx,sz),0);
     tc.setRGB(c[0]/255,c[1]/255,c[2]/255,THREE.SRGBColorSpace);col[i*3]=tc.r;col[i*3+1]=tc.g;col[i*3+2]=tc.b}
   geo.attributes.color.needsUpdate=true;
-  let nc=0,nb=0;const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),sv=new THREE.Vector3(),pv=new THREE.Vector3(),cc=new THREE.Color(),up=new THREE.Vector3(0,1,0);seed=Math.floor(eye.x*3+eye.z*5)%2147483+11;
-  for(let k=0;k<120000&&(nc<6000||nb<6000);k++){
-    const ang=rnd()*6.283,d=30+Math.sqrt(rnd())*(NR-30),x=eye.x+Math.cos(ang)*d,z=eye.z+Math.sin(ang)*d;
-    if(x<0||z<0||x>=DW||z>=DH)continue;
-    const y=Y(x,z),lv=y/HS+sea;if(lv<sea+1.6||lv>66)continue;
-    const bi=biomeAt(x,z),cl=fbm(x*.03+40,z*.03);let p=0,kind='b';
-    if(bi===6||bi===8||bi===5||bi===7)p=.95*sstep(.32,.5,cl)+.05;
-    else if(bi===9||bi===10||bi===2){p=.7*sstep(.28,.45,cl)+.04;kind='c'}
-    else if(bi===4||bi===12)p=.4*sstep(.42,.62,cl);else if(bi===3)p=.35*sstep(.42,.62,cl)+.02;
-    if(lv>48){kind='c';p*=1-sstep(48,66,lv)}
-    if(rnd()>p)continue;
-    const dx=Y(x+1.5,z)-Y(x-1.5,z),dz=Y(x,z+1.5)-Y(x,z-1.5);if(Math.hypot(dx,dz)/3>.6)continue;
-    const s=(.55+rnd()*.7)*(kind==='c'?1.2:1);q.setFromAxisAngle(up,rnd()*6.28);sv.set(s,s*(.9+rnd()*.5),s);pv.set(x,y-.2,z);m4.compose(pv,q,sv);
-    const tcol=treeCols[(rnd()*5)|0];cc.setRGB(tcol[0]/255,tcol[1]/255,tcol[2]/255,THREE.SRGBColorSpace);if(kind==='c')cc.multiplyScalar(.78);cc.offsetHSL((rnd()-.5)*.03,0,0);cc.multiplyScalar(.88+rnd()*.24);
-    if(kind==='c'){if(nc<6000){conif.setMatrixAt(nc,m4);conif.setColorAt(nc,cc);nc++}}else if(nb<6000){broad.setMatrixAt(nb,m4);broad.setColorAt(nb,cc);nb++}}
-  conif.count=nc;broad.count=nb;[conif,broad].forEach(m=>{m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true});
+  let nc=0,nb=0;const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),sv=new THREE.Vector3(),pv=new THREE.Vector3(),cc=new THREE.Color(),up=new THREE.Vector3(0,1,0);seed=Math.floor(ex*.37+ez*.53)%2147483+11;
+  const tm=trunk;let nt=0;
+  for(let k=0;k<60000&&(nc<6000||nb<6000);k++){
+    const ang=rnd()*6.283,d=7+Math.sqrt(rnd())*(NR-7),sx=Math.cos(ang)*d,sz=Math.sin(ang)*d,ax=ex+sx,az=ez+sz;
+    const hm=Hm(sx,sz,2);if(hm<1.5)continue;
+    const bi=biomeL(sx,sz),cl=fbm(ax/600+40,az/600),fp=forestP(bi,cl,hm);if(rnd()>fp.p*.16)continue;
+    const kind=fp.kind,dx=Hm(sx+2,sz,2)-Hm(sx-2,sz,2),dz=Hm(sx,sz+2,2)-Hm(sx,sz-2,2);if(Math.hypot(dx,dz)/4>.7)continue;
+    const s=(kind==='c'?3.4+rnd()*1.6:3.0+rnd()*1.5),y=Math.max(hm,0)-H0;q.setFromAxisAngle(up,rnd()*6.28);sv.set(s,s*(.9+rnd()*.25),s);pv.set(sx,y-.15,sz);m4.compose(pv,q,sv);
+    const tcol=treeCols[(rnd()*5)|0];cc.setRGB(tcol[0]/255,tcol[1]/255,tcol[2]/255,THREE.SRGBColorSpace);if(kind==='c')cc.multiplyScalar(.78);cc.multiplyScalar(.88+rnd()*.24);
+    if(kind==='c'){if(nc<6000){conif.setMatrixAt(nc,m4);conif.setColorAt(nc,cc);nc++}else continue}else if(nb<6000){broad.setMatrixAt(nb,m4);broad.setColorAt(nb,cc);nb++}else continue;
+    if(nt<12000){tm.setMatrixAt(nt,m4);nt++}}
+  conif.count=nc;broad.count=nb;tm.count=nt;[conif,broad,tm].forEach(m=>{m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true});
   return nc+nb}
 
 function applyBake(key,res){
@@ -267,8 +283,8 @@ function applyBake(key,res){
   const t=res.t,tb=TB[key],d=new THREE.Vector3(...res.sd).normalize();
   skyU.top.value.set(t.sky);skyU.hor.value.set(t.hor);skyU.sunDir.value.copy(d);skyU.sunCol.value.set(t.sun);
   clouds.forEach(c=>c.material.color.set(t.cloud));
-  sun.position.set(eye.x+d.x*300,d.y*300,eye.z+d.z*300);sun.target.position.set(eye.x,0,eye.z);sun.color.set(t.sun);sun.intensity=tb.sI;
-  hemi.color.set(tb.h1);hemi.groundColor.set(tb.h2);hemi.intensity=tb.hI;sceneB.fog=new THREE.Fog(t.fog,70,420);
+  sun.position.set(d.x*500,d.y*500,d.z*500);sun.target.position.set(0,0,0);sun.color.set(t.sun);sun.intensity=tb.sI;
+  hemi.color.set(tb.h1);hemi.groundColor.set(tb.h2);hemi.intensity=tb.hI;sceneB.fog=new THREE.Fog(t.fog,120,700);
   document.querySelectorAll('#bar [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===key))}
 
 /* ================= 画面の切り替え・入力 ================= */
@@ -280,7 +296,7 @@ async function enter(x,z){
   if(busy)return;
   const lv=levelAt(x,z);if(lv<sea+.5){toast('そこは海です。陸の所をタップしてください');return}
   busy=true;loc={x,z};load.style.display='grid';setLoad('景色を作っています…',0);await tick();
-  eye.x=x;eye.z=z;eye.y=Math.max(Y(x,z),1)+24;
+  eye.x=x;eye.z=z;ex=x*M;ez=z*M;H0=Math.max(Hm(0,0,3),.3);eye.y=EYEH;
   setLoad('近くの地形を作っています…',.02);await tick();const nTree=buildNear();
   const res=await bake(curKey,p=>setLoad('遠くの景色を描いています…',.05+p*.95));
   applyBake(curKey,res);yaw=res.bestA;pitch=0;
@@ -329,8 +345,8 @@ const clock=new THREE.Clock();let last=0;
 function frame(){requestAnimationFrame(frame);if(!inView)return;
   const t=clock.getElapsedTime(),dt=Math.min(.1,t-last);last=t;
   if(autoRot&&!busy)yaw+=dt*.14;
-  const sx=Math.sin(t*.35)*2.2,sy=Math.sin(t*.5)*.5;
-  camA.position.set(sx,sy,0);camB.position.set(eye.x+sx,eye.y+sy,eye.z);
+  const sx=0,sy=Math.sin(t*.9)*.015;   /* 呼吸ほどの揺れ */
+  camA.position.set(sx,sy,0);camB.position.set(sx,EYEH+sy,0);
   const p=(camB.aspect<.9?-.1:.04)+pitch,dx=Math.sin(yaw)*Math.cos(p)*100,dy=Math.sin(p)*100,dz=Math.cos(yaw)*Math.cos(p)*100;
   camA.lookAt(camA.position.x+dx,camA.position.y+dy,camA.position.z+dz);camB.lookAt(camB.position.x+dx,camB.position.y+dy,camB.position.z+dz);
   clouds.forEach(c=>{c.position.x+=c.userData.sp*.05});
