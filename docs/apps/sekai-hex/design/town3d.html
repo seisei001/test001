@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],east:['east_a','model','atlas.png'],church:['church1','model','atlas.png'],workshop:['workshop1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert2','model','atlas.png'],store:['storehouse1','model','atlas.png'],barracks:['barracks1','model','atlas.png'],east:['east_a','model','atlas.png'],church:['church1','model','atlas.png'],temple:['temple1','model','atlas.png'],workshop:['workshop1','model','atlas.png'],whouse:['whouse1','model','atlas.png']};
 const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
   const TL=new THREE.TextureLoader(),texs={};
@@ -164,7 +164,7 @@ function plan(cu,idx){const rng=(()=>{let st=idx*7919+17;return()=>{st=(st*16807
   const res=[RC(2,2,6,6),RC(16,4,3,3),RC(23,3,2,2),RC(10,10,8,8)],xs=[2,5,8,11,15,18,21,24],half=N*TILE/2,B=new Builder();
   for(const gx of xs)for(const gy of xs){const r=RC(gx,gy,2,2);if(res.some(q=>hit(r,q))||hash(gx,gy)>.8)continue;
     house(B,cu,(gx+1)*TILE-half,(gy+1)*TILE-half,rng)}
-  castle(B,5*TILE-half,5*TILE-half);church(B,17.5*TILE-half,5.5*TILE-half,rng);B.part('windmill',TR(24*TILE-half,5.6,4*TILE-half,.6,3.2));
+  castle(B,5*TILE-half,5*TILE-half);(cu==='e'&&AIMAT&&AIG.temple?(()=>{const tx=17.5*TILE-half,tz=5.5*TILE-half;B.aiHouse('temple',TR(tx,0,tz,Math.atan2(-tx,-tz),.62))})():church(B,17.5*TILE-half,5.5*TILE-half,rng));B.part('windmill',TR(24*TILE-half,5.6,4*TILE-half,.6,3.2));
   B.part('fountain-round',TR(0,0,0,0,4));B.part('stall-red',TR(-9,0,6,.3,3));B.part('stall-green',TR(9,0,-6,2.6,3));B.part('cart',TR(6,0,9,1,2.5));
   for(let i=0;i<46;i++){const a=rng()*6.283,d=34+rng()*50,x=Math.cos(a)*d,z=Math.sin(a)*d;if(Math.abs(x)>half||Math.abs(z)>half)continue;
     B.part(['tree','tree-high','tree-crooked','tree-high-round'][Math.floor(rng()*4)],TR(x,0,z,rng()*6.28,3+rng()*2))}
