@@ -14,7 +14,7 @@ const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
 const PARTS={};let KMAT=null,SHEET=null;
 /* AI製ローポリ建物(数値データ版): assets/ai3d/set1/ の model JSON(頂点・UV(px)・三角形)+atlas。実寸なので拡大しない */
-const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png']};
+const AISET={shop:['set1','w_set_a','atlas_photo.png'],two:['set1','w_set_b','atlas_photo.png'],tower:['set1','w_set_c','atlas_photo.png'],balcony:['set1','w_set_d','atlas_photo.png'],L:['set1','w_set_e','atlas_photo.png'],shop2:['shop1','model','atlas.png'],desert:['desert1','model','atlas.png']};
 const AIG={};const AIMATS={};const LOG={};const LOMAT={};let AIMAT=null;
 async function loadAI(){
   const TL=new THREE.TextureLoader(),texs={};
@@ -118,6 +118,7 @@ function house(B,cu,cx,cz,rng,seedI){
     const nm=cu+'abcde'[Math.floor(rng()*5)],bb=LOG[nm].boundingBox,big=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);
     /* 区画(8m)いっぱいに大きさをそろえ、家と家を詰める */
     const fit=Math.min(1.1,7.6/big)*(.94+rng()*.06);B.loHouse(nm,TR(cx,0,cz,Math.atan2(sx,sz),fit));return}
+  if(cu==='d'&&AIMAT&&AIG.desert&&rng()<.85){B.aiHouse('desert',TR(cx,0,cz,gridTh(cx,cz),1.05*(.92+rng()*.16)));return}
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
