@@ -117,7 +117,8 @@
     "name": "iPhone操作検証",
     "description": "ダブルタップ・選択・範囲指定・長押し・2本指など、iPhoneの指の動きがどう読み取れるかを試す実験場",
     "path": "apps/touch-lab/",
-    "icon": "👆"
+    "icon": "👆",
+    "archive": true
   },
   {
     "id": "chibi-war",
