@@ -1,0 +1,32 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI製ローポリ建物(UV修正版)</title>
+<style>html,body{margin:0;height:100%;background:#cfd8c4;overflow:hidden;font-family:-apple-system,sans-serif}
+#c{width:100%;height:100%;display:block;touch-action:none}
+#ui{position:fixed;left:8px;top:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;font-size:13px}
+#ui button{padding:7px 11px;border:0;border-radius:8px;background:#fffaf0;color:#2b2418;font-size:13px}
+#ui button.on{background:#a8321f;color:#fff}#info{position:fixed;left:8px;bottom:8px;background:#fffaf0cc;padding:4px 8px;border-radius:6px;font-size:12px}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script></head><body>
+<canvas id="c"></canvas><div id="ui"></div><div id="info">ドラッグで回転 / 下のボタンで見る向き</div>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from './vendor/GLTFLoader.js';
+const cv=document.getElementById('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene();S.background=new THREE.Color('#cfd8c4');
+S.add(new THREE.HemisphereLight('#fff',"#8a8a6a",1.1));const D=new THREE.DirectionalLight('#fff',1.4);D.position.set(6,10,8);S.add(D);
+const g=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshLambertMaterial({color:'#9aab7e'}));g.rotation.x=-Math.PI/2;S.add(g);
+const cam=new THREE.PerspectiveCamera(40,1,.1,200);
+const NAMES=[['cottage_hut','小屋'],['two_story','2階建て'],['L_shaped','L字'],['tower_house','塔つき'],['shop','店舗']];
+const grp=new THREE.Group();S.add(grp);
+const L=new GLTFLoader();
+NAMES.forEach(([f,n],i)=>L.load('../assets/ai3d/fixed/'+f+'.glb',gl=>{const o=gl.scene;o.position.x=(i-2)*7;
+  o.traverse(m=>{if(m.isMesh&&m.material){m.material.side=THREE.DoubleSide;if(m.material.map)m.material.map.colorSpace=THREE.SRGBColorSpace}});grp.add(o)}));
+let az=.5,el=.28,dist=22;const set=()=>{cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist+1.5,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,1.6,0)};
+const ui=document.getElementById('ui');
+[['全体',()=>{az=.3;el=.3;dist=26}],['正面',()=>{az=0;el=.1;dist=24}],['斜め上',()=>{az=.7;el=.6;dist=24}],['裏',()=>{az=Math.PI+.4;el=.2;dist=24}]].forEach(([t,f],i)=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{f();set()};ui.appendChild(b)});
+NAMES.forEach(([f,n],i)=>{const b=document.createElement('button');b.textContent='寄る:'+n;b.onclick=()=>{grp.position.x=-(i-2)*7;az=.6;el=.22;dist=9;set()};ui.appendChild(b)});
+let dr=null;cv.onpointerdown=e=>{dr=[e.clientX,e.clientY]};addEventListener('pointerup',()=>dr=null);
+addEventListener('pointermove',e=>{if(!dr)return;az-=(e.clientX-dr[0])*.008;el=Math.max(.02,Math.min(1.4,el+(e.clientY-dr[1])*.006));dr=[e.clientX,e.clientY];set()});
+function rs(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',rs);rs();set();
+(function loop(){R.render(S,cam);requestAnimationFrame(loop)})();
+window.__v=(a,e,d,x)=>{az=a;el=e;dist=d;grp.position.x=x||0;set()};
+</script></body></html>
