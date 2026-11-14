@@ -66,7 +66,7 @@ function render(){
     o+='<div class="cross"><a href="#c/'+i.layer+'">概念: '+esc(L(i.layer).t)+'の層</a><a href="#w/'+i.who+'">作業: '+esc(W(i.who).t)+'</a></div><div style="height:12px"></div>';
     o+='<div class="box" style="border-left:4px solid var(--wip)"><b>いまの内容</b>'+esc(i.now)+'</div>';
     o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
-    if(i.href)o+='<a class="btn main" href="'+i.href+'"><span class="n">見る</span><span class="go">›</span></a>';
+    o+='<a class="btn main" href="'+(i.href||D.protoHref)+'"><span class="n">🔨 制作中の試作で見る</span><span class="go">›</span></a>';
   }
   document.getElementById('app').innerHTML=o+body;scrollTo(0,0);
 }
