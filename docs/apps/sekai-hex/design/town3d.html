@@ -12,8 +12,8 @@
 import * as THREE from 'three';import {GLTFLoader} from './vendor/GLTFLoader.js';import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 const KIT='../assets/kit/';
 const NEED=['wall','wall-door','wall-window-small','wall-window-shutters','wall-window-glass','wall-wood','wall-wood-door','wall-wood-window-small','wall-wood-window-shutters','chimney','windmill','tree','tree-high','tree-crooked','tree-high-round','stall-red','stall-green','fountain-round','cart','lantern','rock-small','rock-large','fence'];
-const PARTS={};let KMAT=null;
-async function loadKit(){const L=new GLTFLoader();await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
+const PARTS={};let KMAT=null,SHEET=null;
+async function loadKit(){const L=new GLTFLoader();{const t=await new THREE.TextureLoader().loadAsync('../assets/sheets/w_tudor_a.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;SHEET=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})}await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
 const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
 /* ---- 画面 ---- */
 const cv=document.getElementById('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.outputColorSpace=THREE.SRGBColorSpace;
@@ -40,12 +40,14 @@ function groundPatch(){const c=document.createElement('canvas');c.width=c.height
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 const patchTex=groundPatch();
 /* 部品を置く: 結果は1つの形(1回の描画)にまとめる */
-class Builder{constructor(){this.kit=[];this.col={}}
+class Builder{constructor(){this.kit=[];this.col={};this.sheet=[]}
   part(name,M){for(const p of PARTS[name]||[]){const g=p.geo.clone();g.applyMatrix4(mulM(M,p.m));this.kit.push(g)}}
   poly(color,P,idx){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));if(idx)g.setIndex(idx);const n=g.index?g.toNonIndexed():g;n.computeVertexNormals();(this.col[color]=this.col[color]||[]).push(n)}
   box(color,cx,cy,cz,w,h,d,M){const g=new THREE.BoxGeometry(w,h,d);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
   cyl(color,cx,cy,cz,r,h,seg,M,top=r){const g=new THREE.CylinderGeometry(top,r,h,seg);g.translate(cx,cy+h/2,cz);if(M)g.applyMatrix4(M);const n=g.toNonIndexed();n.deleteAttribute('uv');(this.col[color]=this.col[color]||[]).push(n)}
+  sheetHouse(M){const g=sheetGeo().clone();g.applyMatrix4(M);this.sheet.push(g)}
   build(){const grp=new THREE.Group();
+    if(this.sheet.length){const m=new THREE.Mesh(mergeGeometries(this.sheet),SHEET);m.userData.own=1;m.userData.nodispose=1;grp.add(m)}
     const clean=g=>{const n=g.index?g.toNonIndexed():g;for(const k of Object.keys(n.attributes))if(!['position','normal','uv'].includes(k))n.deleteAttribute(k);return n};
     if(this.kit.length){const m=new THREE.Mesh(mergeGeometries(this.kit.map(clean)),KMAT);m.userData.own=1;grp.add(m)}
     for(const c in this.col){const gs=this.col[c].map(g=>{const n=g.index?g.toNonIndexed():g;for(const k of Object.keys(n.attributes))if(!['position','normal'].includes(k))n.deleteAttribute(k);return n});
@@ -63,7 +65,25 @@ function gableRoof(B,col,Lx,Lz,H,o,rh){ /* 切妻屋根(棟は長い方向) */
   /* 妻壁(三角) */
   const hl=(alongX?Lx:Lz)/2,hb=(alongX?Lz:Lx)/2;
   for(const sgn of [-1,1]){const u=sgn*(hl-.02);B.poly(STONE,[...V(u,H,-hb),...V(u,H,hb),...V(u,ry-.1,0)])}}
+
+/* ---- 展開図(正面・側面・背面)の絵を、箱の各面にそのまま貼る ---- */
+let _sg=null;
+function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
+  const uv=(x,y)=>[x/IW,1-y/IW];
+  const quad=(A,B,C,D,r)=>{const [x0,y0,x1,y1]=r,q=[uv(x0,y1),uv(x1,y1),uv(x1,y0),uv(x0,y0)];for(const i of [0,1,2,0,2,3]){P.push(...[A,B,C,D][i]);U.push(...q[i])}};
+  const tri=(A,B,C,a,b,c)=>{P.push(...A,...B,...C);U.push(...uv(...a),...uv(...b),...uv(...c))};
+  const W=7.7,D=5.9,Hw=5.25,rh=3.85,X=4.1,o=.55,w=W/2,d=D/2;
+  quad([-w,0,d],[w,0,d],[w,Hw,d],[-w,Hw,d],[53,293,383,521]);          /* +z: 正面(扉あり) */
+  quad([w,0,-d],[-w,0,-d],[-w,Hw,-d],[w,Hw,-d],[878,297,1208,521]);     /* -z: 背面 */
+  quad([w,0,d],[w,0,-d],[w,Hw,-d],[w,Hw,d],[503,296,752,521]);          /* +x 側面 */
+  tri([w,Hw,d],[w,Hw,-d],[w,Hw+rh,0],[510,290],[746,290],[627,150]);
+  quad([-w,0,-d],[-w,0,d],[-w,Hw,d],[-w,Hw,-d],[82,915,340,1134]);      /* -x 側面 */
+  tri([-w,Hw,-d],[-w,Hw,d],[-w,Hw+rh,0],[92,909],[330,909],[213,765]);
+  quad([-X,Hw-.25,d+o],[X,Hw-.25,d+o],[X,Hw+rh,0],[-X,Hw+rh,0],[884,150,1202,288]);   /* 屋根 */
+  quad([X,Hw-.25,-d-o],[-X,Hw-.25,-d-o],[-X,Hw+rh,0],[X,Hw+rh,0],[884,150,1202,288]);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();_sg=g;return g}
 function house(B,cu,cx,cz,rng,seedI){
+  if(cu==='w'&&rng()<.55){B.sheetHouse(TR(cx,0,cz,Math.atan2(-cx,-cz)+(rng()<.5?0:0),.84));return}
   const s=2.6,cw=2+(rng()<.4?1:0),cd=2+(rng()<.4?1:0),fl=cu==='d'?1+(rng()<.5?1:0):1+(rng()<.45?1:0),pre=cu==='e'?'wall-wood':'wall';
   const dx=-cx,dz=-cz,side=Math.abs(dx)>Math.abs(dz)?(dx>0?'+x':'-x'):(dz>0?'+z':'-z');
   const rot={'+x':0,'-x':Math.PI,'+z':-Math.PI/2,'-z':Math.PI/2};
@@ -100,7 +120,7 @@ function plan(cu,idx){const rng=(()=>{let st=idx*7919+17;return()=>{st=(st*16807
 function buildTown(T){const i=TOWNS.indexOf(T),grp=new THREE.Group();grp.position.set(T.x,0,T.z);
   const pl=new THREE.Mesh(new THREE.PlaneGeometry(N*TILE,N*TILE).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({map:patchTex,transparent:true}));pl.position.y=.05;pl.userData.own=1;grp.add(pl);
   grp.add(plan(T.cu,i+1).build());return grp}
-function disposeTown(grp){grp.traverse(o=>{if(o.userData.own){o.geometry.dispose();o.material.dispose&&o.material.dispose()}})}
+function disposeTown(grp){grp.traverse(o=>{if(o.userData.own){o.geometry.dispose();if(!o.userData.nodispose&&o.material.dispose)o.material.dispose()}})}
 let CASTLE_TX=null;
 /* 遠くから見たときの町の印 */
 const dotTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.fillStyle='#b9bdd6';g.fillRect(14,26,36,30);g.fillStyle='#c4473f';g.beginPath();g.moveTo(10,28);g.lineTo(32,6);g.lineTo(54,28);g.fill();return new THREE.CanvasTexture(c)})();
