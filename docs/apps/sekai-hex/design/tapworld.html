@@ -307,12 +307,10 @@ let sc=1,tx=0,ty=0,fit=1;const ptrs=new Map();let tap=null,pinch=null;
 function applyT(){stage.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;mark.style.setProperty('--inv',1/sc)}
 function fitMap(){fit=Math.min(innerWidth/1400,innerHeight/900);if(sc<fit||!fitMap.done){sc=fit;tx=(innerWidth-1400*sc)/2;ty=(innerHeight-900*sc)/2;fitMap.done=true}applyT()}
 function zoomAt(cx,cy,ns){ns=Math.max(fit,Math.min(fit*8,ns));tx=cx-(cx-tx)*ns/sc;ty=cy-(cy-ty)*ns/sc;sc=ns;applyT()}
-ms.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,sc*(e.deltaY<0?1.2:1/1.2))},{passive:false});
 ms.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);ms.setPointerCapture(e.pointerId);
-  if(ptrs.size===1)tap={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};else{tap=null;const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:sc}}});
+  if(ptrs.size===1)tap={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};else tap=null});
 ms.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;
-  if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];zoomAt((a[0]+b[0])/2,(a[1]+b[1])/2,pinch.s*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d)}
-  else if(ptrs.size===1){if(tap)tap.moved+=Math.abs(dx)+Math.abs(dy);if(!tap||tap.moved>8){tx+=dx;ty+=dy;applyT()}}});
+  if(ptrs.size===1){if(tap)tap.moved+=Math.abs(dx)+Math.abs(dy);if(!tap||tap.moved>8){tx+=dx;ty+=dy;applyT()}}});
 ms.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);
   if(tap&&tap.moved<=8&&performance.now()-tap.t<600){const x=(e.clientX-tx)/sc,z=(e.clientY-ty)/sc;
     if(x>=0&&z>=0&&x<1400&&z<900){mark.style.display='block';mark.style.left=x+'px';mark.style.top=z+'px';enter(x,z)}}
