@@ -14,7 +14,7 @@ code,pre{font-family:ui-monospace,Menlo,monospace;font-size:.8rem}
 pre{background:#2b2418;color:#f3e9cf;padding:.8em;border-radius:8px;overflow:auto}
 select,button{font-size:1rem;padding:.5em .8em;border-radius:8px;border:1px solid var(--line);background:#fff}
 button{background:var(--seal);color:#fff;border:0;font-weight:bold}
-textarea{width:100%;height:26em;font:12.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:.6em;background:#fff}
+textarea{width:100%;height:22em;font:12.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:.6em;background:#fff}
 a{color:var(--seal)}
 </style></head><body>
 <p style="margin:0"><a href="index.html">← 設計ページに戻る</a></p>
@@ -23,8 +23,8 @@ a{color:var(--seal)}
 下で建物の種類を選ぶと、<b>そのまま貼れる完結した注文文</b>が出ます。返ってきた <code>atlas.png</code> と <code>model.json</code> をこちらに渡せば、街に置けます。</div>
 
 <h2>1. 注文文を作る</h2>
-<p><select id="sel"></select> <button id="cp">コピー</button> <span id="ok"></span></p>
-<textarea id="out" readonly></textarea>
+<p>ボタンを押すと、その建物の注文文が丸ごとコピーされます。そのままGeminiやChatGPTに貼り、Tudorの展開図を添付してください。</p>
+<div id="list"></div>
 
 <h2>2. 仕様の要点(注文文に全部入っています)</h2>
 <table>
@@ -58,6 +58,13 @@ const atlasTxt=ATLAS.map(r=>`  ${r[0]}: 左上x,y,幅,高さ = ${r[1]} … ${r[2
 const TYPES=[
  {n:'西洋の民家(木骨造)',id:'w_house',size:'幅7〜9 × 奥行5〜7 × 軒高4.5 × 棟高7〜9 m',form:'2階建て。切妻屋根(軒の出0.5m)。2階が1階より前に0.3m張り出す。屋根の上に屋根窓を1つ。玄関に小さな庇。煙突は屋根を貫通して棟より1.2m高く、頂部に笠。',style:'白い漆喰壁に濃い茶の木骨(ハーフティンバー)、赤茶の瓦屋根、石の土台'},
  {n:'西洋の民家 5種セット(絵は共通1枚)',id:'w_set',size:'基準は幅7.5 × 奥行6.5 × 軒高5.5 × 棟高8.5 m(1/1の実寸。小さく作らない)',form:'同じ絵 atlas.png を共用して、5つのモデルを model_hut.json / model_two.json / model_L.json / model_tower.json / model_shop.json として出す。hut=平屋の小屋、two=2階建て(屋根窓1つ・庇・2階張り出し・煙突)、L=主屋に背面の翼を足したL字、tower=2階建てに四角い塔と屋根窓、shop=1階に店の窓と看板と日よけ庇。全部に屋根の出と煙突(shopとhutは小さめでよい)。',style:'白い漆喰壁に濃い茶の木骨(ハーフティンバー)、赤茶の瓦屋根、石の土台'},
+ {n:'東洋の民家 5種セット(絵は共通1枚)',id:'e_set',size:'基準は幅8 × 奥行6 × 棟高6 m(実寸)',form:'同じ絵 atlas.png を共用して、5つを model_hut.json / model_two.json / model_L.json / model_gate.json / model_shop.json として出す。hut=平屋、two=2階建て(縁側の庇を前に1.2m)、L=主屋に背面の翼、gate=門と塀つきの屋敷、shop=店先に大きな庇と看板。屋根は反りを直線の折れで表し、軒の出1m、棟に飾り。煙突は作らない。',style:'白壁と黒い柱、黒灰の瓦屋根、木の縁側'},
+ {n:'砂漠の民家 5種セット(絵は共通1枚)',id:'d_set',size:'基準は幅7 × 奥行6 × 高さ5 m(実寸)',form:'同じ絵 atlas.png を共用して、5つを model_hut.json / model_two.json / model_L.json / model_dome.json / model_shop.json として出す。平らな屋根(縁に立ち上がり30cm)、屋上に小部屋、壁は上が10%細く傾く。dome=丸屋根の塔つき、shop=日よけ布の庇と看板つき。',style:'日干し煉瓦の砂色、青い戸'},
+ {n:'砦(木の柵と櫓)',id:'fort',size:'柵で囲んだ 20×20 m、櫓の高さ9 m',form:'丸太の柵で四角く囲う。四隅に木の櫓(屋根つき、梯子つき)。正面に両開きの門と門櫓。内側に小屋を1つ。',style:'粗い丸太と土、茶色の屋根'},
+ {n:'要塞(石の四角い要塞)',id:'fortress',size:'外周 36×36 m、壁高8 m、塔高13 m',form:'四隅に円筒または四角の塔。厚い石壁(上に歩廊と胸壁のぎざぎざ)。正面に門楼と跳ね橋の板。内側に低い建物を1つ。',style:'灰色の石積み、暗い屋根'},
+ {n:'城(天守と城壁)',id:'castle',size:'全体 40×40 m、天守の高さ28 m',form:'中央に大きな天守(四角、四隅に小塔、頂に胸壁と尖った屋根)。周囲に低い城壁と門楼。天守の入口に階段。',style:'灰白の石、青灰の屋根、赤い旗'},
+ {n:'城壁の部品セット(直線・角・門)',id:'wall_set',size:'壁高6 m、厚さ2 m、直線部は長さ10 m',form:'同じ絵を共用して5つを model_straight.json / model_corner.json / model_tower.json / model_gate.json / model_end.json として出す。つなぐと城壁になるよう、端の断面を揃える(直線の両端が同じ位置・同じ高さ)。上に歩廊と胸壁。',style:'灰色の石積み'},
+ {n:'堀と橋・石畳の道(部品セット)',id:'moat_road',size:'幅4 m、長さ10 mの部品',form:'同じ絵を共用して5つを model_road_straight.json / model_road_T.json / model_road_corner.json / model_moat_straight.json / model_bridge.json として出す。端の位置と高さを揃えてつなげられるようにする。道は石畳の板、堀は両岸の石組みと水面の板、橋は木の欄干つき。',style:'石畳と土、濁った水'},
  {n:'西洋の商店',id:'w_shop',size:'幅8〜10 × 奥行6〜8 × 棟高7〜8 m',form:'2階建て。1階正面に大きな店の窓と日よけ庇(前に1.2m出る)。看板を横向きに突き出す(板1枚)。切妻屋根、煙突1本。',style:'漆喰と木骨、青緑の屋根、木の看板'},
  {n:'西洋の教会',id:'w_church',size:'身廊 幅8 × 奥行18 × 壁高8、塔 幅5 × 高さ22 m',form:'細長い身廊(切妻屋根)の正面側に四角い鐘塔。塔の頂は四角錐の尖塔。入口に小さな張り出し玄関。両側壁に控え壁(出っ張り柱)を各3本。',style:'灰色の石壁、暗い青灰の屋根'},
  {n:'兵舎',id:'barracks',size:'幅14 × 奥行7 × 軒高4 × 棟高6.5 m',form:'平屋の細長い建物。切妻屋根(軒の出0.6m)。長い壁に同じ間隔で戸口3つ(小さな庇つき)。両端に煙突。',style:'粗い石と木、暗い赤茶の屋根'},
@@ -133,12 +140,15 @@ ${atlasTxt}
 model.json と atlas.png をファイルでダウンロードできる形で出してください。
 ファイルが出せない場合は、model.json の全文をコードブロックで出し、省略しないでください。`;
 }
-const sel=document.getElementById('sel'),out=document.getElementById('out');
-TYPES.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.n;sel.appendChild(o)});
-function show(){out.value=order(TYPES[sel.value])}
-sel.onchange=show;show();
-document.getElementById('cp').onclick=async()=>{
-  try{await navigator.clipboard.writeText(out.value)}catch(e){out.select();document.execCommand('copy')}
-  const ok=document.getElementById('ok');ok.textContent='コピーしました';setTimeout(()=>ok.textContent='',1800)};
+const list=document.getElementById('list');
+TYPES.forEach(t=>{
+  const d=document.createElement('div');d.style.cssText='background:#fffaf0;border:1px solid #d8cdb0;border-radius:10px;padding:.6em .8em;margin:.5em 0';
+  const b=document.createElement('button');b.textContent='コピー';b.style.marginRight='.6em';
+  const sp=document.createElement('b');sp.textContent=t.n;
+  const m=document.createElement('span');m.style.cssText='margin-left:.6em;color:#a8321f;font-size:.85rem';
+  const det=document.createElement('details');det.innerHTML='<summary style="font-size:.8rem">注文文を見る</summary>';
+  const ta=document.createElement('textarea');ta.readOnly=true;ta.value=order(t);det.appendChild(ta);
+  b.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value)}catch(e){det.open=true;ta.select();document.execCommand('copy')}m.textContent='コピーしました';setTimeout(()=>m.textContent='',1800)};
+  d.append(b,sp,m,det);list.appendChild(d)});
 </script>
 </body></html>
