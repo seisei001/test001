@@ -3,37 +3,37 @@
   {
    "id": "world",
    "t": "世界",
-   "d": "世界全体の地図"
+   "d": "勢力図・年代記(主語は国・世界)"
   },
   {
    "id": "region",
    "t": "地方",
-   "d": "地方・国の広がり"
+   "d": "国の地図・地方の地図・進軍図(主語は国・軍)"
   },
   {
    "id": "theater",
    "t": "戦域",
-   "d": "砦・要塞・城など大きな拠点"
+   "d": "都市の地図・作戦図・街と砦の建物(主語は会戦)"
   },
   {
    "id": "field",
    "t": "戦場",
-   "d": "街・建物・地形など近づいて見える所"
+   "d": "戦場の場面(主語は百人隊)"
   },
   {
    "id": "unit",
    "t": "隊",
-   "d": "百人隊とその動き"
+   "d": "百人隊の見せ方(隊列・見分け方)"
   },
   {
    "id": "soldier",
    "t": "兵",
-   "d": "兵一人ひとりの絵"
+   "d": "兵の絵・主人公の目の景色・場面絵(主語は主人公)"
   },
   {
    "id": "common",
    "t": "共通",
-   "d": "ハブ・管理・道具など全層にまたがる物"
+   "d": "ハブ・計算のしくみなど全層にまたがる物"
   }
  ],
  "works": [
@@ -60,52 +60,210 @@
  ],
  "items": [
   {
-   "id": "fort-tower",
+   "id": "g-force",
+   "t": "勢力図(国の塗り分け・国境・首都・街道・軍の旗)",
+   "layer": "world",
+   "now": "主語が「国」の場面。羊皮紙の政略地図。絵はまだ無い。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-force",
+   "t": "勢力図の注文文を作る",
+   "layer": "world",
+   "who": "me",
+   "now": "羊皮紙の政略地図(平面・インクと淡彩)の注文文を作る。",
+   "parent": "g-force",
+   "log": [
+    "絵は未作成。"
+   ],
+   "links": []
+  },
+  {
+   "id": "n-flag",
+   "t": "国の見分け(紋章と旗)を自作にするか決める",
+   "layer": "world",
+   "who": "next",
+   "now": "国の見分けは「紋章と旗の組み合わせ規則」で出す案。絵を自作するか、規則で自動に作るか。",
+   "parent": "g-force",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-chron",
+   "t": "年代記(勢力の変遷と主人公の経歴)",
+   "layer": "world",
+   "now": "地図ではなく紙面の場面。紙面と章飾りの絵が要る。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-chron",
+   "t": "年代記の紙面の注文文を作る",
+   "layer": "world",
+   "who": "me",
+   "now": "紙面と章飾りの絵の注文文を作る。",
+   "parent": "g-chron",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-nation",
+   "t": "国の地図",
+   "layer": "region",
+   "now": "主語が「国」の一段下。世界の次にいきなり軍や畑を出さず、国の地図を一段挟む。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-nation",
+   "t": "国の地図の注文文を作る",
+   "layer": "region",
+   "who": "me",
+   "now": "国の地図の絵(国一つ分)の注文文を作る。縮尺専用の絵で、世界図の流用はしない。",
+   "parent": "g-nation",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-local",
+   "t": "地方の地図(町・村・砦が一つずつ見える)",
+   "layer": "region",
+   "now": "町・村・砦が1つずつ描かれる縮尺。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-local",
+   "t": "地方の地図の注文文を作る",
+   "layer": "region",
+   "who": "me",
+   "now": "地方の地図の絵の注文文を作る。",
+   "parent": "g-local",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-march",
+   "t": "進軍図(街道・補給線・行軍の縦隊・日数)",
+   "layer": "region",
+   "now": "主語が「軍」の場面。鳥瞰の絵地図。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "n-march",
+   "t": "進軍図に今ある絵を使ってよいか",
+   "layer": "region",
+   "who": "next",
+   "now": "山・森・街の絵は今あるもので足りるか。足りるなら流用して先に進める。",
+   "parent": "g-march",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-city",
+   "t": "都市の地図(家並みの区画)",
+   "layer": "theater",
+   "now": "都市の縮尺。家並みの区画が見える地図。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-city",
+   "t": "都市の地図の注文文を作る",
+   "layer": "theater",
+   "who": "me",
+   "now": "都市の地図の絵の注文文を作る。",
+   "parent": "g-city",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-plan",
+   "t": "作戦図(部隊の枠・向き・隘路・橋・高地)",
+   "layer": "theater",
+   "now": "主語が「会戦」の場面。等高の陰影の淡彩。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-plan",
+   "t": "作戦図の注文文を作る",
+   "layer": "theater",
+   "who": "me",
+   "now": "作戦図の絵の注文文を作る。",
+   "parent": "g-plan",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-bld",
+   "t": "街と砦の建物(近づくと立ち上がる3D)",
+   "layer": "theater",
+   "now": "街・砦の建物を、AIの絵と数値データでローポリ3Dにして街に組み込む。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "h-tower",
    "t": "砦の塔を作る",
    "layer": "theater",
    "who": "hand",
-   "now": "AI(Grok/Muse)に注文文を渡して、atlas.pngとmodel.jsonを作ってもらう。Googleドライブ「ポリゴン」に落とす。",
+   "now": "AIに注文文を渡し、atlas.pngとmodel.jsonをドライブ「ポリゴン」に落とす。",
+   "parent": "g-bld",
    "log": [
     "注文文は渡し済み。結果待ち。"
    ],
-   "st": "now",
-   "links": []
+   "links": [],
+   "st": "now"
   },
   {
-   "id": "fort-palisade",
+   "id": "h-fort",
    "t": "砦(木の柵と櫓)を作る",
    "layer": "theater",
    "who": "hand",
-   "now": "砦の塔と同じ手順。注文文には木の柵の指定を入れてある。",
+   "now": "砦の塔と同じ手順。木の柵の指定入り。",
+   "parent": "g-bld",
    "log": [
     "注文文は渡し済み。結果待ち。"
    ],
-   "st": "now",
-   "links": []
+   "links": [],
+   "st": "now"
   },
   {
-   "id": "east-house",
+   "id": "h-east",
    "t": "東洋の民家を残り4種作る",
-   "layer": "field",
+   "layer": "theater",
    "who": "hand",
-   "now": "1種しかないので、あと4種を作ってもらう。最初の版はローポリが粗すぎたので作り直し。",
+   "now": "1種しかないので、あと4種。最初の版はローポリが粗すぎて作り直し。",
+   "parent": "g-bld",
    "log": [
     "再発注の文を渡し済み。結果待ち。"
    ],
-   "st": "now",
    "links": [
     {
      "l": "いまある東洋の家を見る",
      "h": "view.html?b=east"
     }
-   ]
+   ],
+   "st": "now"
   },
   {
-   "id": "barracks-roof",
+   "id": "m-barracks",
    "t": "兵舎の屋根が浮いている",
-   "layer": "field",
+   "layer": "theater",
    "who": "me",
    "now": "庇の部品が本体から離れて浮く。データを調べて直すか、発注文に防止策を入れる。",
+   "parent": "g-bld",
    "log": [
     "原因の特定はこれから。"
    ],
@@ -121,11 +279,12 @@
    ]
   },
   {
-   "id": "east-black",
+   "id": "m-eblack",
    "t": "東洋の家の黒い浮いた板",
-   "layer": "field",
+   "layer": "theater",
    "who": "me",
    "now": "屋根の部品が黒い板になって浮く。原因をデータで調べる。",
+   "parent": "g-bld",
    "log": [
     "原因の特定はこれから。"
    ],
@@ -141,11 +300,12 @@
    ]
   },
   {
-   "id": "shop-awning",
+   "id": "m-shop",
    "t": "商店の庇と看板",
-   "layer": "field",
+   "layer": "theater",
    "who": "me",
    "now": "庇・看板の貼り方を見直す。",
+   "parent": "g-bld",
    "log": [],
    "links": [
     {
@@ -159,11 +319,12 @@
    ]
   },
   {
-   "id": "old-houses",
+   "id": "m-old",
    "t": "街に古い家が混ざる",
-   "layer": "field",
+   "layer": "theater",
    "who": "me",
    "now": "新しい建物が揃うまで古いローポリの家が混ざる。揃ったら置き換える。",
+   "parent": "g-bld",
    "log": [
     "東洋の民家待ち。"
    ],
@@ -175,52 +336,220 @@
    ]
   },
   {
-   "id": "bld-check",
+   "id": "m-keep",
+   "t": "要塞・城・城壁の部品・堀と橋と石畳の注文文を作る",
+   "layer": "theater",
+   "who": "me",
+   "now": "これらの注文文を種類ごとに作る。順番は「次の指示」で決める。",
+   "parent": "g-bld",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "c-bld",
    "t": "新しく入れた建物の見た目",
-   "layer": "field",
+   "layer": "theater",
    "who": "check",
-   "now": "街に入れた倉庫・兵舎・西洋の家・砂漠の家・東洋の家・教会・工房・寺が、街の中で変に見えないか。近づいて見て、気になる所を教えてください。",
+   "now": "倉庫・兵舎・西洋の家・砂漠の家・東洋の家・教会・工房・寺が、街の中で変に見えないか。近づいて見て、気になる所を教えてください。",
+   "parent": "g-bld",
    "log": [
     "全部、街の3Dに組み込み済み。"
    ],
-   "st": "now",
    "links": [
     {
-     "l": "建物を1つずつ見る(上のボタンで切替)",
+     "l": "建物を1つずつ見る",
      "h": "view.html?b=store"
     },
     {
      "l": "街の中で見る",
      "h": "../sekai-hex/design/town3d.html"
     }
-   ]
-  },
-  {
-   "id": "hub-check",
-   "t": "新しいハブの形が思ったとおりか",
-   "layer": "common",
-   "who": "check",
-   "now": "「ファンタジー世界戦争」のボタン→概念と作業の2つの見方。使いにくい所があれば教える。",
-   "log": [
-    "いま作った版を公開した。"
    ],
-   "links": []
+   "st": "now"
   },
   {
-   "id": "past-check",
-   "t": "過去の作品の仕分け",
-   "layer": "common",
-   "who": "check",
-   "now": "過去の作品に入れた物が合っているか。PDFエディタは「PDFアプリ」スキルが使うので保管のまま。",
+   "id": "n-bld",
+   "t": "次にどの建物を作るか決める",
+   "layer": "theater",
+   "who": "next",
+   "now": "要塞・城・城壁・堀と橋のどれから注文文を作るか。",
+   "parent": "g-bld",
    "log": [],
    "links": []
   },
   {
-   "id": "fort-order",
-   "t": "次に作る物を決める",
-   "layer": "theater",
+   "id": "g-field",
+   "t": "戦場の場面(隊列・地形の俯瞰・士気)",
+   "layer": "field",
+   "now": "主語が「百人隊」の場面。45度俯瞰の彩色画。地面の絵はあり、兵の絵が要る。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-field",
+   "t": "戦場の場面の注文文を作る",
+   "layer": "field",
+   "who": "me",
+   "now": "45度俯瞰の彩色画の注文文を作る。兵の絵(兵の層)と合わせて頼む。",
+   "parent": "g-field",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-unit",
+   "t": "百人隊の見せ方",
+   "layer": "unit",
+   "now": "隊列と、国色・役割での見分け方。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "n-unit",
+   "t": "兵の組み替え規則(役割×国色)を決める",
+   "layer": "unit",
    "who": "next",
-   "now": "要塞・城・城壁の部品・堀と橋のどれから注文文を作るか。兵・隊の絵に進むかも含めて決める。",
+   "now": "兵と人物は「役割(槍・弓・騎・旗手・隊長)」と「国色」の2軸で組み替える案。この2軸でよいか、役割の種類は何にするか。",
+   "parent": "g-unit",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-soldier",
+   "t": "兵の絵",
+   "layer": "soldier",
+   "now": "役割×国色で組み替える兵の絵。いま絵が無い。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-soldier",
+   "t": "兵の絵の注文文を作る",
+   "layer": "soldier",
+   "who": "me",
+   "now": "役割と国色の組み替えを前提に、兵の絵の注文文を作る。",
+   "parent": "g-soldier",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-eye",
+   "t": "主人公の目の景色(遠景=円筒3枚+近景=3D)",
+   "layer": "soldier",
+   "now": "世界をタップすると景色を360度見られる。方式は確定。",
+   "parent": "",
+   "log": [],
+   "links": [
+    {
+     "l": "世界をタップして景色を見る",
+     "h": "../sekai-hex/design/tapworld.html"
+    }
+   ]
+  },
+  {
+   "id": "c-eye",
+   "t": "スマホ実機で景色の速度を確かめる",
+   "layer": "soldier",
+   "who": "check",
+   "now": "開発環境では約1.5秒で作れたが、iPhone実機では未確認。重すぎないか、見た目はどうか。",
+   "parent": "g-eye",
+   "log": [],
+   "links": [
+    {
+     "l": "世界をタップして景色を見る",
+     "h": "../sekai-hex/design/tapworld.html"
+    }
+   ]
+  },
+  {
+   "id": "g-scene",
+   "t": "場面絵(昇進・野営・死などの挿絵)",
+   "layer": "soldier",
+   "now": "主語が「主人公」の場面。背景は24枚あるが、人物の絵が無い。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "o-scene",
+   "t": "人物の場面絵の注文文を作る",
+   "layer": "soldier",
+   "who": "me",
+   "now": "人物入りの挿絵の注文文を作る。",
+   "parent": "g-scene",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-hub",
+   "t": "この管理ハブ",
+   "layer": "common",
+   "now": "概念と作業の2つの見方で、いま何を作っているかを見る。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "c-hub",
+   "t": "新しいハブの形が思ったとおりか",
+   "layer": "common",
+   "who": "check",
+   "now": "概念の層→分類→作業の順に開く。使いにくい所があれば教えてください。",
+   "parent": "g-hub",
+   "log": [
+    "作り直した版を公開した。"
+   ],
+   "links": [],
+   "st": "now"
+  },
+  {
+   "id": "c-past",
+   "t": "過去の作品の仕分け",
+   "layer": "common",
+   "who": "check",
+   "now": "過去の作品に入れた物が合っているか。PDFエディタは「PDFアプリ」スキルが使うので保管のまま。",
+   "parent": "g-hub",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "g-sim",
+   "t": "シミュレーター(層をまたいで動かす計算)",
+   "layer": "common",
+   "now": "OVERVIEWの「次の順」。全層の下で動く。",
+   "parent": null,
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "m-move",
+   "t": "移動手段の表(徒歩・馬・舟・飛行)を作る",
+   "layer": "common",
+   "who": "me",
+   "now": "交通網シミュレーターの入力になる表。川・道の移動のしやすさの基準。",
+   "parent": "g-sim",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "m-pop",
+   "t": "人口動態と経済(食糧中心)を作る",
+   "layer": "common",
+   "who": "me",
+   "now": "人口の核と、戦争・飢饉・疫病などの出来事による増減。",
+   "parent": "g-sim",
+   "log": [],
+   "links": []
+  },
+  {
+   "id": "m-lord",
+   "t": "君主・人物のパラメータと戦略/戦術のAIを作る",
+   "layer": "common",
+   "who": "me",
+   "now": "能力8個・性格5個。戦略と戦術は別々の形で作る。",
+   "parent": "g-sim",
    "log": [],
    "links": []
   }

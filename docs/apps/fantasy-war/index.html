@@ -34,8 +34,12 @@ h2{font-size:.88rem;color:var(--mu);margin:20px 0 8px;font-weight:600}
 let D;
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const L=id=>D.layers.find(x=>x.id===id),W=id=>D.works.find(x=>x.id===id);
-const by=(k,v)=>D.items.filter(i=>i[k]===v);
-function row(i,show){return '<a class="btn" href="#i/'+i.id+'"><span class="n">'+(i.st==='now'?'🟠 ':'')+esc(i.t)+'<small>'+esc(show==='layer'?'概念: '+L(i.layer).t:'作業: '+W(i.who).t)+'</small></span><span class="tag t-'+i.who+'">'+esc(W(i.who).t.replace('あなたの','').replace('(作った物)','').replace('(次の指示)','(指示)'))+'</span><span class="go">›</span></a>'}
+const by=(k,v)=>D.items.filter(i=>i[k]===v&&i.who);
+const kids=i=>D.items.filter(x=>x.parent===i.id);
+const leaves=i=>{const k=kids(i);return k.length?k.reduce((n,x)=>n+leaves(x),0):(i.who?1:0)};
+const anc=i=>{const a=[];let p=i.parent&&D.items.find(x=>x.id===i.parent);while(p){a.unshift(p);p=p.parent&&D.items.find(x=>x.id===p.parent)}return a};
+function row(i,show){const g=!i.who;const sub=g?'残り'+leaves(i)+'件':(show==='layer'?'概念: '+L(i.layer).t+(i.parent?' › '+D.items.find(x=>x.id===i.parent).t:''):'作業: '+W(i.who).t);
+ return '<a class="btn" href="#i/'+i.id+'"><span class="n">'+(i.st==='now'?'🟠 ':'')+(g?'📂 ':'')+esc(i.t)+'<small>'+esc(sub)+'</small></span>'+(g?'':'<span class="tag t-'+i.who+'">'+esc(W(i.who).t.replace('あなたの','').replace('(作った物)','').replace('(次の指示)','(指示)'))+'</span>')+'<span class="go">›</span></a>'}
 function render(){
   const h=(location.hash.slice(1)||'c').split('/');const v=h[0],k=h[1];
   let o='<div class="crumb"><a href="../../">ハブ</a> › <a href="#c">ファンタジー世界戦争</a>';
@@ -51,7 +55,7 @@ function render(){
   }else if(v==='c'){
     const l=L(k);if(!l){location.hash='c';return}
     o+=' › <a href="#c/'+k+'">'+esc(l.t)+'</a></div><h1>'+esc(l.t)+'の層</h1>'+tabs('c')+'<div class="empty">'+esc(l.d)+'</div>';
-    const its=by('layer',k);o+=its.length?its.map(i=>row(i,'work')).join(''):'<div class="empty">✅ いまこの層でやることはありません</div>';
+    const its=D.items.filter(i=>i.layer===k&&!i.parent);o+=its.length?its.map(i=>row(i,'work')).join(''):'<div class="empty">✅ いまこの層でやることはありません</div>';
   }else if(v==='w'&&!k){
     o+=' › <a href="#w">作業で見る</a></div><div class="meth">階層型課題解消管理法</div><h1>作業で見る</h1>'+tabs('w');
     for(const w of D.works){const n=by('who',w.id).length;o+='<a class="btn" href="#w/'+w.id+'"><span class="n">'+esc(w.t)+'<small>'+esc(w.d)+'</small></span><span class="cnt'+(w.id==='hand'&&n?' hot':'')+'">'+n+'</span><span class="go">›</span></a>'}
@@ -61,11 +65,12 @@ function render(){
     const its=by('who',k);o+=its.length?its.map(i=>row(i,'layer')).join(''):'<div class="empty">✅ いまはありません</div>';
   }else if(v==='i'){
     const i=D.items.find(x=>x.id===k);if(!i){location.hash='c';return}
-    o+=' › <a href="#c/'+i.layer+'">'+esc(L(i.layer).t)+'</a> › <a href="#i/'+k+'">'+esc(i.t)+'</a></div><h1>'+esc(i.t)+'</h1>';
-    o+='<div class="cross"><a href="#c/'+i.layer+'">概念: '+esc(L(i.layer).t)+'の層</a><a href="#w/'+i.who+'">作業: '+esc(W(i.who).t)+'</a></div><div style="height:12px"></div>';
+    o+=' › <a href="#c/'+i.layer+'">'+esc(L(i.layer).t)+'</a>'+anc(i).map(p=>' › <a href="#i/'+p.id+'">'+esc(p.t)+'</a>').join('')+' › <a href="#i/'+k+'">'+esc(i.t)+'</a></div><h1>'+esc(i.t)+'</h1>';
+    o+='<div class="cross"><a href="#c/'+i.layer+'">概念: '+esc(L(i.layer).t)+'の層</a>'+(i.who?'<a href="#w/'+i.who+'">作業: '+esc(W(i.who).t)+'</a>':'')+'</div><div style="height:12px"></div>';
     o+='<div class="box" style="border-left:4px solid var(--wip)"><b>いまの内容</b>'+esc(i.now)+'</div>';
-    o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
-    if(i.links.length){o+='<h2>見る(試作)</h2>';for(const x of i.links)o+='<a class="btn main" href="'+x.h+'"><span class="n">🔨 '+esc(x.l)+'</span><span class="go">›</span></a>'}else o+='<div class="empty">見る物はまだありません(届いたらここに出ます)</div>';
+    if(kids(i).length){o+='<h2>この中の項目('+leaves(i)+'件)</h2>'+kids(i).map(x=>row(x,'work')).join('')}
+    if(i.who)o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
+    if(i.links.length){o+='<h2>見る(試作)</h2>';for(const x of i.links)o+='<a class="btn main" href="'+x.h+'"><span class="n">🔨 '+esc(x.l)+'</span><span class="go">›</span></a>'}else if(i.who)o+='<div class="empty">見る物はまだありません(届いたらここに出ます)</div>';
   }
   document.getElementById('app').innerHTML=o+body;scrollTo(0,0);
 }
