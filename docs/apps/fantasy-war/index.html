@@ -47,6 +47,7 @@ function render(){
   const tabs=(on)=>'<div class="tabs"><a href="#c" class="'+(on==='c'?'on':'')+'">概念で見る</a><a href="#w" class="'+(on==='w'?'on':'')+'">作業で見る</a></div>';
   if(v==='c'&&!k){
     o+='</div><div class="meth">階層型課題解消管理法</div><h1>ファンタジー世界戦争</h1>'+tabs('c');
+    if(D.phase)o+='<div class="box" style="border-left:4px solid var(--ac)"><b>いまの段階</b>'+esc(D.phase)+'</div>';
     const hand=by('who','hand').length;
     if(hand)o+='<a class="btn" href="#w/hand" style="border-color:var(--hand)"><span class="n">✋ あなたの手作業が'+hand+'件あります</span><span class="go">›</span></a>';
     o+='<h2>世界のしくみの層(大きい→小さい)</h2>';
