@@ -22,49 +22,38 @@ h2{font-size:.88rem;color:var(--mu);margin:20px 0 8px;font-weight:600}
 .done-box{display:none}.done-box.open{display:block}
 .done-box .btn{opacity:.7}
 .leaf{cursor:default}
-.done-complete{background:var(--p);border:1px solid var(--ok);border-radius:12px;padding:16px;text-align:center;color:var(--ok);font-weight:700}
+.meth{font-size:.75rem;color:var(--mu)}.now{background:var(--p);border-left:4px solid var(--wip);border-radius:8px;padding:12px 14px;margin:0 0 14px}.now b{display:block;font-size:.8rem;color:var(--wip);margin-bottom:4px}.clear{color:var(--ok);font-weight:700;padding:8px 0}.done-complete{background:var(--p);border:1px solid var(--ok);border-radius:12px;padding:16px;text-align:center;color:var(--ok);font-weight:700}
 @media(prefers-color-scheme:dark){:root{--bg:#17181c;--p:#1f2024;--bd:#303136;--tx:#eaeaec;--mu:#9a9aa2}}
 </style></head><body><div class="w" id="app">読み込み中…</div>
 <script>
 let T;
-const done=n=>n.c?n.c.every(done):!!n.done;
-const left=n=>n.c?n.c.reduce((s,x)=>s+left(x),0):(n.done?0:1);
-const total=n=>n.c?n.c.reduce((s,x)=>s+total(x),0):1;
+const cnt=n=>n.c?n.c.reduce((s,x)=>s+cnt(x),0):1;
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function node(path){let n=T;for(const i of path)n=n.c[i];return n}
 function render(){
   const path=(location.hash.slice(1)||'').split('/').filter(x=>x!=='').map(Number);
-  let n;try{n=node(path)}catch(e){location.hash='';return}
-  if(!n||!n.c&&path.length){location.hash=path.slice(0,-1).join('/');return}
+  let n;try{n=node(path)}catch(e){n=null}
+  if(!n){location.hash='';return}
   const A=document.getElementById('app');
-  let h='<div class="crumb"><a href="../../">ハブ</a>';
-  let cur=T;h+=' › <a href="#">'+esc(T.t)+'</a>';
+  let h='<div class="crumb"><a href="../../">ハブ</a> › <a href="#">'+esc(T.t)+'</a>';
+  let cur=T;
   path.forEach((i,k)=>{cur=cur.c[i];h+=' › <a href="#'+path.slice(0,k+1).join('/')+'">'+esc(cur.t)+'</a>'});
-  h+='</div><div style="font-size:.75rem;color:var(--mu)">階層型課題解消管理法</div><h1>'+esc(n.t)+'</h1>';
-  const tt=total(n),ll=left(n);
-  h+='<div class="bar"><i style="width:'+Math.round((tt-ll)/tt*100)+'%"></i></div><div class="stat">残り '+ll+' / 全部で '+tt+'</div>';
+  h+='</div><div class="meth">階層型課題解消管理法</div><h1>'+esc(n.t)+'</h1>';
+  if(n.now)h+='<div class="now"><b>いま解消しようとしていること</b>'+esc(n.now)+'</div>';
   if(n.href)h+='<a class="btn main" href="'+n.href+'"><span class="n">🔨 '+esc(n.hrefLabel||'見る')+'</span><span class="go">›</span></a>';
-  const kids=n.c.map((x,i)=>[x,i]);
-  const open=kids.filter(([x])=>!done(x)),fin=kids.filter(([x])=>done(x));
-  if(!open.length)h+='<div class="done-complete">✅ ここは全部できあがり</div>';
-  for(const [x,i] of open){
-    const p=path.concat(i).join('/');
-    if(x.c)h+='<a class="btn" href="#'+p+'"><span class="n">'+esc(x.t)+' <small>残り'+left(x)+'</small></span><span class="go">›</span></a>';
-    else h+='<div class="btn leaf"><span class="n">'+esc(x.t)+'</span>'+(x.href?'<a href="'+x.href+'" class="go">見る ›</a>':'')+'<span class="tag '+(x.st==='wip'?'wip':'todo')+'">'+(x.st==='wip'?'作業中':'これから')+'</span></div>';
-  }
-  if(fin.length){
-    h+='<h2><a href="#" id="tg" style="color:inherit;text-decoration:none">✅ できあがり '+fin.length+'件 ▼</a></h2><div class="done-box" id="db">';
-    for(const [x] of fin)h+='<div class="btn leaf"><span class="n">'+esc(x.t)+'</span>'+(x.href?'<a href="'+x.href+'" class="go">見る ›</a>':'')+'<span class="tag ok">完成</span></div>';
-    h+='</div>';
+  if(n.c){
+    if(!n.c.length)h+='<div class="clear">✅ 課題はありません</div>';
+    else h+='<div class="stat">解消待ちの課題 '+cnt(n)+'件</div>';
+    n.c.forEach((x,i)=>{
+      const p=path.concat(i).join('/');
+      h+='<a class="btn" href="#'+p+'"><span class="n">'+(x.st==='now'?'🟠 ':'')+esc(x.t)+(x.c?' <small>('+cnt(x)+')</small>':'')+'</span><span class="go">›</span></a>';
+    });
   }
   if(!path.length&&T.past){
     h+='<h2>🗄️ 過去の作品</h2>';
     for(const x of T.past)h+='<a class="btn" style="opacity:.85" href="'+x.href+'"><span>'+x.icon+'</span><span class="n">'+esc(x.t)+'</span><span class="go">›</span></a>';
   }
-  A.innerHTML=h;
-  const tg=document.getElementById('tg');
-  if(tg)tg.onclick=e=>{e.preventDefault();document.getElementById('db').classList.toggle('open')};
-  window.scrollTo(0,0);
+  A.innerHTML=h;window.scrollTo(0,0);
 }
 fetch('tree.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{T=j;render();addEventListener('hashchange',render)});
 </script></body></html>
