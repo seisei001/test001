@@ -27,6 +27,10 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 48px;display:flex;flex-direc
 .archive-list{display:none;flex-direction:column;gap:10px;}
 .archive-list.open{display:flex;}
 .archive-list .app-card{opacity:.8;}
+.folder-btn{display:flex;align-items:center;gap:12px;background:var(--panel-bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font:inherit;font-size:1.02rem;font-weight:600;min-height:44px;width:100%;text-align:left;cursor:pointer;}
+.folder-btn .cnt{margin-left:auto;color:var(--muted);font-weight:400;font-size:.85rem;}
+.folder-box{display:none;flex-direction:column;gap:10px;margin-left:14px;padding-left:12px;border-left:2px solid var(--border);}
+.folder-box.open{display:flex;}
 .empty,.error{color:var(--muted);font-size:0.9rem;padding:16px;}
 footer{max-width:640px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:0.8rem;}
 @media (prefers-color-scheme: dark){
@@ -70,21 +74,42 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font
       `;
       return a;
     };
-    const main = apps.filter(x => !x.archive), old = apps.filter(x => x.archive);
-    for (const app of main) listEl.appendChild(card(app));
-    if (old.length) {
-      const btn = document.createElement('button');
-      btn.className = 'archive-btn';
-      btn.type = 'button';
-      const box = document.createElement('div');
-      box.className = 'archive-list';
-      const label = (open) => `<span class="app-icon">🗄️</span><span>過去の作品(${old.length})　${open ? '▲ とじる' : '▼ ひらく'}</span>`;
-      btn.innerHTML = label(false);
-      btn.onclick = () => { const o = box.classList.toggle('open'); btn.innerHTML = label(o); };
-      for (const app of old) box.appendChild(card(app));
-      listEl.appendChild(btn);
-      listEl.appendChild(box);
+    const tree = { apps: [], kids: new Map() };
+    for (const app of apps) {
+      let node = tree;
+      const path = app.folder || (app.archive ? ['🗄️ 過去の作品'] : []);
+      for (const name of path) {
+        if (!node.kids.has(name)) node.kids.set(name, { apps: [], kids: new Map() });
+        node = node.kids.get(name);
+      }
+      node.apps.push(app);
     }
+    const count = (n) => n.apps.length + [...n.kids.values()].reduce((s, k) => s + count(k), 0);
+    const render = (node, parent) => {
+      const kids = [...node.kids].sort((x, y) => x[0].includes('過去') - y[0].includes('過去'));
+      const nowKids = kids.filter(k => !k[0].includes('過去')), oldKids = kids.filter(k => k[0].includes('過去'));
+      if (node === tree) { var first = nowKids; var last = oldKids; } else { first = []; last = kids; }
+      const doKids = (list) => { for (const [name, kid] of list) {
+        const isOld = name.includes('過去');
+        const icon = name.match(/^\p{Extended_Pictographic}/u);
+        const label = icon ? name : '📁 ' + name;
+        const btn = document.createElement('button');
+        btn.className = isOld && node === tree ? 'archive-btn' : 'folder-btn';
+        btn.type = 'button';
+        const box = document.createElement('div');
+        box.className = 'folder-box';
+        const set = (o) => { btn.innerHTML = `<span>${label}</span><span class="cnt">${count(kid)}件 ${o ? '▲' : '▼'}</span>`; };
+        set(false);
+        btn.onclick = () => { set(box.classList.toggle('open')); };
+        render(kid, box);
+        parent.appendChild(btn);
+        parent.appendChild(box);
+      } };
+      doKids(first);
+      for (const app of node.apps) parent.appendChild(card(app));
+      doKids(last);
+    };
+    render(tree, listEl);
   } catch (err) {
     listEl.innerHTML = `<p class="error">読み込みエラー: ${err.message}</p>`;
   }
