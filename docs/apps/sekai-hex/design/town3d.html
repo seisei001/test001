@@ -83,7 +83,16 @@ function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
   quad([X,Hw-.25,-d-o],[-X,Hw-.25,-d-o],[-X,Hw+rh,0],[X,Hw+rh,0],[884,150,1202,288]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();_sg=g;return g}
 function house(B,cu,cx,cz,rng,seedI){
-  if(cu==='w'&&rng()<.55){B.sheetHouse(TR(cx,0,cz,Math.atan2(-cx,-cz)+(rng()<.5?0:0),.84));return}
+  if(cu==='w'&&rng()<.85){
+    const th=Math.atan2(-cx,-cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
+    B.sheetHouse(M);
+    /* 煙突は屋根から本当に突き出す(石の箱+笠) */
+    const ch=(Mm,x,z,hs)=>{B.box('#e6dcc3',x,7.3*hs,z,.95,2.6*hs,.95,Mm);B.box('#a79d86',x,7.3*hs+2.6*hs,z,1.2,.22,1.2,Mm)};
+    ch(M,-3.0,.55,1);
+    /* 母屋に直角な別棟(L字の家) */
+    if(rng()<.55){const A=new THREE.Matrix4().makeTranslation((rng()<.5?-1:1)*1.0,0,-2.95-1.8+.9).multiply(new THREE.Matrix4().makeRotationY(Math.PI/2)).multiply(new THREE.Matrix4().makeScale(.68,.68,.68));
+      B.sheetHouse(M.clone().multiply(A))}
+    return}
   const s=2.6,cw=2+(rng()<.4?1:0),cd=2+(rng()<.4?1:0),fl=cu==='d'?1+(rng()<.5?1:0):1+(rng()<.45?1:0),pre=cu==='e'?'wall-wood':'wall';
   const dx=-cx,dz=-cz,side=Math.abs(dx)>Math.abs(dz)?(dx>0?'+x':'-x'):(dz>0?'+z':'-z');
   const rot={'+x':0,'-x':Math.PI,'+z':-Math.PI/2,'-z':Math.PI/2};
