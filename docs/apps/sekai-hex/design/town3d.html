@@ -43,7 +43,7 @@ function size(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/in
 S.add(new THREE.AmbientLight('#fff',1));
 /* 地面 */
 const gc=document.createElement('canvas');gc.width=gc.height=512;{const g=gc.getContext('2d');g.fillStyle='#6f9a4a';g.fillRect(0,0,512,512);for(let i=0;i<5000;i++){g.fillStyle=`hsla(${85+Math.random()*30},40%,${30+Math.random()*20}%,.35)`;g.fillRect(Math.random()*512,Math.random()*512,3+Math.random()*6,3+Math.random()*6)}}
-const gt=new THREE.CanvasTexture(gc);gt.colorSpace=THREE.SRGBColorSpace;gt.wrapS=gt.wrapT=THREE.RepeatWrapping;gt.repeat.set(400,400);gt.anisotropy=8;
+const gt=new THREE.TextureLoader().load('../assets/terrain/ground.jpg');gt.colorSpace=THREE.SRGBColorSpace;gt.wrapS=gt.wrapT=THREE.RepeatWrapping;gt.repeat.set(330,330);gt.anisotropy=8;
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(20000,20000).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({map:gt}));S.add(ground);
 /* 遠くの山(円筒) */
 {const c=document.createElement('canvas');c.width=2048;c.height=128;const g=c.getContext('2d');for(const [col,amp,off] of [['#9fb7c9',50,70],['#86a0b4',34,100]]){g.fillStyle=col;g.beginPath();g.moveTo(0,128);for(let x=0;x<=2048;x+=8){const h=off-amp*(Math.sin(x*.0061)*.5+Math.sin(x*.017+2)*.3+Math.sin(x*.041)*.2+.5);g.lineTo(x,h)}g.lineTo(2048,128);g.fill()}
@@ -106,6 +106,8 @@ function sheetGeo(){if(_sg)return _sg;const P=[],U=[],IW=1254;
   quad([-X,Hw-.25,d+o],[X,Hw-.25,d+o],[X,Hw+rh,0],[-X,Hw+rh,0],[884,150,1202,288]);   /* 屋根 */
   quad([X,Hw-.25,-d-o],[-X,Hw-.25,-d-o],[-X,Hw+rh,0],[X,Hw+rh,0],[884,150,1202,288]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();_sg=g;return g}
+/* 家の正面を、中心に近い方向の道(格子)に向ける: 90度単位 */
+const gridTh=(cx,cz)=>{const a=Math.abs(cx)>Math.abs(cz);return Math.atan2(a?-Math.sign(cx):0,a?0:(-Math.sign(cz)||-1))};
 function house(B,cu,cx,cz,rng,seedI){
   if(cu==='w'&&LOMAT['atlas_0.jpg']&&rng()<.65){
     /* 街の格子に沿って、中心に近い方向の道に正面を向ける(斜めに向けない) */
@@ -115,10 +117,10 @@ function house(B,cu,cx,cz,rng,seedI){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
     if(r<pShop)nm='shop';else{const q=rng();nm=q<.3?'two':q<.58?'balcony':q<.86?'L':'tower';if(nm==='tower'&&rng()<.5)nm='two'}
-    const th=Math.atan2(-cx,-cz),s=.95*(.9+rng()*.2);
+    const th=gridTh(cx,cz),s=.95*(.9+rng()*.2);
     B.aiHouse(nm,TR(cx,0,cz,th,s));return}
   if(cu==='w'&&rng()<.85){
-    const th=Math.atan2(-cx,-cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
+    const th=gridTh(cx,cz),sx=.74+rng()*.18,sy=.8+rng()*.2,M=TR(cx,0,cz,th,1).multiply(new THREE.Matrix4().makeScale(sx,sy,sx));
     B.sheetHouse(M);
     /* 煙突は屋根から本当に突き出す(石の箱+笠) */
     const ch=(Mm,x,z,hs)=>{B.box('#e6dcc3',x,7.3*hs,z,.95,2.6*hs,.95,Mm);B.box('#a79d86',x,7.3*hs+2.6*hs,z,1.2,.22,1.2,Mm)};
