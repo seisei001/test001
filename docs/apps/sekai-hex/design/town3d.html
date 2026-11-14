@@ -56,25 +56,37 @@ const patchTex=groundPatch();
 /* ---- 絵を箱に貼る: 絵を描いた「斜めの目」からの投影で各面の絵の位置を決める(消失点はカメラの遠近が自動で作る) ---- */
 const FLAT=new Set(['struct_hi/castle_a','wall/watchtower','town3/medina','town3/inca','town3/greek','town2/d3a_4','town2/d3a_5','town2/d3a_6']);
 const ROUND=new Set(['town/windmill','town3/yurt','town3/kraal','town3/igloo','town2/d2c_3','town2/d2c_6','town2/d3a_1','town2/d3a_9']);
-const GEO={};
-function houseGeo(n,a){const key=n+'|'+a;if(GEO[key])return GEO[key];const im=IM[n];
-  const k=a/(im.width/1.4142);                      /* 絵の1ピクセルが何mか */
-  const Ht=(im.height-im.width/2)/.866*k;           /* 屋根の先までの高さ(m) */
-  const tot=Ht*.866+.7071*a,P=[],U=[];
-  const uv=(x,y,z)=>[((x-z)*.7071+.7071*a)/(1.4142*a),(y*.866-(x+z)*.7071*.5+.7071*a)/tot];
-  const tri=(vis,A,B,C)=>{for(const p of [A,B,C]){const q=vis?p:[a-p[0],p[1],a-p[2]];P.push(p[0]-a/2,p[1],p[2]-a/2);U.push(...uv(q[0],q[1],q[2]))}};
+const GEO={},FIT={};
+const maskOf=n=>{const im=IM[n],c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.drawImage(im,0,0,96,96);const d=g.getImageData(0,0,96,96).data,m=new Uint8Array(96*96);for(let i=0;i<96*96;i++)m[i]=d[i*4+3]>40?1:0;return m};
+/* 箱の骨組み。ratio=屋根の割合、swap=棟の向き。tris=[可視か, 3頂点] の並び */
+function shape(typ,a,Ht,ratio,swap){const tris=[];
+  const tri=(vis,A,B,C)=>tris.push([vis,[A,B,C].map(p=>swap?[p[2],p[1],p[0]]:p)]);
   const quad=(vis,A,B,C,D)=>{tri(vis,A,B,C);tri(vis,A,C,D)};
-  const typ=ROUND.has(n)?'r':FLAT.has(n)?'f':'g';
-  if(typ==='g'){const Hw=Ht*.6,Hr=Ht*.4,rz=a/2,T=Hw+Hr;
+  if(typ==='g'){const Hw=Ht*(1-ratio),T=Ht,rz=a/2;
     quad(1,[0,0,a],[a,0,a],[a,Hw,a],[0,Hw,a]);quad(1,[a,0,a],[a,0,0],[a,Hw,0],[a,Hw,a]);tri(1,[a,Hw,0],[a,Hw,a],[a,T,rz]);
     quad(0,[a,0,0],[0,0,0],[0,Hw,0],[a,Hw,0]);quad(0,[0,0,0],[0,0,a],[0,Hw,a],[0,Hw,0]);tri(0,[0,Hw,a],[0,Hw,0],[0,T,rz]);
     quad(1,[0,Hw,a],[a,Hw,a],[a,T,rz],[0,T,rz]);quad(0,[a,Hw,0],[0,Hw,0],[0,T,rz],[a,T,rz])}
   else if(typ==='f'){const H=Ht;
     quad(1,[0,0,a],[a,0,a],[a,H,a],[0,H,a]);quad(1,[a,0,a],[a,0,0],[a,H,0],[a,H,a]);quad(0,[a,0,0],[0,0,0],[0,H,0],[a,H,0]);quad(0,[0,0,0],[0,0,a],[0,H,a],[0,H,0]);quad(1,[0,H,0],[a,H,0],[a,H,a],[0,H,a])}
-  else{const Hw=Ht*.62,T=Ht,S=20,r=a/2,c=a/2;
+  else{const Hw=Ht*(1-ratio),T=Ht,S=20,r=a/2,c=a/2;
     for(let i=0;i<S;i++){const t0=i/S*6.2832,t1=(i+1)/S*6.2832,tm=(t0+t1)/2,vis=(Math.cos(tm)+Math.sin(tm))>0?1:0;
       const p0=[c+Math.cos(t0)*r,0,c+Math.sin(t0)*r],p1=[c+Math.cos(t1)*r,0,c+Math.sin(t1)*r];
       quad(vis,p0,p1,[p1[0],Hw,p1[2]],[p0[0],Hw,p0[2]]);tri(vis,[p0[0],Hw,p0[2]],[p1[0],Hw,p1[2]],[c,T,c])}}
+  return tris}
+function houseGeo(n,a){const key=n+'|'+a;if(GEO[key])return GEO[key];const im=IM[n];
+  const k=a/(im.width/1.4142),Ht=(im.height-im.width/2)/.866*k,tot=Ht*.866+.7071*a;
+  const uv=p=>[((p[0]-p[2])*.7071+.7071*a)/(1.4142*a),(p[1]*.866-(p[0]+p[2])*.7071*.5+.7071*a)/tot];
+  const typ=ROUND.has(n)?'r':FLAT.has(n)?'f':'g';
+  /* 絵の輪郭にいちばん合う屋根の割合と棟の向きを探す */
+  if(!FIT[n]){const mk=maskOf(n);let best=[-1,.4,false];const cands=typ==='f'?[[0,false]]:[.22,.3,.38,.46,.54].flatMap(r=>typ==='r'?[[r,false]]:[[r,false],[r,true]]);
+    const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d',{willReadFrequently:true});
+    for(const [r,sw] of cands){g.clearRect(0,0,96,96);g.fillStyle='#000';
+      for(const [,T] of shape(typ,a,Ht,r,sw)){g.beginPath();T.forEach((p,i)=>{const q=uv(p);i?g.lineTo(q[0]*96,(1-q[1])*96):g.moveTo(q[0]*96,(1-q[1])*96)});g.closePath();g.fill()}
+      const d=g.getImageData(0,0,96,96).data;let I=0,U=0;for(let i=0;i<96*96;i++){const p=d[i*4+3]>100?1:0,q=mk[i];I+=p&q;U+=p|q}
+      const sc=I/Math.max(1,U);if(sc>best[0])best=[sc,r,sw]}
+    FIT[n]=best}
+  const [,ratio,swap]=FIT[n],P=[],U=[];
+  for(const [vis,T] of shape(typ,a,Ht,ratio,swap))for(const p of T){const q=vis?p:[a-p[0],p[1],a-p[2]];P.push(p[0]-a/2,p[1],p[2]-a/2);U.push(...uv(q))}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));GEO[key]=g;return g}
 const MAT={};const matOf=n=>MAT[n]||(MAT[n]=new THREE.MeshBasicMaterial({map:TX[n],transparent:true,alphaTest:.35,side:THREE.DoubleSide}));
 function buildTown(T){const grp=new THREE.Group();grp.position.set(T.x,0,T.z);const half=N*TILE/2;
@@ -114,5 +126,5 @@ function frame(){requestAnimationFrame(frame);
   st.innerHTML='<b>'+layerName(L)+'</b><br>高さ '+Math.round(cam.position.y)+' m ／ 町まで '+Math.round(dd)+' m<br>町: '+TOWNS.map(T=>T.grp?'●':'○').join(' ')+'<br>'+msg;
   R.render(S,cam)}
 (async()=>{await Promise.all([...new Set([...FIX,...Object.values(CUL).flat()])].map(load));icons.forEach(s=>s.material.map=TX['struct_hi/castle_a']);window.__ready=1;frame()})();
-window.__setL=v=>{Lt=v;L=v};window.__az=v=>az=v;
+window.__setL=v=>{Lt=v;L=v};window.__fit=()=>FIT;window.__az=v=>az=v;
 </script></html>
