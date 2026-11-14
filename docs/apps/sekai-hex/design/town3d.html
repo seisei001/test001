@@ -33,7 +33,7 @@ async function loadLO(){
       const d=await (await fetch('../assets/ai3d/'+dir+'/'+pre+f+'.json')).json();
       const uv=new Float32Array(d.uvs.length);for(let i=0;i<uv.length;i+=2){uv[i]=d.uvs[i]/d.atlasSize;uv[i+1]=1-d.uvs[i+1]/d.atlasSize}
       const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(d.positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(d.indices);
-      const q=g.toNonIndexed();q.computeVertexNormals();q.userData.atlas=tag+d.atlas;LOG[tag+f]=q}))}}
+      const q=g.toNonIndexed();q.computeVertexNormals();q.computeBoundingBox();q.userData.atlas=tag+d.atlas;LOG[tag+f]=q}))}}
 async function loadKit(){const L=new GLTFLoader();{const t=await new THREE.TextureLoader().loadAsync('../assets/sheets/w_tudor_a.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;SHEET=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})}await Promise.all(NEED.map(async n=>{const g=await L.loadAsync(KIT+n+'.glb');g.scene.updateMatrixWorld(true);const list=[];g.scene.traverse(o=>{if(o.isMesh){if(!KMAT)KMAT=new THREE.MeshLambertMaterial({map:o.material.map});list.push({geo:o.geometry,m:o.matrixWorld.clone()})}});PARTS[n]=list}))}
 const hash=(a,b)=>{let h=a*374761393+b*668265263;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295};
 /* ---- 画面 ---- */
@@ -113,7 +113,9 @@ function house(B,cu,cx,cz,rng,seedI){
   if((cu==='w'||cu==='e')&&LOMAT[cu+'atlas_0.jpg']&&rng()<(cu==='w'?.65:.8)){
     /* 街の格子に沿って、中心に近い方向の道に正面を向ける(斜めに向けない) */
     const sx=Math.abs(cx)>Math.abs(cz)?-Math.sign(cx):0,sz=Math.abs(cx)>Math.abs(cz)?0:-Math.sign(cz)||-1;
-    B.loHouse(cu+'abcde'[Math.floor(rng()*5)],TR(cx,0,cz,Math.atan2(sx,sz),cu==='w'?.68:.72));return}
+    const nm=cu+'abcde'[Math.floor(rng()*5)],bb=LOG[nm].boundingBox,big=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);
+    /* 区画(8m)いっぱいに大きさをそろえ、家と家を詰める */
+    const fit=Math.min(1.1,7.6/big)*(.94+rng()*.06);B.loHouse(nm,TR(cx,0,cz,Math.atan2(sx,sz),fit));return}
   if(cu==='w'&&AIMAT&&rng()<.9){
     const d=Math.hypot(cx,cz),r=rng();let nm;
     const pShop=d<48?.42:d<80?.2:.07;
