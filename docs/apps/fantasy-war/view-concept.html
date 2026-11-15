@@ -1,0 +1,55 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>世界の見せ方の整理</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}.c,figure{background:#1f2024!important}}
+main{max-width:680px;margin:0 auto;padding:12px 16px 56px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.6em 0 .3em;border-left:4px solid #2563eb;padding-left:8px}h3{font-size:.95rem;margin:1.2em 0 .3em}
+.c{background:#fff;border-radius:10px;padding:10px 14px;margin:10px 0}.c b.k{color:#2563eb}
+.g{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}figure{margin:0;background:#fff;border-radius:8px;overflow:hidden}figure img{width:100%;display:block}figcaption{font-size:12px;line-height:1.5;padding:6px 8px;color:#666}
+@media(prefers-color-scheme:dark){figcaption{color:#aaa}}
+small{color:#888}table{border-collapse:collapse;width:100%;font-size:13.5px}td,th{border:1px solid #8884;padding:6px 8px;vertical-align:top;text-align:left}th{width:24%}</style></head><body><main>
+<a href="./">← 管理ページへ</a>
+<h1>世界の見せ方の整理(2026-11-16)</h1>
+<p><b>概要:</b> ハニカム地図(世界ハニカム)も Azgaar 風の地図も「世界地図」として足りない所がある。原因は、<b>層ごとに「何を省き、何を見せるか」が決まっていない</b>こと。そこで、見せ方は<b>層ごとに手法を分け、全体の統一は「コンセプト」で取る</b>方向に整理した。(ユーザーの整理を記録。)</p>
+
+<h2>1. 二つの地図の評価(ユーザーの判断)</h2>
+<table>
+<tr><th>世界ハニカム</th><td><b>良い所:</b> AIの絵が地図にうまく活きている。汎用性を持たせて作っている点が秀逸。見ようによっては十分なレベルの世界。ファンタジーらしさは Azgaar より数段上。<br>
+<b>ダメな所:</b> 世界地図で要る「省く」ができていない。地方・詳細地図でやる処理(1マスごとの絵)が各層に混ざる。しかも同じ絵が、拡大縮小の途中のどの層にも出てくる。拡大すると別の絵が出て、ぐちゃぐちゃになる。層の感じに統一がない。<br>
+さらに「レベル0」と呼んでいるが、縮尺はむしろ地方〜国家の地図に近い。地図の概念が崩れている。</td></tr>
+<tr><th>Azgaar風</th><td><b>良い所:</b> 分かりやすい。<br><b>足りない所:</b> 絵としての面白みがない。ファンタジーらしさが少ない。立体は回せない。立体は無味乾燥。</td></tr></table>
+<p><small>下の「ハニカム画面」5枚(2026-11-16 ユーザーのスクショ)が評価の対象。</small></p>
+<div class="g"><figure><a href="refs/hex9331.jpg"><img src="refs/hex9331.jpg" alt=""></a><figcaption>火山・五重塔・岩山・森・オアシスが1マスごとに大きな絵</figcaption></figure><figure><a href="refs/hex9330.jpg"><img src="refs/hex9330.jpg" alt=""></a><figcaption>氷・砂漠・灯台・船・海獣。色の塊(赤い領域)</figcaption></figure><figure><a href="refs/hex9329.jpg"><img src="refs/hex9329.jpg" alt=""></a><figcaption>山・巨木・火山・難破船。絵の種類が多い</figcaption></figure><figure><a href="refs/hex9328.jpg"><img src="refs/hex9328.jpg" alt=""></a><figcaption>氷の山・火山・港町・砂漠。一つの島に全種類</figcaption></figure><figure><a href="refs/hex9327.jpg"><img src="refs/hex9327.jpg" alt=""></a><figcaption>氷の城・氷柱・港町・難破船</figcaption></figure></div>
+
+<h2>2. 方向性(ユーザーの整理)</h2>
+<div class="c"><b class="k">①</b> 各層の見せ方には<b>統一したコンセプト</b>が必要。絵は必須。ただし<b>見せ方の手法は、それぞれの層にフィットしたもの</b>を使う。</div>
+<div class="c"><b class="k">②</b> 絵は汎用・使い回しをしてよいが、<b>層ごとに分ける</b>。絵の描き方も層で考える。</div>
+<div class="c"><b class="k">③</b> 地図は<b>見せ方が主</b>。正確さは求められない。</div>
+<div class="c"><b class="k">④</b> アプリなので、データの映像化の制約はある。ただし<b>見せ方が、全体の作り込みの制限になってはならない</b>。</div>
+<div class="c"><b class="k">⑤</b> シミュレーターが作るのはデータ、観察者が見るのは画像。全体の画像を細かく見るわけではないので<b>全データを全部作る必要はない</b>。全体と詳細は切り分けて作る。</div>
+
+<h2>3. 参考絵(Googleドライブ「参考の絵」23枚)から見えること</h2>
+<p><small>以下はClaudeが絵を見て書いた観察で、確定した判断ではない。ご確認・訂正ください。</small></p>
+<ul>
+<li><b>世界地図は「記号と色」で語る。</b> 1マス・1本の木のような細部は描かず、氷=白、砂漠=黄、森=緑、火山=赤黒の<b>色の塊</b>と、山・森・町の<b>小さな絵記号</b>で地域を見せている。</li>
+<li><b>誇張する。</b> 山脈・火山・世界樹などの目印は、縮尺に合わず大きい。<b>数は少なく、大きく</b>置く(=「省く」)。</li>
+<li><b>海にも絵がある。</b> 海岸の浅瀬の水色、深い青、波、雲や霧、怪物、船。陸の周りの余白が雰囲気を作る。</li>
+<li><b>地図という物の飾り</b>(縁飾り・コンパス・巻物の題・凡例・縮尺)が、「この世界を見ている」感じを作る。</li>
+<li><b>国・勢力</b>は、色の塊と太い名前、首都の印で見せる。国境・道・川は<b>細い線</b>。</li>
+<li>視点は、<b>真上寄り</b>(古地図・色塗り)と<b>斜め俯瞰</b>(立体感)の二系統。立体の絵でも、写実ではなく絵画調。</li>
+<li>どの絵も、<b>全体は一つの光と空気</b>(夕方の光、縁の暗がり)で統一されている。</li>
+</ul>
+<p>世界ハニカムのレベル0との違い(Claudeの見立て): 参考絵は<b>地域=色の塊+少数の大きな記号</b>で、ハニカムは<b>1マス=1枚の絵</b>。マスの数が多い分、絵の種類と数が多くなり、「世界」ではなく「地方」の見え方になっている。Azgaarは色と線はあるが、絵記号・海の演出・飾り・光がない。</p>
+
+<h2>4. 参考絵の一覧</h2>
+<p><small>縮小版(研究用)。タップで拡大。出典は分からないものが多いので、公開・配布はしない前提の資料。</small></p>
+<h3>A 世界全体を一枚絵で見せる(真上寄り・絵地図)</h3><div class="g"><figure><a href="refs/ref9308.jpg"><img src="refs/ref9308.jpg" loading="lazy" alt=""></a><figcaption>大陸ごとに色(氷・砂漠・森・火山)、怪物と船、縁飾り、コンパス</figcaption></figure><figure><a href="refs/ref9303.jpg"><img src="refs/ref9303.jpg" loading="lazy" alt=""></a><figcaption>海岸の浅瀬の水色、道と町は細線と小さな印、地名は文字だけ</figcaption></figure><figure><a href="refs/ref9312.jpg"><img src="refs/ref9312.jpg" loading="lazy" alt=""></a><figcaption>陸は質感の塗り分け、海は暗い青、国境と道は細い線</figcaption></figure><figure><a href="refs/ref9309.jpg"><img src="refs/ref9309.jpg" loading="lazy" alt=""></a><figcaption>大陸全体を色で分け、山と森は絵の記号、周囲に雲と霧</figcaption></figure><figure><a href="refs/ref9311.jpg"><img src="refs/ref9311.jpg" loading="lazy" alt=""></a><figcaption>土地ごとに「絵記号」(ピラミッド・渦・結晶・火山)を大きく置く</figcaption></figure><figure><a href="refs/ref9318.jpg"><img src="refs/ref9318.jpg" loading="lazy" alt=""></a><figcaption>縁に雲、国ごとの色、中央に城の絵</figcaption></figure><figure><a href="refs/ref9320.jpg"><img src="refs/ref9320.jpg" loading="lazy" alt=""></a><figcaption>海が暗く、陸が浮かぶ。山は大きく誇張</figcaption></figure><figure><a href="refs/ref9317.jpg"><img src="refs/ref9317.jpg" loading="lazy" alt=""></a><figcaption>色の塊で地域を見せる。細部は省く</figcaption></figure></div><h3>B 国・勢力を色と飾りで見せる</h3><div class="g"><figure><a href="refs/ref9313.jpg"><img src="refs/ref9313.jpg" loading="lazy" alt=""></a><figcaption>国ごとの色の塊+名前+首都の星。怪物、凡例</figcaption></figure><figure><a href="refs/ref9314.jpg"><img src="refs/ref9314.jpg" loading="lazy" alt=""></a><figcaption>国境・道・川・航路の細い線。地名は筆記体の飾り文字</figcaption></figure><figure><a href="refs/ref9300.jpg"><img src="refs/ref9300.jpg" loading="lazy" alt=""></a><figcaption>国ごとの紋章風の看板と城。一国=一つの大きな絵</figcaption></figure><figure><a href="refs/ref9307.jpg"><img src="refs/ref9307.jpg" loading="lazy" alt=""></a><figcaption>国は一目で色分け。山と火山は誇張。船と羅針盤</figcaption></figure></div><h3>C 斜め俯瞰で立体感を出す</h3><div class="g"><figure><a href="refs/ref9302.jpg"><img src="refs/ref9302.jpg" loading="lazy" alt=""></a><figcaption>斜めから。山は立体、森は緑の塊、道は白い線</figcaption></figure><figure><a href="refs/ref9304.jpg"><img src="refs/ref9304.jpg" loading="lazy" alt=""></a><figcaption>奥に大きな山。遠近で空気が出る</figcaption></figure><figure><a href="refs/ref9305.jpg"><img src="refs/ref9305.jpg" loading="lazy" alt=""></a><figcaption>斜め俯瞰。町の絵が密集し、遠くは霞</figcaption></figure><figure><a href="refs/ref9316.jpg"><img src="refs/ref9316.jpg" loading="lazy" alt=""></a><figcaption>浮島・世界樹・滝。名札のラベルだけで読ませる</figcaption></figure><figure><a href="refs/ref9322.jpg"><img src="refs/ref9322.jpg" loading="lazy" alt=""></a><figcaption>断崖つきの島を立体のジオラマとして見せる</figcaption></figure><figure><a href="refs/ref9321.jpg"><img src="refs/ref9321.jpg" loading="lazy" alt=""></a><figcaption>丸い塊として見せる(模型の趣き)</figcaption></figure></div><h3>D 古地図・手描き調</h3><div class="g"><figure><a href="refs/ref9310.jpg"><img src="refs/ref9310.jpg" loading="lazy" alt=""></a><figcaption>羊皮紙の色、雲の影、縁飾り</figcaption></figure><figure><a href="refs/ref9315.jpg"><img src="refs/ref9315.jpg" loading="lazy" alt=""></a><figcaption>淡い水彩、等高線風の線、筆記体</figcaption></figure><figure><a href="refs/ref9301.jpg"><img src="refs/ref9301.jpg" loading="lazy" alt=""></a><figcaption>細密な絵の俯瞰(地方〜地域の縮尺に近い)</figcaption></figure><figure><a href="refs/ref9306.jpg"><img src="refs/ref9306.jpg" loading="lazy" alt=""></a><figcaption>影と山脈で見せる濃い色調</figcaption></figure><figure><a href="refs/ref9319.jpg"><img src="refs/ref9319.jpg" loading="lazy" alt=""></a><figcaption>六角格子を残しつつ絵記号。格子の意匠も味になる</figcaption></figure></div>
+
+<h2>5. このあとの進め方(提案)</h2>
+<ol>
+<li>「層」の分け方を決める(例: 世界/国家間/地方/詳細。いまの7層とどう対応させるか)。</li>
+<li>層ごとに、<b>何を省き、何を見せるか</b>を言葉にする(世界は色の塊と少数の大きな記号…など)。</li>
+<li>統一コンセプトを短い文で書く(ファンタジー感・夢のある演出・芸術性と感性・稚拙な立体の味)。</li>
+<li>世界の層だけ、参考絵に近い見せ方の小さな試作で確かめる(目的: 「世界らしく省けているか」を判断)。</li>
+</ol>
+<p><small>上位の判断の更新: 2026-11-15「見せ方はAzgaar方式に統一」は、この整理で<b>置き換え</b>。Azgaarは地形・川・道・国境の<b>部品の供給元</b>としては引き続き使い、見せ方(絵)は層ごとに決める。</small></p>
+</main></body></html>
