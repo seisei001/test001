@@ -1,0 +1,45 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地図の使い回し検証</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}td,th{border-color:#3a3b41!important}.c{background:#1f2024!important}}
+main{max-width:760px;margin:0 auto;padding:12px 16px 48px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.6em 0 .4em}
+img{width:100%;border-radius:8px;display:block}.c{background:#fff;border-radius:10px;padding:10px 12px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #dcdce0;padding:5px 6px;text-align:left;vertical-align:top}th{white-space:nowrap}
+small{color:#888}</style></head><body><main>
+<a href="./">← 管理ページへ</a> ・ <a href="mapcheck.html">3候補の比較</a> ・ <a href="mapcheck-azgaar.html">Azgaarの検証</a>
+<h1>地図の使い回し検証(2026-11-15)</h1>
+<p><b>概要:</b> 別の地図ソフト(Worldsmith)で作った標高を、Azgaar に渡して、国・川・道つきの平面図と立体図を出せました。Azgaar のコードは1行も変えていません。標高の画像を差し替えただけです。</p>
+
+<h2>やったこと</h2>
+<table>
+<tr><th>1</th><td>Worldsmith から標高画像(513×513、白黒)を取り出す</td></tr>
+<tr><th>2</th><td>海と陸の境(Azgaar は標高20を海面とする)に合わせて、明るさを変換する</td></tr>
+<tr><th>3</th><td>Azgaar に「この画像から世界を作れ」と指定して生成する</td></tr>
+<tr><th>4</th><td>平面図と立体図(Azgaar 標準の表示)を撮る</td></tr>
+</table>
+
+<h2>結果</h2>
+<div class="c"><img src="mapcheck/reuse_height.jpg" alt="Worldsmithの標高画像"><small>① Worldsmith の標高(白いほど高い)</small></div>
+<div class="c"><img src="mapcheck/reuse_2d.jpg" alt="平面図"><small>② 平面図。国・国境・国名・川・道が、この標高から自動で出た</small></div>
+<div class="c"><img src="mapcheck/reuse_3d.jpg" alt="立体図"><small>③ 立体図。平面図が地形に貼られ、国名も地形の高さに沿って置かれた</small></div>
+<table>
+<tr><th>生成時間</th><td>約1.8秒</td></tr>
+<tr><th>区画数</th><td>約9,200(標高画像の513×513より粗い)</td></tr>
+<tr><th>できたもの</th><td>国25、街約1,000、川約330、道約780</td></tr>
+</table>
+
+<h2>わかったこと</h2>
+<ul>
+<li>標高の受け口は「画像を渡すだけ」で、クラスの改造は要らない。他のソフトの標高を使い回せる。</li>
+<li>国・川・道・国名・立体は、標高から自動でそろう。標高をどこで作るかと、見せ方は切り離せる。</li>
+</ul>
+
+<h2>気になる点</h2>
+<ul>
+<li>白い所(雪山)が広すぎる。標高の変換が粗く、高い所が高くなりすぎた。海面の位置と高さの伸ばし方の調整が要る。</li>
+<li>標高の細かさは、Azgaar の区画数(約9,200)で決まる。細かい地図にするには区画数を増やす必要があり、その重さは未測定。</li>
+<li>国名の見た目・立体の見た目は Azgaar 標準のまま。「稚拙な立体の味」への描き直しは、まだやっていない。</li>
+<li>クラス単位の使い回し(川だけ、国だけ)は今回は試していない。今回は「データを差し替える」方式。</li>
+</ul>
+<p><small>測った環境:クラウド上の2コアの計算機(iPhone での実測ではありません)。Azgaar は MIT ライセンス。</small></p>
+</main></body></html>
