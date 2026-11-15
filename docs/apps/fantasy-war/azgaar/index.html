@@ -649,5 +649,22 @@
       </defs>
     </svg>
 
-  </body>
+  <script>
+/* ハブ用: ?hm=<標高画像名>&seed=<種>&points=<区画数>&view=3d で、指定の標高から世界を作り直す(Azgaar本体は無改造) */
+(function(){var q=new URLSearchParams(location.search),hm=q.get('hm');if(!hm)return;
+var seed=q.get('seed')||'hub-1',pts=parseInt(q.get('points')||'0',10),n=0;
+function closeDialogs(){document.querySelectorAll('button').forEach(function(b){if(b.textContent.trim()==='Close'&&b.offsetParent){try{b.click()}catch(e){}}})}
+var t=setInterval(function(){
+ if(++n>600){clearInterval(t);return}
+ if(!(window.FMG&&FMG.pack&&FMG.pack.cells&&FMG.pack.cells.i&&FMG.pack.cells.i.length&&FMG.HeightmapGenerator&&FMG.Options))return;
+ clearInterval(t);
+ var id=(innerWidth/innerHeight<1.2)?hm+'p':hm;var H=FMG.HeightmapGenerator,g0=H.generate.bind(H);H.generate=function(g){return g0(g,id)};H.getSelectedId=function(){return id};
+ var O=FMG.Options,r0=O.randomize.bind(O);O.randomize=function(){r0();if(pts)FMG.options.map.graph.points=pts};
+ var old=FMG.pack;FMG.regenerateMap({seed:seed});
+ var m=0,w=setInterval(function(){if(++m>600){clearInterval(w);return}
+  if(FMG.pack!==old&&FMG.pack.states&&FMG.pack.states.length>1){clearInterval(w);
+   setTimeout(function(){closeDialogs();if(q.get('view')==='3d'){try{FMG.Controllers.View3d.open('viewMesh')}catch(e){console.log('3d',e)}}},3000)}},300)
+},300)})();
+</script>
+</body>
 </html>

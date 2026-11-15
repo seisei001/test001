@@ -1,0 +1,28 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>世界地図の見せ方</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}.c{background:#1f2024!important}}
+main{max-width:640px;margin:0 auto;padding:12px 16px 48px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.02rem;margin:1.4em 0 .3em}
+.c{background:#fff;border-radius:10px;padding:12px 14px;margin:12px 0}
+.go{display:block;margin-top:8px;padding:12px;text-align:center;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:600}
+.go.s{background:#64748b}small{color:#888}</style></head><body><main>
+<a href="./">← 管理ページへ</a>
+<h1>世界地図の見せ方(Azgaar方式)</h1>
+<p><b>概要:</b> 世界の見せ方を <b>Azgaar の見せ方</b>(国の色分け・国境・国名・川・道・陰影の立体)にそろえました。地形は、本格的な大陸を作れる procedural-world-generation の標高を使っています。画面の縦横に合わせて、大陸の切り出しを変えます。</p>
+
+<div class="c"><b>標準(約2万区画)</b>
+<a class="go" href="azgaar/index.html?hm=world1&seed=hub-1&points=20000">平面図で見る</a>
+<a class="go" href="azgaar/index.html?hm=world1&seed=hub-1&points=20000&view=3d">立体図で見る</a></div>
+<div class="c"><b>細かい版(約4万区画。作成に数秒長くかかる)</b>
+<a class="go s" href="azgaar/index.html?hm=world1&seed=hub-1&points=40000">平面図で見る</a>
+<a class="go s" href="azgaar/index.html?hm=world1&seed=hub-1&points=40000&view=3d">立体図で見る</a></div>
+
+<h2>見方</h2>
+<ul>
+<li>開いてから数秒は、別の地図が一瞬出ます。そのあと自動で、この世界に作り直されます。</li>
+<li>同じ「種」なので、毎回同じ世界になります(区画数を変えると形が少し変わります)。</li>
+<li>立体図では、右上の設定欄の「✕」で閉じると地図が広く見えます。指でなぞって回転・拡大できます。</li>
+<li>左上の「▶」は Azgaar の設定です。</li>
+</ul>
+<p><small>Azgaar(MIT ライセンス)をそのまま使っています(解析用の通信だけ外し、標高を差し替える小さな呼び出しを足しました)。ライセンス文は azgaar/LICENSE。</small></p>
+</main></body></html>

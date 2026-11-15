@@ -171,12 +171,5 @@
     "path": "apps/sekai-hex/",
     "icon": "🌐",
     "archive": true
-  },
-  {
-    "id": "maps",
-    "name": "地図ソフトを見る",
-    "description": "検証した3つの地図ソフト(Azgaar・procedural-world-generation・Worldsmith)を実際に動かして見られる",
-    "path": "apps/maps/",
-    "icon": "🗺️"
   }
 ]
