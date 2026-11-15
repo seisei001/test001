@@ -8,7 +8,8 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid 
 small{color:#888}</style></head><body><main>
 <a href="./">← 管理ページへ</a> ・ <a href="mapcheck.html">3候補の比較</a> ・ <a href="mapcheck-azgaar.html">Azgaarの検証</a>
 <h1>地図の使い回し検証(2026-11-15)</h1>
-<p><b>概要:</b> 別の地図ソフト(Worldsmith)で作った標高を、Azgaar に渡して、国・川・道つきの平面図と立体図を出せました。Azgaar のコードは1行も変えていません。標高の画像を差し替えただけです。</p>
+<p><small>2つ試しました: ①Worldsmith ②procedural-world-generation(後半)</small></p>
+<p><b>概要:</b> 別の地図ソフト(Worldsmith、procedural-world-generation の2つとも)で作った標高を、Azgaar に渡して、国・川・道つきの平面図と立体図を出せました。Azgaar のコードは1行も変えていません。標高の画像を差し替えただけです。</p>
 
 <h2>やったこと</h2>
 <table>
@@ -34,7 +35,24 @@ small{color:#888}</style></head><body><main>
 <li>国・川・道・国名・立体は、標高から自動でそろう。標高をどこで作るかと、見せ方は切り離せる。</li>
 </ul>
 
-<h2>気になる点</h2>
+<h2>② procedural-world-generation でも同じことをした</h2>
+<p>こちらは地形が本格的(侵食・川の谷)です。標高画像(1024×1024、16ビット)を取り出し、海面(標高0m)を境に変換して、同じ手順で Azgaar に渡しました。</p>
+<div class="c"><img src="mapcheck/reuse2_height.jpg" alt="標高画像(明るさを強調)"><small>① 標高(明るさを強調して表示。尾根と谷が細かく刻まれている)</small></div>
+<div class="c"><img src="mapcheck/reuse2_2d.jpg" alt="平面図"><small>② 平面図。国・国境・国名・川・道が出た</small></div>
+<div class="c"><img src="mapcheck/reuse2_3d.jpg" alt="立体図"><small>③ 立体図</small></div>
+<table>
+<tr><th>生成時間</th><td>約1.5秒</td></tr>
+<tr><th>区画数</th><td>約5,900(標高画像の1024×1024よりずっと粗い)</td></tr>
+<tr><th>できたもの</th><td>国14、街約880、川約250、道約700</td></tr>
+</table>
+<h2>2つを比べて</h2>
+<ul>
+<li><b>どちらも通った。</b>標高の画像を差し替えるだけで、平面図・立体図・国・川・道が出る。</li>
+<li><b>雪山の広がりは、変換の仕方次第。</b>②は高さを抑えて変換したので、雪山は広がらず自然に見える。①は変換が粗かったので、同じ変換に直せば減るはず。</li>
+<li><b>細かさは Azgaar の区画数で決まる。</b>②の標高にあった細かな尾根や谷は、約5,900区画に粗くまとめられ、消えている。「細かい地図」にするには、区画数を増やす必要がある(重さは未測定)。</li>
+<li>②の標高は、作るのに約33秒かかる。使うなら、先に作って保存した画像を渡す形になる。</li>
+</ul>
+<h2>気になる点(①について)</h2>
 <ul>
 <li>白い所(雪山)が広すぎる。標高の変換が粗く、高い所が高くなりすぎた。海面の位置と高さの伸ばし方の調整が要る。</li>
 <li>標高の細かさは、Azgaar の区画数(約9,200)で決まる。細かい地図にするには区画数を増やす必要があり、その重さは未測定。</li>
