@@ -8,7 +8,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid 
 small{color:#888}</style></head><body><main>
 <a href="./">← 管理ページへ</a> ・ <a href="mapcheck.html">3候補の比較</a> ・ <a href="mapcheck-azgaar.html">Azgaarの検証</a>
 <h1>地図の使い回し検証(2026-11-15)</h1>
-<p><small>2つ試しました: ①Worldsmith ②procedural-world-generation(後半)</small></p>
+<p><small>①Worldsmith ②procedural-world-generation ③区画数を増やした場合(後半)</small></p>
 <p><b>概要:</b> 別の地図ソフト(Worldsmith、procedural-world-generation の2つとも)で作った標高を、Azgaar に渡して、国・川・道つきの平面図と立体図を出せました。Azgaar のコードは1行も変えていません。標高の画像を差し替えただけです。</p>
 
 <h2>やったこと</h2>
@@ -52,6 +52,29 @@ small{color:#888}</style></head><body><main>
 <li><b>細かさは Azgaar の区画数で決まる。</b>②の標高にあった細かな尾根や谷は、約5,900区画に粗くまとめられ、消えている。「細かい地図」にするには、区画数を増やす必要がある(重さは未測定)。</li>
 <li>②の標高は、作るのに約33秒かかる。使うなら、先に作って保存した画像を渡す形になる。</li>
 </ul>
+<h2>③ 区画数を増やして、細かくなるか・重さはどうか</h2>
+<p>同じ標高画像(procedural-world-generation)で、Azgaar の区画数だけ変えて作りました。クラウド上の2コアの計算機での測定です(iPhone の速さではありません)。</p>
+<table>
+<tr><th>区画数</th><th>作成時間</th><th>メモリ(JS)</th><th>川</th><th>道</th><th>いちばん重い部分</th></tr>
+<tr><td>約1万(標準)</td><td>約2.0秒</td><td>約55MB</td><td>約200本</td><td>約950</td><td>経済(生産)</td></tr>
+<tr><td>約2万</td><td>約3.3秒</td><td>約100MB</td><td>約400本</td><td>約1,080</td><td>経済、川</td></tr>
+<tr><td>約4万</td><td>約5.2秒</td><td>約150MB</td><td>約280〜690本</td><td>約1,300</td><td>川(約1.6秒)</td></tr>
+<tr><td>約8万</td><td>約11秒</td><td>約400MB</td><td>約770本</td><td>約1,480</td><td>川(約4.2秒)</td></tr>
+<tr><td>約10万(上限)</td><td>約13秒</td><td>約530MB</td><td>約580〜720本</td><td>約1,560</td><td>川(約5秒)、くぼ地の湖(約1.9秒)</td></tr>
+</table>
+<div class="c"><img src="mapcheck/res_3d_10000.jpg" alt="立体 1万"><small>立体 約1万区画(同じ標高でも、なだらか)</small></div>
+<div class="c"><img src="mapcheck/res_3d_100000.jpg" alt="立体 10万"><small>立体 約10万区画(尾根や谷が細かく出る)</small></div>
+<div class="c"><img src="mapcheck/res_zoom_10000.jpg" alt="拡大 1万"><small>平面を拡大 約1万区画(国境や海岸がカクカクしている)</small></div>
+<div class="c"><img src="mapcheck/res_zoom_100000.jpg" alt="拡大 10万"><small>平面を拡大 約10万区画(国境・海岸・川が細かい)。作るたびに国の形が変わるので、同じ場所の比較ではありません</small></div>
+<h2>わかったこと(区画数)</h2>
+<ul>
+<li><b>細かくなる。</b>区画を増やすと、立体の尾根・谷、平面の国境・海岸・川が細かくなる。</li>
+<li><b>重さは区画数に比例して増える。</b>1万→10万で、作成時間は約6倍、メモリは約10倍。</li>
+<li><b>重くなる部分が変わる。</b>標準では経済(生産)が重いが、区画が増えると川とくぼ地の湖が重くなる(経済は街の数で決まるので、ほぼ増えない)。つまり「細かさ」のコストは、地形(川・湖・道)の側にかかる。</li>
+<li>立体の表示は、10万区画でも開けた(ソフトウェア描画)。ただし iPhone での滑らかさは未測定。</li>
+<li>区画数の指定は、画面の設定欄の「区画数」(1万〜10万)で変えられる。</li>
+</ul>
+<p><b>目安:</b> 細かさと速さの折り合いは、2〜4万区画あたりが現実的に見える(作成2〜5秒、メモリ100〜150MB)。作成は1回だけで、結果を保存して使う形にすれば、iPhone でも持てる可能性がある。ただし要・実機確認。</p>
 <h2>気になる点(①について)</h2>
 <ul>
 <li>白い所(雪山)が広すぎる。標高の変換が粗く、高い所が高くなりすぎた。海面の位置と高さの伸ばし方の調整が要る。</li>
