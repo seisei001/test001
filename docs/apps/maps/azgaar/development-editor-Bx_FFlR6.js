@@ -1,0 +1,45 @@
+import{d as e,i as t,r as n,z as r}from"./node-utils-Ds1sVy-v.js";import{t as i}from"./controllers-Dbv1ZRTV.js";import{y as a}from"./options-model-CrstL1Qd.js";import{a as o,o as s}from"./units-CYDspnRH.js";import{Nt as c,n as l,t as u}from"./layers-DjWzCbYN.js";import{i as d,n as f,t as p}from"./development-overlay-CuKeZGSe.js";import{t as m}from"./csv-BoSHm6Vn.js";import{n as h,r as g}from"./development-view-ChwbelfH.js";import{t as _}from"./dialog-BkeQgjla.js";import{t as v}from"./highlighting-C3iNJ2tq.js";import{c as y,s as b}from"./app-DCKsq5m8.js";import{i as x,n as S,r as C}from"./table-DPmN0izx.js";import{o as w}from"./tooltips-BVQbACdS.js";import{v as T}from"./notices-6lBE5Kkn.js";import{O as E,a as D,i as O,k,m as A}from"./index-sNerCVjG.js";var j=`developmentEditor`,M=[`Era`,`From`,`To`,`Cells`,`Area`,`Population`,`Burgs`],N=`Development`,P=`#d3d3d3`,F={my:`right top`,at:`right-10 top+10`,of:`svg`},I={eras:[],cells:0,mean:0,min:0,max:0},L=I,R=!1,z=!1,B=!0,V=[{key:`name`,label:D(`Era`),width:`13em`,permanent:!0,sortBy:e=>e.from,defaultSort:`asc`},{key:`levels`,label:D(`Levels`),width:`5em`,sortBy:e=>e.from},{key:`cells`,label:D(`Cells`),width:`5em`,sortBy:e=>L.eras[e.i]?.cells??0},{key:`area`,label:D(`Area`),width:`7em`,mobileHidden:!0,sortBy:e=>L.eras[e.i]?.area??0},{key:`population`,label:D(`Population`),width:`6.2em`,mobileHidden:!0,sortBy:e=>J(L.eras[e.i])},{key:`burgs`,label:D(`Burgs`),width:`4em`,sortBy:e=>L.eras[e.i]?.burgs??0},{key:`actions`,width:`1.4em`,permanent:!0}],H=C({dialogId:j,getData:()=>y(j,U().filter(e=>L.eras[e.i]?.cells),V),onUpdate:e=>Y(e)});function U(){let{eras:e}=a;return e.map(({level:t,name:n},r)=>({i:r,name:n,label:g(n),from:t,to:(e[r+1]?.level??101)-1,color:f(r)}))}function W(){options.app.mode||(z=!1,_.closeAll(`#${j}, .stable`),u.hide(`biomes`,`states`,`cultures`,`religions`,`provinces`),G(),L=q(),H.reset(),_.open(j,{title:D(`Development Editor`),onClose:ne,position:F}),B&&p())}function G(){_.destroy(j);let e=`<div id="${j}" class="dialog stable editorDialog">
+      ${x({dialogId:j,columns:V})}
+      <div id="developmentBody" class="table"></div>
+      <div id="developmentFooter" class="totalLine">
+        <div data-tip="${D(`Average development of the people, rural and urban`)}" style="margin-left: 12px">
+          ${D(`Average`)}:&nbsp;<span id="developmentFooterMean">0</span>
+        </div>
+        <div data-tip="${D(`Number of peopled cells`)}" style="margin-left: 12px">
+          ${D(`Cells`)}:&nbsp;<span id="developmentFooterCells">0</span>
+        </div>
+      </div>
+      <div id="developmentBottom">
+        <button id="developmentRefresh" data-tip="${D(`Refresh`)}" class="icon-cw"></button>
+        <button
+          id="developmentOverlayToggle"
+          data-tip="${D(`Show or hide the development overlay on the map`)}"
+          class="${B?`icon-eye`:`icon-eye-off`}"
+        ></button>
+        <button id="developmentLegend" data-tip="${D(`Toggle Legend box`)}" class="icon-list-bullet"></button>
+        <button
+          id="developmentPercentage"
+          data-tip="${D(`Toggle percentage / absolute values views`)}"
+          class="icon-percent"
+        ></button>
+        <button id="developmentPaint" data-tip="${D(`Paint development by era`)}" class="icon-brush"></button>
+        <button
+          id="developmentRegenerate"
+          data-tip="${D(`Regenerate development from the cultures and land, discarding manual changes`)}"
+          class="icon-retweet"
+        ></button>
+        <button id="developmentEras" data-tip="${D(`Rename the eras`)}" class="icon-pencil"></button>
+        <button id="developmentExport" data-tip="${D(`Save data as a CSV file`)}" class="icon-download"></button>
+      </div>
+    </div>`;n(`dialogs`).insertAdjacentHTML(`beforeend`,e),S({dialogId:j,columns:V,onUpdate:()=>_.update(j,{width:`fit-content`,position:F})}),n(`developmentRefresh`).addEventListener(`click`,K),n(`developmentOverlayToggle`).addEventListener(`click`,re),n(`developmentPercentage`).addEventListener(`click`,ie),n(`developmentLegend`).addEventListener(`click`,Z),n(`developmentPaint`).addEventListener(`click`,Q),n(`developmentRegenerate`).addEventListener(`click`,ee),n(`developmentEras`).addEventListener(`click`,()=>void i.ErasEditor.open()),n(`developmentExport`).addEventListener(`click`,te),b(j,H.reset),v(j,({cellId:e})=>{let t=pack.cells.development;return t?.[e]?a.getEraIndex(t[e]):void 0})}function K(){L=q(),H.refresh(),B&&p()}function q(e=pack){let{cells:t,burgs:n}=e,r=a.eras.map(()=>({cells:0,area:0,rural:0,urban:0,burgs:0})),i=t.development;if(!i)return{eras:r,cells:0,mean:0,min:0,max:0};let{scale:o,urbanization:s}=options.map.units.population,c=0,l=0,u=0,d=100,f=0;for(let e of t.i){if(!i[e])continue;let p=i[e],m=r[a.getEraIndex(p)];c++,m.cells++,m.area+=t.area[e],d=Math.min(d,p),f=Math.max(f,p);let h=t.pop[e]*o;m.rural+=h,l+=h,u+=h*p;let g=t.burg[e]?n[t.burg[e]]:void 0;if(!g||g.removed)continue;let _=(g.population??0)*o*s.rate;m.urban+=_,m.burgs++,l+=_,u+=_*p}return{eras:r,cells:c,mean:l?u/l:0,min:c?d:0,max:f}}function J(e){return e?E(e.rural+e.urban):0}function Y(e){let t=` ${s()}`,r=L.eras.reduce((e,t)=>({cells:e.cells+t.cells,area:e.area+t.area,population:e.population+J(t),burgs:e.burgs+t.burgs}),{cells:0,area:0,population:0,burgs:0}),i=(e,t)=>`${t?E(e/t*100,1):0}%`,a=``;for(let n of e.rows){let{cells:e,area:s,rural:c,urban:l,burgs:u}=L.eras[n.i],d=J(L.eras[n.i]),f=R?{cells:i(e,r.cells),area:i(s,r.area),population:i(d,r.population),burgs:i(u,r.burgs)}:{cells:String(e),area:k(o(s))+t,population:k(d),burgs:String(u)},p=O(`${D(`Total population`)}: ${k(d)}`,`${D(`Rural population`)}: ${k(c)}`,`${D(`Urban population`)}: ${k(l)}`);a+=`
+      <div class="states development" data-id="${n.i}">
+        <div data-col="name">
+          <fill-box fill="${n.color}" disabled></fill-box>
+          <span class="developmentEra">${A(n.label)}</span>
+        </div>
+        <div data-col="levels" class="hide" data-tip="${D(`Development levels of the era`)}">${n.from===n.to?n.from:`${n.from}-${n.to}`}</div>
+        <div data-col="cells" class="hide"><span data-tip="${D(`Number of cells`)}" class="icon-check-empty"></span><span data-tip="${D(`Number of cells`)}">${f.cells}</span></div>
+        <div data-col="area" class="hide"><span data-tip="${D(`Area`)}" class="icon-map-o" style="padding-right: 2px"></span><span data-tip="${D(`Area`)}">${f.area}</span></div>
+        <div data-col="population" class="hide"><span data-tip="${p}" class="icon-male"></span><span data-tip="${p}">${f.population}</span></div>
+        <div data-col="burgs" class="hide"><span data-tip="${D(`Number of burgs`)}" class="icon-dot-circled"></span><span data-tip="${D(`Number of burgs`)}">${f.burgs}</span></div>
+      </div>`}let c=n(`developmentBody`);c.innerHTML=a||`<div style="padding: 0.5em 12px">${D(`No development on the map`)}</div>`;let l=E(L.mean);n(`developmentFooterMean`).textContent=`${l}, ${h(l)}`,n(`developmentFooterCells`).textContent=String(L.cells),c.querySelectorAll(`div.development`).forEach(e=>{e.addEventListener(`mouseenter`,()=>X(+e.dataset.id,!0)),e.addEventListener(`mouseleave`,()=>X(+e.dataset.id,!1))}),_.update(j,{width:`fit-content`,position:F})}function X(t,n){let i=r(`#developmentOverlay > #era${t+1}`);n?i.raise().transition(e().duration(2e3).ease(c)).attr(`stroke-width`,2).attr(`stroke`,`#cd4c11`):i.transition().attr(`stroke-width`,0).attr(`stroke`,null)}function Z(){l.toggle(N,()=>U().filter(e=>L.eras[e.i]?.cells).map(({i:e,color:t,label:n})=>[e,t,n]),D(`No development on the map`))}function Q(){let e=pack.cells.development;e&&!options.app.mode&&(z=!0,i.PaintEditor.open({title:D(`Paint Development`),parentDialogId:j,onClose:W,keepOrder:!0,items:[{id:0,name:D(`No development`),color:P},...U().map(e=>({id:e.from,name:`${e.from} ${e.label}`,color:e.color}))],getValue:t=>e[t]?a.eras[a.getEraIndex(e[t])].level:0,filterCell:e=>a.isPeopled(e),onApply:$}))}function $(e){for(let[t,n]of T(e))a.setCells(t,n);e.size&&(t(j)&&K(),w(D(`Regenerate the economy to see the effect on production`),!1,`info`))}function ee(){_.confirm({title:D(`Regenerate development`),message:D(`Regenerate development from the cultures and land? Manual changes will be lost`),confirm:D(`Regenerate`),onConfirm:()=>{a.generate(),K()}})}function te(){let e=options.map.units.area.unit===`square`?`${options.map.units.distance.unit}2`:options.map.units.area.unit,t=U().filter(e=>L.eras[e.i]?.cells).map(e=>{let{cells:t,area:n,burgs:r}=L.eras[e.i];return[e.name,e.from,e.to,t,o(n),J(L.eras[e.i]),r]});m.download(`Development`,M.map(t=>t===`Area`?`Area ${e}`:t),t)}function ne(){L=I,_.destroy(j),z||d()}function re(){B=!B,B?p():d(),n(`developmentOverlayToggle`).className=B?`icon-eye`:`icon-eye-off`}function ie(){R=!R,H.refresh()}var ae={open:W,refreshNames:()=>H.refresh()};export{ae as DevelopmentEditor};

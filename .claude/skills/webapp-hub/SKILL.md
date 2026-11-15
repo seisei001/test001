@@ -39,6 +39,7 @@ sample-urls.txt         … url-viewer の動作確認用URLリスト
 | pdf-studio | 🗂️ PDFスタジオ | apps/pdf-studio/ | PDFエディタ(1.02)を残したまま作った別アプリ。束デスク(束の一覧・めくり・結合・分割・ばらす・並べ替え)から、⋮ボタンの機能メニュー→ページ編集/歪み補正(forms/editor.html をiframeで埋め込み)。各画面に名前+バージョン(現在2.0・変えた画面だけ0.01ずつ上げる)。確認は PDFAPP_TARGET=pdf-studio の test-studio.js / test-studio-forms.js |
 | touch-lab | 👆 iPhone操作検証 | apps/touch-lab/ | iPhoneの指操作(ダブルタップ・選択・範囲選択・長押し・2本指など)の実験場。判定回数とログ(コピーして貼れる)を表示。バージョンは右上(0.01〜) |
 | sekai-hex | 🌐 世界ハニカム | apps/sekai-hex/ | 階層六角形世界シミュレーターの試作(設計は /home/claude/sekai-design/POLICY.md)。6層(世界→地方→戦域→戦場→隊→兵)、縮み率√127(1親=半径6の六角形127マス、層ごとに約27.5度回る)。`world.js`=世界層生成(build_worldで自動生成、直接編集しない)、`sekai.js`=幾何と遅延生成、`view.js`=WebGL角柱の斜め3D。見ている所だけ生成。ドラッグ=移動、ピンチ=拡大(二本指ひねり=回転)、タップ=選択→「降りる」 |
+| maps | 🗺️ 地図ソフトを見る | apps/maps/ | 検証用の3つの地図ソフト(azgaar/・pwg/・worldsmith/)をビルド済みのまま置いたもの(MIT、各フォルダにLICENSE)。Azgaarは `vite build --base=./`、pwgも同様に作り直し、解析タグとsw.jsを除去。Worldsmithは地球の標高(28MB)を除外 |
 
 アプリを追加・削除・改名したら、この表と `README.md` の「収録アプリ」も更新すること。
 

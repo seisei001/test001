@@ -1,0 +1,1 @@
+function e(e,t,n=!1){let r=0,i=0,a=!1;return{moveTo(o,s){if(!a){a=!0,r=o,i=s,t(o,s);return}let c=Math.hypot(o-r,s-i);for(;c>=e;){let n=e/c;r+=(o-r)*n,i+=(s-i)*n,t(r,i),c-=e}n&&(o!==r||s!==i)&&(r=o,i=s,t(o,s))}}}export{e as t};

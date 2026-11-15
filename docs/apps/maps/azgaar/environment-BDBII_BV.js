@@ -1,0 +1,1 @@
+var e=()=>!!window.electron?.isElectron,t=()=>location.hostname===`localhost`||location.hostname===`127.0.0.1`,n=()=>!!location.hostname&&!t(),r=()=>window.innerWidth<600||!!navigator.userAgentData?.mobile;export{n as i,t as n,r,e as t};

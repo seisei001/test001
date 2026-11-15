@@ -1,0 +1,1 @@
+function e(e,t){return e==null||t==null?NaN:e<t?-1:e>t?1:e>=t?0:NaN}function t(e){return e===null?NaN:+e}function*n(e,t){if(t===void 0)for(let t of e)t!=null&&(t=+t)>=t&&(yield t);else{let n=-1;for(let r of e)(r=t(r,++n,e))!=null&&(r=+r)>=r&&(yield r)}}export{n,e as r,t};

@@ -1,0 +1,11 @@
+import{t as e}from"./dialog-BkeQgjla.js";import{o as t}from"./tooltips-BVQbACdS.js";import{a as n,m as r}from"./index-sNerCVjG.js";import{r as i}from"./node-utils-Ds1sVy-v.js";var a=`limitationPicker`,o=20;function s(e,t){return e?.length?e.map(e=>t.find(t=>t.i===e)?.name??``).join(`, `):`all`}function c({title:s,heading:c,items:l,allowed:u,onApply:d,exact:f=!1,badge:p}){let m=l.filter(e=>e.i&&!e.removed).sort((e,t)=>(e.fullName||e.name).localeCompare(t.fullName||t.name)),h=m.map(e=>`<div style="break-inside: avoid; display: flex; align-items: center; gap: .2em">
+      ${p?p(e):`<span style="color:${r(e.color??``)}">⬤</span>`}
+      <input data-i="${e.i}" id="limitation${e.i}" type="checkbox" class="checkbox" ${u?.includes(e.i)||!f&&!u?.length?`checked`:``}>
+      <label for="limitation${e.i}" class="checkbox-label">${r(e.fullName||e.name)}</label>
+    </div>`),g=Math.min(4,Math.ceil(m.length/o));e.destroy(a),i(`dialogs`).insertAdjacentHTML(`beforeend`,`<div id="${a}" class="dialog"><b>${r(c)}:</b>
+      <div style="margin-top: .3em">
+        <input id="limitationAll" type="checkbox" class="checkbox">
+        <label for="limitationAll" class="checkbox-label">${n(`All`)}</label>
+      </div>
+      <div class="limitationList" style="margin-top: .3em; columns: ${g}; column-gap: 1.5em">${h.join(``)}</div>
+    </div>`);let _=i(`limitationAll`),v=()=>Array.from(i(a).querySelectorAll(`.limitationList input`)),y=()=>{let e=v().filter(e=>e.checked).length;_.checked=e===v().length,_.indeterminate=e>0&&e<v().length};y(),_.addEventListener(`change`,()=>{for(let e of v())e.checked=_.checked});for(let e of v())e.addEventListener(`change`,y);e.open(a,{width:`fit-content`,maxHeight:Math.max(window.innerHeight-40,300),title:s,position:{my:`center`,at:`center`,of:`svg`},buttons:[{label:n(`Apply`),onClick:()=>{let r=v().filter(e=>e.checked),i=r.map(e=>Number(e.dataset.i));if(f)d(i);else if(r.length)d(r.length===v().length?[]:i);else return t(n(`Select at least one element`),!1,`error`);e.close(a)}},{label:n(`Cancel`),onClick:()=>e.close(a)}]})}export{c as n,s as t};

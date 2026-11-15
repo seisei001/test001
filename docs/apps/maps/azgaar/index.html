@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Azgaar's Fantasy Map Generator</title>
+    <meta name="application-name" content="Azgaar's Fantasy Map Generator" />
+    <meta name="author" content="Azgaar" />
+    <meta
+      name="description"
+      content="Free web app that helps fantasy writers, game masters, and cartographers create and edit fantasy maps"
+    />
+    <meta property="og:url" content="https://azgaar.github.io/Fantasy-Map-Generator" />
+    <meta property="og:title" content="Azgaar's Fantasy Map Generator" />
+    <meta
+      property="og:description"
+      content="Free web app that helps fantasy writers, game masters, and cartographers create and edit fantasy maps"
+    />
+    <meta property="og:image" content="images/preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="twitter:domain" content="azgaar.github.io" />
+    <meta property="twitter:url" content="https://azgaar.github.io/Fantasy-Map-Generator/" />
+    <meta name="twitter:title" content="Azgaar's Fantasy Map Generator" />
+    <meta
+      name="twitter:description"
+      content="Free web app that helps fantasy writers, game masters, and cartographers create and edit fantasy maps"
+    />
+    <meta name="twitter:image" content="images/preview.png" />
+    <link rel="icon" type="image/png" href="images/icons/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="images/icons/favicon-16x16.png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="images/icons/maskable_icon_x192.png" />
+    <link rel="canonical" href="https://azgaar.github.io/Fantasy-Map-Generator/" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <!-- inline css for loading screen -->
+    <style type="text/css">body{margin:0;font-size:10px;overflow:hidden;top:0!important}#map{position:absolute}#loading>*{pointer-events:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)}#loading>#loading-rose>use{fill:none;stroke:#000;opacity:.7;transform-origin:50%;animation:20s linear infinite spin}#loading>#loading-typography{opacity:1;color:#fff5da;text-align:center;text-shadow:0 1px 4px #4c3a35;width:80vw;max-width:540px;font-size:11px}@media screen and (width<=600px){#loading>#loading-typography{font-size:8px}}#titleName{text-align:left;font-size:3em}#title{font-size:7em}#versionText{text-align:right;font-size:2em}#loading-text{margin:.2em;font-size:2em}#loading-text>span{padding-left:1px;font-size:1.3em;line-height:0}#loading-text>span,#mapOverlay>span{animation:3s infinite both blink}#loading-text span:nth-child(2),#mapOverlay>span:nth-child(2){animation-delay:1s}#loading-text span:nth-child(3),#mapOverlay>span:nth-child(3){animation-delay:2s}@keyframes blink{0%{opacity:0}20%{opacity:1}to{opacity:.1}}@keyframes spin{0%{transform:rotate(0)}to{transform:rotate(359deg)}}</style>
+    <script type="module" crossorigin src="./index-sNerCVjG.js"></script>
+    <link rel="modulepreload" crossorigin href="./rolldown-runtime-COiEfhsA.js">
+    <link rel="stylesheet" crossorigin href="./index-DmJ2v1Kj.css">
+    <link rel="modulepreload" crossorigin href="./app-DCKsq5m8.js">
+    <link rel="modulepreload" crossorigin href="./options-model-CrstL1Qd.js">
+    <link rel="modulepreload" crossorigin href="./controllers-Dbv1ZRTV.js">
+    <link rel="modulepreload" crossorigin href="./layers-DjWzCbYN.js">
+    <link rel="modulepreload" crossorigin href="./notices-6lBE5Kkn.js">
+    <link rel="modulepreload" crossorigin href="./node-utils-Ds1sVy-v.js">
+    <link rel="modulepreload" crossorigin href="./min-CCch3uox.js">
+    <link rel="modulepreload" crossorigin href="./pack-generator-DTsfQ82D.js">
+    <link rel="modulepreload" crossorigin href="./map-history-C5-kWlBi.js">
+    <link rel="modulepreload" crossorigin href="./dialog-BkeQgjla.js">
+    <link rel="modulepreload" crossorigin href="./tooltips-BVQbACdS.js">
+    <link rel="modulepreload" crossorigin href="./drag-CCSsgLNP.js">
+    <link rel="modulepreload" crossorigin href="./names-generator-BcJRPzyi.js">
+    <link rel="modulepreload" crossorigin href="./services-CiMWa4Oi.js">
+    <link rel="modulepreload" crossorigin href="./canvas-BVQSnWDn.js">
+    <link rel="modulepreload" crossorigin href="./environment-BDBII_BV.js">
+    <link rel="modulepreload" crossorigin href="./added-labels-CB5gxKRk.js">
+    <link rel="modulepreload" crossorigin href="./measurers-generator-DazKvylb.js">
+    <link rel="modulepreload" crossorigin href="./goods-generator-DS7hwx2H.js">
+    <link rel="modulepreload" crossorigin href="./production-generator-BpyiZTFU.js">
+    <link rel="modulepreload" crossorigin href="./prosperity-J_ycIG-E.js">
+    <link rel="modulepreload" crossorigin href="./graph-override-D--VMnwP.js">
+    <link rel="modulepreload" crossorigin href="./units-CYDspnRH.js">
+    <link rel="modulepreload" crossorigin href="./biomes-generator-BQuuN3NH.js">
+    <link rel="modulepreload" crossorigin href="./heightmap-generator-C-OtvlxP.js">
+    <link rel="modulepreload" crossorigin href="./ice-generator-tkZapT-A.js">
+    <link rel="modulepreload" crossorigin href="./temperature-generator-BeC9kfd1.js">
+    <link rel="modulepreload" crossorigin href="./military-generator-CVth4JoO.js">
+    <link rel="modulepreload" crossorigin href="./stability-DCAus2OW.js">
+    <link rel="modulepreload" crossorigin href="./color-utils-OCVlKvQa.js">
+    <link rel="modulepreload" crossorigin href="./journeys-generator-Dzl8JmN4.js">
+    <link rel="modulepreload" crossorigin href="./notes-DvEnXEai.js">
+    <link rel="modulepreload" crossorigin href="./fonts-BG2tKf1N.js">
+    <link rel="modulepreload" crossorigin href="./styles-7-lY19-9.js">
+    <link rel="modulepreload" crossorigin href="./file-utils-CUGyyqg9.js">
+    <link rel="modulepreload" crossorigin href="./platform-Cry3Vb1_.js">
+    <link rel="modulepreload" crossorigin href="./zoom-B8oh1YKy.js">
+    <link rel="modulepreload" crossorigin href="./development-overlay-CuKeZGSe.js">
+    <link rel="modulepreload" crossorigin href="./development-view-ChwbelfH.js">
+    <link rel="modulepreload" crossorigin href="./highlight-CBuOTLhq.js">
+    <link rel="modulepreload" crossorigin href="./state-B2hBYDzv.js">
+    <link rel="modulepreload" crossorigin href="./draw-heightmap-CEyJl1Kw.js">
+    <link rel="modulepreload" crossorigin href="./map-restoration--iF7MIok.js">
+    <link rel="modulepreload" crossorigin href="./file-name-B95gRTjS.js">
+    <link rel="modulepreload" crossorigin href="./charges-XaoNl-VI.js">
+    <link rel="modulepreload" crossorigin href="./line-weights-DMXPYRDE.js">
+    <link rel="modulepreload" crossorigin href="./divisions-yddbEqou.js">
+    <link rel="modulepreload" crossorigin href="./ordinaries-DXI0TOB4.js">
+    <link rel="modulepreload" crossorigin href="./shields-QQIBRbRT.js">
+    <link rel="modulepreload" crossorigin href="./tinctures-CsgIeV6I.js">
+    <link rel="modulepreload" crossorigin href="./local-db-CPdztq67.js">
+    <link rel="modulepreload" crossorigin href="./registry-CwrTqJ86.js">
+    <link rel="modulepreload" crossorigin href="./isoline-fills-DwzSIerx.js">
+    <link rel="modulepreload" crossorigin href="./number-Da26Xeod.js">
+    <link rel="modulepreload" crossorigin href="./linear-DMWKWi8f.js">
+  </head>
+  <body>
+    <svg
+      id="map" data-layer="map"
+      width="100%"
+      height="100%"
+      version="1.1"
+      xmlns="http://www.w3.org/2000/svg"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      xmlns:svg="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <g id="filters">
+          <filter id="blurFilter" name="Blur 0.2" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.2" />
+          </filter>
+          <filter id="blur1" name="Blur 1" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1" />
+          </filter>
+          <filter id="blur3" name="Blur 3" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+          </filter>
+          <filter id="blur5" name="Blur 5" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
+          </filter>
+          <filter id="blur7" name="Blur 7" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+          </filter>
+          <filter id="blur10" name="Blur 10" x="-1" y="-1" width="100" height="100">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+          </filter>
+          <filter id="splotch" name="Splotch">
+            <feTurbulence type="fractalNoise" baseFrequency=".01" numOctaves="4" />
+            <feColorMatrix values="0 0 0 0 0, 0 0 0 0 0, 0 0 0 0 0, 0 0 0 -0.9 1.2" result="texture" />
+            <feComposite in="SourceGraphic" in2="texture" operator="in" />
+          </filter>
+          <filter id="bluredSplotch" name="Blurred Splotch">
+            <feTurbulence type="fractalNoise" baseFrequency=".01" numOctaves="4" />
+            <feColorMatrix values="0 0 0 0 0, 0 0 0 0 0, 0 0 0 0 0, 0 0 0 -0.9 1.2" result="texture" />
+            <feComposite in="SourceGraphic" in2="texture" operator="in" />
+            <feGaussianBlur stdDeviation="4" />
+          </filter>
+          <filter id="dropShadow" name="Shadow 2">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+            <feOffset dx="1" dy="2" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="dropShadow01" name="Shadow 0.1">
+            <feGaussianBlur in="SourceAlpha" stdDeviation=".1" />
+            <feOffset dx=".2" dy=".3" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="dropShadow05" name="Shadow 0.5">
+            <feGaussianBlur in="SourceAlpha" stdDeviation=".5" />
+            <feOffset dx=".5" dy=".7" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="outline" name="Outline">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="pencil" name="Pencil">
+            <feTurbulence baseFrequency="0.03" numOctaves="6" type="fractalNoise" />
+            <feDisplacementMap scale="3" in="SourceGraphic" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="turbulence" name="Turbulence">
+            <feTurbulence baseFrequency="0.1" numOctaves="3" type="fractalNoise" />
+            <feDisplacementMap scale="10" in="SourceGraphic" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter
+            id="paper"
+            name="Paper"
+            filterUnits="objectBoundingBox"
+            primitiveUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB"
+          >
+            <feGaussianBlur stdDeviation="1 1" in="SourceGraphic" edgeMode="none" result="blur" />
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.05 0.05"
+              numOctaves="4"
+              seed="1"
+              stitchTiles="stitch"
+              result="turbulence"
+            />
+            <feDiffuseLighting
+              surfaceScale="2"
+              diffuseConstant="1"
+              lighting-color="#707070"
+              in="turbulence"
+              result="diffuseLighting"
+            >
+              <feDistantLight azimuth="45" elevation="20" />
+            </feDiffuseLighting>
+            <feComposite in="diffuseLighting" in2="blur" operator="lighter" result="composite" />
+            <feComposite in="composite" in2="SourceGraphic" operator="in" result="composite1" />
+          </filter>
+          <filter
+            id="crumpled"
+            name="Crumpled"
+            filterUnits="objectBoundingBox"
+            primitiveUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB"
+          >
+            <feGaussianBlur stdDeviation="2 2" in="SourceGraphic" edgeMode="none" result="blur" />
+            <feTurbulence
+              type="turbulence"
+              baseFrequency="0.05 0.05"
+              numOctaves="4"
+              seed="1"
+              stitchTiles="stitch"
+              result="turbulence"
+            />
+            <feDiffuseLighting
+              surfaceScale="2"
+              diffuseConstant="1"
+              lighting-color="#828282"
+              in="turbulence"
+              result="diffuseLighting"
+            >
+              <feDistantLight azimuth="320" elevation="10" />
+            </feDiffuseLighting>
+            <feComposite in="diffuseLighting" in2="blur" operator="lighter" result="composite" />
+            <feComposite in="composite" in2="SourceGraphic" operator="in" result="composite1" />
+          </filter>
+          <filter id="filter-grayscale" name="Grayscale">
+            <feColorMatrix
+              values="0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0"
+            />
+          </filter>
+          <filter id="filter-sepia" name="Sepia">
+            <feColorMatrix values="0.393 0.769 0.189 0 0 0.349 0.686 0.168 0 0 0.272 0.534 0.131 0 0 0 0 0 1 0" />
+          </filter>
+          <filter id="filter-dingy" name="Dingy">
+            <feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0.3 0.3 0 0 0 0 0 1 0"></feColorMatrix>
+          </filter>
+          <filter id="filter-tint" name="Tint">
+            <feColorMatrix values="1.1 0 0 0 0  0 1.1 0 0 0  0 0 0.9 0 0  0 0 0 1 0"></feColorMatrix>
+          </filter>
+        </g>
+        <g id="deftemp">
+          <g id="featurePaths"></g>
+          <g id="textPaths"></g>
+          <g id="statePaths"></g>
+          <g id="defs-emblems"></g>
+          <mask id="land"></mask>
+          <mask id="water"></mask>
+          <mask id="fog" style="stroke-width: 10; stroke: black; stroke-linejoin: round; stroke-opacity: 0.1">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" stroke="none" />
+          </mask>
+        </g>
+        <mask id="vignette-mask">
+          <rect x="0" y="0" width="100%" height="100%" fill="white"></rect>
+          <rect id="vignette-rect" fill="black"></rect>
+        </mask>
+      </defs>
+      <g id="viewbox"></g>
+      <g id="scaleBar">
+        <rect id="scaleBarBack" data-group="back"></rect>
+      </g>
+    </svg>
+    <div id="loading">
+      <svg width="100%" height="100%">
+        <pattern id="loading-pattern" width="100" height="100" patternUnits="userSpaceOnUse">
+          <image href="./images/pattern1.png" width="100" height="100" opacity="0.2"></image>
+        </pattern>
+        <rect x="-1%" y="-1%" width="102%" height="102%" fill="#466eab" />
+        <rect x="-1%" y="-1%" width="102%" height="102%" fill="url(#loading-pattern)" />
+      </svg>
+      <svg id="loading-rose" width="100%" height="100%" viewBox="0 0 700 700">
+        <use href="#defs-compass-rose" x="50%" y="50%" />
+      </svg>
+      <div id="loading-typography">
+        <div id="titleName">Azgaar's</div>
+        <div id="title">Fantasy Map Generator</div>
+        <div id="versionText">‎ ‎</div>
+        <p id="loading-text">LOADING<span>.</span><span>.</span><span>.</span></p>
+      </div>
+    </div>
+    <div id="optionsContainer" style="opacity: 0">
+      <div id="collapsible">
+        <button
+          id="optionsTrigger"
+          data-tip="Click to show the Menu"
+          data-shortcut="Tab"
+          class="options glow"
+        >
+          ►
+        </button>
+        <button
+          id="regenerate"
+          data-tip="Click to generate a new map"
+          data-shortcut="F2"
+          class="options"
+          style="display: none"
+        >
+          New Map!
+        </button>
+      </div>
+      <div id="options" style="display: none">
+        <div class="drag-trigger" data-tip="Drag to move the Menu"></div>
+        <div class="tab">
+          <button
+            id="optionsHide"
+            data-tip="Click to hide the Menu"
+            data-shortcut="Tab or Esc"
+            class="options"
+          >
+            ◄
+          </button>
+          <button id="layersTab" data-tip="Click to change map layers" class="options active">Layers</button>
+          <button id="styleTab" data-tip="Click to open style editor" class="options">Style</button>
+          <button id="optionsTab" data-tip="Click to change generation and UI options" class="options">Options</button>
+          <button id="toolsTab" data-tip="Click to open tools menu" class="options">Tools</button>
+          <button id="aboutTab" data-tip="Click to see Generator info" class="options">About</button>
+        </div>
+        <div id="layersContent" class="tabcontent" style="display: block"></div>
+        <div id="styleContent" class="tabcontent"></div>
+        <div id="optionsContent" class="tabcontent"></div>
+        <div id="toolsContent" class="tabcontent"></div>
+        <div id="heightmapMenu" class="tabcontent"></div>
+        <div id="aboutContent" class="tabcontent"></div>
+        <div id="sticked">
+          <button id="newMapButton" data-tip="Generate a new map based on options" data-shortcut="F2">New Map</button>
+          <button id="exportButton" data-tip="Select format to download image or export map data">Export</button>
+          <button id="saveButton" data-tip="Save fully-functional map file">Save</button>
+          <button id="loadButton" data-tip="Load fully-functional map (.map or .gz formats)">Load</button>
+          <button id="zoomReset" data-tip="Reset map zoom" data-shortcut="0 (zero)">Zoom out</button>
+          <button id="searchButton" data-tip="Search map and commands" data-shortcut="Space">Search</button>
+        </div>
+      </div>
+    </div>
+    <div id="heightmapFinalize">
+      <div data-tip="Drag to move the pane">
+        <button data-tip="Finalize the heightmap and exit the edit mode" id="finalizeHeightmap">
+          Exit Customization
+        </button>
+      </div>
+    </div>
+    <button id="assistantBubble" type="button" data-tip="Open Azgaar Assistant"
+      aria-label="Open Azgaar Assistant" aria-expanded="false" style="display: none">
+      <span class="assistantBubbleBadge">
+        <span class="icon-help"></span>
+        <span class="assistantBubbleMinimize"></span>
+      </span>
+    </button>
+    <div id="dialogs"></div>
+    <div id="notes">
+      <div id="notesHeader"></div>
+      <div id="notesBody"></div>
+    </div>
+    <div
+      id="tooltip"
+      style="opacity: 0"
+      data-main="Click the arrow button for options. Zoom in to see the map in details"
+    ></div>
+    <div id="mapOverlay" style="display: none">Drop a map file to open</div>
+    <!-- reusable svg elements -->
+    <svg id="defElements" width="0" height="0" style="position: absolute">
+      <defs>
+        <marker id="end-arrow" viewBox="0 -5 10 10" refX="6" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,-5L10,0L0,5" fill="#000" />
+        </marker>
+        <marker id="end-arrow-small" viewBox="0 -5 10 10" refX="6" markerWidth="2" markerHeight="2" orient="auto">
+          <path d="M0,-5L10,0L0,5" fill="#555" />
+        </marker>
+        <marker id="journey-start" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="2.4" markerHeight="2.4">
+          <circle cx="5" cy="5" r="4" fill="context-stroke" stroke="#fff" stroke-width="1" />
+        </marker>
+        <marker
+          id="journey-arrow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="3"
+          markerHeight="3"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+        </marker>
+        <g id="defs-compass-rose" stroke-width="1.1">
+          <g id="rose-coord-line" stroke="#3f3f3f">
+            <line id="sL1" x1="0" y1="-20000" x2="0" y2="20000" />
+            <line id="sL2" x1="-20000" y1="0" x2="20000" y2="0" />
+          </g>
+          <use href="#rose-coord-line" transform="rotate(45)" />
+          <use href="#rose-coord-line" transform="rotate(22.5)" />
+          <use href="#rose-coord-line" transform="rotate(-22.5)" />
+          <use href="#rose-coord-line" transform="rotate(11.25)" />
+          <use href="#rose-coord-line" transform="rotate(-11.25)" />
+          <use href="#rose-coord-line" transform="rotate(56.25)" />
+          <use href="#rose-coord-line" transform="rotate(-56.25)" />
+          <g stroke-width="8" stroke-opacity="1" shape-rendering="geometricprecision">
+            <circle r="9" stroke="#000" fill="#1b1b1b" />
+            <circle r="75" stroke="#008000" fill="#ffffff" fill-opacity=".1" />
+            <circle r="212" stroke="#1b1b1b" />
+            <circle r="211" stroke="#008000" fill="#ffffff" fill-opacity=".1" />
+          </g>
+          <g stroke="#1b1b1b" stroke-opacity="1" shape-rendering="geometricprecision">
+            <circle r="71" />
+            <circle r="79" />
+            <circle r="94" />
+            <circle r="152" />
+            <circle r="164" />
+            <circle r="207" />
+          </g>
+          <g id="s3" stroke-opacity="1" shape-rendering="geometricprecision">
+            <g id="s2">
+              <g id="s1" stroke="#1b1b1b">
+                <path
+                  d="M 39.416,95.16 C 33.65,103.95 30.76,110.5 28.93,117.18 C 15.24,113.43 13.54,127.15 23.04,131 C 13.71,145.8 7.84,173.93 0,212 L 0,103 A 103,103 0 0,0 39.416,95.16 z"
+                  fill="#47a3d1"
+                />
+                <path
+                  d="M 39.416,95.16 C 33.65,103.95 30.76,110.5 28.93,117.18 C 15.24,113.43 13.54,127.15 23.04,131 C 13.71,145.8 7.84,173.93 0,212 L 0,103 A 103,103 0 0,0 39.416,95.16 z"
+                  fill="black"
+                  transform="scale(-1,1)"
+                />
+                <path
+                  d="M -31.995,160.849 A 164,164 0 0,0 31.995,160.849 C 18.9,170.1 8.4,176.3 0,207 C -8.4,176.3 -18.9,170.1 -31.995,160.849 z"
+                  fill="#c2390f"
+                  transform="rotate(22.5)"
+                />
+              </g>
+              <use href="#s1" transform="rotate(45)" />
+            </g>
+            <use href="#s2" transform="rotate(90)" />
+          </g>
+          <use href="#s3" transform="scale(-1)" />
+        </g>
+        <g id="coas"></g>
+        <g id="gridPatterns">
+          <pattern id="pattern_square" width="25" height="25" patternUnits="userSpaceOnUse" fill="none">
+            <path d="M 25 0 L 0 0 0 25" />
+          </pattern>
+          <pattern id="pattern_pointyHex" width="25" height="43.4" patternUnits="userSpaceOnUse" fill="none">
+            <path d="M 0,0 12.5,7.2 25,0 M 12.5,21.7 V 7.2 Z M 0,43.4 V 28.9 L 12.5,21.7 25,28.9 v 14.5" />
+          </pattern>
+          <pattern id="pattern_flatHex" width="43.4" height="25" patternUnits="userSpaceOnUse" fill="none">
+            <path d="M 43.4,0 36.2,12.5 43.4,25 M 21.7,12.5 H 36.2 Z M 0,0 H 14.5 L 21.7,12.5 14.5,25 H 0" />
+          </pattern>
+          <pattern id="pattern_square45deg" width="35.355" height="35.355" patternUnits="userSpaceOnUse" fill="none">
+            <path d="M 0 0 L 35.355 35.355 M 0 35.355 L 35.355 0" />
+          </pattern>
+          <pattern id="pattern_squareTruncated" width="25" height="25" patternUnits="userSpaceOnUse" fill="none">
+            <path
+              d="M 8.33 25 L 0 16.66 V 8.33 L 8.33 0 16.66 0 25 8.33  M 16.66 25 L 25 16.66 L 25 8.33 M 8.33 25 L 16.66 25"
+            />
+          </pattern>
+          <pattern id="pattern_squareTetrakis" width="25" height="25" patternUnits="userSpaceOnUse" fill="none">
+            <path
+              d="M 25 0 L 0 0 0 25 M 0 0 L 25 25 M 0 25 L 25 0 M 12.5 0 L 12.5 25 M 0 12.5 L 25 12.5 M 0 25 L 25 25 L 25 0"
+            />
+          </pattern>
+          <pattern
+            id="pattern_triangleHorizontal"
+            width="41.76"
+            height="72.33"
+            patternUnits="userSpaceOnUse"
+            fill="none"
+          >
+            <path
+              d="M 41.76 36.165 H 0 L 20.88 0 41.76 36.165 20.88 72.33 0 36.165 M 0 0 H 72.33 M 0 72.33 L 41.76 72.33"
+            />
+          </pattern>
+          <pattern id="pattern_triangleVertical" width="72.33" height="41.76" patternUnits="userSpaceOnUse" fill="none">
+            <path
+              d="M 36.165 0 L 0 20.88 36.165 41.76 72.33 20.88 36.165 0 V 41.76 M 0 0 V 72.33 M 72.33 0 L 72.33 41.76"
+            />
+          </pattern>
+          <pattern id="pattern_trihexagonal" width="25" height="43.4" patternUnits="userSpaceOnUse" fill="none">
+            <path d="M 25 10.85 H 0 L 18.85 43.4 25 32.55 H 0 L 18.85 0 25 10.85" />
+          </pattern>
+          <pattern id="pattern_rhombille" width="82.5" height="50" patternUnits="userSpaceOnUse" fill="none">
+            <path
+              d="M 13.8 50 L 0 25 13.8 0 H 41.2 L 27.5 25 41.2 50 55 25 41.2 0 68.8 0 82.5 25 68.8 50 M 0 25 H 27.5 M 55 25 H 82.5 M 13.8 50 H 41.2 L 68.8 50"
+            />
+          </pattern>
+        </g>
+        <g id="defs-hatching">
+          <pattern id="hatch0" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch1" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch2" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch3" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch4" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch5" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch6" patternUnits="userSpaceOnUse" width="5" height="5">
+            <circle cx="2.5" cy="2.5" r="1" style="fill: black" />
+          </pattern>
+          <pattern id="hatch7" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" transform="rotate(-45 0 0)" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch8" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 2.5" />
+          </pattern>
+          <pattern id="hatch9" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 2.5" />
+          </pattern>
+          <pattern id="hatch10" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 2.5" />
+          </pattern>
+          <pattern id="hatch11" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 2.5" />
+          </pattern>
+          <pattern id="hatch12" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="1" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch13" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch14" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch15" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch16" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch17" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch18" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch19" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch20" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch21" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch22" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="2" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch23" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch24" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="2" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch25" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch26" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch27" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch28" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="2" y1="0" x2="0" y2="2" style="stroke: black; stroke-width: 2" />
+          </pattern>
+          <pattern id="hatch29" patternTransform="rotate(30 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="1" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch30" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch31" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="1" y1="0" x2="0" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="1" y1="0" x2="3" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch32" patternUnits="userSpaceOnUse" width="5" height="5">
+            <circle cx="2.5" cy="2.5" r="0.5" style="fill: black" />
+          </pattern>
+          <pattern id="hatch33" patternUnits="userSpaceOnUse" width="5" height="5">
+            <circle cx="2.5" cy="2.5" r="1.5" style="fill: black" />
+          </pattern>
+          <pattern id="hatch34" patternUnits="userSpaceOnUse" width="5" height="5">
+            <circle cx="3" cy="3" r="1" style="fill: black" />
+            <circle cx="1" cy="1" r="1" style="fill: black" />
+          </pattern>
+          <pattern id="hatch35" patternUnits="userSpaceOnUse" width="5" height="5">
+            <circle cx="3" cy="3" r="1.5" style="fill: black" />
+            <circle cx="1" cy="1" r="1.5" style="fill: black" />
+          </pattern>
+          <pattern id="hatch36" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" transform="rotate(-45 0 0)" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch37" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="0" y2="3" transform="rotate(-45 0 0)" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch38" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="4" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch39" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="4" y2="4" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch40" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="3" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch41" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse" width="4" height="4">
+            <line x1="0" y1="0" x2="3" y2="3" style="stroke: black; stroke-width: 1.5" />
+            <line x1="0" y1="0" x2="4" y2="0" style="stroke: black; stroke-width: 1.5" />
+          </pattern>
+          <pattern id="hatch42" patternUnits="userSpaceOnUse" width="4" height="4">
+            <path d="M0 2Q1 .5 2 2T4 2" fill="none" style="stroke: black; stroke-width: 1" />
+          </pattern>
+          <pattern id="hatch43" patternUnits="userSpaceOnUse" width="4" height="4">
+            <path d="M0 2L1 1 3 3 4 2" fill="none" style="stroke: black; stroke-width: 1" />
+          </pattern>
+          <pattern id="hatch44" patternUnits="userSpaceOnUse" width="5" height="5">
+            <path d="M2.5 1V4M1 2.5H4" style="stroke: black; stroke-width: 1" />
+          </pattern>
+          <pattern id="hatch45" patternUnits="userSpaceOnUse" width="8" height="8">
+            <path d="M0 1H8M0 5H8M1 1V5M5 5V8M5 0V1" style="stroke: black; stroke-width: 1" />
+          </pattern>
+          <pattern id="hatch46" patternUnits="userSpaceOnUse" width="8" height="8">
+            <path d="M1 1.5h.01M4.5 1h.01M7 3h.01M2.5 4.5h.01M5.5 5.5h.01M1 7h.01M7.2 6.8h.01" style="stroke: black; stroke-width: 1.2; stroke-linecap: round" />
+          </pattern>
+        </g>
+        <g id="trade-markers"></g>
+      </defs>
+    </svg>
+
+  </body>
+</html>

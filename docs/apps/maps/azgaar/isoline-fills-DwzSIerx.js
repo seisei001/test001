@@ -1,0 +1,1 @@
+function e(e,t,n){return Object.entries(t).map(([t,{fill:r,waterGap:i}])=>{let a=n(+t),o=``;return r&&(o+=`<path d="${r}" fill="${a}" id="${e}${t}" />`),i&&(o+=`<path d="${i}" fill="none" stroke="${a}" stroke-width="3" id="${e}-gap${t}" />`),o}).join(``)}export{e as t};

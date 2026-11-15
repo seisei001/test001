@@ -1,0 +1,12 @@
+import{t as e}from"./controllers-Dbv1ZRTV.js";import{n as t,y as n}from"./options-model-CrstL1Qd.js";import{n as r}from"./development-overlay-CuKeZGSe.js";import{r as i}from"./development-view-ChwbelfH.js";import{t as a}from"./dialog-BkeQgjla.js";import{i as o,n as s,t as c}from"./table-DPmN0izx.js";import{o as l}from"./tooltips-BVQbACdS.js";import{a as u,m as d}from"./index-sNerCVjG.js";import{i as f,r as p}from"./node-utils-Ds1sVy-v.js";var m=`erasEditor`,h={my:`center`,at:`center`,of:`svg`},g=[{key:`name`,label:u(`Era`),width:`14em`,permanent:!0},{key:`levels`,label:u(`Levels`),width:`5em`}];function _(){options.app.mode||(a.closeAll(`#${m}, .stable`),v(),y(),a.open(m,{title:u(`Eras`),position:h,onClose:()=>a.destroy(m)}))}function v(){a.destroy(m);let e=`<div id="${m}" class="dialog stable editorDialog">
+    <div id="erasBody" class="table">${o({dialogId:m,columns:g})}</div>
+    <div id="erasBottom" class="editorToolbar">
+      <button id="erasRestore" data-tip="${u(`Restore default era names`)}" class="icon-ccw"></button>
+    </div>
+  </div>`;p(`dialogs`).insertAdjacentHTML(`beforeend`,e),s({dialogId:m,columns:g,onUpdate:()=>a.update(m,{width:`fit-content`,position:h})}),p(`erasRestore`).addEventListener(`click`,x)}function y(){let{eras:e}=n,t=p(`erasBody`);t.querySelectorAll(`:scope > .states`).forEach(e=>{e.remove()});let a=e.map(({level:t,name:n},a)=>{let o=(e[a+1]?.level??101)-1;return`<div class="states" data-id="${a}">
+      <div data-col="name">
+        <fill-box fill="${r(a)}" disabled></fill-box>
+        <input class="eraName" value="${d(i(n))}" data-tip="${u(`Name`)}" />
+      </div>
+      <div data-col="levels" data-tip="${u(`Development levels of the era`)}">${t===o?t:`${t}-${o}`}</div>
+    </div>`});t.insertAdjacentHTML(`beforeend`,a.join(``)),t.querySelectorAll(`.eraName`).forEach(e=>{e.addEventListener(`change`,b)})}function b(){let e=n.eras[c(this)],t=this.value.trim();t?(e.name=t,S()):(this.value=i(e.name),l(u(`Name cannot be empty`),!0,`error`,8e3))}function x(){a.confirm({title:u(`Restore default era names`),message:u(`Restore the default era names? Your names will be lost`),confirm:u(`Restore`),onConfirm:()=>{options.map.eras=n.getDefaultEras(),S(),y()}})}function S(){t.save(),f(`developmentEditor`)&&e.DevelopmentEditor.refreshNames()}var C={open:_};export{C as ErasEditor};

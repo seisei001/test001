@@ -1,0 +1,606 @@
+var e=`By default, when you open the software, a random map is generated (according to the saved, customizable settings).
+
+This can be changed, so that when the software is opened, it will display the last saved map (instead of generating a new one).
+
+What is shown to the user when opening the software, is the map (with a certain composition of layers that will be described later), its scale, as well as a button that allows opening the tab menu of fmg.
+
+The first time the software is activated, the layers shown on the map are of the predefined layer group "Political Map".
+The following times what will be active is the predefined group of layers that you selected last time.
+
+# Controls
+
+Understanding the different types of controls that make up the user interface can contribute to a general understanding of fmg.
+
+For example, the paint brush button appears in many windows, and in all of them it has a similar meaning - opening the element in the design tab. Instead of explaining every time what this button does, in each separate window, you can describe the operation of the button once, for all the places where it appears.
+
+## General controls
+
+These elements appear in many places in the UI, for example in the various windows.
+
+### Windows
+
+Editors and overviews open in dialogs. Their positions and sizes are remembered in the browser. When a dialog has a saved position, column layout or sort, a circular-arrow **Reset** button appears in its title bar beside minimize and close. It restores the default position, columns and sorting. It leaves table filters and map data in place.
+
+### Confirmations
+
+Actions that cannot be reverted, such as removing an element, restoring default data or recalculating regiments, ask for confirmation first. <kbd>Enter</kbd> confirms and <kbd>Escape</kbd> cancels. Hold <kbd>Shift</kbd> while clicking the button to skip the confirmation and act immediately, handy for fast edits.
+
+### Legends
+
+A panel that displays a description of a certain element.
+
+This is a non-closeable window. Instead, it closes automatically when the mouse cursor leaves the element to which the legend belongs.
+
+For example, when going over a regiment, it will be displayed for example:
+
+### Tables
+
+Such as the tables that appear in the overview windows.
+
+#### Features
+
+##### Sorting
+
+If the element has a numerical value, it will be possible to sort in ascending or descending order.
+
+If the element has an alphabetical value, it will be possible to sort alphabetically, in ascending or descending order.
+
+Click a column header to sort by it; click it again to reverse the direction. In overview tables, earlier sorts break ties in the latest column. For example, open the Burgs Overview, sort **Burg** alphabetically, then sort **Province** alphabetically: provinces are ordered by name, and burgs remain alphabetical within each province. No modifier key is needed.
+
+The existing default or saved sort applies until you click a header. The browser remembers the last primary sort; reapply earlier tie-break sorts after reopening the dialog. Use the title-bar **Reset** button to restore the default sorting and columns.
+
+The sorting criterion will appear next to the column of the table, for example:
+
+![image](https://github.com/user-attachments/assets/5e4e133e-01d7-4941-9ea0-cef7df0c6f84)
+
+Here the biome column in the biomes table is shown, with the table sorted by biome names, in alphabetical order.
+
+### Buttons
+
+#### Adding an element
+
+![image](https://github.com/user-attachments/assets/2ccbfb57-d902-436e-810f-c61acd5883d6)
+
+#### Deleting an element
+
+![image](https://github.com/user-attachments/assets/493af060-3d18-420a-9d07-2c32d26cb032)
+
+#### Play an element name
+
+![image](https://github.com/user-attachments/assets/5786f119-11dc-4024-9db8-8bcd65f580d4)
+
+#### Opening a style editor for an element
+
+![image](https://github.com/user-attachments/assets/3aa4cb9f-ae2e-47cd-866f-1e7763d6a9b3)
+
+#### Focus on an element
+
+![image](https://github.com/user-attachments/assets/f0e2a635-cfaf-46d9-b3f7-a5f830910091)
+
+#### Opening a wiki guide for an element
+
+![image](https://github.com/user-attachments/assets/7ef572ad-d0c6-42f5-b658-0bc8b6b8295e)
+
+#### Lock buttons
+
+![image](https://github.com/user-attachments/assets/8dc84a92-a4fb-4d86-a95e-936530493261)
+
+If you want the next map to have a fixed value, and not regenerated, you can lock a certain value using a lock button. The button is found, for example, in the options tab, but also in some editors.
+
+In general, whoever wants to generate a map with fixed characteristics, he should lock everything possible.
+
+## Unique controls
+
+### Map
+
+The map, that can be presented in several view mode.
+
+Click an element on the map to open its editor. Right-click a spot to open the context menu: it lists everything at that spot across all layers — what is drawn there first (emblems, relief icons, ice, goods and measurers included), then what the cell holds (burg, river, routes, markers, zones, journeys, regiments, its resource and the goods its burg produces) and the areas it belongs to (feature, market, province, state, culture, religion, biome). Click a row to open its editor or, for an entity without one, to show it on the map. Rows on hidden layers are dimmed; clicking one turns its layer on and shows the entity. With your own AI key or a local model connected, **What's there?** asks the [Assistant](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Assistant) about the place. Shift + right-click opens the browser's own menu. The menu doesn't open in customization modes such as heightmap editing or annexing.
+
+### Bottom label tooltip
+
+When moving over a certain element (on the map or in the windows), a description of it will appear below.
+
+In addition, if it is relevant, a description of what can be done with the control will appear.
+
+In addition, if it is relevant, a shortcut for activating the control will appear.
+
+For example, when going over the layer control of the rivers:
+
+![image](https://github.com/user-attachments/assets/edc9e00f-70a0-4e6a-89cd-f8bf0545a0c3)
+
+### Opening the tab menu
+
+By clicking on the upper left triangle.
+
+Or by the keyboard shortcut Tab.
+
+![image](https://github.com/user-attachments/assets/9c405153-520b-4d16-8b3e-6e38064f4a1e)
+
+### New map generators
+
+By hovering over the upper left triangle, a new map generator command will open.
+or by the shortcut F2.
+
+![image](https://github.com/user-attachments/assets/544497f4-4fa1-4a8f-88c0-31a8fc8c7282)
+
+## Zooming
+
+There are several way to zoom:
+
+Using the mouse by Double click,
+
+Using the keyboard by Pressing + (plus) and - (minus), or press numbers (from 0-9, The higher the number, the higher its zoom level).
+
+There is also support for touch screen and mouse pad.
+
+## Moving on the map
+
+By dragging the mouse, or by the navigation keys (right, left, up and down).
+
+# Menu
+
+FMG menu contains 5 tabs: Layers, Style, Options, Tools and About.
+
+Any of the tabs contain the Lower Menu Section.
+
+## Changing the menu size
+
+Use the _Interface size_ slider in the Options tab.
+
+## Tabs shortcuts
+
+### Layers Tabs shortcuts
+
+Ctrl + click on a certain toggle will turn on the layer and will also navigate to the style editor tab configured for the element of the layer.
+
+For example, if you click on the rivers layer with ctrl pressed, you will navigate to:
+
+![image](https://github.com/user-attachments/assets/87cff977-2385-4626-a97c-6ec5dc59db6c)
+
+## Lower section
+
+The buttons on the Lower Menu Section is in any of the menu tabs.
+
+## New Map
+
+Generates a new map (according to the settings in the Options tab).
+
+The map size depends on the screen size, as fmg tries to fill the entire screen. Alternatively, you can edit the resolution in the "options" tab.
+
+## Export
+
+Export the map to a certain format.
+
+### Download image
+
+There are several buttons for downloading images in different formats (svg, png, jpeg).
+
+Note: Generator uses pop-up window to download files. Please ensure your browser does not block popups.
+
+There is also a buttons to download a zip of several tiles (in a separate png file) of the map. After click the tile button, a new window will pop up, allowing the user to select number of Columns and Rows.
+
+### Export to GeoJSON
+
+There are several buttons for downloading data in GeoJSON format: cells, routes, rivers, markers, or zones.
+
+### Export To JSON
+
+There are several buttons for downloading some data in JSON formats.
+
+## Save
+
+Saving a file in .map format, which contains the current state of the map, so that we can load it in the future using the load button.
+
+### Save options
+
+#### Machine
+
+Save to local PC. Each save (<kbd>Ctrl</kbd> + <kbd>S</kbd>) asks for a file name and location and creates a new file, so earlier saves stay as backups. Shift-click the button or press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> to overwrite the last saved file instead, until another map is generated or loaded. Browsers without a save-location picker (e.g. Firefox and Safari) download the file instead, to the folder set in the browser's download settings.
+
+#### Dropbox
+
+Saving to the dropbox account, if connected.
+
+#### Browser
+
+Quick save (<kbd>F6</kbd>) to the browser's storage. It keeps one quick save, replaced on every save, next to the five latest autosaves. Browser storage is only a backup: the browser can clear it at any time, so keep \`.map\` files on your machine.
+
+#### View-only mode
+
+Tick **View-only mode** to save a copy that opens for browsing only. It works for machine and Dropbox saves: a machine copy always asks for a new file, and a Dropbox copy gets "view" at the end of its name, so neither replaces your editable map. Browser storage holds the map that autosave and quick load use, so it is off while the box is ticked.
+
+## Load
+
+Loading a previously saved map.
+
+Load from the machine, a URL or Dropbox.
+
+**Saved in the browser** lists the quick save and the autosaves with the map name, time and size. Each one can be loaded, downloaded as a \`.map\` file or removed. <kbd>F9</kbd> loads the most recent of them.
+
+## Zoom out
+
+Reset zoom to its initial position.
+
+## Search
+
+Open the [Omnibar](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Omnibar), also available with <kbd>Space</kbd>. Search names and notes, select a result to open its editor or locate it, or start with **>** to search commands only.
+
+# Layers
+
+Additional layers of information can be displayed on the map to enrich it.
+
+A map without layers will be a completely white map, only showing the land on the surface of the ocean, and lakes if there are any.
+
+Each layer is a toggle, which means that clicking on a certain layer will cause it to be displayed or removed from the map.
+
+For example, the "Rivers" layer will display the rivers on the map. Clicking again on the rivers layer will hide them.
+
+Some full-map layers, such as Heightmap, Biomes, and Texture, compete for the same visual area; opacity, clipping, and layer order determine how they combine.
+
+The sort button at the end of the *Layers preset* row opens the layer order, where you drag the layers to change their display order.
+
+When a certain layer is pressed, and you hover over some element in the map that is relevant to the layer, the lower label will display relevant information. For example, if the Heightmap layer is on, hovering over a cell will display its height.
+
+In addition, you can press ctrl and a certain layer, to navigate to the style tab when it is configured to customize the display of the layer you clicked on. For example, if you click on the rivers layer, you will navigate to:
+
+![image](https://github.com/user-attachments/assets/87cff977-2385-4626-a97c-6ec5dc59db6c)
+
+## Layers classification
+
+### Full-map layers
+
+Texture, Heightmap, Biomes.
+
+These layers cover the map area and can obscure other layers depending on their current opacity and clipping settings.
+
+The one that will be displayed is the one that appears last in the order of the layers (to change it, open the layer order and drag the layers).
+
+The other layers can hide parts of other layers, but they cannot hide the entire map.
+
+Note: their opacity and clipping can be changed in the Style tab.
+
+### semi opaque layers
+
+Religion, Cultures, States, and Temperature are generally semi-opaque overlays and can be combined, subject to their styles and layer order.
+
+These layers are drawn on the entire map, but they do not completely hide the above 3 layers, and they can work with each other without full hiding.
+
+## Presets
+
+A dropdown that displays a set of predefined layers.
+
+For example, the group of layers called "political map", contains (and toggle) the layers of the states, borders, rivers, etc.
+
+Available presets: Political map, Cultural map, Religions map, Provinces map, Biomes map, Heightmap, Physical map, Places of interest, Goods and production, Trade map, Military map, Emblems and Pure landmass.
+
+## Biomes
+
+This layer shows the division of the land into biomes.
+
+When this layer is on, when hovering a cell, its biome will be displayed in the tooltip. Biome is a term from the field of ecology that describes a large-scale ecosystem that is characterized by environmental conditions such as climate, the type of soil, and the flora and fauna that characterize it. For example, tropical rainforests, deserts, tundra, savannas, etc. Each of the biomes is characterized by a unique ecosystem of living species found in it naturally and in the environmental conditions that prevail there.
+
+Default biomes, in generator order:
+
+- Marine (id 0, water cells)
+- Hot desert
+- Cold desert
+- Savanna
+- Grassland
+- Tropical seasonal forest
+- Temperate deciduous forest
+- Tropical rainforest
+- Temperate rainforest
+- Taiga
+- Tundra
+- Glacier
+- Wetland
+
+Biomes, their colors, habitability and movement cost can be edited in the Biomes Editor (<kbd>Shift</kbd> + <kbd>B</kbd>). Its Relief column opens a biome's relief pool: the relief types and icons (including your own custom icons) its lowland relief is generated from, their weights and sizes, and the relief density. The sample at the top of the dialog shows the pool as the map draws it and follows every edit; the shuffle button draws another sample. An entry's size multiplies its icons, so palms can stand taller than the grass around them.
+
+Hills, mountains and any other relief placed by elevation follow the relief rules, opened with the mountain button in the Biomes Editor or the Relief Editor. Each rule has a height range, an optional temperature range in °C (an empty bound is open), the biomes it applies to (all by default, so e.g. desert hills can differ from forest hills), an icon size that grows with height, and its own relief pool. A land cell takes the first rule it matches, top to bottom (drag a rule by its handle to reorder); a cell no rule claims takes its biome's pool. Click a rule's relief to edit its pool, the size of each entry and the rule's size range; its sample grows the icons from the rule's lowest height on the left to its highest on the right. Rules are kept when a new map is generated. Editing them changes nothing on the map until you press the re-place button, which re-places the relief on every cell a rule claims.
+
+In general, the biomes are derived from the topographical map (which can be edited in tools or options), and from the temperature (which can be edited in the World Configurator: Options → Configure → Climate).
+
+## Icons
+
+This layer shows the icons of the burgs. When this layer is on, when hovering a burg icon, an offer to edit it will be displayed, along with its name and its population will be displayed in the tooltip. Each burg group's icon is set in the Style tab; see [Icons](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Icons) for choosing icons and adding your own.
+
+## Heightmap
+
+This layer shows the topographical map. When this layer is on, when hovering a cell, its height will be displayed in the tooltip. A topographic map describes the height (relative to sea level) of the map at the various points (cells). All secondary data (rivers, cities, countries, markers, etc.) depend on the topographical map, so it is of great importance.
+
+Each cell is associated with a height, which is a number between 0 and 100.
+
+# Style tab
+
+The style tab allows applying design settings, both in general to the entire map, and privately to certain elements, such as the color of elements, their degree of opacity, etc.
+
+This is the final stage in the preparation of the map, after all its logic is ready.
+
+After choosing an element for design (e.g. Icons or Biomes), you can customize its design with a variety of controls. The controls are built from the element's style definition, so every stored value has a row. The rows are grouped into cards: the element's own rows in a card titled by the selection (e.g. _Labels · capital_), and the element's named parts (the states body and halo, the land and ocean heights, the scale bar background, the ocean bands and embellishments) in a card each. A card folds by its header; a card that can be switched on or off carries its switch in the header. The header also shows a live preview of what the card's own values produce: a text sample for a font, a color swatch for a fill, a line for a stroke and the filter name when a filter is set.
+
+### Changed values and reset
+
+Every value is compared with the current style preset. A value that differs is marked with a red bar on the left of its row and gets a ↺ button that resets it to the preset's value. To discard every change, select the preset again. Values the preset does not define (a label or burg group added after the preset was applied) are never marked. Color rows accept a typed hex value (\`#rrggbb\`) next to the swatch; an invalid value reverts.
+
+### Style elements dialog
+
+The button next to the Element dropdown opens the **Style elements** dialog: a list of every element with its layer visibility (green: on, hollow: off, grey: always shown or not a layer), and, for elements with groups, a fold-out list of the groups with how many things use each. Clicking a name selects it in the editor and the dialog stays open; clicking the dot turns the layer on or off, like the Layers tab does; the filter box narrows the list by element or group name.
+
+For many of the elements there are the same design controls with the same functionality, below is their breakdown:
+
+![image](https://github.com/user-attachments/assets/f4277f5d-e45a-440c-83f6-52f2e02cab71)
+
+Sometimes, elements are divided into groups. For example, by default, lakes are divided into 6 groups: fresh water, salt water, dry, etc. Labels, Icons, Routes and Lakes have a Group dropdown; the burg icon and the port icon of a burg group are styled together, the port icon in the Anchors section.
+
+You can customize the display of each of the groups separately, for example, a freshwater lake can be drawn in blue, and a saltwater lake can be drawn in red.
+
+Note that next to the group, there is a number that records how many elements there are from the group.
+
+If the layer of the selected element is hidden, a notice above the controls offers to turn it on.
+
+### Opacity
+
+![image](https://github.com/user-attachments/assets/df451f6d-70f1-4ee7-9599-31f5f4839d23)
+
+A slider that determines the degree of opacity of the element (value between 0 and 1).
+
+If equal to 0, the color of the element will (mostly) be the color of what is below it, for example the color of the river will be the color of the land on which it flows (and if there is a layer that colors the land, it will be the army). Note that there are exceptions, for example for a lake, the color of the element will be the color of the sea.
+
+### Shift by axes
+
+Allows you to shift the layer on the x-axis and the y-axis.
+
+### Filter
+
+![image](https://github.com/user-attachments/assets/9ae43d89-f729-4ef2-b554-653d295afd5a)
+
+Contains additional display settings on the element, according to a filter. Each filter has certain display settings.
+
+For example, Blur 1 creates a light blur around the element, while Blur 3 creates a heavier blur, while Blur 10 completely blurs the element, effectively hiding it.
+
+This is known as a filter, because you put a "lens" over the object that makes a visual effect on it, for example a blur, or a wrinkled look. It could be called "effect" (on the element).
+
+Filters: none, Blur 0.2, Blur 1, Blur 3, Blur 5, Blur 7, Blur 10, Splotch, Blurred Splotch, Shadow 2, Shadow 0.1, Shadow 0.5, Outline, Pencil, Turbulence, Paper, Crumpled, Grayscale, Sepia, Dingy and Tint.
+
+### Clip
+
+![image](https://github.com/user-attachments/assets/333f4c01-e7b6-4282-9518-b7f2da6433a2)
+
+Dropdown that allows you to choose whether the layer will apply to the land, the sea, or both.
+
+#### Inherit (no clipping)
+
+The layer will apply to the entire map, including the sea and including the land.
+
+#### Clip water
+
+The layer will only apply to the land.
+
+#### Clip land
+
+The layer will only apply to the sea.
+
+### Common style controls (Fill related)
+
+#### Fill color
+
+![image](https://github.com/user-attachments/assets/d4a949b7-2336-4ac7-a50f-fbc402be9bb7)
+
+Sets the element's fill color. For illustrated burg icons, fill and stroke change the main surfaces and outlines; roofs, shadows, and other pre-colored details retain their own colors.
+
+### Common style controls (Stroke related)
+
+Stroke is the line that surrounds the element.
+
+#### Stroke color
+
+![image](https://github.com/user-attachments/assets/7890332c-1d38-402a-b1c5-6967ee451142)
+
+Sets the fill color of the stroke.
+
+#### Stroke width
+
+![image](https://github.com/user-attachments/assets/9b3cf590-42ec-4f4b-adce-952aae223698)
+
+Slider that determines the width of the stroke.
+
+The lower the value, the thinner the line will be, to the point of non-existence, and conversely, the higher the value, the thicker the line will be.
+
+For label groups the slider range follows the group's font size: stroke width runs up to half of it and letter spacing from a tenth below zero to half above, so river and state labels both get a usable range. The number input still accepts any value.
+
+### Common style controls (Font related)
+
+#### Font size
+
+![image](https://github.com/user-attachments/assets/347bad04-5b45-451f-8f29-d6c58c0844db)
+
+Determines the font of the text relevant to the element.
+
+### Common style controls (dotted lines related)
+
+#### Stroke dasharray and Stroke linecap
+
+![image](https://github.com/user-attachments/assets/6d467a97-a379-4e5a-9d69-d775ab850b23)
+
+Two rows describe a dashed line.
+
+The dasharray is a list of numbers, e.g. \`5 2\`: the dash length and the spacing between the dashes. Leave it empty for a solid line.
+
+The linecap dropdown allows you to determine the appearance of the ends of the dashes that make up the dashed line.
+
+Butt – The dashes have no effect. The line ends exactly at the ends of its starting and ending points, without extending the line beyond these ends.
+
+Square - There is a small addition along the line. More precisely, adds a rectangle at the end of the line, where the width of the rectangle is half the width of the line and the height is equal to the width of the line.
+
+Round - Expand the line at its end using a semicircle, whose diameter is equal to the width of the line.
+
+Inherit - takes the variant of its parent elements, basically a default value. Every dropdown with an "inherit" entry works this way: the value is left unset.
+
+## Style presets
+
+![image](https://github.com/user-attachments/assets/0fd99cd1-5e52-4d70-b137-379bda19ecb3)
+
+The preset button shows the current preset and allows you to choose a set of design settings for all elements.
+
+Each of those sets defines its design settings for each of the elements, for example the ancient preset defines the texture of the land to be with the image setting to be ancient small, and the Clipping setting to be No clipping.
+
+Available presets: default, ancient, gloom, pale, light, watercolor, clean, atlas, darkSeas, cyberpunk, night, monochrome, ink, cinderwood and frostbite. The **+** button saves the current style as a custom preset.
+
+Clicking the preset button opens the **Style presets** dialog: a gallery with a screenshot of every system preset (all rendered from the same map), the current one outlined. Clicking a card applies the preset, and the dialog stays open. Custom presets are listed with a neutral tile; hover one and click its trash button to remove it.
+
+**+ button** Allows you to add your own set of settings.
+
+## Global filters
+
+![image](https://github.com/user-attachments/assets/15994c62-1bed-4068-a99d-7d32008892a2)
+
+Allows global filters to be applied to all map elements: Grayscale, Sepia, Dingy, Tint.
+
+## Heightmap styling
+
+Contains some common style controls and the following controls:
+
+The **Contours** and **Hachures** controls add elevation lines or downhill strokes, either over the colors or on their own. Select **landHeights** or **oceanHeights** to style them separately; ocean effects also require **Render ocean heights**. See [Hachures](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Map-embellishments#hachures).
+
+### Terracing slider
+
+![image](https://github.com/user-attachments/assets/1f09d100-1fa4-484a-b00b-ee9d2f066720)
+
+A slider that determines the Terracing power(value between 0 and 20), That determines the strength of the rating between the different colors.
+
+The higher the value, the greater the separation between different colors, which gives the impression of a three-dimensional topographical map.
+
+The above effect is achieved through the visual effect of giving a "shadow" to the height cells, so that it will appear that they are one on top of the other, or "creating terraces" in separate planes, each plane at its own height level.
+
+### Reduce layers
+
+![image](https://github.com/user-attachments/assets/340ae86e-74ec-417b-9c76-8c7caba850b6)
+
+A slider that controls the reduction rate value (value between 0 and 10).
+
+The elevation map consists of "elevation layers".
+
+The reduction rate determines the number of displayed layers (inversely - the higher the reduction rate, the smaller the number of displayed layers).
+
+The higher the number of layers, the more uneven the map will look.
+
+The smaller the number of layers, the more uniform the map will look, when neighboring height cells will be the same color more likely.
+
+Note: this does not affect the height of the map cells, only the display. If you hover neighboring cells on the map, you will see that although they appear to have the same height because of the color, the bottom tooltip will show a different height.
+
+Increasing the reduction rate value increases the performance of fmg.
+
+### Simplify line
+
+![image](https://github.com/user-attachments/assets/077c1f69-0f8a-4452-80a7-eb1ca3ff7203)
+
+A slider that determines the value of the line simplification rate.
+
+When this value is reset, the borders of the topographic map colors will be according to the borders of the map cells.
+
+The higher the value of the line simplification rate, the more the borders of the colors of the topographic map will merge with each other, in such a way that the borders of the colors curve towards each other.
+
+When the value of the line simplification rate is high, the height is illustrated in a better way, thanks to the illusion of depth that the effect gives. For example, the bright orange color is "above" the green color, and above it there is a ring of a darker orange color, and above it there are rings of army red, and above it there are rings of a dark burgundy color.
+
+Increasing the value of the line simplification rate increases the performance of fmg.
+
+### Line style
+
+![image](https://github.com/user-attachments/assets/7f04c7e4-402f-495f-bd75-9c7668b839e5)
+
+Dropdown that allows you to choose the line style of the "height cells". In this context, a "height cell" is a cell painted with a color that represents a certain height.
+
+To understand what the slider does, you should turn on the cell layer.
+
+#### Curved
+
+In this view, the "elevation cells" extend approximately next to the map cells, so instead of extending exactly over the cell lines, the lines are rounded, to create a more natural look.
+
+#### Linear
+
+In this view, the "elevation cells" span just above the map cells.
+
+#### Rectangular
+
+In this view, the "elevation cells" extend approximately next to the map cells, so that instead of extending exactly over the cell lines, the lines are "squared", to create a more pixelated look.
+
+### Color scheme
+
+![image](https://github.com/user-attachments/assets/f727305e-9d04-4314-a84d-d8ad292b8f96)
+
+Dropdown that allows changing the color scheme, so that each height will be represented in a different color according to the color scheme.
+
+For example, in the default set (Bright), the dark burgundy color represents the highest cell, while in the natural set, the highest cell will have a white color. And so each height will have a slightly different color in the different color schemes.
+
+Available color schemes: bright, light, natural, green, olive, livid and monochrome. The **+** button next to the dropdown lets you define a custom scheme from a list of color stops.
+
+# Map Settings
+
+These settings are applied when you generate a new map.
+
+- Map seed: A number that defines the generation of random values. Every time you generate a new map, a new seed number is set here, which together with the size of the map and the options in the map settings menu, creates a random map. Please note – for 2 maps that have the same map size and the same options and the same number of seed, the maps will be identical. The button on the left side allows you to browse between seed values ​​of previous generators.
+
+- Points number: A slider that defines the number of points (cells), from 1K up to the largest step on the slider. The higher the number of points, the more detailed the map and the smaller each cell, but the worse the performance. The default is 10K. If your computer is powerful and you do not experience performance issues, choose a higher value.
+
+- Heightmap: Opens the topographic map selector, which is intended for selecting a template intended for creating a topographic map. For example an archipelago, a group of continents, etc. You can create your own template, or modify the existing templates.
+
+- Cultures number: a slider that determines the number of cultures.
+
+- Cultures set: Dropdown that contains the group of cultures that will be thrown into the map.
+
+- States number: A slider that determines the number of countries.
+
+- Burgs number: A slider that determines the number of burgs (settlements). Set it to \`auto\` to let the generator decide.
+
+- Religions number: A slider that determines the number of religions and sects.
+
+Map size, the cell grid, Provinces ratio, Size variety and Growth rate are in [Advanced options](#advanced-options).
+
+# UI settings
+
+Below the map settings, the Options tab holds settings that apply immediately and are not tied to map generation:
+
+- Interface size and Tooltip size: scale the menu and the bottom tooltip.
+- Theme color and Transparency: the color and opacity of the dialogs.
+- Azgaar Assistant: show or hide the call bubble in the bottom right corner. The panel answers questions about the Generator and, with your own key or local model, the open map.
+- Viewport size: the size of the map window on screen, in pixels. It is independent of the map size (in Advanced options): it is how much of the map you see at once. The button on the left fits it back to the browser window, which is what it follows until you set a size by hand.
+- Zoom extent: minimal and maximal zoom levels, \`[1, 20]\` by default.
+- Performance: a rendering preset, _Quality_, _Balance_ or _Speed_, trading visual quality for speed. The cog button next to it opens the Performance Settings, where each parameter is set on its own; the preset then reads _Custom_ unless the parameters happen to match one:
+  - Shape rendering: a browser hint for drawing edges. The effect varies by browser; _Optimize speed_ does not guarantee faster rendering, and _Crisp edges_ can remove edge smoothing.
+  - State halos: the blurred glow along state borders. It is an SVG blur filter, which is costly on big maps.
+  - Redraw on zoom: when labels, icons and relief are redrawn during a zoom or pan. _After zoom_ redraws once per gesture: faster on big maps, but new content appears all at once.
+- Language: the interface language: English, Russian, Ukrainian, German, French, Spanish, Portuguese (Portugal and Brazil), Italian, Dutch, Polish, Czech, Hungarian, Swedish, Danish, Afrikaans, Turkish, Indonesian, Vietnamese, Thai, Chinese (Simplified), Japanese and Korean. It follows the browser's language until you pick one, and applies after a reload, so save unsaved changes first. Only the interface is translated; map content is not changed.
+
+See [Performance settings](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Performance-settings) for the preset comparison and how to restore the default **Balance** settings.
+
+The **Configure** row at the bottom holds four buttons.
+
+**Climate** opens the World Configurator, a separate dialog where you set the map size relative to the world, its latitude and longitude shift on the globe, the temperature at the equator and both poles, and the global precipitation.
+
+**Lore** opens the Lore Editor, where you name the map, set the current year, era and era abbreviation, and write a description of the world — the year and era date state history and battle reports, and FMG does not run a time simulation.
+
+**Advanced** opens Advanced options, described below.
+
+**Reset** restores the default options and reloads the page. It asks for confirmation first, so save the map before you confirm.
+
+# Advanced options
+
+Settings that are easy to misread live in the **Advanced Options** dialog (Options → Configure → Advanced). Hover a setting to see its explanation. See the [Advanced options](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Advanced-options) page for details.
+
+Map settings, applied when you generate a new map:
+
+- Map size: the coordinate extent the next map is generated on, in pixels. The button on the left resets it to the browser window size. It cannot be changed after the map is created, and the default is recommended. It is not the Viewport size, which is only how much of that extent you see at once.
+- Lattice, Sampling and Jitter: the grid the map cells are built on, for example hexagons or squares for game boards. Lattice is a preset that sets the other two.
+- Provinces ratio: the share of eligible burgs in each state that become province centers. Higher values create more provinces.
+- Size variety: how much states and cultures can differ in size. Lower values make them more uniform.
+- Growth rate: how far states and cultures expand into neutral lands. Lower values leave more land neutral.
+
+Interface settings, applied immediately:
+
+- Autosave interval: how often, in minutes, the map is saved to browser storage. 0 turns autosave off. The five latest autosaves are kept, and the last autosave of a previous map is the last to go.
+- On load: generate a new map or open the most recent browser save when the page opens.
+- Speaker voice: the voice used by the speaker buttons next to names.
+- Emblem shape: the default coat of arms shield shape.
+`;export{e as default};

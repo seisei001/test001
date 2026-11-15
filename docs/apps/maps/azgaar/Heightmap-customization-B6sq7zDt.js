@@ -1,0 +1,214 @@
+var e=`The **heightmap editor** allows you to create and customize the heightmap manually, giving you more control over the world's terrain, unlike random generation.
+
+To access the Heightmap Editor, you can either:
+1. Navigate to Tools > Heightmap in the menu. (Look at the image below)
+2. Use the hotkey <kbd>Shift</kbd> + <kbd>H</kbd>.
+
+<details>
+<summary>Show Image</summary>
+
+![Heightmap Editor Menu](https://github.com/ZZWILLIAMXXTrue/FMG-Console-Codes/blob/main/Image/Heightmap%20Selection.png)
+
+</details>
+
+### Contour display
+
+To show contour lines on a finished map, enable the **Heightmap** layer, then open **Style → Heightmap**.
+Choose the **landHeights** or **oceanHeights** group and set **Contours** to **Over colors** or **Lines only**.
+Ocean contours also require **Render ocean heights** to be enabled.
+
+Adjust **Spacing**, **color**, **width**, and **opacity** independently for each group. Spacing is a round
+height in the map's height unit (Tools → Units), counted from sea level: land contours mark heights, ocean
+contours mark depths. Every fifth contour is twice as thick. Contours follow the height unit and exponent, so
+they crowd together on steep high ground as on a real map. The lines interpolate a gently smoothed surface
+without changing the terrain. These settings are saved with maps and custom style presets; contours are off
+by default.
+
+Set **Font size** above 0 to write the elevation along every fifth contour. As on a topographic map, a white
+halo breaks the line under the number, and the top of the number faces uphill, so some labels read upside
+down. Labels go on straight stretches of longer lines and keep clear of each other.
+
+### Hachures
+
+Hachures are the engraved alternative to contours: short tapered pen strokes combed down the fall
+line, seeded along the elevation levels, packed and heavy where the ground is steep and thinning out
+towards the foot of the slope. Flat ground and the tops of crests draw nothing, so mountain ranges
+read as hatched masses with white crest lines. Open **Style → Heightmap**, choose the **landHeights**
+or **oceanHeights** group and set **Hachures** to **Over colors** or **Strokes only**. Ocean hachures
+also require **Render ocean heights** to be enabled.
+
+Adjust **Hachure density**, **length** and **width** (each relative to the default of 1), **color** and
+**opacity** independently for each group. Strokes are placed deterministically from the map seed, so a map redraws the same way. Hachures
+are saved with maps and custom style presets; the \`ink\` preset uses them in place of relief icons.
+
+The \`ink\` preset pairs land hachures with **Ocean embellishment** under **Style → Ocean**. Choose
+**Waves** or **Straight strokes** with the **Type** selector. Both types thin away
+from the coast, then resume in the distant sea. The clear band between them follows the continents.
+
+Tune **density**, **length**, **reach**, **stroke color**, **stroke width**, **opacity**, and the clear
+**Coastal gap**, and an optional SVG **Dash pattern** such as \`3 2\`. Reach and gap use cell spacings; width uses map pixels. A simple mask keeps the marks
+off land and lakes. The selected type and pattern are saved with maps and style presets; older styles
+retain Waves.
+
+### Modes
+The heightmap editor offers three different modes to choose from. Its recommended to save your map beforehand.
+1. **Erase**:
+   - This mode regenerates all data on your map, including cultures, states, biomes, and more.
+   - It offers the most customization features, such as the image converter and template editor.
+
+2. **Keep**:
+   - This mode allows you to retain most of the map's existing data.
+   - However, it does not allow changes to the coastline.
+
+3. **Risk**:
+   - This mode allows you to change the coastline and keeps the map's data: burgs, states, provinces, cultures, religions, routes, markers, regiments, zones, journeys and labels are carried over to the new coastline.
+   - What was on land you sink is lost, but the land under a burg is never sunk: the burg keeps its cell as a small island.
+   - With _Allow water erosion_ checked, rivers are generated again: each new river takes the name and notes of the old river it follows, and locked rivers keep their course. Unchecked, the rivers are kept, ending at the new coast where their land went under the sea.
+   - Islands, lakes and oceans keep their names, notes and tags. Relief icons on land that went under the sea are removed, and land raised from the sea gets relief of its own.
+
+<details>
+<summary>Show Image</summary>
+
+![Modes](https://github.com/ZZWILLIAMXXTrue/FMG-Console-Codes/blob/main/Image/Heightmap%20Selection%202.png)
+
+</details>
+
+### Heightmap Editor Features
+
+The Heightmap Editor includes tools to help you create and customize your map. Below is a detailed list of all available features:
+
+- **Paint Brushes**:
+  - Automatically opens and allows you to edit the map.
+  - Use different brushes to draw and modify the height.
+
+- **Template Editor**:
+  - Edit, load, or create templates for your heightmap.
+
+- **Image Converter**:
+  - Convert images into heightmaps.
+
+- **Preview**:
+  - Displays a monochromatic image of the map in the bottom left corner.
+  - You can click the image to download it.
+
+- **3D Scene**:
+  - Opens the map in the app's 3D preview.
+  - Allows for a more immersive view of the map's shape and features.
+
+- **Render Ocean Cells**:
+  - Renders or hides ocean cells in the editor preview.
+  - It does not enable or disable ocean cells in the map.
+
+- **Show Drainage**:
+  - Overlays the water flow: an arrow on every land cell points to where its water goes, thicker where more cells drain through.
+  - Depressions that water cannot leave are hatched in black: they get filled on finalization. Those deeper than the depression depth threshold are hatched in blue: with water erosion allowed they become lakes instead, and the hatching around them clears as the rest drains into them. Paint an outlet or raise the floor if you don't want either.
+  - The overlay stays on while you paint and updates after every edit.
+
+- **Allow Water Erosion**:
+  - Simulate water erosion effects on the terrain.
+  - Adds realism to the map by shaping the landscape according to water flow.
+
+Once you are satisfied with the heightmap, click **Exit Customization** in the bottom right. The map must have at least 200 land cells. The button is hidden while the Image Converter is open.
+
+<details>
+<summary>Show Image</summary>
+
+![Features](https://github.com/ZZWILLIAMXXTrue/FMG-Console-Codes/blob/main/Image/Heightmap%20Features.png)
+
+</details>
+
+## Paint brushes
+
+  - **Raise**: increases the height of cells in radius by the Power value; drag for continuous use.
+  - **Elevate**: drag to gradually increase the height of cells in radius by the Power value.
+  - **Lower**: drag to decrease the height of cells in radius by the Power value.
+  - **Depress**: drag to gradually decrease the height of cells in radius.
+  - **Align**: drag to set the height of cells in radius to the height of the cell under the cursor.
+  - **Smooth**: drag to level the height of cells in radius towards the height of the adjacent cells.
+  - **Disrupt**: drag to randomize the height of cells in radius based on the Power value.
+  - **Fill**: click an enclosed water area or a same-height land area to create a cone-shaped blob.
+  - **Line**: select two points to change the heights along a line — useful for ridges and trenches.
+
+### Sliders
+  - **Size**: brush radius (1–100). Shortcut: <kbd>+</kbd> / <kbd>-</kbd>, or <kbd>[</kbd> / <kbd>]</kbd>.
+  - **Power**: brush intensity (1–10). Not used by the Align brush.
+  - **Power** (Line tool): the height change along the line, from -100 to 100.
+  - **Randomness** (Line tool): line jitter — zero makes the line as straight as possible.
+
+### Cells to change
+A dropdown restricting which cells a brush may touch: _all cells_, _only land cells_ or _only water cells_. Restricting to land or water prevents the brush from moving the coastline.
+
+### Footer Buttons
+  - **Undo** (<kbd>Ctrl</kbd> + <kbd>Z</kbd>): step back. Works only within heightmap customization.
+  - **Redo** (<kbd>Ctrl</kbd> + <kbd>Y</kbd>): step forward.
+  - **Rescaler**: a slider that shifts all heights up or down.
+  - **Conditional rescaler**: applies an operation to heights within a given interval — "if height is between X and Y, then do Z with operand V".
+  - **Smooth**: smooths all heights a bit.
+  - **Disrupt**: randomizes all heights a bit.
+  - **Clear**: sets all heights to 0 (erases the map).
+
+<details>
+<summary>Show Image</summary>
+
+![Brushes](https://github.com/BroCrows/FMG-Console-Codes/blob/main/Image/paintbrushes.png)
+
+</details>
+
+## Template Editor
+
+Please see [Template Editor](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Heightmap-template-editor).
+
+
+## Image Converter
+
+Once opened, you'll be asked to select an image from your files.
+
+After you pick an image, the _Place image_ window shows how it will cover the map:
+
+- _Fit_: _Whole image_ keeps the entire image with its proportions, _Fill map_ covers the map and crops the excess, _Stretch_ distorts the image to the map size.
+- _Zoom_ resizes the image; drag the preview to move it, scroll over it to zoom, and click _Center_ to put it back in the middle.
+- The black area not covered by the image becomes ocean.
+- _Apply_ converts the placed image into colors to assign. _Cancel_ discards the upload; cancelling the first upload cancels the whole conversion.
+
+While the converter is open, the other heightmap tools and options are disabled and _Exit Customization_ is hidden. Complete or cancel the conversion to use them again.
+
+- **Upload Image**:
+  - Here you can upload a different image you’d like to convert into a heightmap.
+  - Recommended are monochromatic images with black representing the ocean.
+
+- **Auto-Assign Colors Based on Luminosity**:
+  - This option assigns the colors to heights based on their luminosity.
+  - Good for monochromatic images.
+
+- **Auto-Assign Colors Based on Hue**:
+  - This option assigns the colors to heights based on their hue.
+  - Suitable for maps with differing colors.
+
+- **Auto-Assign Colors Based on Generated Scheme**:
+  - This option assigns the colors to heights based on Azgaar's bright color scheme.
+  - Ideal for maps made with the generator.
+
+- **Set Maximum Amount of Colors**:
+  - Allows you to set the number of colors to quantize the image to (100 by default).
+  - The converter may produce fewer colors than the requested maximum, depending on the source image and palette.
+
+- **Overlay opacity**:
+  - A slider that fades the source image over the heightmap being built, so you can trace it.
+
+- **Cancel the Conversion**:
+  - Cancel the image conversion and revert back to the previous map.
+
+- **Complete the Conversion**:
+  - Fully loads the map into the Fantasy Map Generator.
+  - All unassigned colors will default to ocean.
+
+Colors are listed in two groups — _Assigned colors_ and _Unassigned colors_. To assign a color by hand, click the color you want to edit and then pick the height on the slider above. Click an already assigned color to re-assign it.
+
+
+<details>
+<summary>Show Image</summary>
+
+![Converter](https://github.com/BroCrows/FMG-Console-Codes/blob/main/Image/paintbrushes.png)
+
+</details>
+`;export{e as default};

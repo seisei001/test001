@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>FMG Dropbox Auth</title>
+  </head>
+  <body>
+    <p>Connecting to Dropbox…</p>
+    <script>
+      // The app opens this page, sends it to Dropbox sign-in and trades the code for tokens itself.
+      // Dropbox redirects back here with ?code= or ?error=; pass it to the app and close
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const error = params.get("error");
+
+      if (code || error) {
+        const channel = new BroadcastChannel("dropbox-auth");
+        const description = params.get("error_description") || error;
+        channel.postMessage(code ? { type: "code", code } : { type: "error", description });
+        channel.close();
+        window.close();
+      } else {
+        // the app sends this window on to Dropbox at once; an app tab older than this page never does
+        setTimeout(() => {
+          document.querySelector("p").textContent = "Reload the map tab and connect to Dropbox again.";
+        }, 10000);
+      }
+    </script>
+  </body>
+</html>

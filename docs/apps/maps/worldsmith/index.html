@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Worldsmith — Procedural Fantasy Map &amp; Terrain Generator</title>
+  <meta name="description" content="Free procedural world generator that runs in your browser. Generates infinite fantasy maps with rivers, biomes and place names from a seed, and exports PNG, SVG, and 16-bit heightmaps for Unity, Unreal and Blender. No signup, no server, open source." />
+  <link rel="canonical" href="https://thedatawiz-dot.github.io/Worldsmith/" />
+  <meta name="author" content="Hridhaan Shah" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Worldsmith — Procedural Fantasy Map &amp; Terrain Generator" />
+  <meta property="og:description" content="Generate infinite fantasy maps with rivers, biomes and place names from a seed. Export PNG, SVG, and 16-bit heightmaps for Unity, Unreal and Blender. Runs entirely in your browser." />
+  <meta property="og:url" content="https://thedatawiz-dot.github.io/Worldsmith/" />
+  <meta property="og:image" content="https://thedatawiz-dot.github.io/Worldsmith/preview.png" />
+  <meta property="og:image:alt" content="A procedurally generated fantasy map showing coastlines, mountain ranges, rivers and named regions." />
+  <meta property="og:site_name" content="Worldsmith" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Worldsmith — Procedural Fantasy Map &amp; Terrain Generator" />
+  <meta name="twitter:description" content="Infinite fantasy maps with real river networks and named places, generated from a seed. Exports heightmaps for Unity, Unreal and Blender." />
+  <meta name="twitter:image" content="https://thedatawiz-dot.github.io/Worldsmith/preview.png" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Worldsmith",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Any (web browser)",
+    "url": "https://thedatawiz-dot.github.io/Worldsmith/",
+    "description": "A procedural world generator that creates infinite fantasy maps with domain-warped terrain, climate-driven biomes, D8 flow-accumulation river networks, and procedurally named places. Exports PNG, SVG, and 8-bit and 16-bit heightmaps for Unity, Unreal Engine and Blender. Runs entirely client-side with no dependencies.",
+    "featureList": [
+      "Infinite seeded world generation",
+      "Climate-driven biomes from elevation, moisture and temperature",
+      "River networks from D8 flow accumulation",
+      "Procedural place names",
+      "Elevation contour lines, exported as editable vectors in SVG",
+      "Click-to-inspect terrain probe with real coordinates and elevations",
+      "Latitude/longitude graticule and scale bar on real Earth data",
+      "Animated sea-level rise",
+      "Five cartographic styles",
+      "PNG, SVG, JSON and 16-bit RAW heightmap export",
+      "Shareable permalinks encoding the full view state"
+    ],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "author": { "@type": "Person", "name": "Hridhaan Shah" },
+    "codeRepository": "https://github.com/TheDatawiz-dot/Worldsmith"
+  }
+  </script>
+</head>
+<body>
+  <canvas id="terrain" role="img" aria-label="Generated world map. A textual summary of the current view is available in the World summary section of the control panel." tabindex="0"></canvas>
+
+  <!-- Indexable description of what this tool is. Visually hidden because the
+       page itself is a full-bleed canvas, but it is real content for readers
+       using a screen reader and for search engines that would otherwise see an
+       empty document. -->
+  <h1 class="sr-only">Worldsmith — procedural fantasy map and terrain generator</h1>
+  <p class="sr-only">
+    Worldsmith generates infinite fantasy world maps in your browser from a numeric seed.
+    Terrain uses domain-warped fractal noise with ridged mountain ranges; biomes are derived
+    by crossing elevation, moisture and temperature; rivers are computed with D8 flow
+    accumulation so tributaries merge into real drainage networks; and regions are given
+    procedurally generated names. Maps can be exported as PNG images up to poster size, as
+    editable SVG, as world data in JSON, and as 8-bit or 16-bit heightmaps suitable for
+    terrain import into Unity, Unreal Engine, Blender and World Machine. It is free,
+    open source under the MIT license, and runs entirely client-side with no account,
+    no server and no dependencies.
+  </p>
+
+  <main class="panel" id="panel" aria-label="Worldsmith controls">
+    <header>
+      <h2>Worldsmith <span class="busy" id="busy" aria-hidden="true"></span></h2>
+      <p class="tagline">Real Earth, or infinite generated worlds &mdash; with rivers, biomes and named places. No API, no server, no dependencies.</p>
+    </header>
+
+    <div class="field">
+      <label for="source">World</label>
+      <select id="source">
+        <option value="generated">Generated</option>
+        <option value="earth">Earth (real data)</option>
+      </select>
+    </div>
+
+    <div class="field gen-only">
+      <label for="seed">Seed</label>
+      <div class="row">
+        <input id="seed" type="number" step="1" />
+        <button id="randomize" aria-label="Generate a random seed" title="Random seed (R)">&#127922;</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="detail">Detail <span id="detailVal" class="mono"></span></label>
+      <input id="detail" type="range" min="0" max="8" step="1" aria-describedby="detailNote" />
+      <p class="note" id="detailNote" hidden></p>
+    </div>
+
+    <div class="field">
+      <label for="sea">Sea level <span id="seaVal" class="mono"></span></label>
+      <div class="row">
+        <input id="sea" type="range" min="250" max="620" step="5" aria-valuetext="42 percent" />
+        <button id="flood" aria-label="Animate sea level rising and falling" aria-pressed="false" title="Animate sea level">&#9654;</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="style">Map style</label>
+      <select id="style"></select>
+    </div>
+
+    <div class="field earth-only" hidden>
+      <label for="goto">Go to</label>
+      <select id="goto"></select>
+    </div>
+
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="rivers" /> <span>Rivers</span></label>
+      <label class="check"><input type="checkbox" id="labels" /> <span>Place names</span></label>
+      <label class="check"><input type="checkbox" id="contours" /> <span>Contours</span></label>
+      <label class="check earth-only" hidden><input type="checkbox" id="grid" /> <span>Grid &amp; scale</span></label>
+    </div>
+
+    <div class="group">
+      <div class="field">
+        <label for="exportFormat">Export</label>
+        <select id="exportFormat"></select>
+      </div>
+      <div class="field" id="exportSizeRow">
+        <label for="exportSize" id="exportSizeLabel">Width</label>
+        <select id="exportSize"></select>
+      </div>
+      <p class="note" id="exportNote"></p>
+      <div class="actions">
+        <button id="exportRun">Download</button>
+        <button id="exportCancel" hidden>Cancel</button>
+        <button id="copyLink">Copy link</button>
+      </div>
+      <div class="progress" id="exportProgress" role="progressbar" aria-label="Export progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span id="exportBar"></span></div>
+    </div>
+
+    <div class="group">
+      <details id="summaryBox">
+        <summary>World summary</summary>
+        <!-- The map itself is a canvas and cannot be read by assistive tech.
+             This is the textual equivalent: what the current view actually
+             contains, updated whenever the world changes. -->
+        <dl class="readout" id="worldSummary" aria-live="polite">
+          <div><dt>Mode</dt><dd id="sumMode">—</dd></div>
+          <div><dt>Land</dt><dd id="sumLand">—</dd></div>
+          <div><dt>Elevation</dt><dd id="sumElev">—</dd></div>
+          <div><dt>Climate</dt><dd id="sumClimate">—</dd></div>
+          <div><dt>Rivers</dt><dd id="sumRivers">—</dd></div>
+          <div><dt>Lakes</dt><dd id="sumLakes">—</dd></div>
+          <div><dt>Named places</dt><dd id="sumPlaces">—</dd></div>
+        </dl>
+      </details>
+
+      <details id="provenanceBox">
+        <summary>Data &amp; method</summary>
+        <!-- Worldsmith mixes measured data with modelled and invented detail.
+             Which is which is stated explicitly rather than implied, because a
+             map that quietly passes synthesis off as measurement is worse than
+             one that admits its limits. -->
+        <div class="provenance" id="provenance"></div>
+      </details>
+    </div>
+
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <p class="hint">Drag to explore &middot; scroll to zoom &middot; click a point to inspect it<br />
+      Keyboard: <kbd>&larr;&uarr;&darr;&rarr;</kbd> pan &middot; <kbd>+</kbd>/<kbd>&minus;</kbd> zoom &middot;
+      <kbd>R</kbd> reroll &middot; <kbd>H</kbd> hide panel &middot; <kbd>Esc</kbd> close inspector</p>
+    <p class="credit">open source on <a href="https://github.com/TheDatawiz-dot/Worldsmith">GitHub</a></p>
+  </main>
+
+  <button class="toggle" id="toggle" aria-label="Hide control panel" aria-expanded="true" aria-controls="panel">&#8942;</button>
+
+  <!-- Point inspector: click or tap the map and this card reports what is
+       actually there, read through the same sampler the renderer uses. Also
+       the only way the map's data becomes readable to assistive technology at
+       a *specific* location rather than as a whole-view summary. -->
+  <div class="inspector" id="inspector" role="status" aria-live="polite" hidden>
+    <button id="inspectorClose" aria-label="Close inspector">&times;</button>
+    <dl class="readout" id="inspectorBody"></dl>
+  </div>
+  <div class="inspector-dot" id="inspectorDot" aria-hidden="true" hidden></div>
+
+  <div class="zoomers">
+    <button id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+    <button id="zoomOut" aria-label="Zoom out" title="Zoom out">&minus;</button>
+  </div>
+
+  <script src="noise.js"></script>
+  <script src="world.js"></script>
+  <script src="earth.js"></script>
+  <script src="render.js"></script>
+  <script src="export.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

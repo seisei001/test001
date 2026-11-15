@@ -1,0 +1,1 @@
+import{N as e,y as t}from"./options-model-CrstL1Qd.js";import{O as n,a as r}from"./index-sNerCVjG.js";var i=t=>e[t]??t,a=e=>n(e)?i(t.getEra(n(e))):r(`No development`),o=e=>n(e)?`${n(e)}, ${a(e)}`:a(0),s=e=>n(e)?r(`Development: {{level}}, {{era}}`,{level:n(e),era:a(e)}):a(0);export{o as i,a as n,i as r,s as t};
