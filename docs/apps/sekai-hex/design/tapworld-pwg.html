@@ -78,10 +78,11 @@ function Hm(sx,sz,lod=3){
   const ax=ex+sx,az=ez+sz,h=levelAt(ax/M,az/M);
   if(h<20)return-(20-h)*5-.3;
   const land=sstep(19,26,h),rough=sstep(28,60,h);
-  let v=Math.pow(h-sea,1.8)*.9+(h-sea)*2.5;
-  let d=(fbm(ax/1400+9,az/1400)-.5)*2*(5+rough*45);
+  const low=1-sstep(22,55,h);   /* PWG用: 平らな低地ほど起伏を強める */
+  let v=(Math.pow(h-sea,1.8)*.9+(h-sea)*2.5)*(1+low*1.1);
+  let d=(fbm(ax/1400+9,az/1400)-.5)*2*(5+rough*45+low*28);
   d+=rough*(ridged(ax/3200,az/3200+4,4)-.5)*900*sstep(48,85,h);
-  if(lod>=1){d+=(fbm(ax/230,az/230+3,2)-.5)*2*(1.5+rough*9);d+=rough*(ridged(ax/900,az/900+11,3)-.5)*170*sstep(45,85,h)}
+  if(lod>=1){d+=(fbm(ax/230,az/230+3,2)-.5)*2*(1.5+rough*9+low*8);d+=rough*(ridged(ax/900,az/900+11,3)-.5)*170*sstep(45,85,h)}
   if(lod>=2)d+=(fbm(ax/38+7,az/38,2)-.5)*(.6+rough*2.5);
   if(lod>=3)d+=(fbm(ax/7,az/7+5,2)-.5)*.35;
   return v+d*land}

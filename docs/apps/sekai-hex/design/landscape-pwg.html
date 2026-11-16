@@ -52,10 +52,11 @@ function dataH(gx,gy){ // 0..100 を双一次補間
 function levelAt(wx,wz){
   const gx=(wx/SIZE_X+.5)*(DW-1), gy=(wz/SIZE_Z+.5)*(DH-1);
   let h=dataH(gx,gy);
+  if(h>38)h=38+(h-38)*.55;   /* PWG用: 極端な高みをやわらげる */
   const land=sstep(19,26,h);
   const rough=sstep(28,60,h);
   h+=land*((fbm(wx*.05+9,wz*.05)-.5)*5*(.35+rough));            // 丘のうねり
-  h+=rough*(ridged(wx*.028,wz*.028+4,4)-.5)*34*sstep(50,85,h);   // 山の尾根
+  h+=rough*(ridged(wx*.028,wz*.028+4,4)-.5)*18*sstep(50,85,h);   // 山の尾根
   h+=rough*(fbm(wx*.16,wz*.16,3)-.5)*5;                           // 岩の細かな起伏
   return h}
 const Y=(wx,wz)=>(levelAt(wx,wz)-sea)*HS;
