@@ -1,0 +1,37 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Azgaarの部品: 入力と出力の表</title>
+<style>:root{color-scheme:light dark}body{margin:0;font:15px/1.7 -apple-system,"Hiragino Sans",sans-serif;background:#f7f7f8;color:#1c1c1f}
+@media(prefers-color-scheme:dark){body{background:#17181c;color:#eaeaec}}
+main{max-width:720px;margin:0 auto;padding:12px 16px 56px}a{color:#2563eb}h1{font-size:1.2rem}h2{font-size:1.05rem;margin:1.5em 0 .3em;border-left:4px solid #2563eb;padding-left:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #8884;padding:6px 7px;vertical-align:top;text-align:left}th{white-space:nowrap}small{color:#888}</style></head><body><main>
+<a href="./">← 管理ページへ</a>
+<h1>Azgaarの借りる部品: 入力と出力の表(ソースを読んだ結果)</h1>
+<p><b>概要:</b> Azgaar(MIT)のソースと設計書(docs/architecture)を読み、借りる候補の川・道・国境が「何を受け取り、何を返すか」を表にした。<b>動かした実測ではなく、読んだ結果</b>。読んで分からない所だけを、あとで動かして確かめる。(2026-11-16)</p>
+<p><small>設計書は存在する: data-model.md(データの全項目)、generation-pipeline.md(生成の順序)、module-guide.md。以前「確認していない」と答えたのは誤りだった。</small></p>
+
+<h2>1. 生成の順序(設計書より)</h2>
+<p>…降水 → 区画の作り直し → <b>川</b> → 生物区 → … → 文化 → <b>街</b> → <b>国</b> → <b>道</b> → … → 経済 → 軍。<br>道は、街と国のあとに作られる。つまり<b>道は街の位置を入力にする</b>。</p>
+
+<h2>2. 部品ごとの入力と出力</h2>
+<table>
+<tr><th>部品</th><th>入力(読むデータ)</th><th>出力(作るデータ)</th><th>注意</th></tr>
+<tr><th>川<br>Rivers.generate<br>(約1000行)</th><td>マスの標高・位置・隣接、降水(grid.cells.prec)、地物(島・湖)</td><td>川の一覧(pack.rivers)、マスごとの川番号・水量・合流量(cells.r / fl / conf)</td><td>くぼ地の処理で、標高を一部書き換える。降水が先に要る(気温・降水の段も)。単独で14段まで動かすのは実測済み(約0.5秒)</td></tr>
+<tr><th>道<br>Routes.generate<br>(約1100行)</th><td>マスの標高・生物区・位置・隣接・街番号・入り江(haven)・距離場・川番号、生物区の住みやすさ、<b>街の一覧(マス・座標・首都か・港か・島番号)</b>、川(航行できるか・流路)、気温</td><td>道の一覧(pack.routes: 種類・通るマス・座標)、マスどうしのつながり(cells.routes)</td><td>街が入力なので、<b>街の配置は自作側から渡せる</b>。費用は「距離×住みやすさ×標高×(既存の道なら半分)×(街のマス以外は3倍)」。道に名前を付ける処理が同居(使わない)</td></tr>
+<tr><th>国境<br>States.expandStates + normalize<br>(約90行)</th><td>マスの隣接・文化・住みやすさ得点(cells.s)・標高・生物区・地物・川・距離場、国の中心・文化・型・拡張力、首都の街、文化の中心、成長率の設定</td><td>マスごとの国番号(cells.state)、街ごとの国番号</td><td>文化と「住みやすさ得点」が入力に要る。States モジュールは財政・外交・遠征まで含む約1760行で、国境の部分だけが約90行。借りるのはその部分だけ</td></tr>
+</table>
+
+<h2>3. 読んで分かったこと</h2>
+<ul>
+<li><b>道は街から、国境は文化と首都から</b>決まる。街・文化・首都を作る側(自作)が、先に要る。</li>
+<li>川は地形だけで決まるので、最も独立している。道と国境は、街・文化のデータを受け取る形にすれば借りられる見込み。</li>
+<li>Azgaarの内部は、<code>pack</code>(区画データ)を全部が共有する作りで、部品が<b>pack の決まった項目を読み書き</b>する。借りるなら、<b>同じ項目名・形のデータを用意して渡す</b>のが最短。(要検証)</li>
+</ul>
+
+<h2>4. まだ読んで分からない所(動かして確かめる候補)</h2>
+<ol>
+<li>国境の部品が、文化や住みやすさ得点を作る前の処理(文化の生成など)に、他に何を暗黙に要求するか。</li>
+<li>道の部品が、街の「入り江(haven)」「港」の項目を、街の配置から得られない場合にどう振る舞うか。</li>
+<li>区画の作り(Voronoi)を、こちらのハニカム方式と合わせるか、区画のまま使って変換するか。</li>
+</ol>
+<p><small>次: この表を設計資料の「借りる/自作」の一覧に反映し、上の3点だけを小さく動かして確かめる。</small></p>
+</main></body></html>
