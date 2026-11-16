@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>ランドマーク試作(世界の層)</title>
+<base href="../">
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--muted:#5d6878;--accent:#2563eb;--hud:rgba(255,255,255,.9)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--muted:#9aa6b8;--accent:#6ea0ff;--hud:rgba(20,28,40,.88)}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:8px;padding:4px 10px;min-height:44px;background:var(--panel);border-bottom:1px solid var(--border)}
+header a{color:var(--accent);text-decoration:none;white-space:nowrap}
+h1{font-size:15px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main{position:relative;flex:1;min-height:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cv{touch-action:none}
+#ov,#lm{pointer-events:none}
+.hud{position:absolute;left:8px;top:8px;right:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.45;pointer-events:none}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;pointer-events:auto}
+button{min-height:44px;min-width:0;padding:0 2px;border-radius:10px;border:1px solid var(--border);background:var(--hud);color:var(--text);font-size:13px}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <a href="../fantasy-war/">← 管理ページ</a>
+  <h1>ランドマーク試作(世界の層)</h1>
+  <a href="index.html?seed=7">世界ハニカム本体</a>
+</header>
+<main>
+  <canvas id="cv"></canvas>
+  <canvas id="ov"></canvas>
+  <canvas id="lm"></canvas>
+  <div class="hud" id="hud"></div>
+  <div class="bar">
+    <div class="row" id="r1">
+      <button data-mode="1">現状</button>
+      <button data-mode="2">巨大記号だけ</button>
+      <button data-mode="3">両方</button>
+      <button id="next">次へ寄る</button>
+    </div>
+    <div class="row" id="r2">
+      <button data-n="3">3個</button>
+      <button data-n="5">5個</button>
+      <button data-n="8">8個</button>
+      <button id="home">🌍 全体</button>
+    </div>
+    <div class="row" id="r3">
+      <button data-sz="0.7">小さめ</button>
+      <button data-sz="1">ふつう</button>
+      <button data-sz="1.4">大きめ</button>
+      <button id="dice">🎲 別の世界</button>
+    </div>
+  </div>
+  <div id="err" hidden></div>
+</main>
+<script>window.APP_VER='0.92';</script>
+<script src="world.js?v=0.92"></script>
+<script src="transport.js?v=0.92"></script>
+<script src="realm.js?v=0.92"></script>
+<script src="sekai.js?v=0.92"></script>
+<script src="sprites.js?v=0.92"></script>
+<script src="view.js?v=0.92"></script>
+<script>
+// 目的: 世界の層で「少数の巨大な記号」が世界らしく見えるかを、あなたの目で判断する小さな試作。
+// 地図は本体と同じ。絵は本体の絵記号(SekaiSprites)を大きく描くだけ。選び方はデータ(種類・街の大きさ)の点数づけ。
+// 種類名の文字は仮(名前の仕組みは未設計)。本体のファイルは変更していない。
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var seed = parseInt(params.get('seed'), 10) || 7;
+  var mode = +(params.get('mode') || 2), K = +(params.get('n') || 5), SZ = +(params.get('sz') || 1);
+  var sk, view, all = [], chosen = [], cur = -1, chosenKey = '';
+  var NAME = { castle: '王城', town: '大都市', volcano: '火山', worldtree: '世界樹', shrine: '神殿', lighthouse: '大灯台', pyramid: '大ピラミッド', ziggurat: '階段神殿', icepalace: '氷の宮殿', mountain: '霊峰' };
+  // 重要度: 種類の重み + 街の大きさ + 山の高さ。世界の層では上位だけを出す(ここが「データで選ぶ」の試作)
+  function score(o) {
+    if (!o || typeof o !== 'object') return 0;
+    var k = o.k;
+    if (k === 'worldtree') return 10;
+    if (k === 'castle') return 8;
+    if (k === 'town') return (o.n || 3) >= 5 ? 9 : (o.n || 3) >= 4 ? 6 : 0;
+    if (k === 'volcano') return 7;
+    if (k === 'pyramid' || k === 'ziggurat' || k === 'icepalace') return 7;
+    if (k === 'shrine') return 6;
+    if (k === 'lighthouse') return 4;
+    if (k === 'mountain') return (o.hr || 0) > 0.9 ? 5 : 0;
+    return 0;
+  }
+  function collect(mesh) { // 層0のメッシュの絵記号から候補を集める(1度だけ)
+    var out = [], st2 = mesh.stamps;
+    for (var k = 0; k < st2.length; k += 2) {
+      var o = st2[k + 1], sc = score(o); if (!sc) continue;
+      var i = st2[k]; out.push({ i: i, o: o, sc: sc, gx: mesh.cpos[i * 3], gy: mesh.cpos[i * 3 + 1], z: mesh.cpos[i * 3 + 2] });
+    }
+    return out;
+  }
+  function pick(n, mesh) { // 点数の高い順に、近すぎない物だけ選ぶ
+    var sep = mesh.s * 7, res = [], cand = all.slice().sort(function (a, b) { return b.sc - a.sc || a.i - b.i; });
+    var seen = {}; // まず種類が重ならないように1つずつ。足りなければ同じ種類も許す
+    for (var pass = 0; pass < 2; pass++) for (var c = 0; c < cand.length && res.length < n; c++) {
+      var a = cand[c]; if (res.indexOf(a) >= 0 || (pass === 0 && seen[a.o.k])) continue;
+      var ok = true;
+      for (var j = 0; j < res.length; j++) if (Math.hypot(a.gx - res[j].gx, a.gy - res[j].gy) < sep) { ok = false; break; }
+      if (ok) { res.push(a); seen[a.o.k] = 1; }
+    }
+    return res;
+  }
+  function onFrame(st, mesh) { draw(); }
+  function start() {
+    $('err').hidden = true;
+    sk = Sekai.create(seed);
+    try { view = SekaiView.create($('cv'), sk, { onFrame: onFrame, onSelect: function () {}, overlay: $('ov') }); }
+    catch (e) { $('err').hidden = false; $('err').textContent = 'WebGL を使えない環境です: ' + e.message; return; }
+    view.resize(); view.setStamps(mode !== 2);
+    window.__sk = sk; window.__view = view;
+  }
+  function ensure() {
+    var m = view.mesh; if (!m || m.L !== 0) return false;
+    var key = seed + ':' + K;
+    if (!all.length) all = collect(m);
+    if (chosenKey !== key) { chosen = pick(K, m); chosenKey = key; }
+    return true;
+  }
+  function proj(l, st, mesh) {
+    var cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.tilt), sp = Math.sin(st.tilt);
+    var gx = l.gx - st.fx, gy = l.gy - st.fy, zz = (l.z - st.z0) * mesh.ex;
+    return [st.W / 2 + (cy * gx + sy * gy) * st.ppm, st.H / 2 + ((-sy * gx + cy * gy) * cp - zz * sp) * st.ppm, cy, sy];
+  }
+  function ribbon(c, x, y, text, dpr) {
+    c.save(); c.font = 'bold ' + Math.round(14 * dpr) + 'px "Hiragino Mincho ProN","Noto Serif JP",serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    var w = c.measureText(text).width + 26 * dpr, h = 24 * dpr, r = 6 * dpr;
+    c.translate(x, y); c.fillStyle = '#f3e3b8'; c.strokeStyle = '#6a4a28'; c.lineWidth = 2 * dpr;
+    c.beginPath(); c.moveTo(-w / 2 - 10 * dpr, 0); c.lineTo(-w / 2, -h / 2); c.lineTo(w / 2, -h / 2); c.lineTo(w / 2 + 10 * dpr, 0); c.lineTo(w / 2, h / 2); c.lineTo(-w / 2, h / 2); c.closePath();
+    c.fill(); c.stroke(); c.fillStyle = '#4a2f14'; c.fillText(text, 0, 1 * dpr); c.restore(); void r;
+  }
+  function draw() {
+    var lm = $('lm'), cv = $('cv'); if (lm.width !== cv.width || lm.height !== cv.height) { lm.width = cv.width; lm.height = cv.height; }
+    var c = lm.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, lm.width, lm.height);
+    var m = view.mesh, st = view.st;
+    var layer = m ? m.L : -1;
+    $('hud').innerHTML = '<b>' + ['', '現状の絵記号(小さな絵を全部)', '巨大記号だけ(' + K + '個)', '両方(巨大記号+小さな絵)'][mode] + '</b>'
+      + (layer !== 0 ? '<br>層' + layer + 'です。巨大記号は世界の層(層0)だけに出ます。🌍で戻れます' : '<br>' + chosen.map(function (l) { return NAME[l.o.k] || l.o.k; }).join('・') + ' <span style="color:var(--muted)">(名前は仮)</span>');
+    if (mode === 1 || !ensure()) return;
+    var tm = performance.now(), dpr = st.dpr, cell = m.s * st.ppm, items = [];
+    chosen.forEach(function (l, n) { var p = proj(l, st, m); items.push([p[1], p[0], l, p[2], p[3], n]); });
+    items.sort(function (a, b) { return a[0] - b[0]; });
+    items.forEach(function (it) {
+      var Y = it[0], X = it[1], l = it[2], o = l.o, cy = it[3], sy = it[4];
+      if (X < -300 || X > st.W + 300 || Y < -300 || Y > st.H + 300) return;
+      var size = Math.max(88, Math.min(250, cell * 1.5)) * SZ * dpr;   // 巨大: マスの1.5倍(上限・下限つき)。実際の大きさではなく誇張
+      if (o.k === 'town') { o.sx = cy * o.nx + sy * o.ny; o.sy = -sy * o.nx + cy * o.ny; }
+      // 足元のやわらかい影と光(地図に馴染ませる)
+      c.save(); c.translate(X * dpr, Y * dpr);
+      var g = c.createRadialGradient(0, 0, 0, 0, 0, size * 0.62); g.addColorStop(0, 'rgba(255,240,200,.55)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+      c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, size * 0.62, size * 0.22, 0, 0, 6.2832); c.fill();
+      c.save(); c.scale(size, size); SekaiSprites.draw(c, o.k, o, tm); c.restore();
+      c.restore();
+      ribbon(c, X * dpr, (Y + 14) * dpr + 0, NAME[o.k] || o.k, dpr);
+    });
+  }
+  var loopT = 0;
+  (function loop(t) { if (view && (!loopT || t - loopT > 45) && !document.hidden && mode !== 1 && view.mesh) { loopT = t; draw(); } requestAnimationFrame(loop); })(0);
+  function thrPpm() { return 10 / Sekai.spacing(1); }   // 層1に切り替わる直前の拡大率(層0の一番大きな所)
+  function focusOn(l) { view.jumpTo(l.gx, l.gy, thrPpm() * 0.85); }
+  function setBtns() {
+    document.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('on', +b.dataset.mode === mode); });
+    document.querySelectorAll('[data-n]').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === K); });
+    document.querySelectorAll('[data-sz]').forEach(function (b) { b.classList.toggle('on', +b.dataset.sz === SZ); });
+  }
+  document.querySelectorAll('[data-mode]').forEach(function (b) { b.onclick = function () { mode = +b.dataset.mode; view.setStamps(mode !== 2); setBtns(); view.changed(); }; });
+  document.querySelectorAll('[data-n]').forEach(function (b) { b.onclick = function () { K = +b.dataset.n; cur = -1; setBtns(); view.changed(); }; });
+  document.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { SZ = +b.dataset.sz; setBtns(); view.changed(); }; });
+  $('next').onclick = function () { if (!ensure() || !chosen.length) return; cur = (cur + 1) % chosen.length; focusOn(chosen[cur]); };
+  $('home').onclick = function () { view.reset(); };
+  $('dice').onclick = function () { location.search = '?seed=' + (((Math.random() * 1e6) | 0) + 1) + '&mode=' + mode + '&n=' + K + '&sz=' + SZ; };
+  window.addEventListener('load', function () { start(); setBtns(); });
+})();
+</script>
+</body>
+</html>
