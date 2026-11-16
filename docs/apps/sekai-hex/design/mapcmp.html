@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>素の標高を同じ3Dで見比べる</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#d9c7a0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+body{background:radial-gradient(ellipse at 50% 40%,#efe2c2 0%,#d9c7a0 60%,#b89f6e 100%)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#bar{position:fixed;left:0;right:0;top:0;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;display:flex;gap:6px;flex-wrap:wrap;background:rgba(255,248,230,.82)}
+#bar button{min-height:40px;padding:0 10px;border-radius:10px;border:1px solid #b89f6e;background:#fff8e6;color:#4a3a22;font-size:13px}
+#bar button.on{background:#7a4a12;color:#fff;border-color:#7a4a12}
+#cap{position:fixed;left:10px;bottom:calc(8px + env(safe-area-inset-bottom));font-size:12px;color:#4a3a22;background:rgba(255,248,230,.8);padding:4px 8px;border-radius:8px;max-width:calc(100% - 20px)}
+#cap a{color:#7a4a12;text-decoration:none}
+#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#4a3a22;font-size:15px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar"></div>
+<div id="msg">読み込み中…</div>
+<div id="cap" hidden><a href="../../fantasy-war/mapcmp4.html">← 比較ページ</a> ・ <span id="capt"></span></div>
+<script type="module">
+// 目的: 4つの地図ソフトが作った「素の標高」だけを、同じ色分け・陰影・視点・横幅(約1万km)・高さの倍率で立体表示し、見た目で比べる。
+// 川・国・地名・ランドマーク・各ソフト独自の色は一切使わない。尺度: 海面=0、陸の上位1%=3500m、海の深い側の上位1%=-2500m にそろえてある。
+import * as THREE from '../vendor/three.module.min.js';
+const params = new URLSearchParams(location.search);
+const EXAG = +(params.get('ex') || 0.55), still = params.get('still') === '1', WORLD_KM = 10285, WU = 60;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, t) => a + (b - a) * t;
+const $ = id => document.getElementById(id);
+let renderer, scene, cam, mesh, base, current = null, metas = [], fitDist = 60, Hu = 34;
+const TILT = 52 * Math.PI / 180;
+
+function colorOf(e) { // メートル → 色(標高だけで決める。全地図で共通)
+  let r, g, b;
+  if (e <= 0) { const t = Math.sqrt(clamp(-e / 2500, 0, 1)); r = lerp(92, 14, t); g = lerp(178, 52, t); b = lerp(200, 104, t); }
+  else if (e < 400) { const t = e / 400; r = lerp(96, 124, t); g = lerp(146, 160, t); b = lerp(78, 84, t); }
+  else if (e < 1400) { const t = (e - 400) / 1000; r = lerp(124, 176, t); g = lerp(160, 150, t); b = lerp(84, 98, t); }
+  else if (e < 2600) { const t = (e - 1400) / 1200; r = lerp(176, 138, t); g = lerp(150, 124, t); b = lerp(98, 112, t); }
+  else { const t = clamp((e - 2600) / 1200, 0, 1); r = lerp(138, 246, t); g = lerp(124, 249, t); b = lerp(112, 252, t); }
+  return [r, g, b];
+}
+
+async function loadMap(m) {
+  const img = new Image(); img.src = 'mapcmp/' + m.id + '.png?v=2'; await img.decode();
+  const w = img.width, h = img.height, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0);
+  const d = cx.getImageData(0, 0, w, h).data, E = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) E[i] = -3000 + (d[i * 4] * 256 + d[i * 4 + 1]) / 65535 * 9000;
+  // 色と陰影の絵
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x2 = cv.getContext('2d'), out = x2.createImageData(w, h), D = out.data;
+  const kmPx = WORLD_KM / w, a = -35 * Math.PI / 180, el = 38 * Math.PI / 180, L = [Math.cos(el) * Math.sin(a), Math.sin(el), -Math.cos(el) * Math.cos(a)];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, e = E[i]; let [r, g, b] = colorOf(e);
+    if (e > 0) {
+      const eL = E[y * w + Math.max(0, x - 1)], eR = E[y * w + Math.min(w - 1, x + 1)], eU = E[Math.max(0, y - 1) * w + x], eD = E[Math.min(h - 1, y + 1) * w + x];
+      const dzdx = (eR - eL) / (2 * kmPx), dzdy = (eD - eU) / (2 * kmPx), ex = 6, nx = -dzdx * ex, ny = -dzdy * ex, nl = Math.hypot(nx, ny, 1);
+      const dot = (nx * L[0] + L[1] + (-ny) * L[2]) / nl, sh = clamp(0.74 + 0.75 * (dot - 0.62), 0.45, 1.3); r *= sh; g *= sh; b *= sh;
+    }
+    D[i * 4] = clamp(r, 0, 255); D[i * 4 + 1] = clamp(g, 0, 255); D[i * 4 + 2] = clamp(b, 0, 255); D[i * 4 + 3] = 255;
+  }
+  x2.putImageData(out, 0, 0);
+  return { w, h, E, cv };
+}
+
+function buildMesh(M) {
+  if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.map.dispose(); mesh.material.dispose(); }
+  if (base) { for (const o of base) { scene.remove(o); o.geometry.dispose(); } }
+  Hu = WU * M.h / M.w;
+  const SX = 576, SY = Math.round(SX * M.h / M.w), geo = new THREE.PlaneGeometry(WU, Hu, SX, SY); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let iy = 0; iy <= SY; iy++) for (let ix = 0; ix <= SX; ix++) {
+    const px = Math.min(M.w - 1, Math.round(ix / SX * (M.w - 1))), py = Math.min(M.h - 1, Math.round(iy / SY * (M.h - 1))), e = M.E[py * M.w + px];
+    pos.setY(iy * (SX + 1) + ix, e > 0 ? e / 1000 * EXAG : Math.max(e, -1200) / 1000 * EXAG * 0.12);
+  }
+  geo.computeVertexNormals();
+  const tex = new THREE.CanvasTexture(M.cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
+  mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex })); scene.add(mesh);
+  // 台座
+  const bY = -1.6, objs = [], P = (ix, iy) => { const v = iy * (SX + 1) + ix; return [pos.getX(v), pos.getY(v), pos.getZ(v)]; };
+  const edge = pts => { const g = new THREE.BufferGeometry(), p = []; for (let k = 0; k + 1 < pts.length; k++) { const a = pts[k], b = pts[k + 1]; p.push(a[0], a[1], a[2], b[0], b[1], b[2], a[0], bY, a[2], b[0], b[1], b[2], b[0], bY, b[2], a[0], bY, a[2]); } g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); const o = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x1b3a5c, side: THREE.DoubleSide })); scene.add(o); objs.push(o); };
+  const top = [], bot = [], lef = [], rig = []; for (let ix = 0; ix <= SX; ix++) { top.push(P(ix, 0)); bot.push(P(ix, SY)); } for (let iy = 0; iy <= SY; iy++) { lef.push(P(0, iy)); rig.push(P(SX, iy)); }
+  for (const e of [top, bot, lef, rig]) edge(e);
+  const cap = new THREE.Mesh(new THREE.PlaneGeometry(WU, Hu).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x12263d })); cap.position.y = bY; scene.add(cap); objs.push(cap);
+  base = objs; fit();
+}
+
+function fit() {
+  const wpx = window.innerWidth, hpx = window.innerHeight; renderer.setSize(wpx, hpx, false); cam.aspect = wpx / hpx;
+  const fovV = cam.fov * Math.PI / 180, fovH = 2 * Math.atan(Math.tan(fovV / 2) * cam.aspect);
+  const need = Math.max((WU * 0.53) / Math.tan(fovH / 2), (Hu * 0.72) / Math.tan(fovV / 2));
+  fitDist = need; cam.updateProjectionMatrix(); scene.fog.near = need * 1.15; scene.fog.far = need * 3.2; cam.far = need * 6;
+}
+
+async function show(id) {
+  const m = metas.find(x => x.id === id) || metas[0]; $('msg').hidden = false; $('msg').textContent = '読み込み中…';
+  const M = await loadMap(m); buildMesh(M); current = m.id;
+  [...document.querySelectorAll('#bar button')].forEach(b => b.classList.toggle('on', b.dataset.id === m.id));
+  $('msg').hidden = true; $('cap').hidden = false; $('capt').textContent = m.label + '・陸 ' + Math.round(100 * m.land) + '%';
+  history.replaceState(null, '', '?m=' + m.id + (still ? '&still=1' : '')); window.__ready = m.id;
+}
+
+async function main() {
+  metas = await (await fetch('mapcmp/meta.json?v=2')).json();
+  const bar = $('bar'); const short = { az: 'Azgaar', pwg: 'PWG', ws: 'Worldsmith', ws50: 'Worldsmith(陸50%)', own: '現アプリ(素)', owndet: '現アプリ(起伏足し)' };
+  for (const m of metas) { const b = document.createElement('button'); b.textContent = short[m.id] || m.id; b.dataset.id = m.id; b.onclick = () => show(m.id); bar.appendChild(b); }
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xe4d3ad, 1, 2); cam = new THREE.PerspectiveCamera(32, 1, 1, 400);
+  window.addEventListener('resize', fit);
+  await show(params.get('m') || 'az');
+  const frame = t => { const sway = still ? 0 : Math.sin(t / 9000) * 0.09, d = fitDist; cam.position.set(Math.sin(sway) * d * 0.9, Math.sin(TILT) * d * 0.9 + 1, Math.cos(TILT) * d * 0.9 * Math.cos(sway) + 2); cam.lookAt(0, 0.4, 1.0); renderer.render(scene, cam); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+}
+window.addEventListener('load', () => setTimeout(main, 30));
+</script>
+</body>
+</html>
