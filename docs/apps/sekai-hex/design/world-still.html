@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>世界の立体地図(一枚絵の試作)</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#d9c7a0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+body{background:radial-gradient(ellipse at 50% 40%,#efe2c2 0%,#d9c7a0 60%,#b89f6e 100%)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#cap{position:fixed;left:10px;bottom:calc(8px + env(safe-area-inset-bottom));font-size:12px;color:#4a3a22;background:rgba(255,248,230,.75);padding:4px 8px;border-radius:8px}
+#cap a{color:#7a4a12;text-decoration:none}
+#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#4a3a22;font-size:15px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="msg">立体地図を作っています…</div>
+<div id="cap" hidden><a href="../../fantasy-war/">← 管理ページ</a> ・ <span id="capt"></span></div>
+<script src="../world.js?v=0.93"></script>
+<script type="module">
+// 目的: 「世界の層は、ほかの層を混ぜずに、一枚の立体地図として見せる」を試す一枚絵の試作。操作は無い(眺めるだけ)。
+// 作り方: 世界データ(標高・生物群系・川)→ 細かい標高の格子+色と陰影の地図の絵 → 盛り上げた面に貼って3Dで描く。
+// 世界のデータ・生成は本体と同じ(../world.js)。本体の描画部品は使わない。
+import * as THREE from '../vendor/three.module.min.js';
+const W = SekaiWorld, G = W.G, SPAN = G.SPAN_KM, ROW = G.ROW_KM, CW = G.W, CH = G.H;
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || 7;
+const still = params.get('still') === '1';
+const EXAG = +(params.get('ex') || 0.55);          // 高さの強調: 1000mあたりの高さ(マス幅=1 の単位で)
+const PW = +(params.get('pw') || 1152);
+
+// ---- 乱数・雑音 ----
+const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + s * 1274126177) | 0; h = ((h ^ (h >>> 13)) * 1274126177) | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const lerp = (a, b, t) => a + (b - a) * t;
+function vn(x, y, s) { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return lerp(lerp(hash(ix, iy, s), hash(ix + 1, iy, s), u), lerp(hash(ix, iy + 1, s), hash(ix + 1, iy + 1, s), u), v); }
+function fbm(x, y, s, o) { let a = 0.5, t = 0, f = 1; for (let k = 0; k < o; k++) { t += a * vn(x * f, y * f, s + k * 17); f *= 2.03; a *= 0.5; } return t / (1 - Math.pow(0.5, o)) * 0.5 + 0.0; }
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// ---- 色(生物群系) ----
+const BC = [[40, 90, 150], [235, 242, 250], [150, 150, 120], [60, 100, 70], [160, 160, 95], [226, 196, 128], [140, 175, 85], [150, 150, 85], [72, 130, 62], [48, 112, 68], [190, 170, 80], [36, 110, 56], [135, 130, 125]];
+
+function build(w) {
+  const WK = G.WIDTH_KM, HK = G.HEIGHT_KM, x0 = -0.5 * SPAN, y0 = -0.5 * ROW, XW = WK, YH = HK + ROW;
+  const PH = Math.round(PW * YH / XW), kmPx = XW / PW;
+  const E = new Float32Array(PW * PH);          // 標高(m)
+  const col = new Float32Array(PW * PH * 3);    // 色(0..255)
+  const sigma = 0.56 * SPAN, inv2s = 1 / (2 * sigma * sigma);
+  const cellx = i => (G.colOf(i) + ((G.rowOf(i) & 1) ? 0.5 : 0)) * SPAN, celly = i => G.rowOf(i) * ROW;
+  for (let py = 0; py < PH; py++) {
+    const y = y0 + (py + 0.5) / PH * YH, r0 = Math.round(y / ROW);
+    for (let px = 0; px < PW; px++) {
+      const x = x0 + (px + 0.5) / PW * XW;
+      let sw = 0, se = 0, lw = 0, cr = 0, cg = 0, cb = 0, rl = 0;
+      for (let r = r0 - 2; r <= r0 + 2; r++) {
+        if (r < 0 || r >= CH) continue;
+        const c0 = Math.round(x / SPAN - ((r & 1) ? 0.5 : 0));
+        for (let c = c0 - 3; c <= c0 + 3; c++) {
+          if (c < 0 || c >= CW) continue;
+          const i = r * CW + c, dx = x - (c + ((r & 1) ? 0.5 : 0)) * SPAN, dy = y - r * ROW, wt = Math.exp(-(dx * dx + dy * dy) * inv2s);
+          sw += wt; se += wt * w.elev[i];
+          if (w.land[i]) { lw += wt; const b = BC[w.biome[i]] || BC[6]; cr += wt * b[0]; cg += wt * b[1]; cb += wt * b[2]; rl += wt * w.relief[i]; }
+        }
+      }
+      const idx = py * PW + px; let e = sw ? se / sw : -4000;
+      // 細かい起伏: 海岸のゆらぎ・丘・山の尾根(標高に応じて強く)
+      const nx = x / SPAN, ny = y / SPAN, rug = clamp(e / 2600, 0.12, 1), rel = lw ? clamp(rl / lw / 1500, 0.25, 1.4) : 0.4;
+      const coast = (fbm(nx * 2.2, ny * 2.2, 11, 4) - 0.5) * 300;
+      const hills = (fbm(nx * 1.9, ny * 1.9, 23, 4) - 0.5) * 520 * rug;
+      const rid = 1 - Math.abs(2 * fbm(nx * 1.6, ny * 1.6, 37, 4) - 1);
+      const ridge = Math.pow(rid, 2.2) * 1300 * rug * rel * clamp(e / 1200, 0, 1);
+      if (e > -300) e += coast + hills + ridge; else e += (fbm(nx * 1.4, ny * 1.4, 5, 3) - 0.5) * 150;
+      E[idx] = e;
+      const k = lw > 0.02 ? 1 / lw : 0; col[idx * 3] = cr * k; col[idx * 3 + 1] = cg * k; col[idx * 3 + 2] = cb * k;
+    }
+  }
+  // 色と陰影の地図
+  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const cx = cv.getContext('2d');
+  const img = cx.createImageData(PW, PH), D = img.data;
+  const L = (() => { const a = (-35) * Math.PI / 180, el = 38 * Math.PI / 180; return [Math.cos(el) * Math.sin(a), Math.sin(el), -Math.cos(el) * Math.cos(a)]; })();
+  const hs = 1 / (2 * kmPx) * 1000 / 1000; // 陰影用の勾配(強調済み)
+  for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
+    const i = py * PW + px, e = E[i];
+    const eL = E[py * PW + Math.max(0, px - 1)], eR = E[py * PW + Math.min(PW - 1, px + 1)], eU = E[Math.max(0, py - 1) * PW + px], eD = E[Math.min(PH - 1, py + 1) * PW + px];
+    let r, g, b;
+    if (e <= 0) { // 海: 浅いほど明るい青緑、深いほど濃紺
+      const t = clamp(-e / 2500, 0, 1), sh = clamp(-e / 160, 0, 1);
+      r = lerp(92, 14, Math.sqrt(t)); g = lerp(178, 52, Math.sqrt(t)); b = lerp(200, 104, Math.sqrt(t));
+      const f = (fbm(px / 38, py / 38, 71, 3) - 0.5) * 14; r += f * 0.6; g += f; b += f * 1.2;
+      const foam = clamp(1 - Math.abs(e) / 30, 0, 1) * 0.4; r = lerp(r, 235, foam); g = lerp(g, 248, foam); b = lerp(b, 250, foam);
+      void sh;
+    } else {
+      const lc = (col[i * 3] || 140), gc = (col[i * 3 + 1] || 160), bc = (col[i * 3 + 2] || 90);
+      r = lc; g = gc; b = bc;
+      const grain = (fbm(px / 14, py / 14, 3, 3) - 0.5) * 18; r += grain; g += grain * 1.1; b += grain * 0.7;
+      const rock = clamp((e - 3200) / 1800, 0, 1); r = lerp(r, 128, rock * 0.7); g = lerp(g, 122, rock * 0.7); b = lerp(b, 116, rock * 0.7);
+      const snow = clamp((e - 4300) / 900, 0, 1) * (0.7 + 0.3 * fbm(px / 11, py / 11, 9, 3)); r = lerp(r, 246, snow); g = lerp(g, 249, snow); b = lerp(b, 252, snow);
+      const beach = clamp(1 - e / 40, 0, 1) * 0.55; r = lerp(r, 232, beach); g = lerp(g, 214, beach); b = lerp(b, 160, beach);
+      // 陰影(北西からの光)
+      const dzdx = (eR - eL) / (2 * kmPx), dzdy = (eD - eU) / (2 * kmPx), ex = 6; // 見た目のために傾きを強調
+      const nxv = -dzdx * ex, nyv = -dzdy * ex, nl = Math.hypot(nxv, nyv, 1); const dot = (nxv * L[0] + 1 * L[1] + (-nyv) * L[2]) / nl;
+      const shade = clamp(0.74 + 0.75 * (dot - 0.62), 0.45, 1.3); r *= shade; g *= shade; b *= shade;
+    }
+    D[i * 4] = clamp(r, 0, 255); D[i * 4 + 1] = clamp(g, 0, 255); D[i * 4 + 2] = clamp(b, 0, 255); D[i * 4 + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  // 川: 上流から海まで、つながった一本の曲線として描く(蛇行・太さは流量で変える)。海に着いたら止める。
+  const mapX = x => (x - x0) / XW * PW, mapY = y => (y - y0) / YH * PH;
+  const hasUp = new Uint8Array(w.N), seen = new Uint8Array(w.N);
+  for (let i = 0; i < w.N; i++) if (w.river[i] && w.flow[i] >= 0) { const j = G.nb(i, w.flow[i]); if (j >= 0 && w.river[j]) hasUp[j] = 1; }
+  const chains = [];
+  for (let i = 0; i < w.N; i++) {
+    if (!w.river[i] || hasUp[i] || !w.land[i]) continue;
+    const pts = [], qs = []; let c = i, guard = 0;
+    while (c >= 0 && guard++ < 400) {
+      const jx = (hash(c, 1, 9) - 0.5) * 0.5 * SPAN, jy = (hash(c, 2, 9) - 0.5) * 0.5 * ROW;
+      pts.push([cellx(c) + jx, celly(c) + jy]); qs.push(w.riverQ[c]);
+      const d = w.flow[c]; if (d < 0) break; const j = G.nb(c, d); if (j < 0) break;
+      if (!w.land[j]) { pts.push([(cellx(c) + cellx(j)) / 2, (celly(c) + celly(j)) / 2]); qs.push(w.riverQ[c]); break; } // 河口は海岸まで
+      if (!w.river[j]) break;
+      if (seen[j]) { pts.push([cellx(j), celly(j)]); qs.push(w.riverQ[j]); break; }  // 先に描いた川に合流
+      seen[c] = 1; c = j;
+    }
+    seen[i] = 1; if (pts.length >= 2 && (pts.length >= 5 || Math.max(...qs) > 1500)) chains.push({ pts, qs });  // 短い海岸の筋は描かない
+  }
+  const samples = [];
+  for (const ch of chains) {
+    const P = ch.pts, Q = ch.qs, out = [];
+    for (let k = 0; k + 1 < P.length; k++) {
+      const p0 = P[Math.max(0, k - 1)], p1 = P[k], p2 = P[k + 1], p3 = P[Math.min(P.length - 1, k + 2)];
+      for (let t = 0; t < 1; t += 0.125) {
+        const t2 = t * t, t3 = t2 * t;
+        let x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        let y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        x += (vn(x / (0.35 * SPAN), y / (0.35 * SPAN), 61) - 0.5) * 0.22 * SPAN; y += (vn(x / (0.35 * SPAN) + 9, y / (0.35 * SPAN), 62) - 0.5) * 0.22 * SPAN;
+        out.push([mapX(x), mapY(y), lerp(Q[k], Q[k + 1], t)]);
+      }
+    }
+    samples.push(out);
+  }
+  cx.lineCap = 'round'; cx.lineJoin = 'round';
+  for (const pass of [0, 1]) for (const out of samples) for (let k = 0; k + 1 < out.length; k++) {
+    const q = out[k][2]; if (q < 60) continue;       // 細すぎる流れは描かない
+    const wd = clamp(0.7 + Math.log10(1 + q) * 0.8, 1, 4.6) * (PW / 1152);
+    cx.beginPath(); cx.moveTo(out[k][0], out[k][1]); cx.lineTo(out[k + 1][0], out[k + 1][1]);
+    if (pass === 0) { cx.strokeStyle = 'rgba(34,78,128,.7)'; cx.lineWidth = wd + 1.4; } else { cx.strokeStyle = '#78b9e6'; cx.lineWidth = wd; }
+    cx.stroke();
+  }
+  return { cv, E, PW, PH, kmPx, XW, YH };
+}
+
+function main() {
+  const w = W.generateWorld(seed); if (w.failed) { $('msg').textContent = '世界を作れませんでした(種 ' + seed + ')'; return; }
+  const B = build(w);
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const Wu = B.XW / SPAN, Hu = B.YH / SPAN;     // マス幅=1 の単位
+  // 盛り上げた面
+  const SX = 576, SY = Math.round(SX * B.PH / B.PW);
+  const geo = new THREE.PlaneGeometry(Wu, Hu, SX, SY); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let iy = 0; iy <= SY; iy++) for (let ix = 0; ix <= SX; ix++) {
+    const v = iy * (SX + 1) + ix, px = Math.min(B.PW - 1, Math.round(ix / SX * (B.PW - 1))), py = Math.min(B.PH - 1, Math.round(iy / SY * (B.PH - 1)));
+    const e = B.E[py * B.PW + px];
+    pos.setY(v, e > 0 ? e / 1000 * EXAG : Math.max(e, -1200) / 1000 * EXAG * 0.12);
+  }
+  geo.computeVertexNormals();
+  const tex = new THREE.CanvasTexture(B.cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
+  const mat = new THREE.MeshBasicMaterial({ map: tex });
+  const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
+  // 台座(断面): 周囲を下へ降ろした壁
+  const base = -1.6, skirt = new THREE.Group(); scene.add(skirt);
+  const edge = (pts, color) => { const g = new THREE.BufferGeometry(), p = []; for (let k = 0; k + 1 < pts.length; k++) { const a = pts[k], b = pts[k + 1]; p.push(a[0], a[1], a[2], b[0], b[1], b[2], a[0], base, a[2], b[0], b[1], b[2], b[0], base, b[2], a[0], base, a[2]); } g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })); skirt.add(m); };
+  const P = (ix, iy) => { const v = iy * (SX + 1) + ix; return [pos.getX(v), pos.getY(v), pos.getZ(v)]; };
+  const top = [], bot = [], lef = [], rig = []; for (let ix = 0; ix <= SX; ix++) { top.push(P(ix, 0)); bot.push(P(ix, SY)); } for (let iy = 0; iy <= SY; iy++) { lef.push(P(0, iy)); rig.push(P(SX, iy)); }
+  for (const e of [top, bot, lef, rig]) edge(e, 0x1b3a5c);
+  const cap = new THREE.Mesh(new THREE.PlaneGeometry(Wu, Hu).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x12263d })); cap.position.y = base; scene.add(cap);
+  scene.fog = new THREE.Fog(0xe4d3ad, 1, 2);
+  const cam = new THREE.PerspectiveCamera(32, 1, 1, 400);
+  function fit() {
+    const wpx = window.innerWidth, hpx = window.innerHeight; renderer.setSize(wpx, hpx, false); cam.aspect = wpx / hpx;
+    const fovV = cam.fov * Math.PI / 180, fovH = 2 * Math.atan(Math.tan(fovV / 2) * cam.aspect);
+    const need = Math.max((Wu * 0.53) / Math.tan(fovH / 2), (Hu * 0.72) / Math.tan(fovV / 2));
+    fit.dist = need; cam.updateProjectionMatrix(); scene.fog.near = need * 1.15; scene.fog.far = need * 3.2; cam.far = need * 6;
+  }
+  fit(); window.addEventListener('resize', fit);
+  document.getElementById('msg').hidden = true; document.getElementById('cap').hidden = false;
+  document.getElementById('capt').textContent = '世界 種' + seed + '(陸 ' + Math.round(100 * w.landCells / w.N) + '%)・一枚の立体地図(試作)';
+  const TILT = 52 * Math.PI / 180;
+  function frame(t) {
+    const sway = still ? 0 : Math.sin(t / 9000) * 0.09, d = fit.dist;
+    cam.position.set(Math.sin(sway) * d * 0.9, Math.sin(TILT) * d * 0.9 + 1, Math.cos(TILT) * d * 0.9 * Math.cos(sway) + 2);
+    cam.lookAt(0, 0.4, 1.0); renderer.render(scene, cam); if (!still) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame); window.__ready = true;
+}
+function $(id) { return document.getElementById(id); }
+window.addEventListener('load', () => setTimeout(main, 30));
+</script>
+</body>
+</html>
