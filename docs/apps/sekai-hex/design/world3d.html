@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>世界の立体地図(絵記号なし)</title>
+<base href="../">
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--accent:#2563eb;--hud:rgba(255,255,255,.9)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--accent:#6ea0ff;--hud:rgba(20,28,40,.88)}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;align-items:center;gap:8px;padding:4px 10px;min-height:44px;background:var(--panel);border-bottom:1px solid var(--border)}
+header a{color:var(--accent);text-decoration:none;white-space:nowrap}
+h1{font-size:15px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main{position:relative;flex:1;min-height:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cv{touch-action:none}
+#ov{pointer-events:none}
+.hud{position:absolute;left:8px;top:8px;background:var(--hud);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.45;pointer-events:none}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;pointer-events:auto}
+button{min-height:44px;min-width:0;padding:0 2px;border-radius:10px;border:1px solid var(--border);background:var(--hud);color:var(--text);font-size:13px}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <a href="../fantasy-war/">← 管理ページ</a>
+  <h1>世界の立体地図(絵記号なし)</h1>
+  <a href="design/landmark-proto.html?seed=7">ランドマーク試作</a>
+</header>
+<main>
+  <canvas id="cv"></canvas>
+  <canvas id="ov"></canvas>
+  <div class="hud" id="hud"></div>
+  <div class="bar">
+    <div class="row">
+      <button id="zin">＋</button><button id="zout">－</button>
+      <button id="tdn">⤒ 真上から</button><button id="tup">⤓ 斜めから</button>
+      <button id="ex">高×1</button>
+    </div>
+    <div class="row">
+      <button id="rl">↺</button><button id="rr">↻</button>
+      <button id="pat" class="on">模様</button><button id="smooth" class="on">滑らか</button>
+      <button id="ovl">川・道・湖</button>
+    </div>
+    <div class="row">
+      <button id="home">🌍 全体</button><button id="dice">🎲 別の世界</button>
+      <button id="gray">色なし</button><button id="vol">🌋 火山の絵</button><button id="rm">国の色</button>
+    </div>
+  </div>
+  <div id="err" hidden></div>
+</main>
+<script>window.APP_VER='0.92';</script>
+<script src="world.js?v=0.92"></script>
+<script src="transport.js?v=0.92"></script>
+<script src="realm.js?v=0.92"></script>
+<script src="sekai.js?v=0.92"></script>
+<script src="sprites.js?v=0.92"></script>
+<script src="view.js?v=0.92"></script>
+<script>
+// 目的: ランドマーク(絵記号)も国名も出さず、世界の地形だけを立体地図として見せる。
+// 本体の描画部品(SekaiView)をそのまま使い、絵記号の描画と重ね(川・湖・国)を既定でオフにするだけ。本体は変更していない。
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var seed = parseInt(params.get('seed'), 10) || 7;
+  var sk, view, EXV = [0.6, 1, 1.6, 2.5], exi = 1, patOn = true, smoothOn = true, ovlOn = false, realmOn = false, volOn = false;
+  function frame(st, mesh) {
+    $('hud').innerHTML = '<b>世界の立体地図</b><br>種 ' + seed + ' ・ 陸 ' + (sk && sk.w ? Math.round(100 * sk.w.landCells / sk.w.N) : '?') + '% ・ 層' + (mesh ? mesh.L : '-');
+  }
+  function apply() {
+    view.setStamps(volOn); view.st.realm = realmOn; view.setPattern(patOn); view.setSmooth(smoothOn);
+    $('ov').style.visibility = (ovlOn || volOn || realmOn) ? 'visible' : 'hidden';
+    view.changed();
+  }
+  function start() {
+    $('err').hidden = true; sk = Sekai.create(seed);
+    try { view = SekaiView.create($('cv'), sk, { onFrame: frame, onSelect: function () {}, overlay: $('ov') }); }
+    catch (e) { $('err').hidden = false; $('err').textContent = 'WebGL を使えない環境です: ' + e.message; return; }
+    view.resize(); apply(); window.__view = view; window.__sk = sk;
+  }
+  function tog(id, get, set) { $(id).onclick = function () { set(!get()); $(id).classList.toggle('on', get()); apply(); }; }
+  $('zin').onclick = function () { view.zoomTo(view.st.ppm * 1.6); };
+  $('zout').onclick = function () { view.zoomTo(view.st.ppm / 1.6); };
+  $('tdn').onclick = function () { view.setTilt(view.tiltDeg() - 10); };
+  $('tup').onclick = function () { view.setTilt(view.tiltDeg() + 10); };
+  $('rl').onclick = function () { view.rotate(-Math.PI / 6); };
+  $('rr').onclick = function () { view.rotate(Math.PI / 6); };
+  $('ex').onclick = function () { exi = (exi + 1) % EXV.length; $('ex').textContent = '高×' + EXV[exi]; view.setExMul(EXV[exi]); };
+  $('home').onclick = function () { view.reset(); };
+  $('dice').onclick = function () { location.search = '?seed=' + (((Math.random() * 1e6) | 0) + 1); };
+  tog('pat', function () { return patOn; }, function (v) { patOn = v; });
+  tog('smooth', function () { return smoothOn; }, function (v) { smoothOn = v; });
+  tog('ovl', function () { return ovlOn; }, function (v) { ovlOn = v; });
+  tog('vol', function () { return volOn; }, function (v) { volOn = v; });
+  tog('rm', function () { return realmOn; }, function (v) { realmOn = v; });
+  $('ovl').classList.remove('on'); $('vol').classList.remove('on'); $('rm').classList.remove('on');
+  $('gray').onclick = function () { $('cv').style.filter = $('cv').style.filter ? '' : 'grayscale(1) contrast(1.1)'; $('gray').classList.toggle('on'); };
+  window.addEventListener('load', start);
+})();
+</script>
+</body>
+</html>
