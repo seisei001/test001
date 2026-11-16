@@ -71,7 +71,7 @@ const WIDTH_KM = (W + 0.5) * SPAN_KM, HEIGHT_KM = (H - 1) * ROW_KM;
 const OWN_DIRS = [0, 1, 2];
 return { W, H, N, SPAN_KM, ROW_KM, nb, pos, px, py, dist, rowOf, colOf, idx, WIDTH_KM, HEIGHT_KM, OWN_DIRS };
 })();
-// 世界層の生成: 種 -> プレート -> 造山帯 -> 高さ -> 7大陸 -> 気候(風・海流・降水) -> 川 -> 岩石 -> 肥沃度
+// 世界層の生成: 種 -> プレート -> 造山帯 -> 高さ -> 3大陸 -> 気候(風・海流・降水) -> 川 -> 岩石 -> 肥沃度
 // 六角形の並べ方には依存しない(grid.js の nb / pos だけを使う)。
 const { N, nb, px, py, rowOf, colOf, W, H } = G;
 
@@ -117,16 +117,16 @@ function buildTectonics(seed, attempt) {
       if (md > bd) { bd = md; best = { x, y }; }
     }
     const ang = rnd() * Math.PI * 2, sp = 0.3 + rnd() * 0.7;
-    pts.push({ ...best, cont: isCont, w: isCont ? 0.9 + rnd() * 0.4 : 1.0 + rnd() * 0.5, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, age: rnd() });
+    pts.push({ ...best, cont: isCont, w: isCont ? 2.4 + rnd() * 0.4 : 1.0 + rnd() * 0.5, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, age: rnd() });
   };
-  for (let k = 0; k < 7; k++) place(true);
-  for (let k = 0; k < 7; k++) place(false);
-  // 大陸の素の半径(マス数)。近い大陸の中心までの距離の45%を上限にして、勝手に繋がらないようにする
+  for (let k = 0; k < 3; k++) place(true);   // 大陸プレート3つ(2026-11-17: 7大陸から変更。参考の世界地図に合わせ、陸を約5割にするため)
+  for (let k = 0; k < 6; k++) place(false);
+  // 大陸の素の半径(マス数)。近い大陸の中心までの距離の50%を上限にして、勝手に繋がらないようにする
   const cs = pts.filter(p => p.cont);
   for (const p of cs) {
     let nd = 1e9; for (const q of cs) if (q !== p) nd = Math.min(nd, Math.hypot(p.x - q.x, p.y - q.y));
-    const want = 5.2 + 5.6 * Math.pow(rnd(), 1.3);
-    p.rc = Math.min(want, 0.46 * nd / G.SPAN_KM);
+    const want = 15 + 6 * Math.pow(rnd(), 1.3);
+    p.rc = Math.min(want, 0.5 * nd / G.SPAN_KM);
     p.axis = rnd() * Math.PI; p.ratio = 0.6 + 0.4 * rnd();
     // 古い造山帯(大陸内部の山脈): 中心の周りに折れ線を1〜2本
     p.belts = [];
@@ -165,7 +165,7 @@ function buildTectonics(seed, attempt) {
     const A = pts[plate[i]], B = pts[plate[j]];
     const nx = px(j) - px(i), ny = py(j) - py(i), nl = Math.hypot(nx, ny);
     let conv = ((A.vx - B.vx) * nx + (A.vy - B.vy) * ny) / nl; // 正=近づく
-    // 大陸どうしの衝突(合体)は全体の2割の組だけに限る。残りは離れる/ずれる側に倒す(大陸が7つ別々に残るため)
+    // 大陸どうしの衝突(合体)は全体の2割の組だけに限る。残りは離れる/ずれる側に倒す(大陸が3つ別々に残るため)
     if (A.cont && B.cont) { const lo = Math.min(plate[i], plate[j]), hi = Math.max(plate[i], plate[j]); if ((R.hash32(seed, lo, hi, attempt) % 100) >= 20) conv = -Math.abs(conv) - 0.1; }
     const jit = (R.hash32(seed, i, plate[j], attempt) % 1000) / 1000; // 境界の場所ごとのゆらぎ
     if (conv > 0.25) {
@@ -202,7 +202,7 @@ function buildHeight(seed, attempt, T) {
       const u = (dx * ca + dy * sa), v = (-dx * sa + dy * ca) * (1 / p.ratio);
       const wx = (R.fbm(s1 + 3, x / 1300, y / 1300, 3) - 0.5) * 0.8;
       const d = Math.hypot(u, v) / (p.rc * G.SPAN_KM) * (1 + wx);
-      b = 0.22 - 0.67 * sstep(0.45, 1.0, d) - 0.2 * sstep(1.0, 1.6, d);
+      b = 0.22 - 0.67 * sstep(0.85, 1.35, d) - 0.2 * sstep(1.35, 1.95, d);
       for (const bl of p.belts) { // 古い造山帯
         let md = 1e9; for (let k = 0; k < 2; k++) { const A = bl[k], B = bl[k + 1]; const abx = B.x - A.x, aby = B.y - A.y; const t = clamp(((x - A.x) * abx + (y - A.y) * aby) / (abx * abx + aby * aby), 0, 1); md = Math.min(md, Math.hypot(x - A.x - abx * t, y - A.y - aby * t)); }
         const v2 = 0.46 * Math.exp(-Math.pow(md / 260, 2)) * (b > 0 ? 1 : 0.3);
@@ -220,24 +220,24 @@ function buildHeight(seed, attempt, T) {
   return { h, tec };
 }
 
-// ---- 2. 7大陸の判定(足りなければ作り直す) ----
+// ---- 2. 3大陸の判定(足りなければ作り直す) ----
 function judge(land) {
   const { id, comps } = components(land);
   const order = comps.map((c, k) => k).sort((a, b) => comps[b].length - comps[a].length || a - b);
   const sizes = order.map(k => comps[k].length);
   const total = sizes.reduce((a, b) => a + b, 0);
   const why = [];
-  if (sizes.length < 7 || sizes[6] < 20) why.push('大陸が7つに満たない');
+  if (sizes.length < 3 || sizes[2] < 100) why.push('大陸が3つに満たない');
   else {
     const [a1, a2, a3, a4] = sizes;
-    if (Math.abs(a2 - a3) / a3 < 0.06 || Math.abs(a3 - a4) / a3 < 0.06) why.push('3番目が紛らわしい(上下と6%未満の差)');
-    if (a3 < 70 || a3 > 230) why.push('3番目の広さが範囲外');
-    if (a1 > 0.42 * total) why.push('最大大陸が大きすぎる');
+    if (Math.abs(a2 - a3) / a3 < 0.06 || a4 > 0.7 * a3) why.push('3番目が紛らわしい(2番目と6%未満の差/4番目が大きい)');
+    if (a3 < 100 || a3 > 900) why.push('3番目の広さが範囲外');
+    if (a1 > 0.6 * total) why.push('最大大陸が大きすぎる');
   }
   let edgeTouch = 0;
   if (!why.length) for (const i of comps[order[2]]) if (Math.min(colOf(i), W - 1 - colOf(i), rowOf(i), H - 1 - rowOf(i)) === 0) edgeTouch++;
-  if (edgeTouch > 2) why.push('3番目が世界の端に接する');
-  const fr = total / N; if (fr < 0.2 || fr > 0.38) why.push('陸の割合が範囲外(' + fr.toFixed(2) + ')');
+  // 3大陸では、3番目が端に接する規則は使わない(2026-11-17)
+  const fr = total / N; if (fr < 0.45 || fr > 0.68) why.push('陸の割合が範囲外(' + fr.toFixed(2) + ')');
   return { ok: why.length === 0, why, order, comps, sizes, id };
 }
 
@@ -246,7 +246,7 @@ function judge(land) {
 function geoCheck(land, h, J) {
   const why = [], info = {};
   const MT = 0.5, PL = 0.2; // 山(約2300m超)・平野(約700m未満)の高さ指標
-  const big = J.order.slice(0, 7);
+  const big = J.order.slice(0, 3);
   const contOf = new Int8Array(N).fill(-1); big.forEach((k, r) => { for (const i of J.comps[k]) contOf[i] = r; });
   let contacts = 0, isolated = 0;
   big.forEach((k, r) => {
@@ -263,11 +263,11 @@ function geoCheck(land, h, J) {
     const rm = new Uint8Array(N); for (const i of cells) if (h[i] <= MT) rm[i] = 1;
     const regs = components(rm).comps.filter(c => c.length >= 6).length;
     info[r] = { n, mt: +(mt / n).toFixed(2), coast: +(coast / n).toFixed(2), plain: pc, regions: regs };
-    if (r < 4) {
+    if (r < 3) {
       if (mt / n < 0.02 || mt / n > 0.6) why.push('山の割合が偏りすぎ');
       if (pc < Math.max(6, 0.08 * n)) why.push('食料の核になる平野がない');
       if (r < 1 && regs < 2) why.push('地域のまとまりが1つだけ');
-      if (coast / n < 0.3) why.push('海岸が少なく港・交易が成り立たない');
+      if (coast / n < 0.1) why.push('海岸が少なく港・交易が成り立たない');
     }
     // 接触: 海を3マス以内で他の大陸に届くか
     const dd = new Int16Array(N).fill(-1), q = cells.slice(); for (const i of cells) dd[i] = 0;
@@ -277,8 +277,8 @@ function geoCheck(land, h, J) {
         if (land[j]) { const o = contOf[j]; if (o >= 0 && o !== r) hit.add(o); else if (o < 0) { /* 島 */ } } else q.push(j); } }
     if (hit.size) contacts++; else isolated++;
   });
-  if (isolated > 3) why.push('孤立した大陸が多すぎる');
-  if (contacts < 3) why.push('大陸どうしの接触がなさすぎる');
+  if (isolated > 1) why.push('孤立した大陸が多すぎる');
+  if (contacts < 2) why.push('大陸どうしの接触がなさすぎる');
   return { why, info };
 }
 
@@ -301,7 +301,7 @@ function build(seed, attempt) {
 }
 
 function generateWorld(seed, opts = {}) {
-  const maxTry = opts.maxTry || 120;
+  const maxTry = opts.maxTry || 300;
   let tried = 0, L, J, reasons = {};
   for (let a = 0; a < maxTry; a++) {
     const r = build(seed, a); tried = a + 1; L = r.L; J = r.J;
@@ -322,10 +322,10 @@ function finish(seed, attempt, L, J, tried, reasons) {
     if (land[i]) w.elev[i] = Math.min(8000, 5400 * Math.pow(h[i] - sl, 1.25)) + 5;
     else w.elev[i] = -Math.min(11000, 80 + 6500 * (sl - h[i]));
   }
-  // 大陸番号: 1..7 = 面積順、 8 = 島、 0 = 海
+  // 大陸番号: 1..3 = 面積順、 4 = 島、 0 = 海
   w.cont = new Uint8Array(N);
   w.contSize = [];
-  J.order.forEach((k, rank) => { for (const i of J.comps[k]) w.cont[i] = rank < 7 ? rank + 1 : 8; if (rank < 7) w.contSize.push(J.comps[k].length); });
+  J.order.forEach((k, rank) => { for (const i of J.comps[k]) w.cont[i] = rank < 3 ? rank + 1 : 4; if (rank < 3) w.contSize.push(J.comps[k].length); });
   w.landCells = land.reduce((a, b) => a + b, 0);
   w.thirdCells = J.comps[J.order[2]].slice().sort((a, b) => a - b);
   climate(w);

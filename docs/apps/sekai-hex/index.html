@@ -102,7 +102,7 @@ button:active{background:var(--accent);color:#fff}
     var w=sk.w,t='<b>層'+p.L+' '+Sekai.LAYER_NAME[p.L]+'</b> のマス ('+p.q+', '+p.r+')<br>標高 '+Math.round(p.h)+'m ・ '+biomeName(p.b);
     if(p.L===0){
       var c=p.q+((p.r-(p.r&1))>>1),i=p.r*w.W+c;
-      if(i>=0&&i<w.N){t+=' ・ 岩石 '+SekaiWorld.ROCK[w.rock[i]]+'<br>降水 '+Math.round(w.precip[i])+'mm ・ 気温 '+w.temp[i].toFixed(0)+'℃ ・ 肥沃度 '+w.fertility[i].toFixed(2)+(w.cont[i]?' ・ 大陸'+w.cont[i]:'');}
+      if(i>=0&&i<w.N){t+=' ・ 岩石 '+SekaiWorld.ROCK[w.rock[i]]+'<br>降水 '+Math.round(w.precip[i])+'mm ・ 気温 '+w.temp[i].toFixed(0)+'℃ ・ 肥沃度 '+w.fertility[i].toFixed(2)+(w.cont[i]?' ・ '+(w.cont[i]>=4?'島':'大陸'+w.cont[i]):'');}
     }
     card.innerHTML=t;card.hidden=false;dive.hidden=p.L>=Sekai.NL-1;
   }
