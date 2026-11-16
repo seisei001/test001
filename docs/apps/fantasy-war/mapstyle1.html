@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>世界地図の絵をどこまで変えられるか(段階の試作)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:26px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}
+.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a></p>
+<h1>世界地図の絵を、どこまでデフォルメしてファンタジーにできるか</h1>
+<p class="card">ユーザー案(2026-11-17)「絵を基本とする。元の地図の画像を手法を使ってどれほどデフォルメできるかを詰める」の、段階つきの試作です。元は、ハブにあるAzgaar方式の地図の絵(1400×900)で、これは試験の素材です(AzgaarかPWGかの採用とは別)。標高と生物群系のデータで、山・丘・木の場所を決めています。見て、「どの段階までなら良いか」を教えてください。</p>
+
+<h2>段階0: 元の画像</h2>
+<div class="card"><img src="mapstyle/s0.jpg" alt="元の画像"><p class="sub">国の色と国名つき。分かりやすいが、ファンタジーの絵の面白みは薄い。</p></div>
+
+<h2>段階1: 紙+海岸の墨線</h2>
+<div class="card"><img src="mapstyle/s1.jpg" alt="段階1"><p class="sub">国名と国境を消して国の色だけの清書にし、紙の質感と古地図の色合い、海岸の墨線を足した。名前はアプリで重ねる想定。</p></div>
+
+<h2>段階2: +山・丘・木の絵、海の波線</h2>
+<div class="card"><img src="mapstyle/s2.jpg" alt="段階2"><p class="sub">標高の高い所に山の絵、中くらいの所に丘、森林の所に木を置いた。海岸に沿って波の線。手描き地図の感じが出る。</p></div>
+
+<h2>段階3: 強いデフォルメ</h2>
+<div class="card"><img src="mapstyle/s3.jpg" alt="段階3"><p class="sub">色数を減らし、海岸線をなだらかに大づかみにし、絵を大きくして数を減らした。上下を少しぼかして模型風に。</p></div>
+
+<h2>この試作の限界(正直に)</h2>
+<div class="card">
+<ul>
+<li>山・木の絵は、私がプログラムで描いた簡単な記号です。ここが一番の伸びしろで、本物の絵にするなら、画像生成AIへの注文(山・木・ランドマーク)が要ります。</li>
+<li>国名と国境は、見やすさのため一度消しています。</li>
+<li>2D の絵の試作です。これを立体の地図に貼る(標高の面に貼る)のは、見た目が良さそうと分かってからにします。</li>
+<li>iPhoneでの重さは未測定です(絵は事前に作る画像なので軽い見込み)。</li>
+</ul></div>
+</main></body></html>
