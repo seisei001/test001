@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>本物の衛星画像で、地面の色を確かめる</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:24px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}figure{margin:0}figcaption{font-size:12px;color:var(--sub);margin-top:2px}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}
+.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+.chip{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;margin:0 3px 0 8px;border:1px solid var(--border)}.pc{font-size:12px}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a></p>
+<h1>本物の衛星画像で、地面の色を確かめる</h1>
+<p class="card">ユーザー案(2026-11-17)「岩石の岩の色、緑の色、雪、都市などを、本物の世界地図の衛星画像を元にどう見えるか検証し、そのデフォルメをしたらどうか」の試験です。NASAのブルーマーブル(雲を除いた世界の衛星画像。1画素が約7km)から地域を切り出し、実際の色を取り出しました。右は、その色を5色に絞って簡略化したものです。</p>
+<div class="card"><b>分かったこと</b><ul>
+<li><b>緑は想像より暗い</b>: 熱帯雨林・タイガ・温帯の森は、ほぼ黒に近い深緑(#152208〜#2e3b18)です。地図でよく見る明るい緑とは別物です。</li>
+<li><b>砂漠は砂色と赤茶</b>: サハラは明るい砂色(#c4a378付近)に、岩の暗い斑点。オーストラリアの内陸は赤茶(#6e4d2d付近)です。</li>
+<li><b>高い山は一色ではない</b>: ヒマラヤ・チベットは、砂色、くすんだオリーブ、深緑、白い雪の稜線が混ざります。雪は山の尾根に細く現れます。</li>
+<li><b>氷と雪は白、ただし純白ではない</b>: グリーンランドは約84%が真っ白(#fbfcfc)、残りは灰色です。</li>
+<li><b>都市は見えません</b>: この大きさ(1画素=約7km)では、ヨーロッパでも都市は画像に現れません。都市は、地図では記号で示す対象です。</li>
+</ul></div>
+<h2>サハラ(砂漠)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/sahara_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/sahara_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#c4a378"></span><span class="pc">34.4%</span><span class="chip" style="background:#ba976d"></span><span class="pc">29.6%</span><span class="chip" style="background:#cdb288"></span><span class="pc">18.8%</span><span class="chip" style="background:#a98863"></span><span class="pc">12.3%</span><span class="chip" style="background:#8b7152"></span><span class="pc">4.9%</span></p></div>
+<h2>アマゾン(熱帯雨林)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/amazon_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/amazon_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#152208"></span><span class="pc">61.0%</span><span class="chip" style="background:#1e2a0d"></span><span class="pc">16.9%</span><span class="chip" style="background:#2f3316"></span><span class="pc">13.0%</span><span class="chip" style="background:#403d20"></span><span class="pc">7.0%</span><span class="chip" style="background:#605131"></span><span class="pc">2.1%</span></p></div>
+<h2>シベリア(タイガ)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/taiga_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/taiga_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#212b10"></span><span class="pc">60.5%</span><span class="chip" style="background:#42452f"></span><span class="pc">17.5%</span><span class="chip" style="background:#666859"></span><span class="pc">9.8%</span><span class="chip" style="background:#dee1df"></span><span class="pc">6.9%</span><span class="chip" style="background:#999a94"></span><span class="pc">5.3%</span></p></div>
+<h2>チベット・ヒマラヤ(高い山)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/himalaya_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/himalaya_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#807152"></span><span class="pc">29.0%</span><span class="chip" style="background:#9e8f72"></span><span class="pc">26.5%</span><span class="chip" style="background:#293014"></span><span class="pc">23.2%</span><span class="chip" style="background:#555031"></span><span class="pc">18.2%</span><span class="chip" style="background:#c7c2b6"></span><span class="pc">3.0%</span></p></div>
+<h2>グリーンランド(氷)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/greenland_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/greenland_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#fbfcfc"></span><span class="pc">84.0%</span><span class="chip" style="background:#d5d8d9"></span><span class="pc">5.6%</span><span class="chip" style="background:#a5aaac"></span><span class="pc">4.3%</span><span class="chip" style="background:#737a7b"></span><span class="pc">3.2%</span><span class="chip" style="background:#3a3e33"></span><span class="pc">2.8%</span></p></div>
+<h2>アメリカ大平原(草原・耕作地)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/plains_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/plains_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#20320e"></span><span class="pc">34.4%</span><span class="chip" style="background:#34401c"></span><span class="pc">27.0%</span><span class="chip" style="background:#4a4c2a"></span><span class="pc">20.7%</span><span class="chip" style="background:#6d603f"></span><span class="pc">14.8%</span><span class="chip" style="background:#030a02"></span><span class="pc">3.1%</span></p></div>
+<h2>ヨーロッパ(温帯・都市が多い)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/europe_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/europe_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#2e3b18"></span><span class="pc">40.5%</span><span class="chip" style="background:#202e0d"></span><span class="pc">26.6%</span><span class="chip" style="background:#3d4623"></span><span class="pc">25.8%</span><span class="chip" style="background:#575836"></span><span class="pc">6.3%</span><span class="chip" style="background:#989c8e"></span><span class="pc">0.7%</span></p></div>
+<h2>オーストラリア内陸(赤い砂漠・サバンナ)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/australia_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/australia_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#594025"></span><span class="pc">35.8%</span><span class="chip" style="background:#6e4d2d"></span><span class="pc">33.3%</span><span class="chip" style="background:#85603b"></span><span class="pc">16.3%</span><span class="chip" style="background:#3b301a"></span><span class="pc">10.3%</span><span class="chip" style="background:#a08158"></span><span class="pc">4.2%</span></p></div>
+<h2>カナダ北部(ツンドラ)</h2><div class="card">
+<div class="pair"><figure><img src="satellite/tundra_real.jpg" alt="本物"><figcaption>本物(衛星画像)</figcaption></figure>
+<figure><img src="satellite/tundra_de.jpg" alt="簡略化"><figcaption>5色に絞った簡略化</figcaption></figure></div>
+<p class="sub">実際の色(多い順): <span class="chip" style="background:#e1e3e3"></span><span class="pc">37.8%</span><span class="chip" style="background:#bdc1bf"></span><span class="pc">19.2%</span><span class="chip" style="background:#989a95"></span><span class="pc">18.9%</span><span class="chip" style="background:#313220"></span><span class="pc">12.1%</span><span class="chip" style="background:#6f6f66"></span><span class="pc">12.0%</span></p></div>
+
+<h2>この試験の限界</h2>
+<div class="card"><ul class="sub">
+<li>色は「色の集まり」を自動で5つに分けたものです。「岩」「草」などの名前は、私が画像を見て付けたもので、土地の種類のデータとは対応させていません。</li>
+<li>簡略化は第1案です。色の絞り方は単純で、全体にくすんで見えます。ファンタジー用の彩度や色の調整は、これから詰める部分です。</li>
+<li>画像は季節の合成なので、冬の雪の広がりは入っていません。</li>
+</ul></div>
+<p class="sub">出典: NASA Blue Marble(Pythonパッケージ basemap-data に同梱された画像)。</p>
+</main></body></html>
