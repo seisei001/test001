@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>縮尺を変えて、色と地面の関係を見る</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:6px;text-align:center}th:first-child{text-align:left}
+.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="satellite4.html">世界の色から数える地面の種類</a></p>
+<h1>縮尺を変えて、色と地面の関係を見る</h1>
+<div class="card">ユーザー案(2026-11-17)「縮尺を変えれば、地質と色の混ざり具合がもう少し意味が出てくる」の試験です。世界のランダムな約900地点で、5つの縮尺(1マスが約5km・1.2km・300m・75m・20m)の衛星画像の色と、そのマスの中の地面(ESA世界土地被覆の11分類)を集めました。</div>
+<div class="card"><b>結果の概要</b><ul>
+<li><b>細かくすると、1マスの中身は確かに純粋になります。</b>1つの種類が80%以上を占めるマスは、約5kmで59%、約300mで74%、約20mで100%です。</li>
+<li><b>ただし、色から地面の種類を当てられる割合は、ほとんど変わりません。</b>どの縮尺でも約6割です(何も知らずに最多の種類と答えた場合は約3割)。</li>
+<li><b>気候(緯度)を足すと、少し当たります。</b>約6割から約6〜7割になりますが、縮尺で大きくは変わりません。</li>
+<li>つまり、<b>縮尺を細かくしても「色だけで種類が決まる」ようにはなりません。</b>草地・畑・低木・森の一部は、縮尺を変えても似た色です。</li>
+</ul>
+<p class="sub">ユーザー案の「縮尺で意味が出てくる」は、この試験では確認できませんでした。細かくすると変わるのは、色と種類の対応ではなく、1マスの中の混ざり具合です。</p></div>
+<h2>縮尺別の結果</h2>
+<div class="card scroll"><table><tr><th>1マスの大きさ</th><td>1マスの中身の純度</td><td>1種類が80%以上のマス</td><td>色だけで当たる割合</td><td>色+緯度で当たる割合</td><td>何も知らずに最多と答えた場合</td></tr><tr><th>約5km</th><td>81%</td><td>59%</td><td>57%</td><td>61%</td><td>35%</td></tr><tr><th>約1.2km</th><td>84%</td><td>65%</td><td>56%</td><td>63%</td><td>34%</td></tr><tr><th>約300m</th><td>88%</td><td>74%</td><td>57%</td><td>63%</td><td>33%</td></tr><tr><th>約75m</th><td>93%</td><td>85%</td><td>61%</td><td>67%</td><td>33%</td></tr><tr><th>約20m</th><td>100%</td><td>100%</td><td>60%</td><td>62%</td><td>33%</td></tr></table>
+<p class="sub">「色だけで当たる割合」は、5分割して一部を隠して確かめた値です。色は、世界を12色に分けて数えています。</p></div>
+<h2>この試験が確かめていないこと</h2>
+<div class="card"><ul class="sub">
+<li><b>地質(岩石の種類)は使っていません。</b>調べたのは地面を覆うもの(森・草地・畑など)です。岩石の種類のデータ(GLiM)は、まだ取得できていません。「地質と色」の関係は未確認です。</li>
+<li>地点は約900だけで、地域ごとの偏りは見ていません。</li>
+<li>約20mでは、1マスが小さすぎて純度が必ず100%になります(確かめた値ではなく、そうなる仕組みです)。</li>
+<li>地面の種類は、ESAの11分類です。「草地」「畑」などは、さらに細かく違うはずです。</li>
+<li>画像は雲を除いて色を整えた合成です。</li>
+</ul></div>
+<p class="sub">出典: ESA WorldCover 2021 (CC BY 4.0) / Sentinel-2 cloudless 2020 by EOX IT Services GmbH(Contains modified Copernicus Sentinel data 2020。非営利利用向けの条件があります)。</p>
+</main></body></html>
