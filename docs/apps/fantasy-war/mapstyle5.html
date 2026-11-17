@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>山を地形の稜線から描く(段階7の試作)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle4.html">山並みの描き方の調査</a> / <a href="mapstyle3.html">段階6</a></p>
+<h1>山を地形の稜線から描く(段階7の試作)</h1>
+<div class="card"><b>概要</b>: ユーザー案(2026-11-18)「形が単調になる。山の稜線は地形の稜線から描き、実際の山の形と混ぜる。穏やかな所は丸い稜線、高い山の頂上付近は尖った稜線にし、高低差から描く。何層か重ねて、一方向の光で立体にする」を試作しました(目的: この考え方で、地形が変わると絵も変わるかを見るため)。</div>
+<h2>絵(山の周辺の拡大)</h2>
+<div class="card"><img src="mapstyle/s7a_crop.jpg" alt="段階7の山"><p class="sub">全体の絵は <a href="mapstyle/s7a.jpg">こちら(段階7a)</a>。山の中心(高い所)は尖った細かい峰、周辺(低い所)は丸いこぶになっています。光は左上から当てています。</p></div>
+<h2>作り方</h2>
+<div class="card"><ol>
+<li><b>高低差から山の範囲と層を決める</b>: 標高の高い所だけを山とし、高さが上がるほど「尖る度合い」を強くします(低い所は丸く、高い所は尖る)。</li>
+<li><b>実際の山の形を混ぜる</b>: 地図の標高の形と似た本物の山の形(コサイン類似度の上位8個から選ぶ)を、地図の標高と半々に混ぜて貼ります。尖る所だけに使い、丸い所はならした標高のままです。</li>
+<li><b>尖らせる</b>: 高い所の形を累乗で尖らせ、周りより高い部分だけを残して稜線を際立たせます。</li>
+<li><b>奥から手前へ重ねる</b>: 地図の北(奥)の山から順に描き、手前が奥を隠します。</li>
+<li><b>一方向の光</b>: 左上から光を当て、斜面の向きで4段の明るさに分けます。高く明るい面は雪色にします。稜線は暗い線にします。</li>
+</ol>
+<p class="sub">使った本物の山の形は317種類で、地図の形と最も似た山との類似度の平均は0.86でした。</p></div>
+<h2>分かったこと</h2>
+<div class="card"><ul>
+<li>高さに応じて「丸い→尖る」が絵に出ました(中心が尖り、縁が丸い)。地形が変われば、山の範囲・尖り・向きが変わる作りです。</li>
+<li>段階6の「円すいが並ぶ」感じは減りました。</li>
+</ul></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>まだ「連なり」に見えません。稜線の線そのものを取り出して順に描く方法ではなく、標高の面を重ねて描いているため、粘土の塊のように見える部分があります。</li>
+<li>主尾根の線を取り出して並べる手順(ユーザー案の中心)は、この試作では未実装です。</li>
+<li>丸い稜線の範囲は狭く、山の周辺の丸い丘は、ほぼ地面の色のままです。</li>
+<li>尖りの強さ・混ぜる割合・光の向きの数字は、私が見た目で決めました(根拠なし)。</li>
+<li>画面が縮むと、細かい尖りは見えなくなります。</li>
+</ul></div>
+<p class="sub">出典: AWS地形タイル(Mapzen Terrarium)から集めた山の形。標高データそのものは掲載しません。</p>
+</main></body></html>
