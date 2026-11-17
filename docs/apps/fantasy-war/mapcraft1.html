@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ファンタジー地図の作法の調査</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:99px;padding:0 8px;color:var(--sub)}p{margin:6px 0}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="satellite9.html">Googleアースの調査</a> / <a href="mapstyle1.html">絵の地図の試作</a></p>
+<h1>ファンタジー地図の作法の調査</h1>
+<div class="card">ユーザー案(2026-11-18)「ファンタジー地図・異世界地図の作法の記事やブログを検証し、使える手法がないか確かめる」の調査です。<br><b>結論:</b> 色や模様の数値データは得られませんが、<b>手順と決まりは、そのまま使えるものがあります。</b>特に(1)白黒の起伏に薄い色の層を重ねる、(2)減色とディザ、(3)描く物の優先順位は、絵の地図の試作(mapstyle1)に取り入れられます。</div>
+<div class="card"><b><a href="https://www.zompist.com/howto2.htm">Zompist「Virtual Verduria」の地図の描き方(Photoshopでの実例)</a></b><br><span class="tag">使える(手順と決まり)</span><p><b>分かったこと:</b> 地面の起伏を<b>まず白黒だけで描き</b>、色は<b>別の層に、約33%の薄さで重ねる</b>。色は薄くして文字を読めるようにする。海は、岸から離れるほど暗い青にして深さを表す。最後に<b>128色に減らし、ディザ(細かい点で色の段差をぼかす方法)をかける</b>と、段差が出ない。光の向きは1つに決める。起伏は付けすぎない。自然な境界は、どの大きさでも不規則にする。</p><p><b>限界:</b> 手描きの手順の紹介で、気候や地面の種類は扱っていない。</p><p><b>使い道:</b> <b>『白黒の起伏 × 薄い色の層』と、『減色+ディザ』は、そのまま試せる。</b>1024色に減らす私たちの手順とも合う。</p></div><div class="card"><b><a href="https://gizmodo.com/10-rules-for-making-better-fantasy-maps-1680429159">「ファンタジー地図の作り方 10の決まり」(Gizmodo)</a></b><br><span class="tag">一部使える(考え方)</span><p><b>分かったこと:</b> 山は雨を受け止め、川は必ず海へ流れる、など<b>本当の地理を学ぶ</b>。川の三角州などは、地球を上から撮った写真集で学ぶ。色の組み合わせは、昔の地図や時代の絵から選ぶ。細部は近くで見て意味があり、遠くからは基本の情報が分かるようにする。四角い紙の形に大陸を合わせない。</p><p><b>限界:</b> 具体的な色の数値や模様の手順はない。海岸線や森の助言もない。</p><p><b>使い道:</b> 『地球の衛星画像から学ぶ』という私たちの方針の裏付け。『近くと遠くで見え方を変える』は、層ごとの見せ方と同じ考え。</p></div><div class="card"><b><a href="https://iris-cone-4mt5.squarespace.com/blog/5-best-mapmaking-tips">Red Quills「地図づくりの5つのコツ」</a></b><br><span class="tag">使える(優先順位)</span><p><b>分かったこと:</b> 世界の雰囲気に合う画風を選ぶ(暗い世界は羊皮紙など)。<b>地図に描くのは、必要な物だけ。山と海岸線はほぼ必要で、森は飾りなので最後に足す。</b>実在の地理(特にヨーロッパ)を真似ない。</p><p><b>限界:</b> 手描きの経験則で、数値の裏付けはない。</p><p><b>使い道:</b> <b>描く順番(海岸線→山→川→森→飾り)</b>を決める参考になる。層ごとに、何を描くかを絞る考え方にも合う。</p></div><div class="card"><b><a href="https://gigazine.net/news/20160826-generating-fantasy-maps">Martin O'Leary「ファンタジー地図の自動生成」(Gigazineの紹介)</a></b><br><span class="tag">考え方は既にある(Azgaarなどと同系統)</span><p><b>分かったこと:</b> ばらばらの点で不規則な格子を作り、傾きと円すい・こぶで高さを作り、浸食で海岸を荒らし、川と都市を置く。コードはGitHub(mewo2/terrain)で公開されている。</p><p><b>限界:</b> 古い地図らしい見た目の作り方は、記事に書かれていない。コードの利用条件は、今回は確認できなかった。</p><p><b>使い道:</b> 地形を作る手順としては、Azgaar・PWGと同じ方向で、新しい材料にはならない。</p></div>
+<h2>取り入れる案(試作の次の段階)</h2>
+<div class="card"><ul>
+<li><b>起伏(白黒)と色の層を分ける。</b>色は薄く(約3割)重ね、光の向きは1つに固定する。</li>
+<li><b>色を減らし、ディザで段差をぼかす。</b>今の1024色の手順の後に、見せる色数を絞る(例: 128色)工程を足す。</li>
+<li><b>描く順番を層ごとに決める。</b>海岸線→山→川→森→飾り。縮尺が大きい(遠い)ほど、前のものだけを描く。</li>
+<li><b>海の色を、岸から離れるほど濃くする。</b>深さを表す。</li>
+</ul></div>
+<h2>限界</h2>
+<div class="card"><ul class="sub">
+<li>検索結果の題名と、読めた4本の要旨にもとづく調査です。網羅的ではありません。</li>
+<li>記事は手描きの経験則です。効果は、私たちの試作で確かめる必要があります。</li>
+<li>書籍(『How to Draw Fantasy Art and RPG Maps』など)は、中身を読めておらず、今回の判定に含めていません。</li>
+<li>mewo2/terrainのコードの利用条件は未確認です。</li>
+</ul></div>
+</main></body></html>
