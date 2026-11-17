@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>気候で変わる、土地の種類と色</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;min-width:620px;width:100%;font-size:12px}th,td{border-bottom:1px solid var(--border);padding:6px 4px;text-align:center}th:first-child{text-align:left;position:sticky;left:0;background:var(--panel)}
+.chip{display:inline-block;width:22px;height:22px;border-radius:4px;border:1px solid var(--border);vertical-align:middle}.hx{display:block;font-size:10px;color:var(--sub)}
+.no{color:var(--sub);font-size:11px}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="satellite2.html">アルプスの縮尺検証</a> / <a href="satellite1.html">世界9地域</a></p>
+<h1>気候で変わる、土地の種類と色</h1>
+<div class="card">縮尺の検証を、7つの気候の場所(砂漠・熱帯雨林・タイガ・ツンドラ・乾燥した内陸・高原・山地)に広げました。各場所は約230km×330kmで、土地の種類(ESA世界土地被覆)と衛星画像(Sentinel-2)を重ね、縮尺別に集計しています。</div>
+<div class="card"><b>分かったこと</b><ul>
+<li><b>同じ「草地」でも、場所で色がまったく違います。</b>アルプスは深緑(#2e4222)、チベットは黄土色(#746436)、オーストラリア内陸は赤茶(#a14d1f)です。つまり、<b>色は「土地の種類」だけでは決まらず、気候(と土の色)との組み合わせで決まります。</b></li>
+<li><b>岩や裸地も同じです。</b>サハラは明るい砂色(#e2a860)、チベットは黄土色、タイガは灰緑です。</li>
+<li><b>森は気候が違っても、ほぼ暗い緑です。</b>熱帯雨林(#132f16)とタイガ(#132711)はほぼ同じ色で、見分けは色ではなく、木の形(広葉か針葉か)で絵にします。</li>
+<li><b>粗い縮尺での混ざり方は、場所で違います。</b>熱帯雨林・タイガ・サハラは一様なので、10kmでもほとんど変わりません。ツンドラ(15%)・アルプス(6.5%)・オーストラリア内陸(40%)は急に混ざります。</li>
+<li><b>雪は、チベットの高い山で白(#eae7d7)に見えます。</b>季節で大きく変わるので、固定の色にはできません。</li>
+</ul></div>
+<h2>土地の種類と色(約1kmの縮尺)</h2>
+<div class="card scroll"><table><tr><th>種類</th><th>アルプス周辺</th><th>サハラ砂漠</th><th>アマゾン熱帯雨林</th><th>シベリアのタイガ</th><th>北極圏のツンドラ</th><th>オーストラリア内陸</th><th>チベット高原</th></tr><tr><th>森</th><td><span class="chip" style="background:#15290f"></span><span class="hx">#15290f</span></td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#132f16"></span><span class="hx">#132f16</span></td><td><span class="chip" style="background:#132711"></span><span class="hx">#132711</span></td><td><span class="chip" style="background:#1e3217"></span><span class="hx">#1e3217</span></td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td></tr><tr><th>低木</th><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#864318"></span><span class="hx">#864318</span></td><td class="no">ほぼ無い</td></tr><tr><th>草地</th><td><span class="chip" style="background:#314522"></span><span class="hx">#314522</span></td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#1f3819"></span><span class="hx">#1f3819</span></td><td><span class="chip" style="background:#353b1b"></span><span class="hx">#353b1b</span></td><td><span class="chip" style="background:#a54d1f"></span><span class="hx">#a54d1f</span></td><td><span class="chip" style="background:#6f6134"></span><span class="hx">#6f6134</span></td></tr><tr><th>裸地・岩</th><td><span class="chip" style="background:#817d62"></span><span class="hx">#817d62</span></td><td><span class="chip" style="background:#e2a860"></span><span class="hx">#e2a860</span></td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#a0663a"></span><span class="hx">#a0663a</span></td><td><span class="chip" style="background:#a2814f"></span><span class="hx">#a2814f</span></td></tr><tr><th>雪・氷</th><td><span class="chip" style="background:#d4d3c7"></span><span class="hx">#d4d3c7</span></td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td><td class="no">ほぼ無い</td></tr><tr><th>水</th><td><span class="chip" style="background:#061f1a"></span><span class="hx">#061f1a</span></td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#2a3123"></span><span class="hx">#2a3123</span></td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#213b29"></span><span class="hx">#213b29</span></td><td class="no">ほぼ無い</td><td><span class="chip" style="background:#0d382c"></span><span class="hx">#0d382c</span></td></tr></table>
+<p class="sub">1つの種類が80%以上を占めるマスの平均色です。その場所に1%未満しかない種類は「ほぼ無い」としました。</p></div>
+<h2>1つの種類が80%以上を占めるマスの割合</h2>
+<div class="card scroll"><table><tr><th>縮尺</th><th>アルプス周辺</th><th>サハラ砂漠</th><th>アマゾン熱帯雨林</th><th>シベリアのタイガ</th><th>北極圏のツンドラ</th><th>オーストラリア内陸</th><th>チベット高原</th></tr><tr><th>100m</th><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>100.0%</td></tr><tr><th>400m</th><td>64.3%</td><td>99.9%</td><td>97.0%</td><td>96.2%</td><td>56.8%</td><td>72.0%</td><td>79.7%</td></tr><tr><th>1km</th><td>34.7%</td><td>99.9%</td><td>95.7%</td><td>95.5%</td><td>41.4%</td><td>61.5%</td><td>68.8%</td></tr><tr><th>5km</th><td>11.6%</td><td>99.9%</td><td>94.0%</td><td>97.2%</td><td>22.8%</td><td>46.9%</td><td>45.1%</td></tr><tr><th>10km</th><td>6.5%</td><td>100.0%</td><td>93.2%</td><td>98.8%</td><td>15.0%</td><td>40.1%</td><td>30.8%</td></tr></table>
+<p class="sub">アルプスの最小の縮尺は約50mです。ほかは約100mです。</p></div>
+<h2>地図づくりへの意味(案)</h2>
+<div class="card"><ul>
+<li><b>色は、「土地の種類」×「気候の区分」の表で決めます。</b>気候の区分は、Azgaarの生物群系(13種)をそのまま使えそうです。例えば「草地」でも、温帯は深緑、乾燥は黄土色、砂漠に近い所は赤茶です。</li>
+<li><b>縮尺は、色の表を変えずに、混ぜ方だけで切り替えます。</b>世界の縮尺では一番多い種類で塗り、地方・戦域の縮尺では種類を描き分けます。</li>
+<li><b>粗い縮尺の混ざりは、場所に応じて強弱を付けます。</b>一様な場所(砂漠・森)は単色、混ざる場所(山・ツンドラ)は模様や筆致を入れます。</li>
+</ul></div>
+<h2>限界</h2>
+<div class="card"><ul class="sub">
+<li>各気候1か所だけです。ほかの場所で同じとは限りません。</li>
+<li>土地の種類の少ない場所(サハラの「森」など、割合が極めて小さい分類)は、誤分類の可能性があるため除いています。</li>
+<li>画像は雲を除いて色を整えた合成で、本物の色とは少し違います。</li>
+<li>粗い縮尺は、細かい画像を平均して作った見立てです。</li>
+<li>画像そのものは掲載せず、集計した色と数字だけを載せています。</li>
+</ul></div>
+<p class="sub">出典: ESA WorldCover 2021 (CC BY 4.0) / Sentinel-2 cloudless 2020 by EOX IT Services GmbH(Contains modified Copernicus Sentinel data 2020。非営利利用向けの条件があります)。</p>
+</main></body></html>
