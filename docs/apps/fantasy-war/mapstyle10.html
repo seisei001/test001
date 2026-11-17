@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>高低差から作る山の形と重ねの芸術性</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle9.html">稜線のパターン化</a> / <a href="mapstyle7.html">段階9</a></p>
+<h1>高低差から作る山の形と、重ねたときの芸術性</h1>
+<div class="card"><b>概要</b>: ユーザー指示(2026-11-18)「形のパターンを高低差で作る場合の、汎用性と芸術性の融合に焦点を合わせる。重ねた時の芸術性も重要。背景の本当の形はどうでもいい」に沿って、<b>「高さ」の数字ひとつから山並みを作る4つの描き方</b>を、3つの高さで並べました。本物の山との近さは測らず、見た目の比較です。どれが良いかを選んでください。</div>
+<h2>4つの描き方 × 3つの高さ</h2>
+<div class="card"><img src="mapstyle/art_sheet.png" alt="4つの描き方と3つの高さ">
+<p class="sub">上段=低い(0.35)、中段=中くらい(0.65)、下段=高い(0.95)。どの絵も、手前から奥へ4枚を重ねています。</p></div>
+<ul>
+<li><b>A</b> 頂点の位置と高さを乱数で決める(基準)</li>
+<li><b>B</b> 主峰を黄金比の位置(左右どちらかの3/8付近)に置き、頂点は奇数で、副峰は0.618倍ずつ低くする</li>
+<li><b>C</b> 段々に上がり、同じように下がる(最高峰の左右で対称な段)</li>
+<li><b>D</b> 片側が丸い丘で、反対側へ尖った高峰に向かって、尖りが増す(ユーザー案「全体がなだらかから尖った高い山に」)</li>
+</ul>
+<h2>共通の決まり(高さだけから決める)</h2>
+<div class="card"><ol>
+<li><b>丸い→尖る</b>: 高さが上がるほど尖る。低い山は丸いなだらかな丘、高い山は頂点だけ尖り、裾は穏やかな曲線(頂点だけ尖る)。</li>
+<li><b>頂点の数と幅</b>: 低い山は1〜3個の広い丘、高い山は3〜6個で、細い針は作らない(幅の下限あり)。</li>
+<li><b>左右非対称</b>: 山ごとに左右の裾の広さを変える。</li>
+<li><b>重ね</b>: 4枚を奥から手前へ。奥ほど薄く青みがかり(空気遠近)、手前ほど濃く暗い。手前の枚が奥の枚に影を落とす。</li>
+<li><b>明暗</b>: 左上の光。左向きの斜面は明るく、右向きは暗く、暗い面に細い線(尾根と谷の筋)。高い頂上だけ雪色。</li>
+<li><b>色</b>: 地図の山の4色(#dfc89d / #9a8d6b / #6d6144 / #3a3318)だけ。奥は空色(#bac6d6)へ寄せる。</li>
+</ol></div>
+<h2>汎用性の確認(Dで、乱数を変えて4回)</h2>
+<div class="card"><img src="mapstyle/art_sheet2.png" alt="Dの汎用性">
+<p class="sub">同じ高さでも、乱数で頂点の位置・数・高さが変わります。高さを上げると、丘が山へ変わります。</p></div>
+<h2>私の見立て(未確認の主観)</h2>
+<div class="card"><ul>
+<li>Dは、丸い丘から尖った高峰への流れが一番分かりやすく、高さの違いが絵に出ます。</li>
+<li>Bは、主峰が引き立ち、まとまりが一番良い印象です。</li>
+<li>Cは、尖った頂点が同じように並び、単調に見えます。Aは、まとまりに欠けます。</li>
+<li>これは私の見た印象で、測った結果ではありません。選ぶのはユーザーです。</li>
+</ul></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>この絵は、地図の標高とは別に、高さの数字だけで作った見本です。地図の山の位置・範囲・下の絵の模様(段階9の貼り付け)との合わせ方は、まだ作っていません。</li>
+<li>手前の層の下側が、ただの塗りの帯になっており、段階9のように下の絵の模様は貼っていません。</li>
+<li>「芸術性」を数字では測っていません。重ねの枚数(4枚)、奥の薄さ、影の濃さ、光の向きは、私が見た目で決めました。</li>
+<li>頂点の周りの線(細い筋)は、乱数で引いており、実際の地形の谷とは対応していません。</li>
+</ul></div>
+<p class="sub">描画コード: <a href="mapstyle/art_gen.py">art_gen.py</a></p>
+</main></body></html>
