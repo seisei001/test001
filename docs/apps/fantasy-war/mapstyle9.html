@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>稜線のパターン化と絵の発注(試案)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:380px;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:6px;text-align:center}th:first-child{text-align:left}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;line-height:1.6}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle8.html">稜線の補正実験</a> / <a href="mapstyle7.html">段階9</a></p>
+<h1>稜線のパターン化と絵の発注(試案)</h1>
+<div class="card"><b>概要</b>: ユーザー案(2026-11-18)「稜線は大差なくパターン化できる。そのパターンを絵で見せ、絵が得意な他のAIに、山の色合いで描かせて、下地と合わせる」を検討しました(目的: 稜線の型を数えて、絵を発注する範囲を決めるため)。結果、<b>型は6つに分けられますが、4割以上が「低く平らで針のような頂点が立つ形」で、これは直すべき欠陥</b>でした。直した版の型で絵を発注するのが、順序として正しいと考えます。</div>
+<h2>稜線の型(私の稜線351本を6つに分類)</h2>
+<div class="card"><img src="mapstyle/pat_sheet.png" alt="稜線の型"><p class="sub">太線=型の平均、細線=その型の例(8本まで)。割合は全体に占める率です。</p></div>
+<div class="card scroll"><table><tr><th>集団</th><td>型の数3</td><td>6</td><td>12</td></tr>
+<tr><th>私の稜線(地図から)</th><td>0.81</td><td>0.72</td><td>0.61</td></tr>
+<tr><th>本物の稜線</th><td>0.82</td><td>0.74</td><td>0.67</td></tr>
+<tr><th>乱数から作った稜線</th><td>0.82</td><td>0.68</td><td>0.61</td></tr></table>
+<p class="sub">数字は、型で表したときの形のずれ(小さいほど型でよく表せる)。私の稜線は、本物と同程度にしか型にまとまらず、「どれも似ている」のは、本物より型が少ないからではありません。ただし、型1(43%)が低く平らな形で占められている点が、似て見える原因と思われます。</p></div>
+<h2>見つかった欠陥: 針状の頂点</h2>
+<div class="card"><ul>
+<li>私の稜線の頂点425個のうち、幅が6画素より狭い「針」が160個(38%)ありました。これが、地図の山の上に突き出して見える原因の一つと考えます。</li>
+<li>針をならす処理と、地図の山の範囲より北へ突き出さない処理を試しました(段階11a)。突き出しは無くなりましたが、頂点が平らに切れて、段のある塊のように見え、山らしさは悪化しました(<a href="mapstyle/s11a_crop.png">絵</a>)。<b>この処理は採用しません</b>。</li>
+<li>代わりに、針を作る元(尖らせと細部の足し方)を見直す必要があります。未実施です。</li>
+</ul></div>
+<h2>絵の発注の案(AIに描かせる場合)</h2>
+<div class="card"><ol>
+<li>稜線の型を、針状を除いた5つに絞る(下の発注文は、型の特徴を言葉にしたもの)。</li>
+<li>他のAIに、山の色(地図の山の4色)で、5つの山並みの絵を描かせる。</li>
+<li>地図の稜線ごとに、似た型の絵を選び(類似度)、稜線の枠で切り出して、変形して貼る。</li>
+<li>下地との合わせ方: 山の4色は、地図の山の高さ78以上の場所の主な色から取った値です。</li>
+</ol>
+<p class="sub">試作の発注文(そのまま貼れます。目的は、AIの絵が稜線の枠に貼って使えるかを判断すること):</p>
+<pre>山並みの絵を5種類、1枚の画像にまとめて描いてください。
+
+【用途】ファンタジー世界の地図の「山の面の絵」として使います。横から見た山並みを、切り絵のように重ねて使うため、形がはっきりした平らな絵にしてください。
+
+【画像】正方形1024×1024。5つの山並みを、上から縦に並べた5段(1段の高さは約200画素)にし、背景は無地の白。文字・枠・影・地面・空・雲・木・建物・人は描かない。
+
+【描き方】横から見た山並み。ペンの黒茶の線(細め、少し不ぞろい)と水彩のような薄い塗り。山の頂点だけを尖らせ、頂点と頂点の間は、穏やかななめらかな曲線にする。光は左上から当たり、左側の斜面は明るく、右側の斜面は暗い色にして、暗い側に細い線(枝の尾根と谷の筋)を足す。山の下の端は、まっすぐな横線で切る。
+
+【色】必ずこの色だけを使う。明るい砂色 #dfc89d / 中間の土色 #9a8d6b / 暗い茶色 #6d6144 / 最も暗い影 #3a3318。頂上付近だけ、雪を白で足してよい(雪は全体の1割まで)。
+
+【5種類の形】
+1段目: 低くて丸い山が1つ、左に小さな肩(段)がある。
+2段目: 台形に近い丸い山が1つ。頂点は1つだけ尖る。
+3段目: 左が高く、右へ段々に下がる山並み(頂点は3つ)。
+4段目: 左がなだらかで、右の端で一番高く尖る山。
+5段目: 幅が広い連山。小さな頂点が5〜6個並び、真ん中が一番高い。
+
+どの段も、山の絵が左右の端で自然に地面の高さまで下がること。段どうしで形を似せないこと。</pre></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>型の平均は、重ねて平均した形で、実際の稜線の細かい形ではありません。発注文の5つの型は、この分類をもとに私が言葉にしたもので、分類の結果そのものではありません。</li>
+<li>AIの絵が、指定の4色と形を守るか、稜線の枠への貼り付けで違和感が出ないかは、未確認です。</li>
+<li>型1(低く平らな形)を除く5型の割合は、全体の57%で、残りは主に低い山です。</li>
+</ul></div>
+<p class="sub">出典: AWS地形タイル(Mapzen Terrarium)から集めた山の形。標高データそのものは掲載しません。</p>
+</main></body></html>
