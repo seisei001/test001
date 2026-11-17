@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>縮尺で変わる、土地の種類と色</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:6px 4px;text-align:center}th:first-child{text-align:left}
+.chip{display:inline-block;width:22px;height:22px;border-radius:4px;border:1px solid var(--border);vertical-align:middle}.hx{display:block;font-size:11px;color:var(--sub)}
+.no{color:var(--sub);font-size:12px}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}small{color:var(--sub);font-weight:400}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="satellite1.html">前の検証(世界9地域)</a></p>
+<h1>縮尺で変わる、土地の種類と色</h1>
+<div class="card">土地の種類(ESA世界土地被覆)と、本物の衛星画像(Sentinel-2)を重ね、<b>土地の種類ごとの実際の色</b>が、地図の縮尺(1マスの大きさ)でどう変わるかを調べました。場所はアルプス周辺(北緯45〜48度・東経6〜9度、約230km×330km)です。1マスの大きさは、約50m・210m・1km・5km・10kmの5段階で、細かい画像を平均して作っています。</div>
+<div class="card"><b>分かったこと</b><ul>
+<li><b>色そのものは、縮尺を変えてもあまり変わりません。</b>森は常に深緑、雪は灰白、水はほぼ黒です。粗くなるほど、少し明るく灰色寄りになる程度です。</li>
+<li><b>変わるのは「混ざり方」です。</b>1マスが同じ種類だけで80%以上になる割合は、約50mで100%、210mで64%、1kmで35%、5kmで12%、10kmで6.5%と急に減ります。粗い地図では、ほとんどのマスが混ざった色になります。</li>
+<li><b>小さな種類は、粗い縮尺で消えます。</b>市街と岩は1kmでも少数しか純粋なマスがなく、5km以上では純粋なマスがほぼなくなります。大きな縮尺(世界・地方)では、市街は色では表せず、記号にする必要があります。</li>
+<li><b>色だけでは種類を区別できません。</b>草地(#2e4222)と畑(#2c4021)は、ほぼ同じ色です。市街(#4f573d)も、低木や岩と近い色です。見分けるには、色ではなく土地の種類のデータが必要です。</li>
+</ul></div>
+<h2>土地の種類ごとの実際の色(縮尺別)</h2>
+<div class="card"><table><tr><th>種類<br><small>全体の割合</small></th><th>53m</th><th>210m</th><th>1km</th><th>5km</th><th>10km</th></tr><tr><th>森<br><small>44.1%</small></th><td><span class="chip" style="background:#15290f"></span><span class="hx">#15290f</span></td><td><span class="chip" style="background:#13280e"></span><span class="hx">#13280e</span></td><td><span class="chip" style="background:#15290f"></span><span class="hx">#15290f</span></td><td><span class="chip" style="background:#172a10"></span><span class="hx">#172a10</span></td><td><span class="chip" style="background:#172a11"></span><span class="hx">#172a11</span></td></tr><tr><th>草地<br><small>29.1%</small></th><td><span class="chip" style="background:#2e4222"></span><span class="hx">#2e4222</span></td><td><span class="chip" style="background:#2e4321"></span><span class="hx">#2e4321</span></td><td><span class="chip" style="background:#314522"></span><span class="hx">#314522</span></td><td><span class="chip" style="background:#324422"></span><span class="hx">#324422</span></td><td class="no">なし</td></tr><tr><th>畑<br><small>11.3%</small></th><td><span class="chip" style="background:#2c4021"></span><span class="hx">#2c4021</span></td><td><span class="chip" style="background:#2a3f1f"></span><span class="hx">#2a3f1f</span></td><td><span class="chip" style="background:#203b1b"></span><span class="hx">#203b1b</span></td><td><span class="chip" style="background:#1c3a1a"></span><span class="hx">#1c3a1a</span></td><td><span class="chip" style="background:#1b3a1a"></span><span class="hx">#1b3a1a</span></td></tr><tr><th>市街<br><small>4.3%</small></th><td><span class="chip" style="background:#4f573d"></span><span class="hx">#4f573d</span></td><td><span class="chip" style="background:#55563f"></span><span class="hx">#55563f</span></td><td><span class="chip" style="background:#52513a"></span><span class="hx">#52513a</span></td><td class="no">なし</td><td class="no">なし</td></tr><tr><th>裸地・岩<br><small>4.5%</small></th><td><span class="chip" style="background:#7a795e"></span><span class="hx">#7a795e</span></td><td><span class="chip" style="background:#7e7b61"></span><span class="hx">#7e7b61</span></td><td><span class="chip" style="background:#817d62"></span><span class="hx">#817d62</span></td><td class="no">なし</td><td class="no">なし</td></tr><tr><th>雪・氷<br><small>2.8%</small></th><td><span class="chip" style="background:#bdbdac"></span><span class="hx">#bdbdac</span></td><td><span class="chip" style="background:#c9c8ba"></span><span class="hx">#c9c8ba</span></td><td><span class="chip" style="background:#d4d3c7"></span><span class="hx">#d4d3c7</span></td><td><span class="chip" style="background:#d3d2c6"></span><span class="hx">#d3d2c6</span></td><td class="no">なし</td></tr><tr><th>水<br><small>2.7%</small></th><td><span class="chip" style="background:#0d251c"></span><span class="hx">#0d251c</span></td><td><span class="chip" style="background:#08211b"></span><span class="hx">#08211b</span></td><td><span class="chip" style="background:#061f1a"></span><span class="hx">#061f1a</span></td><td><span class="chip" style="background:#061d1a"></span><span class="hx">#061d1a</span></td><td class="no">なし</td></tr>
+<tr><th>純粋なマスの割合<br><small>同じ種類が80%以上</small></th><td>100.0%</td><td>64.3%</td><td>34.7%</td><td>11.6%</td><td>6.5%</td></tr></table>
+<p class="sub">約50mは、1マスが1種類だけなので全マスが対象です。それ以外は、同じ種類が80%以上のマスの平均色です。「なし」は、そのようなマスが5個未満でした。</p></div>
+<h2>地図づくりへの意味(案)</h2>
+<div class="card"><ul>
+<li>色は「種類ごとに1つ決める」だけで足ります。縮尺で別の色にする必要は小さいです。</li>
+<li>縮尺ごとに変えるのは、種類の混ぜ方です。大きな縮尺では、そのマスで最も多い種類で塗り、小さな縮尺(拡大)では、種類ごとに細かく描き分けます。</li>
+<li>草地と畑のように色が近い種類は、絵の模様(畑の畝、草の筆致)で見分けるのが良いと考えます。</li>
+<li>市街は、色ではなく記号と建物の絵で表します。</li>
+</ul></div>
+<h2>限界</h2>
+<div class="card"><ul class="sub">
+<li>場所はアルプス周辺の1か所だけです。砂漠や熱帯雨林など、他の気候では別に確かめる必要があります。</li>
+<li>約50mより細かい縮尺は、まだ確かめていません。</li>
+<li>画像は雲を除いて色を整えた合成で、本物の色とは少し違います。</li>
+<li>粗い縮尺は、細かい画像を平均して作った見立てです。実際の粗い衛星画像とは、大気の影響などで少し違います。</li>
+<li>Googleアースの画像は使っていません(この会話がパソコンにつながっていないため)。</li>
+</ul></div>
+<p class="sub">出典: ESA WorldCover 2021 (CC BY 4.0) / Sentinel-2 cloudless 2020 by EOX IT Services GmbH(Contains modified Copernicus Sentinel data 2020。非営利利用向けの条件があります)。画像そのものは掲載せず、集計した色と数字だけを載せています。</p>
+</main></body></html>
