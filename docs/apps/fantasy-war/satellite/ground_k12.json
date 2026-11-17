@@ -1,0 +1,186 @@
+[
+ {
+  "cluster": 2,
+  "hex": "#1a250c",
+  "land_share_pct": 18.3,
+  "n_samples": 48,
+  "ground": {
+   "森": 90,
+   "水": 6,
+   "草地": 4
+  },
+  "lat_median": 5.0,
+  "lon_median": 9.0
+ },
+ {
+  "cluster": 5,
+  "hex": "#2a3815",
+  "land_share_pct": 16.8,
+  "n_samples": 48,
+  "ground": {
+   "森": 60,
+   "草地": 23,
+   "畑": 12,
+   "低木": 2,
+   "湿地": 2
+  },
+  "lat_median": 33.0,
+  "lon_median": 23.0
+ },
+ {
+  "cluster": 9,
+  "hex": "#504c2d",
+  "land_share_pct": 12.4,
+  "n_samples": 48,
+  "ground": {
+   "草地": 44,
+   "低木": 23,
+   "畑": 21,
+   "森": 4,
+   "こけ": 2,
+   "市街": 2,
+   "湿地": 2,
+   "裸地・岩": 2
+  },
+  "lat_median": 31.0,
+  "lon_median": 34.0
+ },
+ {
+  "cluster": 0,
+  "hex": "#36341b",
+  "land_share_pct": 11.6,
+  "n_samples": 48,
+  "ground": {
+   "草地": 40,
+   "森": 21,
+   "低木": 15,
+   "畑": 10,
+   "湿地": 8,
+   "こけ": 4,
+   "水": 2
+  },
+  "lat_median": -7.0,
+  "lon_median": 22.0
+ },
+ {
+  "cluster": 4,
+  "hex": "#776544",
+  "land_share_pct": 10.4,
+  "n_samples": 48,
+  "ground": {
+   "畑": 29,
+   "裸地・岩": 27,
+   "草地": 27,
+   "低木": 17
+  },
+  "lat_median": 31.0,
+  "lon_median": 50.0
+ },
+ {
+  "cluster": 3,
+  "hex": "#bf9f77",
+  "land_share_pct": 9.6,
+  "n_samples": 48,
+  "ground": {
+   "裸地・岩": 100
+  },
+  "lat_median": 23.0,
+  "lon_median": 18.0
+ },
+ {
+  "cluster": 7,
+  "hex": "#9a8463",
+  "land_share_pct": 8.9,
+  "n_samples": 48,
+  "ground": {
+   "裸地・岩": 65,
+   "草地": 17,
+   "低木": 10,
+   "こけ": 4,
+   "畑": 4
+  },
+  "lat_median": 30.0,
+  "lon_median": 56.0
+ },
+ {
+  "cluster": 8,
+  "hex": "#69492b",
+  "land_share_pct": 5.3,
+  "n_samples": 48,
+  "ground": {
+   "草地": 69,
+   "低木": 21,
+   "裸地・岩": 8,
+   "森": 2
+  },
+  "lat_median": -24.0,
+  "lon_median": 123.0
+ },
+ {
+  "cluster": 10,
+  "hex": "#6c6d60",
+  "land_share_pct": 1.8,
+  "n_samples": 48,
+  "ground": {
+   "森": 27,
+   "草地": 25,
+   "こけ": 17,
+   "裸地・岩": 12,
+   "水": 8,
+   "湿地": 6,
+   "雪・氷": 2,
+   "低木": 2
+  },
+  "lat_median": 60.0,
+  "lon_median": 62.0
+ },
+ {
+  "cluster": 6,
+  "hex": "#283a36",
+  "land_share_pct": 1.7,
+  "n_samples": 48,
+  "ground": {
+   "水": 44,
+   "森": 35,
+   "草地": 15,
+   "畑": 2,
+   "市街": 2,
+   "マングローブ": 2
+  },
+  "lat_median": 28.0,
+  "lon_median": 25.0
+ },
+ {
+  "cluster": 1,
+  "hex": "#eceeed",
+  "land_share_pct": 1.6,
+  "n_samples": 48,
+  "ground": {
+   "雪・氷": 46,
+   "裸地・岩": 21,
+   "こけ": 17,
+   "草地": 10,
+   "水": 4,
+   "湿地": 2
+  },
+  "lat_median": 71.0,
+  "lon_median": -44.0
+ },
+ {
+  "cluster": 11,
+  "hex": "#a8aaa3",
+  "land_share_pct": 1.6,
+  "n_samples": 48,
+  "ground": {
+   "こけ": 31,
+   "森": 21,
+   "草地": 21,
+   "裸地・岩": 15,
+   "水": 6,
+   "雪・氷": 4,
+   "湿地": 2
+  },
+  "lat_median": 63.0,
+  "lon_median": -23.0
+ }
+]
