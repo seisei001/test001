@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>世界の地表と衛星画像の論文調査</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:99px;padding:0 8px;color:var(--sub)}p{margin:6px 0}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="satellite7.html">色の混在率のパターン化</a></p>
+<h1>世界の地表と衛星画像の論文調査</h1>
+<div class="card">ユーザー案(2026-11-18)「世界の地表を衛星画像で研究した論文を探し、使えないか検証する」の調査です。論文の要旨と本文を読んで、私たちの目的(地面の種類から色の模様を作り、デフォルメした地図を作る)に使えるかを判定しました。<br><b>結論:</b> 目的にそのまま使える論文は見つかりませんでした。ただし、<b>理論の裏付け</b>(Smallほか)と<b>データの信頼度の確認</b>(土地被覆の比較)には使えます。AIで画像を作る論文は、考え方の参考にとどまります。</div>
+<div class="card"><b><a href="https://arxiv.org/pdf/1608.06825">Small ほか「ランドサット分光混合モデルの世界共通化」</a></b><br><span class="tag">使える(考え方)</span><p><b>分かったこと:</b> 世界の陸地の色(反射)は、「土・岩・砂(明るい)」「植物」「暗い(影・水)」の3つの混ざりで、ほぼ説明できると報告している。混ざり方はおおむね直線的で、三角形の中に収まる。つまり、私たちが見つけた「混ざると一定の色に集約する」ことの理論的な裏付けになる。</p><p><b>限界:</b> 雪・氷、浅い水、塩の平原は、この三角形に合わない。ランドサットの反射の話で、人の目の色の話ではない。1画素約30mが前提。</p><p><b>私たちの目的への使い道:</b> 模様(色の混在率)を、この3つの混ぜ具合(3つの割合)で表す案が考えられる。24の色の系統に束ねた私たちの表し方より、コンパクトにできる可能性がある。</p></div><div class="card"><b><a href="https://brage.nina.no/nina-xmlui/handle/11250/3054469">世界の10m土地被覆3種(Dynamic World・WorldCover・Esri)の比較</a></b><br><span class="tag">使える(データの信頼度の確認)</span><p><b>分かったこと:</b> 世界全体での正解率は、Esri 75%・Dynamic World 72%・WorldCover 65%。種類別では、水92%・市街83%・森81%・畑78%は高いが、低木47%・草地34%・裸地57%・氾濫植生53%は低い(特にツンドラ)。</p><p><b>限界:</b> ヨーロッパの現地データでの比較では、WorldCoverが71%で最も高く、順位が変わる。</p><p><b>私たちの目的への使い道:</b> 私たちが使ったWorldCoverの「草地」「低木」は誤りが多い可能性があり、色と草地・低木の結びつきが弱かった原因の一部かもしれない。森・水・畑の結果は信頼しやすい。</p></div><div class="card"><b><a href="https://arxiv.org/html/2511.23029v1">Geodiffussr: 標高に合わせた地形の模様の生成</a></b><br><span class="tag">考え方だけ使える</span><p><b>分かったこと:</b> 標高データと文章から、衛星画像のような地形の模様をAIで作る。約38万組の学習データ(欧州の衛星画像と標高)を、世界16種の気候区分に分けて集めている。私たちの目的に最も近い。</p><p><b>限界:</b> 出力は32×32画素(約30m/画素)と小さい。コードは「公開予定」で、まだ使えない。地面の種類を直接の入力にはしていない。</p><p><b>私たちの目的への使い道:</b> 「気候区分ごとに偏りなく集める」「標高を条件にする」という考え方は参考になる。そのままは使えない。</p></div><div class="card"><b><a href="https://ar5iv.labs.arxiv.org/html/2111.03384">Seamless Satellite-image Synthesis(地図から衛星画像を作る)</a></b><br><span class="tag">考え方だけ使える</span><p><b>分かったこと:</b> 13種類の地図の区分(建物・道路・自然など)から、衛星画像のような絵をAIで作る。倍率が変わっても画風がそろい、つなぎ目も目立たない。私たちの「地面の種類から色の模様を作る」と同じ方向。</p><p><b>限界:</b> 学習に約0.25m画素の画像と地図の組が約3,000枚必要で、計算機(GPU)が重い。目的は本物らしい画像で、デフォルメではない。コードはGitHubにあるが、利用条件は未確認(今回は開けなかった)。</p><p><b>私たちの目的への使い道:</b> 倍率ごとにAIを分け、画風をそろえる作りは参考になる。ただし、ハブ(GitHub Pages)で動かすには重すぎる。</p></div><div class="card"><b><a href="https://arxiv.org/pdf/1904.12795">TileGAN: 大きな模様の合成(衛星画像を含む)</a></b><br><span class="tag">使いにくい</span><p><b>分かったこと:</b> ランドサットの衛星画像6.5万枚で学習し、大きな画像を、ユーザーが描いた指針の絵に沿って作れる。</p><p><b>限界:</b> 学習に4日(V100のGPU4台)かかる。コードの公開は確認できない。つなぎ目や繰り返しの欠点がある。</p><p><b>私たちの目的への使い道:</b> 指針の絵から全体を組み立てる、という考え方だけ参考になる。</p></div>
+<h2>まとめ</h2>
+<div class="card"><ul>
+<li><b>使える:</b> 「地表の色は、土・植物・暗い部分の3つの混ざり」という理論(Smallほか)。私たちの方向(混ざると一定の色に集約)と一致します。</li>
+<li><b>注意が必要:</b> 使っている土地被覆データ(WorldCover)の、草地・低木・裸地の正解率は低め(34〜57%)です。</li>
+<li><b>そのままは使えない:</b> AIで画像を作る論文は、GPUと学習データが要り、ハブでは動かせません。コードが未公開・利用条件が未確認のものもあります。</li>
+</ul></div>
+<h2>限界</h2>
+<div class="card"><ul class="sub">
+<li>検索は、キーワード4通りの結果から選んだ5本です。網羅した調査ではありません。</li>
+<li>本文を読めた範囲の要約です。論文の数値は、確認できたものだけを載せています(Geodiffussrの表には、一部の数値が重なっている箇所があるとも指摘されています)。</li>
+<li>Seamless Satellite-image Synthesisのコードの利用条件は、今回は開けず未確認です。</li>
+</ul></div>
+</main></body></html>
