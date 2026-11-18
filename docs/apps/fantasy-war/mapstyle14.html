@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Geminiは地形をどう描き変えたか</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:5px 6px;text-align:center}th{text-align:left}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle13.html">再現の検証</a></p>
+<h1>Geminiは地形をどう描き変えたか(地形ごとの比較)</h1>
+<div class="card"><b>概要</b>: ユーザー指示(2026-11-18)「形から大まかに格子で位置的に同じとみなせばよい。地形との関係は外れるだろうが、地形からできる模様をデフォルメする手法の検証と捉える。山・砂漠・その他」に従い、Geminiの絵を元の地図の位置にそろえて、地形ごとに並べました。<b>最も大きな発見: Geminiの山は、下の地面の色に合わせて色が変わる(砂漠では砂色、氷では白)。私の山は、どこでも同じ灰褐色で、これが「浮く」主因の一つと見えます。</b></div>
+<h2>位置合わせ(確認)</h2>
+<div class="card"><img src="mapstyle/gv/align_check.jpg" alt="位置合わせの確認"><p class="sub">赤線=元の陸の輪郭をGeminiの絵に重ねたもの。世界6・7はよく合い、世界5は一部ずれる。画像の全体を拡大・移動して合わせた(ECC法)。</p></div>
+<h2>地形ごとの比べ(左=私の元 / 右=Gemini、位置は同じ)</h2>
+<div class="card"><img src="mapstyle/gv/deform_crops.jpg" alt="地形ごとの比較"></div>
+<div class="card"><b>目で見て分かったこと(山・砂漠・その他)</b><ul>
+<li><b>山</b>: Geminiは、少数の大きな尖った峰を、間隔を空けて描く。左の面が明るく、右が暗い。氷・雪の地域では白い雪の帽子。輪郭は濃いインク線。山のふもとは、周りの地面の色に移っていく(貼り付けの境目がない)。私の山は、円すいが密に積み重なり、どこでも同じ灰褐色で、ふもとが直線に切れている。</li>
+<li><b>砂漠</b>: 斜めの砂丘のうねりという模様は、Geminiと私の絵で、ほぼ同じ向きと密度。違いは色で、Geminiは黄橙色で滑らか、私は褐色でやや粗い。デフォルメの量は小さい。</li>
+<li><b>森・草原</b>: Geminiは、森を「濃い緑の塊と木の輪」にまとめ(湖の周りに森の輪)、草原は橙色の地面+丘の線の陰影にする。私の絵は、暗い縞の細かい模様だけで、森か草原かの区別が弱い。</li>
+<li><b>氷・湿地・ツンドラ</b>: 私の絵は、白と黒のまだら(点の模様)が多く粗い。Geminiは、滑らかな白や灰色の広がりにまとめている。</li>
+<li><b>地図の約束ごと</b>: 道の点線、都市の絵、湖畔の森など、元データにない要素を足している。</li></ul></div>
+<h2>地形ごとの色と粗さ(数字)</h2>
+<div class="card scroll"><table><tr><th>地形</th><td>世界</td><td>Geminiの色(R,G,B)</td><td>私の色(R,G,B)</td><td>細部の粗さ(Gemini)</td><td>細部の粗さ(私)</td></tr><tr><th>山岳(山の絵の範囲)</th><td>世界5</td><td>112,101,77</td><td>99,98,75</td><td>15.5</td><td>16.0</td></tr><tr><th>山岳(山の絵の範囲)</th><td>世界6</td><td>150,152,143</td><td>152,145,121</td><td>17.4</td><td>28.9</td></tr><tr><th>山岳(山の絵の範囲)</th><td>世界7</td><td>149,119,85</td><td>113,103,77</td><td>13.3</td><td>15.9</td></tr><tr><th>砂漠(熱)</th><td>世界7</td><td>174,139,99</td><td>175,147,106</td><td>14.6</td><td>17.4</td></tr><tr><th>砂漠(寒)</th><td>世界6</td><td>134,136,126</td><td>136,125,99</td><td>14.3</td><td>22.1</td></tr><tr><th>砂漠(寒)</th><td>世界7</td><td>147,116,81</td><td>135,113,81</td><td>11.9</td><td>15.2</td></tr><tr><th>サバンナ</th><td>世界5</td><td>147,114,71</td><td>95,90,66</td><td>14.6</td><td>14.1</td></tr><tr><th>サバンナ</th><td>世界7</td><td>143,113,81</td><td>113,97,69</td><td>13.2</td><td>16.6</td></tr><tr><th>草原</th><td>世界5</td><td>126,103,66</td><td>93,90,65</td><td>15.0</td><td>14.1</td></tr><tr><th>草原</th><td>世界7</td><td>127,102,72</td><td>96,90,64</td><td>11.8</td><td>14.9</td></tr><tr><th>季節林(熱帯)</th><td>世界7</td><td>97,80,57</td><td>58,63,43</td><td>10.6</td><td>11.3</td></tr><tr><th>落葉広葉樹林</th><td>世界5</td><td>91,83,54</td><td>75,80,58</td><td>12.3</td><td>13.0</td></tr><tr><th>タイガ</th><td>世界5</td><td>67,69,48</td><td>49,60,44</td><td>13.6</td><td>10.4</td></tr><tr><th>ツンドラ</th><td>世界5</td><td>98,84,58</td><td>96,93,69</td><td>13.9</td><td>15.5</td></tr><tr><th>ツンドラ</th><td>世界6</td><td>101,100,81</td><td>105,100,79</td><td>11.3</td><td>18.2</td></tr><tr><th>氷河</th><td>世界6</td><td>153,157,153</td><td>154,147,123</td><td>16.1</td><td>34.7</td></tr><tr><th>湿地</th><td>世界5</td><td>96,87,57</td><td>56,65,52</td><td>13.7</td><td>14.9</td></tr><tr><th>湿地</th><td>世界6</td><td>127,125,99</td><td>61,63,56</td><td>11.0</td><td>16.9</td></tr><tr><th>湿地</th><td>世界7</td><td>167,133,96</td><td>81,65,37</td><td>14.5</td><td>52.4</td></tr></table>
+<p class="sub">地形の内側(縁を10画素除く)の平均。山の絵の範囲は別集計。細部の粗さ=細かい明暗の変化の平均(大きいほどまだらで粗い)。世界ごとに行がある。</p></div>
+<div class="card"><b>数字から読めること</b><ul>
+<li>Geminiの色は、平均すると私の色より赤みが強い(Rが約24、Gが約15、Bが約12高い)。つまり、全体に明るく暖色に寄せている。</li>
+<li>山の絵の範囲の色: 世界7(砂漠)ではGeminiは橙の褐色(149,119,85)、私は灰褐色(113,103,77)。世界6(氷)ではGeminiは白灰(150,152,143)。<b>山の色が地面の色に従っている</b>。</li>
+<li>氷河・湿地・ツンドラは、私の絵の細部の粗さが突出して大きく(34.7、52.4など)、Geminiは11〜16でそろっている。まだら模様を、なめらかにまとめている。</li></ul></div>
+<h2>デフォルメの手法としての見立て(未検証の案)</h2>
+<div class="card"><ol>
+<li><b>山の色は、下の地面の色から決める</b>(砂漠→砂色、氷→白、森→緑がかった灰)。ふもとは地面へ移す。</li>
+<li><b>粗いまだらを避ける</b>: 氷・湿地・ツンドラは、細かい点でなく、大きな面にまとめる。</li>
+<li><b>森は「塊と木の輪」</b>、草原は「明るい地面+丘の線」で、種類の区別を強める。</li>
+<li>全体を、明るく暖色に寄せる。</li></ol>
+<p class="sub">これらは、今回の観察からの案です。効果は、まだ試していません。</p></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>位置合わせは、拡大と移動による全体の合わせ(相関 0.36〜0.66)で、細かい位置は数画素〜数十画素ずれる。縁を除いた内側で集計して、影響を減らした。</li>
+<li>世界5・6・7の3枚だけ。地形ごとの行は、面積が十分ある組み合わせだけ。</li>
+<li>「山の絵の範囲」は私の元データの山岳地帯で、Geminiの山の位置と完全に同じではない。</li>
+<li>見た印象(山の描き方など)は目視で、数字にしていない。</li>
+<li>Geminiの色の違いには、羊皮紙の色の掛け合わせも混じる(地形だけの効果ではない)。</li></ul></div>
+<p class="sub">コード: <a href="mapstyle/gv/ecc_gen.py">ecc_gen.py</a>(位置合わせ)/<a href="mapstyle/gv/deform_gen.py">deform_gen.py</a>(地形ごとの比較)。</p>
+</main></body></html>
