@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>海の浅瀬を明るくする試作</title><style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle21.html">稜線の描き方+色彩加算</a></p>
+<h1>海の浅瀬を明るくする試作(プログラム)</h1>
+<div class="card"><b>概要</b>: ユーザー指示「今の絵に足す形で浅瀬だけ色を明るくしてみて」を試しました。海の格子の高さの値が高い所を「浅瀬」とみなし、今の海の色(海岸からの距離で決めた濃淡)の上に、明るさを足しました。<b>海岸の周りに明るい帯が出ましたが、データの性質上、右側などに直線の境目が残ります</b>。</div>
+<h2>左=今まで / 右=浅瀬を足した版</h2>
+<div class="card"><img src="mapstyle/gv/cmp9_6.jpg" alt="世界6"><p class="sub">世界6(フィヨルド)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp9_5.jpg" alt="世界5"><p class="sub">世界5(大陸3つ)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp9_7.jpg" alt="世界7"><p class="sub">世界7(砂漠)</p></div>
+<h2>分かったこと(データ)</h2>
+<div class="card"><ul>
+<li>海の格子の高さの値は5〜49。大半が最も浅い値で、深い所の細かい起伏はほぼない。</li>
+<li>値が20以上の海は、海全体の約4〜5割もあり、<b>海岸の周りだけでなく、地図の内側の広い四角い範囲</b>になっていた。生成の時に世界を縮めて左右を海にした名残と思われる(推測)。深さのデータとは言えない。</li>
+<li>そこで、そのまま使うと大きな四角が明るくなったため、「海岸から約80画素以内」に限って足した。</li></ul></div>
+<h2>目で見た評価(私の印象。判断はユーザーに)</h2>
+<div class="card"><ul>
+<li><b>良い点</b>: 海岸の周りが明るい水色になり、浅い海の雰囲気が出た。Geminiの「岸が明るく沖が濃い」に近い。</li>
+<li><b>悪い点</b>: 四角い範囲の端が直線の境目として残る(世界6の右側など)。帯が太く、岸の波線と重なる所がある。</li></ul></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>3枚の目視のみ。足した強さ(約55%)と範囲(80画素)は私が試して決めた値。</li>
+<li>海の値は本当の深さではない可能性が高いので、「浅瀬」の位置も本当の浅瀬とは限らない。</li>
+<li>直線の境目の消し方(範囲の縁を濃淡でぼかす)は未実施。</li></ul></div>
+<p class="sub">コード: <a href="mapstyle/gv/gstyle9_gen.py">gstyle9_gen.py</a>。</p>
+</main></body></html>
