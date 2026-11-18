@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>稜線を山の描き方にする+色彩加算の試作</title><style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle20.html">標高から稜線の細い線</a></p>
+<h1>稜線を山の描き方にする+「色彩加算」(プログラム)</h1>
+<div class="card"><b>概要</b>: ユーザー指示の2つを試しました。(1)稜線の線を山の描き方に変える(稜線を引き、決まった陰の線を片側に付け、稜線の端は消す)。(2)最後に色の配分を整える独立処理「色彩加算」を作る。<b>(1)は世界6の雪原で、Geminiの「稜線に沿った短い平行線」に近い見た目になりました。(2)は独立の部品として動きますが、最初の版は派手な斑点になって失敗し、弱めた版では効果が海にしか見えません</b>。</div>
+<h2>1. 稜線の描き方(左=今回 / 右=Gemini)</h2>
+<div class="card"><img src="mapstyle/gv/ridge8.jpg" alt="稜線"></div>
+<div class="card"><ul>
+<li>標高から稜線を抜き出し、<b>端を4画素ぶん削って消した</b>(線の連なりが稲妻のように見える)。</li>
+<li>陰の線は、光の当たらない側(右下向き)の斜面にだけ、長さ一定(9画素)で引いた。</li>
+<li>量は目で調整した(前回より多く、世界6は線の本数を約6割に間引き)。数字での「Geminiとの量の一致」は測れていない(私の測り方が合わず、不採用)。</li>
+<li>暗くなりすぎないよう、線の濃さは約85%に抑えた。</li></ul></div>
+<h2>2. 色彩加算(独立処理)</h2>
+<div class="card"><b>決めたこと</b>: 地形とは無関係に、最初に「色の配分表」を決め、仕上がった絵に足りない色を足す。ランドマークや絵を置いた後の最後の処理にする。いつでも外せる・変えられるよう、<b>別ファイル(iro_kasan.py)の一つの関数</b>にし、設定は表(iro_presets.json)に出した。呼ばなければ何も起きない。</div>
+<div class="card"><ul>
+<li><b>色の区分</b>: 白・クリーム/灰/暗い/赤茶/金・黄土/オリーブ/緑/青緑/青/紫の10区分。</li>
+<li><b>配分表</b>: 今回は世界5・6・7それぞれのGeminiの絵から、地図の中身の色の割合を測って表にした(「何色に寄った地図か」の見本)。</li>
+<li><b>足し方</b>: 表より足りない色について、余っている色の所を、ゆるやかな斑(地形と無関係)で、色相を少しだけ近づける。暗くならないよう、明るさは表の値まで持ち上げる(最大1.12倍)。</li></ul></div>
+<h2>全体(左=色彩加算なし / 中=あり / 右=Gemini)</h2>
+<div class="card"><img src="mapstyle/gv/cmp8_5.jpg" alt="世界5"></div>
+<div class="card"><img src="mapstyle/gv/cmp8_6.jpg" alt="世界6"></div>
+<div class="card"><img src="mapstyle/gv/cmp8_7.jpg" alt="世界7"></div>
+<h2>目で見た評価(私の印象。判断はユーザーに)</h2>
+<div class="card"><ul>
+<li><b>稜線</b>: 前回の「枝分かれの木」より、短い線が稜線に並ぶ見た目になり、Geminiに近づいた。世界5・7の山の線は、まだ小さい。</li>
+<li><b>色彩加算の最初の版は失敗</b>: 紫と緑の濃い斑点が海に出て、派手で不自然になった。</li>
+<li><b>弱めた版</b>: 派手さは消えたが、効果はほとんど海の色むらにしか出ない(海が地図の大半のため)。陸の色の足し(金・オリーブ・赤茶)はほとんど効いていない。世界6は色の配分が表に近づいた(差0.36→0.20)が、世界5は離れた(0.36→0.53)、世界7は小さく近づいた(0.64→0.56)。</li></ul></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>3枚の目視と、色の区分の割合のみ。区分(10個)と境目は私が決めた。</li>
+<li>配分表は各世界のGeminiの絵そのままで、まだ「寄り方ごとの表」にはしていない(他の参考絵は未使用)。</li>
+<li>色彩加算の効きが海に偏る件は未解決(海と陸を別の表にする案がある)。</li>
+<li>線の量は目で決めた値。世界5・7の山の線は拡大して確かめていない。</li></ul></div>
+<p class="sub">コード: <a href="mapstyle/gv/ridge2_gen.py">ridge2_gen.py</a>(稜線の描き方)/<a href="mapstyle/gv/iro_kasan.py">iro_kasan.py</a>(色彩加算)/<a href="mapstyle/gv/iro_presets.json">iro_presets.json</a>(配分表)/<a href="mapstyle/gv/gstyle8_gen.py">gstyle8_gen.py</a>。</p>
+</main></body></html>
