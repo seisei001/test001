@@ -15,8 +15,9 @@ RIDGE=True
 RK={6:dict(hi_pct=45,thr_pct=66,step=1,length=9,keep=0.65),5:dict(hi_pct=68,thr_pct=76,step=1,length=9,keep=0.65),7:dict(hi_pct=68,thr_pct=76,step=1,length=9,keep=0.65)}
 def render(my,out,seed=1,title='三極の大陸',sub='THE THREE CONTINENTS'):
     wd=np.array(Image.open(FM_WORLD+'world-data.png'))
-    base=np.array(Image.open(FM_OUT+'s14a.jpg').convert('RGB')).astype(np.float32)
-    if IMPROVE:
+    MTN_ICONS=os.environ.get('FM_MTN')=='icons'   # 山の絵を下データと切り離して描く(段階15)
+    base=np.array(Image.open(FM_OUT+('s5a.jpg' if MTN_ICONS else 's14a.jpg')).convert('RGB')).astype(np.float32)
+    if IMPROVE and not MTN_ICONS:
         g5=np.array(Image.open(FM_OUT+'s5a.jpg').convert('RGB')).astype(np.float32)
         _wd=np.array(Image.open(FM_WORLD+'world-data.png')); _bio=_wd[...,1]
         # 1) mountain pixels = where stage12 differs from plain map
@@ -83,6 +84,10 @@ def render(my,out,seed=1,title='三極の大陸',sub='THE THREE CONTINENTS'):
         ink,_=_r.ridge_layer2(Hh,land,seed=my,**RK.get(my,{}))
         ink=cv2.GaussianBlur(ink,(0,0),0.5)[...,None]*0.85
         gr=gr*(1-ink)+np.array([58,46,40],np.float32)*ink
+    if MTN_ICONS:
+        import mtn15
+        gr,_nm=mtn15.paint(gr.astype(np.float32),Hh/2.55,land,bio,seed=my)
+        print('山の記号',_nm)
     img=np.where(land[...,None],gr,sea)
     # coast: soft shadow into the sea (down-right) and inner ink line
     sh=ndi.shift(land.astype(np.float32),(5,5),order=1); sh=ndi.gaussian_filter(sh,4)*(~land)
