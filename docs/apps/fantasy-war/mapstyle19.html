@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>寒い世界の地面色と雪の位置の試作</title><style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle18.html">雪と砂を溶かさない</a></p>
+<h1>寒い世界の地面の色と、雪の位置の試作(プログラム)</h1>
+<div class="card"><b>概要</b>: 世界6(氷のフィヨルド)だけで試しました。前回、地面が黄土色のまま、雪が氷河の周りの塊のままだったので、(1)寒い世界は暖色にせず、色の濃さを落として灰色がかったオリーブ寄りにし、(2)雪は地図の北側の山岳にだけ載せました。<b>黄土色は減って落ち着いた色になりましたが、Geminiの「オリーブ色〜灰褐色」には届かず、雪の北への集まりもGeminiほどはっきりしません</b>。</div>
+<h2>世界6(左=前回 / 中=今回 / 右=Gemini)</h2>
+<div class="card"><img src="mapstyle/gv/cmp6_6.jpg" alt="世界6"></div>
+<h2>変えた点</h2>
+<div class="card"><ul>
+<li>世界6だけ、暖色の強調をやめ、赤を弱め青を少し足した(黄土色→灰がかった色)。色の濃さも約3割落とした。</li>
+<li>雪の判定に「北ほど強い」重みを掛け、地図の上から約4割より南には雪を載せない。</li></ul></div>
+<h2>目で見た評価(私の印象。判断はユーザーに)</h2>
+<div class="card"><ul>
+<li><b>良くなった点</b>: 全体の黄色みが減り、氷の世界らしい落ち着いた色になった。氷河の白い塊が減った。</li>
+<li><b>まだ違う点</b>: 地面はクリーム〜灰色寄りで、Geminiのオリーブ色〜灰褐色より明るい。北の山岳の雪もGeminiほど白くまとまらない。</li>
+<li><b>限界</b>: この調整は世界6だけに入れた。他の寒い世界(氷河期など)への適用は未実施。「北ほど雪」は世界6の地形に合わせた私の決め方で、一般の規則ではない。</li></ul></div>
+<p class="sub">コード: <a href="mapstyle/gv/gstyle6_gen.py">gstyle6_gen.py</a>。</p>
+</main></body></html>
