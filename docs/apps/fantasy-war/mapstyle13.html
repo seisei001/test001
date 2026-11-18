@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gemini風の特徴をプログラムで再現できるか</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
+main{max-width:900px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:5px 6px;text-align:center}th{text-align:left}
+img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px}a{color:var(--accent)}li{margin:3px 0}
+</style></head><body><main>
+<p><a href="./">← 管理ページ</a> / <a href="mapstyle12.html">pwgの10枚とGemini発注文</a></p>
+<h1>Gemini風の特徴をプログラムで再現できるか(検証)</h1>
+<div class="card"><b>概要</b>: ユーザー指示(2026-11-18)「下地をそのまま原画にしてGeminiにファンタジー風の絵を描かせた。ファンタジーの絵の特徴をプログラムでどこまで再現できるか、まず検証する」の第1回です。Geminiが描いた10枚のうち3枚(世界5・6・7)について、同じ元の地図から、<b>プログラムだけで</b>Gemini風の飾りを描き、並べて比べました。結論: <b>地図の「構造的な飾り」はプログラムで描ける。「絵」(怪物・船・城・手描きの山)は描けない。</b></div>
+<h2>比べた3枚(左=段階12の元 / 中=プログラムで再現 / 右=Gemini)</h2>
+<div class="card"><img src="mapstyle/gv/cmp5.jpg" alt="世界5の比較"><p class="sub">世界5(大陸3つ)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp6.jpg" alt="世界6の比較"><p class="sub">世界6(フィヨルド)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp7.jpg" alt="世界7の比較"><p class="sub">世界7(砂漠)</p></div>
+<h2>プログラムで描いたもの(再現できた)</h2>
+<div class="card"><ul>
+<li>羊皮紙の質感・縁の焼け・四隅の飾り・二重の枠</li>
+<li>タイトルの帯(リボン)・縮尺バー・方位記号(8方位の簡易版)</li>
+<li>海: 岸から離れるほど濃くなる色、岸の光、岸に沿った波線、岸の影</li>
+<li>川: 標高の流れ込みから自動で引いた(細い線)</li>
+<li>地名(地面の種類から名前を当てた仮のもの)・都市の記号(仮・位置は川の近くからの無作為)</li>
+<li>地面の色調整(暖色にして、コントラストを少し上げた)</li>
+</ul></div>
+<h2>描けなかったもの(絵に頼る)</h2>
+<div class="card"><ul>
+<li>海の怪物(タコ・大蛇)・船・天文観測器・砂虫・雷雲・氷塊などの場面の絵</li>
+<li>城・遺跡・都市の絵(Geminiは一つずつ描き分けている。私の記号は小さな家の印だけ)</li>
+<li>手描きらしい山と雪山の画風(再現版の山は、<b>今も下地から浮いて見える</b>)</li>
+<li>日本語と英語を併記し、曲線に沿わせた地名の組版・枠のルーン文字などの意匠(図案としては描けるが、今回は未実装)</li>
+</ul></div>
+<h2>数字での比較(3枚・画像全体)</h2>
+<div class="card scroll"><table><tr><th>世界</th><td>版</td><td>明るさ</td><td>彩度</td><td>細部の量</td><td>輪郭の密度</td><td>色の近さ(パレット差)</td><td>色分布の重なり</td></tr><tr><th>世界5(大陸3つ)</th><td>段階12</td><td>97.9</td><td>92.2</td><td>6.24</td><td>0.106</td><td>17.9</td><td>0.219</td></tr><tr><th></th><td>再現版</td><td>77.5</td><td>114.7</td><td>11.45</td><td>0.125</td><td>8.6</td><td>0.482</td></tr><tr><th></th><td>Gemini</td><td>84.3</td><td>87.6</td><td>13.29</td><td>0.209</td><td>—</td><td>—</td></tr><tr><th>世界6(フィヨルド)</th><td>段階12</td><td>104.5</td><td>96.3</td><td>6.4</td><td>0.078</td><td>10.0</td><td>0.721</td></tr><tr><th></th><td>再現版</td><td>111.4</td><td>110.2</td><td>10.23</td><td>0.098</td><td>12.6</td><td>0.578</td></tr><tr><th></th><td>Gemini</td><td>109.0</td><td>79.8</td><td>13.71</td><td>0.178</td><td>—</td><td>—</td></tr><tr><th>世界7(砂漠)</th><td>段階12</td><td>105.4</td><td>100.4</td><td>8.11</td><td>0.128</td><td>15.9</td><td>0.268</td></tr><tr><th></th><td>再現版</td><td>85.1</td><td>121.5</td><td>14.55</td><td>0.141</td><td>13.9</td><td>0.546</td></tr><tr><th></th><td>Gemini</td><td>112.3</td><td>103.6</td><td>14.64</td><td>0.216</td><td>—</td><td>—</td></tr></table>
+<p class="sub">読み方: 細部の量・輪郭の密度は、Geminiに近いほど「絵として描き込まれている」。パレット差は小さいほど、色分布の重なりは大きいほど、Geminiの色に近い。全画像を同じ大きさ(768×512)にして測った。</p></div>
+<div class="card"><b>読み取れること</b><ul>
+<li><b>細部の量</b>: 段階12(6.2〜8.1)→再現版(10.2〜14.6)→Gemini(13.3〜14.6)。飾りと川と文字で、Geminiにかなり近づいた(世界7はほぼ同じ)。</li>
+<li><b>輪郭の密度</b>: 再現版(0.10〜0.14)はGemini(0.18〜0.22)に届かない。Geminiは、文字・絵・枠の線が多い。</li>
+<li><b>色</b>: 世界5と7は近づいた(色分布の重なり 0.22→0.48、0.27→0.55)。世界6(フィヨルド)は、元の段階12の方が近く(0.72)、再現版は悪化した(0.58)。海の色の決め方が、世界によって合う・合わないがある。</li>
+</ul></div>
+<h2>限界・未確認</h2>
+<div class="card"><ul class="sub">
+<li>海の色(3世界)は、Geminiの色を見て私が決めた。つまり、色の近づきは「Geminiに合わせた」結果で、新しい世界で自動に合う保証はない。</li>
+<li>3枚だけの検証で、画像全体の数字(枠・飾りも含む)。人が見た印象とは別。</li>
+<li>Geminiの絵と元の地図の位置合わせ(陸と海の判定)は、2回試みたが、羊皮紙の余白を陸と誤判定して失敗した。このため、<b>土地ごとの色(森・砂漠など)の対応は、測れていない</b>。</li>
+<li>山が浮く問題は、今回は直していない。次の検証対象。</li>
+<li>Geminiの10枚は、形や海岸線も少し描き変えている(元データとは完全には一致しない)。</li>
+</ul></div>
+<p class="sub">コード: <a href="mapstyle/gv/gstyle_gen.py">gstyle_gen.py</a>(描画)/<a href="mapstyle/gv/grun_gen.py">grun_gen.py</a>(帯・地名・縮尺)。</p>
+</main></body></html>
