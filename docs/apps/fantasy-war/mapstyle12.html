@@ -1,18 +1,34 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>世界地図10枚とGemini添削の発注文</title>
+<title>pwgの世界地図10枚とGemini添削の発注文</title>
 <style>
 :root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--border:#d5dbe6;--text:#1c2330;--sub:#5b6577;--accent:#2563eb}
 @media (prefers-color-scheme:dark){:root{--bg:#0f141c;--panel:#19212e;--border:#2c3748;--text:#e8edf5;--sub:#9aa7ba;--accent:#6ea0ff}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:0 16px 40px}
 main{max-width:820px;margin:0 auto}h1{font-size:19px;margin:16px 0 6px}h2{font-size:16px;margin:22px 0 6px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:420px;font-size:13px}th,td{border-bottom:1px solid var(--border);padding:6px;text-align:center}th:first-child{text-align:left}
 img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--border)}.sub{color:var(--sub);font-size:13px;margin:2px 0 6px}a{color:var(--accent)}li{margin:3px 0}
 pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;line-height:1.6;user-select:all}
 </style></head><body><main>
 <p><a href="./">← 管理ページ</a> / <a href="mapstyle11.html">段階12</a></p>
-<h1>世界地図10枚とGemini添削の発注文</h1>
-<div class="card"><b>概要</b>: ユーザー指示(2026-11-18)「段階12を基本に使う。世界地図を10個作り、この方式で絵を作る。その絵をGeminiに添削させ、ファンタジー地図として何が足りなくて何が余計かを整理する」の第1段階です(目的: 添削の元になる絵と発注文をそろえるため)。10枚の地図を作り、Geminiへの発注文を作りました。<b>Geminiへ貼る</b>のは、10枚の画像と、下の発注文です。</div>
+<h1>pwgの世界地図10枚とGemini添削の発注文</h1>
+<div class="card"><b>概要</b>: ユーザー指示(2026-11-18)「段階12を基本に使う。世界地図を10個作り、この方式で絵を作る。Geminiに添削させ、ファンタジー地図として足りないもの・余計なものを整理する。元の絵と発注文を作る」の第1段階です。<b>最初に公開した版は、Azgaarでもpwgでもない私の簡単な生成プログラムの地図でした。ユーザーの指摘(pwgで)を受けて、pwgで作り直した版に差し替えました。</b>(目的: 添削の元になる絵と発注文をそろえるため)</div>
+<h2>pwgは調整できるか(検証結果)</h2>
+<div class="card"><p>pwg(手続き的世界生成プログラム、MITライセンス)は、世界の型(10種類)と、陸の割合・大陸の数・島の量・「地図の外」の扱いなどを、指定して作れます。検証として4回作って、数字を測りました。</p>
+<div class="scroll"><table><tr><th>指定</th><td>陸の割合(実測)</td><td>大きな陸(面積1%以上)</td><td>端の陸の割合</td></tr>
+<tr><th>群島</th><td>16%</td><td>1</td><td>0.5%</td></tr>
+<tr><th>パンゲア</th><td>55%</td><td>1</td><td>3.7%</td></tr>
+<tr><th>陸30%・大陸2つ・端は海</th><td>30.2%</td><td>2</td><td>0.7%</td></tr>
+<tr><th>大陸5つ・島1.5倍・陸35%</th><td>35.1%</td><td>1</td><td>1.1%</td></tr></table></div>
+<img src="mapstyle/worlds/pwg_tune.png" alt="4回の検証の世界(陸=緑、山=茶、雪=白)" style="margin-top:8px">
+<ul>
+<li><b>陸の割合</b>: 指定どおりに出ました(0.30→30.2%、0.55相当→54.9%)。</li>
+<li><b>世界の型</b>: 群島は陸16%で小さな島が散らばり、パンゲアは一つの大きな陸になりました。</li>
+<li><b>大陸が端にできる問題</b>: 指定なしで10回作ると、2回が端に約9%の陸ができました。「地図の外」を「海」に指定すると、端の陸の割合は多くが1〜3%台に下がります。ただし<b>保証ではなく</b>、フィヨルドとホットハウスの型で、それぞれ約15%・約10%の陸が端にできた例がありました(別のシードで作り直して除きました)。</li>
+<li><b>大陸の数</b>: 指定の効きは弱く、5と指定しても大きな陸は1つでした(つながって1つになる)。</li>
+<li>前の私の実行は、シードの指定の仕方が誤っていて(アドレスの#の後ろに書いたため無効)、毎回ランダムな世界でした。今回は直しています。</li>
+</ul></div>
 <h2>手順(一つずつ)</h2>
 <div class="card"><ol>
 <li>10枚の地図を、下から1枚ずつ長押しして保存する(または、各画像を開いて保存する)。</li>
@@ -23,10 +39,12 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px so
 <div class="card"><pre>添付した10枚の画像は、プログラムで自動生成した「ファンタジー世界の地図」です。1枚ずつ、ファンタジー地図(物語やゲームの舞台となる世界地図)として、添削してください。
 
 【画像の説明】
-・10枚は、世界の形の違う地図です(順番に、1=一つの大陸、2=二つの大陸、3=群島、4=三日月の大陸、5=巨大な一つの大陸、6=寒冷な世界、7=乾燥した世界、8=湿潤な熱帯の世界、9=山脈の多い世界、10=内海のある大陸)。
+・世界の元データは、手続き的世界生成プログラム(Procedural World)で作った標高と地面の種類(生物群系)です。
+・10枚は、世界の型が違います(順番に、1=地球型(標準)、2=陸30%・大陸2つの指定、3=群島、4=一つの大きな大陸(パンゲア)、5=陸45%・大陸3つの指定、6=フィヨルドの寒冷な世界、7=砂漠の世界、8=火山島の列、9=氷河期、10=熱帯(ホットハウス)）。
 ・地図に描かれているのは、陸と海の形、地面の色(森・草地・砂漠・岩・雪などの区分)、陰影、海の濃淡、山岳地帯の山の絵だけです。
 ・山の絵は、山のまとまった地域だけに、重ねた山並みとして描き、それ以外の陸は絵を描かず、色と陰影だけにしています。
-・川、湖、道、国境、都市・町、地名、文字、方位記号、縮尺、凡例、海の装飾は、まだ何も描いていません(意図的に省略)。
+・左右の余白は、世界が正方形のため、海で埋めています。
+・川、湖の絵、道、国境、都市・町、地名、文字、方位記号、縮尺、凡例、海の装飾は、まだ何も描いていません(意図的に省略)。
 
 【してほしいこと】
 1. 10枚それぞれについて、次の3つを、箇条書きで3〜5個ずつ答える。
@@ -43,19 +61,20 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px so
 5. 最後に、「次に直すと一番効果が大きい5つ」を、重要な順に答える。
 
 【守ってほしいこと】
-・各地図について「自動生成であること」を前提に、実際に見える内容だけを書く。見えないものを、あるように書かない。
+・「自動生成であること」を前提に、実際に見える内容だけを書く。見えないものを、あるように書かない。
 ・ほめるだけの添削にしない。足りないものと余計なものを、遠慮なく具体的に書く。
 ・あなたが画像から読み取れないことは、「読み取れない」と書く。
 ・日本語で、見出しと箇条書きを使い、全体を読みやすくまとめる。</pre></div>
-<h2>世界地図10枚</h2>
-<div class="card"><b>1枚目: 一つの大陸</b><p class="sub">山岳地帯 4か所</p><a href="mapstyle/worlds/w01.jpg"><img src="mapstyle/worlds/w01.jpg" alt="一つの大陸" loading="lazy"></a></div><div class="card"><b>2枚目: 二つの大陸</b><p class="sub">山岳地帯 1か所</p><a href="mapstyle/worlds/w02.jpg"><img src="mapstyle/worlds/w02.jpg" alt="二つの大陸" loading="lazy"></a></div><div class="card"><b>3枚目: 群島</b><p class="sub">山岳地帯 3か所</p><a href="mapstyle/worlds/w03.jpg"><img src="mapstyle/worlds/w03.jpg" alt="群島" loading="lazy"></a></div><div class="card"><b>4枚目: 三日月の大陸</b><p class="sub">山岳地帯 3か所</p><a href="mapstyle/worlds/w04.jpg"><img src="mapstyle/worlds/w04.jpg" alt="三日月の大陸" loading="lazy"></a></div><div class="card"><b>5枚目: 巨大な一つの大陸</b><p class="sub">山岳地帯 4か所</p><a href="mapstyle/worlds/w05.jpg"><img src="mapstyle/worlds/w05.jpg" alt="巨大な一つの大陸" loading="lazy"></a></div><div class="card"><b>6枚目: 寒冷な世界</b><p class="sub">山岳地帯 6か所</p><a href="mapstyle/worlds/w06.jpg"><img src="mapstyle/worlds/w06.jpg" alt="寒冷な世界" loading="lazy"></a></div><div class="card"><b>7枚目: 乾燥した世界</b><p class="sub">山岳地帯 1か所</p><a href="mapstyle/worlds/w07.jpg"><img src="mapstyle/worlds/w07.jpg" alt="乾燥した世界" loading="lazy"></a></div><div class="card"><b>8枚目: 湿潤な熱帯の世界</b><p class="sub">山岳地帯 1か所</p><a href="mapstyle/worlds/w08.jpg"><img src="mapstyle/worlds/w08.jpg" alt="湿潤な熱帯の世界" loading="lazy"></a></div><div class="card"><b>9枚目: 山脈の多い世界</b><p class="sub">山岳地帯 5か所</p><a href="mapstyle/worlds/w09.jpg"><img src="mapstyle/worlds/w09.jpg" alt="山脈の多い世界" loading="lazy"></a></div><div class="card"><b>10枚目: 内海のある大陸</b><p class="sub">山岳地帯 1か所</p><a href="mapstyle/worlds/w10.jpg"><img src="mapstyle/worlds/w10.jpg" alt="内海のある大陸" loading="lazy"></a></div>
+<h2>世界地図10枚(pwg)</h2>
+<div class="card"><b>1枚目: 地球型(標準)</b><p class="sub">指定: 指定なし(端は海) / 地図の端の陸の割合 0.9%</p><a href="mapstyle/worlds/pw01.jpg"><img src="mapstyle/worlds/pw01.jpg" alt="地球型(標準)" loading="lazy"></a></div><div class="card"><b>2枚目: 陸30%・大陸2つの指定</b><p class="sub">指定: 陸の割合0.30、大陸2つ / 地図の端の陸の割合 0.7%</p><a href="mapstyle/worlds/pw02.jpg"><img src="mapstyle/worlds/pw02.jpg" alt="陸30%・大陸2つの指定" loading="lazy"></a></div><div class="card"><b>3枚目: 群島</b><p class="sub">指定: archipelago / 地図の端の陸の割合 1.7%</p><a href="mapstyle/worlds/pw03.jpg"><img src="mapstyle/worlds/pw03.jpg" alt="群島" loading="lazy"></a></div><div class="card"><b>4枚目: 一つの大きな大陸(パンゲア)</b><p class="sub">指定: pangaea / 地図の端の陸の割合 0.0%</p><a href="mapstyle/worlds/pw04.jpg"><img src="mapstyle/worlds/pw04.jpg" alt="一つの大きな大陸(パンゲア)" loading="lazy"></a></div><div class="card"><b>5枚目: 陸45%・大陸3つの指定</b><p class="sub">指定: 陸の割合0.45、大陸3つ / 地図の端の陸の割合 0.4%</p><a href="mapstyle/worlds/pw05.jpg"><img src="mapstyle/worlds/pw05.jpg" alt="陸45%・大陸3つの指定" loading="lazy"></a></div><div class="card"><b>6枚目: フィヨルドの寒冷な世界</b><p class="sub">指定: fjordland / 地図の端の陸の割合 0.0%</p><a href="mapstyle/worlds/pw06.jpg"><img src="mapstyle/worlds/pw06.jpg" alt="フィヨルドの寒冷な世界" loading="lazy"></a></div><div class="card"><b>7枚目: 砂漠の世界</b><p class="sub">指定: desert / 地図の端の陸の割合 0.2%</p><a href="mapstyle/worlds/pw07.jpg"><img src="mapstyle/worlds/pw07.jpg" alt="砂漠の世界" loading="lazy"></a></div><div class="card"><b>8枚目: 火山島の列</b><p class="sub">指定: volcanic / 地図の端の陸の割合 2.4%</p><a href="mapstyle/worlds/pw08.jpg"><img src="mapstyle/worlds/pw08.jpg" alt="火山島の列" loading="lazy"></a></div><div class="card"><b>9枚目: 氷河期</b><p class="sub">指定: iceage / 地図の端の陸の割合 2.7%</p><a href="mapstyle/worlds/pw09.jpg"><img src="mapstyle/worlds/pw09.jpg" alt="氷河期" loading="lazy"></a></div><div class="card"><b>10枚目: 熱帯(ホットハウス)</b><p class="sub">指定: hothouse / 地図の端の陸の割合 3.4%</p><a href="mapstyle/worlds/pw10.jpg"><img src="mapstyle/worlds/pw10.jpg" alt="熱帯(ホットハウス)" loading="lazy"></a></div>
 <h2>限界・未確認</h2>
 <div class="card"><ul class="sub">
-<li>10枚の世界は、これまでの地図(Azgaar由来)ではなく、私が今回書いた簡単な生成プログラムで作りました(大きな陸の塊と、緯度による気温、湿り気で地面の区分を決める)。海岸線が単純で、地面の区分の境が人工的に見える所があります(特に砂漠の帯)。</li>
-<li>山の絵は、段階12の方式のままです。山岳地帯の数は10枚で1〜6か所、山岳地帯が陸に占める割合は約3〜10%です。</li>
-<li>川・湖・道・国境・都市・地名・文字・方位記号は、ありません(意図的に省略)。Geminiが「足りない」と指摘するのは、この省略が中心になると予想します。</li>
+<li>pwgは、1,024km四方の平らな世界で、10枚とも、世界全体を縮めて左右を海で埋めています(球体のpwgの世界は未確認)。</li>
+<li>pwgの生物群系(28種類)は、段階5の描き方が使う12区分に、私が寄せ集めて変換しています(例: 針葉樹林・北方林→タイガ)。変換の仕方が適切かは確かめていません。</li>
+<li>山の絵は、段階12の方式のままです。山岳地帯が細長いと、円すいが縦に並んで見える所があります。</li>
+<li>川・湖・道・国境・都市・地名・文字・方位記号は、ありません(意図的に省略)。pwgの川と湖のデータは、使っていません。</li>
+<li>端の陸の割合は、世界の外周3%の帯のうち陸の割合です(0%台〜3%台)。ゼロにはなっていません。</li>
 <li>Geminiが画像から読み取れる内容は、確かめていません。</li>
-<li>各地図のサイズは1400×900画素です。</li>
 </ul></div>
-<p class="sub">生成コード: <a href="mapstyle/worlds/mk_worlds_gen.py">mk_worlds_gen.py</a>(世界のデータ)/ 山の絵は <a href="mapstyle/stage12_gen.py">stage12_gen.py</a></p>
+<p class="sub">変換コード: <a href="mapstyle/worlds/pwg_convert_gen.py">pwg_convert_gen.py</a>(pwgの標高・群系を地図の元データへ)/ 山の絵: <a href="mapstyle/stage12_gen.py">stage12_gen.py</a>。出典: Procedural World(procedural-world-generation、MIT)。</p>
 </main></body></html>
