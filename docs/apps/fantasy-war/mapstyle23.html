@@ -11,36 +11,36 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid 
 </style></head><body><main>
 <p><a href="./">← 管理ページ</a> / <a href="mapstyle22.html">浅瀬を明るくする</a></p>
 <h1>3つの生成器で最新処理を検証</h1>
-<div class="card"><b>概要</b>: Azgaar・PWG・自作の3つで世界を1枚ずつ作り、今の処理(地表→山→稜線つき仕上げ→色彩加算)を<b>世界ごとの手調整なし</b>で当てました。<b>3つとも最後まで通り、処理は1枚あたり約8〜11秒・最大メモリ約770MBで、重くありません</b>。ただし絵の出来にはばらつきがあります(下記)。</div>
+<div class="card"><b>概要</b>: Azgaar・PWG・簡易生成(私が書いた約70行の生成プログラム)の3つで世界を1枚ずつ作り、今の処理(地表→山→稜線つき仕上げ→色彩加算)を<b>世界ごとの手調整なし</b>で当てました。<b>3つとも最後まで通り、処理は1枚あたり約8〜11秒・最大メモリ約770MBで、重くありません</b>。ただし絵の出来にはばらつきがあります(下記)。</div>
 <h2>出来た絵(色彩加算前)</h2>
 <div class="card"><img src="mapstyle/gv/ver_az.jpg" alt="Azgaar"><p class="sub">Azgaar(陸が65%と多く、冷たい砂漠のクリーム色が広い。山はぼやけ気味)</p></div>
 <div class="card"><img src="mapstyle/gv/ver_pwg.jpg" alt="PWG"><p class="sub">PWG(3つの中で一番まとまっている。ただし一部の山に白い四角)</p></div>
-<div class="card"><img src="mapstyle/gv/ver_own.jpg" alt="自作"><p class="sub">自作(六角のマスが粗く、縁がギザギザ。山は白い三角の塊)</p></div>
+<div class="card"><img src="mapstyle/gv/ver_simple.jpg" alt="簡易生成"><p class="sub">簡易生成(「二つの大陸」型。海岸は滑らか。山は白い三角の塊。気候の偏りが少ない)</p></div>
 <h2>時間とメモリ(このクラウド機での実測・各1回)</h2>
 <div class="card"><table>
-<tr><th>段階</th><th>Azgaar</th><th>PWG</th><th>自作</th></tr>
-<tr><td>世界を作る</td><td>約3.5秒(約1.7万セル・メモリ約77MB)</td><td>画面生成待ち約29秒+書き出しで計約77秒(ソフト描画・メモリ約246MB)</td><td>約0.5秒(73回やり直し)</td></tr>
-<tr><td>データ形式への変換</td><td>1.8秒</td><td>0.5秒</td><td>1.5秒</td></tr>
-<tr><td>地表(段階5)</td><td>2.8秒</td><td>2.4秒</td><td>1.9秒</td></tr>
-<tr><td>山(段階14)</td><td>3.5秒</td><td>2.1秒</td><td>2.6秒</td></tr>
-<tr><td>仕上げ(稜線・海・枠)</td><td>4.4秒</td><td>3.0秒</td><td>3.3秒</td></tr>
+<tr><th>段階</th><th>Azgaar</th><th>PWG</th><th>簡易生成</th></tr>
+<tr><td>世界を作る</td><td>約3.5秒(約1.7万セル・メモリ約77MB)</td><td>画面生成待ち約29秒+書き出しで計約77秒(ソフト描画・メモリ約246MB)</td><td>約0.7秒</td></tr>
+<tr><td>データ形式への変換</td><td>1.8秒</td><td>0.5秒</td><td>不要(直接作る)</td></tr>
+<tr><td>地表(段階5)</td><td>2.8秒</td><td>2.4秒</td><td>2.1秒</td></tr>
+<tr><td>山(段階14)</td><td>3.5秒</td><td>2.1秒</td><td>2.1秒</td></tr>
+<tr><td>仕上げ(稜線・海・枠)</td><td>4.4秒</td><td>3.0秒</td><td>4.0秒</td></tr>
 <tr><td>色彩加算</td><td>0.2秒</td><td>0.2秒</td><td>0.2秒</td></tr>
 <tr><td><b>処理の合計</b></td><td><b>約11秒</b></td><td><b>約8秒</b></td><td><b>約8秒</b></td></tr></table>
 <p class="sub">処理側の最大メモリは3つとも約770MB(山の段階が最大)。重いのは処理ではなく、PWGの世界作りです(ブラウザのソフト描画のため)。iPhoneでの実測はしていません。</p></div>
 <h2>汎用性の評価(私の目視。判断はユーザーに)</h2>
-<div class="card"><img src="mapstyle/gv/ver_crops.jpg" alt="拡大"><p class="sub">拡大(左=PWG、中=自作、右=Azgaar)</p>
+<div class="card"><img src="mapstyle/gv/ver_crops.jpg" alt="拡大"><p class="sub">拡大(左=PWG、中=簡易生成、右=Azgaar)</p>
 <ul>
 <li><b>通った点</b>: 3つとも、手調整なしの初期値で最後まで動いた。海・岸・川・稜線・枠・ラベルは3つとも出た。</li>
-<li><b>弱点1(処理側)</b>: 山が、高さがほぼ平らに頭打ちのデータ(PWG・自作)で、<b>直線の辺を持つ白い三角や四角</b>になった(拡大の左・中)。山の絵の描き方が「なだらかな山並み」を前提にしているため、と見ています(推測)。</li>
-<li><b>弱点2(データ側)</b>: 自作は六角マスが約23画素と粗く、縁と群系の境がギザギザ。しかも砂漠が陸の約4割と偏る(生成器の癖)。処理の問題ではなく、データの細かさの問題。</li>
+<li><b>弱点1(処理側)</b>: 山が、PWGと簡易生成の両方で、<b>直線の辺を持つ白い三角や四角</b>の塊になった(拡大の左・中)。簡易生成は高さが滑らかなので、「高さが平らに頭打ち」説は当たらず、<b>山の絵の描き方そのもの</b>の癖と見直しました(訂正)。</li>
+<li><b>弱点2(データ側)</b>: 簡易生成は川・風と雨・国の自然境界・資源がなく、国は乱数の点からの塗り分け。気候は緯度とノイズだけ。見た目の検証用に限り、シミュレーターの土台には不足。</li>
 <li><b>弱点3</b>: Azgaarは国境の線が多く、雪の上の細い網目に見える。冷たい砂漠と氷河が広く、全体がクリーム色で山のコントラストが弱い。</li>
 <li><b>色彩加算</b>: 世界5用のプリセットを3枚にそのままかけた(平均で255段階中7〜10ほど変化)。他の世界用の調整はしていないので、効果の良し悪しは未評価。</li></ul></div>
 <h2>限界・未確認</h2>
 <div class="card"><ul class="sub">
-<li>各1枚だけ(統計にならない)。Azgaarの種は記録していない。PWGは種5101、自作は種100。</li>
+<li>各1枚だけ(統計にならない)。Azgaarの種は記録していない。PWGは種5101、簡易生成は型1(二つの大陸)。</li>
 <li>見た目の評価は目視のみで、数値の物差しは使っていない。</li>
 <li>色彩加算は世界5用の基準のまま。弱点1の山の直しは未着手。</li>
-<li>自作の群系は Azgaar の12区分へ私が対応づけた(砂漠→熱い砂漠、高山→ツンドラ など)。この対応で見た目が変わる。</li></ul></div>
+<li>最初の版はハニカム地図(world.js)を自作枠に使いましたが、構想から外れるため、簡易生成に差し替えました。PWGの群系28種→12区分は私が寄せた対応で、適切さは未確認。</li></ul></div>
 <h2>道具(次から同じ検証を1本で回せる)</h2>
-<div class="card"><p>手順は <a href="mapstyle/tools/README.md">README</a>。書き出し: <a href="mapstyle/tools/export_az.cjs">export_az.cjs</a> / <a href="mapstyle/tools/export_pwg.cjs">export_pwg.cjs</a> / <a href="mapstyle/tools/export_own.cjs">export_own.cjs</a>。形式そろえ: <a href="mapstyle/tools/rasterize.py">rasterize.py</a> / <a href="mapstyle/tools/pwg_convert.py">pwg_convert.py</a>。処理: <a href="mapstyle/tools/run_pipeline.py">run_pipeline.py</a>(時間とメモリを timing.json に記録)。</p></div>
+<div class="card"><p>手順は <a href="mapstyle/tools/README.md">README</a>。書き出し: <a href="mapstyle/tools/export_az.cjs">export_az.cjs</a> / <a href="mapstyle/tools/export_pwg.cjs">export_pwg.cjs</a> / <a href="mapstyle/tools/export_simple.py">export_simple.py</a>。形式そろえ: <a href="mapstyle/tools/rasterize.py">rasterize.py</a>(Azgaar) / <a href="mapstyle/tools/pwg_convert.py">pwg_convert.py</a>(PWG)。処理: <a href="mapstyle/tools/run_pipeline.py">run_pipeline.py</a>(時間とメモリを timing.json に記録)。</p></div>
 </main></body></html>
