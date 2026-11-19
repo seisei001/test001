@@ -1691,6 +1691,24 @@
           "u": "mapstyle32.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle33",
+      "t": "ローポリを3つの生成器で比べる",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "PWG・Azgaar・簡易生成のどれでも一枚の絵としてまとまった。山は良い、低地は単調。次: 森・砂漠などを形で描き分ける。",
+      "log": [
+        "2026-11-20 mapstyle33.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle33",
+          "u": "mapstyle33.html"
+        }
+      ]
     }
   ],
   "past": [
