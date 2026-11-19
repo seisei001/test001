@@ -79,7 +79,7 @@ def render(my,out,seed=1,title='三極の大陸',sub='THE THREE CONTINENTS'):
         _w=cv2.GaussianBlur(np.isin(bio,[10,11]).astype(np.float32),(0,0),6)*np.clip((Hh-70)/60,0,1)
         _w=(_w*np.clip((0.45-np.linspace(0,1,H0,dtype=np.float32)[:,None])/0.15,0,1))[...,None]*0.65
         gr=gr*(1-_w)+np.array([238,234,224],np.float32)*_w
-    if RIDGE:
+    if RIDGE and os.environ.get('FM_MTN')!='parts':   # 部品方式では稜線も部品の絵で描くので、線の稜線は使わない
         import ridge2 as _r
         ink,_=_r.ridge_layer2(Hh,land,seed=my,**RK.get(my,{}))
         ink=cv2.GaussianBlur(ink,(0,0),0.5)[...,None]*0.85
