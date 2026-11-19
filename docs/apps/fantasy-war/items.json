@@ -1835,6 +1835,24 @@
           "u": "mapstyle39.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle40",
+      "t": "ゆるい3Dの目と強さの調整2",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "全体0.535・目2倍細かく・山約1.78倍・縁は中間の目・山の範囲を狭く。判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle40.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle40",
+          "u": "mapstyle40.html"
+        }
+      ]
     }
   ],
   "past": [

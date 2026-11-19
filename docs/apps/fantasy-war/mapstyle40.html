@@ -1,0 +1,20 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ゆるい3Dの目と強さの調整</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h3{font-size:1em;margin:.8em 0 .2em}img{max-width:100%;border-radius:6px}</style></head><body>
+<h1>全体の強さは中間・目は2倍細かく・山の縁は中間(11-20)</h1>
+<p><b>概要</b>: mapstyle39へのユーザー指示を、次のように数字にしました。各図は上=mapstyle39、下=今回。</p>
+<ul><li><b>地図全体の強さ</b>: mapstyle38(0.45)と39(0.62)の中間=0.535。</li>
+<li><b>地図全体の3Dの目の細かさ</b>: 面の大きさを半分(低地の格子 26→13ピクセル)=目が倍の細かさ。</li>
+<li><b>山の強さ</b>: mapstyle38(強調2倍)と39(約1.55倍)の中間=約1.78倍。</li>
+<li><b>山の縁</b>: 山の範囲のまわり14ピクセルの帯の目を、低地の目と山の目の中間(約11ピクセル)にした。</li>
+<li><b>山の範囲</b>: 広くなり過ぎるため、山の集まりの判定を少し厳しく(0.12→0.17)して、出方を小さくした。</li></ul>
+<h3>PWG seed7</h3><img src="mapstyle/gv/lp39_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E164</small><br><img src="mapstyle/gv/lp40_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h3>PWG seed5</h3><img src="mapstyle/gv/lp39_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E165</small><br><img src="mapstyle/gv/lp40_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small>
+<h3>PWG seed16</h3><img src="mapstyle/gv/lp39_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E166</small><br><img src="mapstyle/gv/lp40_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small>
+<h3>PWG seed4</h3><img src="mapstyle/gv/lp39_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E167</small><br><img src="mapstyle/gv/lp40_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small>
+<h3>PWG seed1</h3><img src="mapstyle/gv/lp39_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E168</small><br><img src="mapstyle/gv/lp40_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small>
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>低地の面が細かくなり、地図全体がなめらかに起伏して見える。大きな平らな面は減った。</li>
+<li>山の範囲は狭くなり、山脈の形がはっきりした。山の縁は、低地と山の間が自然につながる。</li>
+<li>面が細かくなったので、色の差が減り、前より絵がやわらかい印象になった。</li></ul>
+<h2>限界・未確認</h2><ul><li>各1枚・目視のみ。iPhoneでの見え方は未測定。</li><li>「山の縁の3D」の指示は、「低地の目と山の目の中間の細かさにする」と解釈した。ご意図(縁の高さの強さなど)と違う場合は直す。</li><li>各数字は、指示の「中間」「少し」を私が数字にした値。</li></ul>
+<p>次: ご判断で、もう一段階調整するか、基準にするか決める。</p></body></html>

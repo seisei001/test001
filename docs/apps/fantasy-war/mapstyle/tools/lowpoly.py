@@ -33,13 +33,13 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         Hg = ndi.gaussian_filter(Hl, 2.5)
         hn = np.clip((Hg - 20) / (hmax - 20), 0, 1)
         dens = ndi.gaussian_filter((hn > 0.5).astype(np.float32), 22.0)       # 高い所が集まっている度合い
-        we = np.clip((dens - 0.12) / 0.25, 0, 1) * np.clip((hn - 0.35) / 0.25, 0, 1)   # 強調: 山が集まる所の高い部分だけ
+        d0 = float(os.environ.get('FM_LP_D0', '0.12')); we = np.clip((dens - d0) / 0.25, 0, 1) * np.clip((hn - 0.35) / 0.25, 0, 1)   # 強調: 山が集まる所の高い部分だけ
         z = zmax * float(os.environ.get('FM_LP_BASE', '0.45')) * hn ** 1.3 * (1 + float(os.environ.get('FM_LP_EMPH', '1.0')) * we)   # 既定=mapstyle38。mapstyle39は 0.62 / 0.55
         wm = np.maximum(we, np.clip((hn - 0.5) / 0.3, 0, 1)); Hm = Hg
     z = np.where(land, z, 0).astype(np.float32)
     zden = (np.percentile(z[land], 99.5) if gentle else zmax * 1.9)
     pts = []
-    sp = spacing * 2.6                                                    # 低地: 大きな面
+    sp = spacing * float(os.environ.get('FM_LP_SP', '2.6'))                # 低地: 大きな面(mapstyle40は1.3=目の細かさ2倍)
     for y in np.arange(-sp, H0 + sp, sp):
         for x in np.arange(-sp, W0 + sp, sp):
             pts.append((x + rs.uniform(-0.4, 0.4) * sp, y + rs.uniform(-0.4, 0.4) * sp))
@@ -48,6 +48,14 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         for x in np.arange(0, W0, sp2):
             yy, xx = int(min(y, H0 - 1)), int(min(x, W0 - 1))
             if wm[yy, xx] > 0.3: pts.append((x + rs.uniform(-0.4, 0.4) * sp2, y + rs.uniform(-0.4, 0.4) * sp2))
+    if gentle and os.environ.get('FM_LP_RING', '0') == '1':
+        # 山の縁(山の範囲のまわりの帯): 低地の目と山の目の中間の細かさにする
+        core = wm > 0.3; ring = ndi.binary_dilation(core, iterations=14) & ~core
+        spr = (sp + sp2) / 2
+        for y in np.arange(0, H0, spr):
+            for x in np.arange(0, W0, spr):
+                yy, xx = int(min(y, H0 - 1)), int(min(x, W0 - 1))
+                if ring[yy, xx]: pts.append((x + rs.uniform(-0.4, 0.4) * spr, y + rs.uniform(-0.4, 0.4) * spr))
     pk = (Hm == ndi.maximum_filter(Hm, size=21)) & (hn > 0.3)
     py, px = np.nonzero(pk); pts += [(x, y) for x, y in zip(px, py)]
     # 海岸の点(海岸を面で縁取る)
