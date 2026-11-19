@@ -1745,6 +1745,24 @@
           "u": "mapstyle35.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle36",
+      "t": "世界地図の基準でローポリ(3生成器×5)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "基準(陸4〜6割・端は海)に合わせて各5個。Azgaar・自作は基準達成、PWGは陸は届いたが端に陸が残る。次: PWGの設定探し。",
+      "log": [
+        "2026-11-20 mapstyle36.htmlに公開。mapstyle35は基準外の乱数世界で参考。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle36",
+          "u": "mapstyle36.html"
+        }
+      ]
     }
   ],
   "past": [
