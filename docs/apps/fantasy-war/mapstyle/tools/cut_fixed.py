@@ -2,9 +2,13 @@
 import sys,os,json,cv2,numpy as np
 from scipy import ndimage as ndi
 src,outd=sys.argv[1:3]; os.makedirs(outd,exist_ok=True)
-order=json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','parts','fix_order.json')))
+HERE=os.path.dirname(os.path.abspath(__file__))
+if len(sys.argv)>3:   # 4分割シート: cut_fixed.py src outd <シート番号>
+    sh=int(sys.argv[3]);order=[o for o in json.load(open(os.path.join(HERE,'..','parts','fix4_order.json'))) if o['sheet']==sh];NC,NR=7,5
+else:
+    order=json.load(open(os.path.join(HERE,'..','parts','fix_order.json')));NC,NR=10,14
 im=cv2.imread(src).astype(np.float32);H,W=im.shape[:2];bg=np.median(im.reshape(-1,3),axis=0)
-cw,ch=W/10,H/14;k=0
+cw,ch=W/NC,H/NR;k=0
 for o in order:
     r,c=o['row']-1,o['col']-1
     y0,y1,x0,x1=int(r*ch),int((r+1)*ch),int(c*cw),int((c+1)*cw)
