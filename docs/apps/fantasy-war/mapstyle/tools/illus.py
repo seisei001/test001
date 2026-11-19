@@ -6,7 +6,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage as ndi
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, 'pipeline', 'gv'))
-import mtn16
+sys.path.insert(0, HERE); import mtn16, parts2
 
 def wob(rs, n, amp, sc): # 手描きのゆらぎ
     a = rs.randn(n); k = np.ones(sc) / sc; return np.convolve(a, k, 'same') * amp
@@ -49,6 +49,7 @@ def main(wdir, outp, title, seed=1):
                 if on[i]: cv2.line(ink_sea, tuple(pts[i].astype(int)), tuple(pts[i + 1].astype(int)), 1.0, 1, cv2.LINE_AA)
     ink_sea = cv2.GaussianBlur(ink_sea, (0, 0), 0.6) * (~land)
     img = img * (1 - 0.55 * ink_sea[..., None]) + np.array([90, 110, 120], np.float32) * 0.55 * ink_sea[..., None]
+    n_sea = parts2.sea(img, land, np.random.RandomState(seed + 11))
     # --- 海岸のインク線(ゆらぎつき)
     cs, _ = cv2.findContours(land.astype(np.uint8) * 255, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     cl = np.zeros((H0, W0), np.float32)
@@ -62,11 +63,13 @@ def main(wdir, outp, title, seed=1):
     if os.path.exists(wdir + '/rivers.png'):
         rv = (np.array(Image.open(wdir + '/rivers.png').convert('L'), np.float32) / 255) * land; rv = cv2.GaussianBlur(rv, (0, 0), 0.7)
         img = img * (1 - 0.8 * rv[..., None]) + np.array([80, 108, 128], np.float32) * 0.8 * rv[..., None]
+    n_gr = parts2.ground(img, land, bio, Hh, np.random.RandomState(seed + 12))
     # --- 山(絵部品のみ・絵そのまま)
     img, nm = mtn16.paint(img.astype(np.float32), Hh, land, bio, seed=seed, native=True, hi=52.0, dens=0.6)
     # --- 丘・砂丘・砂漠の小物(絵部品をまばらに)
     n2 = scatter(img, land, bio, Hh, rs, seed)
     img = n2[0]
+    n_tw = parts2.town(img, land, bio, Hh, np.random.RandomState(seed + 13), wdir)
     # --- 枠と題
     OW, OH = 1500, 1000; ox, oy = (OW - W0) // 2, (OH - H0) // 2
     canvas = np.zeros((OH, OW, 3), np.float32) + np.array([222, 198, 152], np.float32)
@@ -81,7 +84,7 @@ def main(wdir, outp, title, seed=1):
         d.text((OW / 2, 60), title, font=f, fill=(46, 28, 16), anchor='mm')
     except Exception: pass
     pil.save(outp, quality=93)
-    return dict(mountain_parts=nm, small_parts=n2[1])
+    return dict(mountain_parts=nm, small_parts=n2[1], sea=n_sea, ground=n_gr, town=n_tw)
 
 def scatter(img, land, bio, Hh, rs, seed):
     """丘・砂丘・サボテン・岩・オアシスなどの小さな絵部品を、群系に合わせてまばらに置く(絵そのまま)。"""
