@@ -7,7 +7,7 @@ secs=re.split(r'(?m)^(?=## カード)',s)[1:]
 def key(t):
     m=re.match(r'## カード(\w+)',t); return m.group(1).lower()
 for t in secs:
-    k=key(t); k=('c%03d'%int(k)) if k.isdigit() else 'c'+k
+    k=key(t); k=('c%03d'%int(k)) if k.isdigit() else 'c0'+k
     f='cards/%s.md'%k
     try: head=open(f,encoding='utf-8').read().split('\n')[:4]
     except FileNotFoundError: print('新規カード(検索語を手で付ける):',k); continue
