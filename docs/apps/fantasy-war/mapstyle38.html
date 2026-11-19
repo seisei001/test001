@@ -1,0 +1,20 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ゆるい3Dで山を描く</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h3{font-size:1em;margin:.8em 0 .2em}img{max-width:100%;border-radius:6px}</style></head><body>
+<h1>地図全体をゆるい3Dにして、山を少し強調する(11-20)</h1>
+<p><b>概要</b>: mapstyle37の山は、頂上が大きな平らな面になり、台地のように見えました。原因は、頂を広げる処理(周り13ピクセルの最大値を取る)で、尖った頂が平らな台になることだと見ています。そこでユーザー案に従い、<b>最大値の処理をやめ、地図全体を軽くならした高さでゆるく盛り上げ、高い山が集まる所だけを少し強調</b>しました(同じ5世界・同じ色と陰)。</p>
+<h2>変えた点</h2>
+<ul><li>全体: 高さを軽くならして(幅2.5ピクセル)、低い起伏からゆるく盛り上げる。</li>
+<li>強調: 「高い所(上位半分)が集まっている度合い」が高い場所の、高い部分だけ。高さが最大約2倍になる。</li>
+<li>道具: <code>mapstyle/tools/lowpoly.py</code>(環境変数 FM_LP_GENTLE=1 で有効)。</li></ul>
+<h3>PWG seed7: 左=前(mapstyle37) / 下=今回</h3><img src="mapstyle/gv/lp37_pwg7.jpg"><br><img src="mapstyle/gv/lp38_pwg7.jpg">
+<h3>PWG seed5: 左=前(mapstyle37) / 下=今回</h3><img src="mapstyle/gv/lp37_pwg5.jpg"><br><img src="mapstyle/gv/lp38_pwg5.jpg">
+<h3>PWG seed16: 左=前(mapstyle37) / 下=今回</h3><img src="mapstyle/gv/lp37_pwg16.jpg"><br><img src="mapstyle/gv/lp38_pwg16.jpg">
+<h3>PWG seed4: 左=前(mapstyle37) / 下=今回</h3><img src="mapstyle/gv/lp37_pwg4.jpg"><br><img src="mapstyle/gv/lp38_pwg4.jpg">
+<h3>PWG seed1: 左=前(mapstyle37) / 下=今回</h3><img src="mapstyle/gv/lp37_pwg1.jpg"><br><img src="mapstyle/gv/lp38_pwg1.jpg">
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>頂上の台地は消えた。稜線はぎざぎざの尾根になり、雪も尾根の上に細く付く。</li>
+<li>地図全体が低く平らになり、前よりおとなしい。山が単独で立つ所(前に尖って良かった峰)は目立たなくなった。</li>
+<li>山の集まる所は、山脈として一つにまとまって見える。</li>
+<li>強調の強さ(約2倍)は、まだ決めていない。強すぎ・弱すぎの判断をいただきたい。</li></ul>
+<h2>限界・未確認</h2><ul><li>5個とも各1枚・目視のみ。iPhoneでの見え方は未測定。</li><li>強調の範囲(集まりの判定)の数字は、1回の試しで決めた初期値。</li><li>湖の形が四角い淡い面になる癖(粗い面を湖に当てる所)は、前から残っている。</li></ul>
+<p>次: 強調の強さと範囲を、ユーザーの判断で調整する。</p></body></html>

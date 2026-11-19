@@ -1799,6 +1799,24 @@
           "u": "mapstyle37.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle38",
+      "t": "ゆるい3Dで山を描く(PWG5個)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "頂上の台地は消えた。全体はおとなしくなった。強調の強さの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle38.htmlに公開。ユーザー案(全体をゆるい3D・山の集まる所だけ強調)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle38",
+          "u": "mapstyle38.html"
+        }
+      ]
     }
   ],
   "past": [

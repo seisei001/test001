@@ -3,7 +3,7 @@
 #  立体化する。陰は「左斜め上から光が当たったらどう付くか」を立体に対して計算する(ローポリの面ごとの陰)。ローポリの輪郭が稜線になる。
 #  山だけでなく全部の地形を同じ手法で、遠景から近景へ(奥から手前へ)描く。色は下地の種類(群系)で決める。
 # デフォルメ=平均でならさず、頂を拾って(最大値)・高い所はより尖らせ・低い所はより平らに・面を粗くする。
-import numpy as np, cv2
+import os, numpy as np, cv2
 from scipy import ndimage as ndi
 from scipy.spatial import Delaunay
 
@@ -26,7 +26,18 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     Hm = Hsm * (1 - wm) + Hmx * wm
     hn = np.clip((Hm - 20) / (hmax - 20), 0, 1)
     z = zmax * (hn ** 2.0) * (1 + 0.9 * hn ** 2.0) * (0.25 + 0.75 * wm)  # 山は高く尖らせ、低地は低く
+    gentle = os.environ.get('FM_LP_GENTLE', '0') == '1'
+    if gentle:
+        # ゆるい3D(11-20 ユーザー案): 最大値で頂を広げない。地図全体を軽くならした高さでゆるく盛り上げ、
+        # 高い山が集まる所(高い所の密度が高い所)だけ、少し強調する。
+        Hg = ndi.gaussian_filter(Hl, 2.5)
+        hn = np.clip((Hg - 20) / (hmax - 20), 0, 1)
+        dens = ndi.gaussian_filter((hn > 0.5).astype(np.float32), 22.0)       # 高い所が集まっている度合い
+        we = np.clip((dens - 0.12) / 0.25, 0, 1) * np.clip((hn - 0.35) / 0.25, 0, 1)   # 強調: 山が集まる所の高い部分だけ
+        z = zmax * 0.45 * hn ** 1.3 * (1 + 1.0 * we)
+        wm = np.maximum(we, np.clip((hn - 0.5) / 0.3, 0, 1)); Hm = Hg
     z = np.where(land, z, 0).astype(np.float32)
+    zden = (np.percentile(z[land], 99.5) if gentle else zmax * 1.9)
     pts = []
     sp = spacing * 2.6                                                    # 低地: 大きな面
     for y in np.arange(-sp, H0 + sp, sp):
@@ -57,7 +68,7 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     lam = np.clip(n @ LIGHT, 0, 1)
     shade = 1.0 + 1.05 * (lam - 0.63); shade = np.clip(np.round(shade * levels * 1.5) / (levels * 1.5), 0.5, 1.3)               # 陰を少数の段にする(単純に)
     # ---- 色: 下地の種類(群系)で決め、高いほど岩・雪へ
-    cb = bio[cy, cx]; hzn = (za + zb + zc) / 3 / (zmax * 1.9)
+    cb = bio[cy, cx]; hzn = (za + zb + zc) / 3 / zden
     base = np.array([BASE.get(int(b), (150, 170, 110)) for b in cb], np.float32)
     cold = np.isin(cb, [2, 9, 10, 11])
     rock_t = np.clip((hzn - 0.30) / 0.35, 0, 1)[:, None]; col = base * (1 - rock_t) + ROCK * rock_t
