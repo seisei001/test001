@@ -10,7 +10,8 @@ from scipy import ndimage as ndi
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _FW = os.path.abspath(os.path.join(_HERE, '..', '..', '..', '..'))      # apps/fantasy-war
 _SC = os.path.abspath(os.path.join(_HERE, '..', '..', 'parts_scores.json'))
-CATW = {'岩場・岩塊': 0.35, '台地・メサ': 0.5, '崖・地層': 0.6, '砂丘': 0.5, '火山': 0.6, '火口': 0.3, '草の丘': 0.6}
+BAD = {'h15', 'h28', 'k28', 'k32', 'm26', 'm27', 'h19', 'h21', 'h35', 'k38', 'p25', 'k36', 'm08', 'm09', 'm10', 'm11', 'm12', 'n05', 'n10', 'p16', 'p17', 'h22', 'h16', 'h29', 'h14', 'h32', 'p21', 'p10', 'p19', 'p20', 'k29', 'k33'}   # 不自然に目立った部品(遺跡風の塔・樽形の台地・細い尖塔など)は選ばない
+CATW = {'岩塔・柱': 0.4, '岩場・岩塊': 0.35, '台地・メサ': 0.3, '崖・地層': 0.6, '砂丘': 0.5, '火山': 0.6, '火口': 0.3, '草の丘': 0.6}
 SKIP = {'砂漠の飾り', '混合の連なり', '峡谷'}
 PAPER, INKC = 222.0, 33.0
 
@@ -18,7 +19,7 @@ def _load():
     J = json.load(open(_SC))
     P = []
     for r in J['parts']:
-        if r['cat'] in SKIP: continue
+        if r['cat'] in SKIP or r['id'] in BAD: continue
         fp = os.path.join(_FW, r['img'])
         if not os.path.exists(fp): continue
         im = cv2.imread(fp, cv2.IMREAD_UNCHANGED)
@@ -116,13 +117,13 @@ def paint(img, Hh, land, bio, seed=1, scale=1.0, dens=0.55, hi=50.0, min_region=
         sy, sx = ya - y0, xa - x0; ey, ex = sy + (yb - ya), sx + (xb - xa)
         lum = ts.mean(2)
         tt = np.clip((lum - INKC) / (PAPER - INKC), 0, 1)
-        shade = (0.10 + 1.05 * np.clip((tt - 0.25) / 0.75, 0, 1) ** 1.0 + 0.0 * tt)[..., None]
-        shade = np.where(tt[..., None] < 0.25, 0.10 + 0.5 * tt[..., None], shade)
+        shade = (0.30 + 0.95 * np.clip((tt - 0.20) / 0.80, 0, 1) ** 0.8)[..., None]
+        shade = np.where(tt[..., None] < 0.20, 0.22 + 0.4 * tt[..., None], shade)
         gb = ground[ya:yb, xa:xb]
         col = np.zeros((nh, nw, 3), np.float32)
-        col[sy:ey, sx:ex] = np.clip(gb * shade[sy:ey, sx:ex] * 1.10 + 4, 0, 255)
+        col[sy:ey, sx:ex] = np.clip(gb * shade[sy:ey, sx:ex] * 1.22 + 10, 0, 255)
         # ④足もとのぼかし(地面になじませる)
-        fade = np.ones(nh, np.float32); k = max(2, int(nh * 0.14)); fade[-k:] = np.linspace(1, 0.15, k)
+        fade = np.ones(nh, np.float32); k = max(3, int(nh * 0.30)); fade[-k:] = np.linspace(1, 0.0, k) ** 1.2
         al = (as_ * fade[:, None])[..., None]
         # 影(右下)
         sh = np.zeros((nh, nw), np.float32); cv2.ellipse(sh, (nw // 2 + int(nw * 0.08), nh - 2), (int(nw * 0.5), max(2, int(nh * 0.06))), 0, 0, 360, 1.0, -1)
