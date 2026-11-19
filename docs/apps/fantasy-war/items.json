@@ -1781,6 +1781,24 @@
           "u": "pwg_usage.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle37",
+      "t": "PWG新しい使い方でローポリ(5枚)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "端は5個とも海。山は映える。課題: 正方形を置くので画像全体の陸は約31%(左右に海が余る)・氷が目立たない。次: Drive保存と余白の対策。",
+      "log": [
+        "2026-11-20 mapstyle37.htmlに公開(絵番号E149〜E153)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle37",
+          "u": "mapstyle37.html"
+        }
+      ]
     }
   ],
   "past": [

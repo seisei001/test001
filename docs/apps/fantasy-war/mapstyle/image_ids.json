@@ -1,5 +1,5 @@
 {
- "next": 149,
+ "next": 154,
  "ids": {
   "mapstyle/s0.jpg": "E001",
   "mapstyle/s1.jpg": "E002",
@@ -148,6 +148,11 @@
   "mapstyle/gv/lp36_own2.jpg": "E145",
   "mapstyle/gv/lp36_own3.jpg": "E146",
   "mapstyle/gv/lp36_own4.jpg": "E147",
-  "mapstyle/gv/lp36_own5.jpg": "E148"
+  "mapstyle/gv/lp36_own5.jpg": "E148",
+  "mapstyle/gv/lp37_pwg7.jpg": "E149",
+  "mapstyle/gv/lp37_pwg5.jpg": "E150",
+  "mapstyle/gv/lp37_pwg16.jpg": "E151",
+  "mapstyle/gv/lp37_pwg4.jpg": "E152",
+  "mapstyle/gv/lp37_pwg1.jpg": "E153"
  }
 }
