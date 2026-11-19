@@ -1,0 +1,14 @@
+import { writeFileSync } from 'node:fs';
+import { Pipeline } from '../src/gen/pipeline';
+import { STAGES } from '../src/gen/stages';
+import { resolve } from '../src/shared/config/resolve';
+const seed = Number(process.argv[2]); const pins = JSON.parse(process.argv[3]); const out = process.argv[4];
+const resolved = resolve({ seed, archetype: 'earth', pins } as any);
+const p = new Pipeline(STAGES); let err = '';
+await p.run(resolved, 'build', 1, (m: any) => { if (m.type === 'error') err = m.message; }, () => false);
+if (err) throw new Error(err);
+const hy: any = p.output('hydro')!.extra, bi: any = p.output('biome')!.extra, n = hy.n;
+const w = (name: string, a: ArrayBufferView) => writeFileSync(`${out}_${name}.bin`, Buffer.from(a.buffer, a.byteOffset, a.byteLength));
+w('elev', Float32Array.from(hy.elevation)); w('water', Uint8Array.from(hy.waterClass)); w('biome', Uint8Array.from(bi.biome));
+writeFileSync(`${out}.json`, JSON.stringify({ n, seed, pins }));
+console.log('ok', seed);
