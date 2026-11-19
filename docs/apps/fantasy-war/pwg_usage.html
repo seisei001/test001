@@ -1,0 +1,61 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PWGの使い方(端の問題の検証)</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h2{font-size:1.1em;margin-top:1.4em}table{border-collapse:collapse;font-size:.9em}td,th{border:1px solid #b9a77f;padding:3px 7px;text-align:center}code{background:#e8dcc0;padding:1px 4px;border-radius:3px;word-break:break-all}.ok{background:#d6e8c4}</style></head><body>
+<h1>PWGの使い方 ― 端に陸が出る問題の検証(2026-11-20)</h1>
+<p><b>概要</b>: PWG(procedural-world-generation)は、世界の端に陸が出てしまう問題がありました。生成クラスを直接動かして調べた結果、<b>設定値の工夫・世界の向きの選択・上下を白い氷にする</b>の3つで、ほぼ解決できることが分かりました。PWGは諦めず、下の使い方で使います。</p>
+
+<h2>1. 今後のPWGの使い方(決まり)</h2>
+<ol>
+<li>設定値「大陸の地殻の割合(continentalShare)」を、陸の割合(landFraction)と<b>同じ値</b>にする。陸は0.5前後・大陸は3つ(continentCount=[3,3])。</li>
+<li>たくさん作り(1個約20秒)、縁の8ピクセル幅の陸の割合を測る。</li>
+<li>上下の端は白い氷にしてよいので、<b>左右の端が海</b>の世界を選ぶ。左右に陸があって上下が海なら、世界を<b>90度回して</b>使う。</li>
+<li>描く前に、陸の割合と端を必ず実測する(基準外は使わない)。</li>
+</ol>
+
+<h2>2. 検証の方法</h2>
+<p>PWGの生成クラス(Pipeline)を、ブラウザなしで直接動かしました(ブラウザ経由は約90秒、直接は約20秒)。設定値をわたして世界を作り、標高と水の種類のデータから、陸の割合と四辺それぞれの端の陸の割合を数えました(端=縁の8ピクセル幅)。道具: <code>mapstyle/tools/pwg_edge_probe.ts</code>(PWG側のmetricsフォルダに置いて動かす)。</p>
+<p>実行の例: <code>node --experimental-transform-types --no-warnings --import ./metrics/register.mjs metrics/edge_probe.ts 7 '{"landFraction":0.5,"continentCount":[3,3],"continentalShare":0.5}'</code></p>
+
+<h2>3. 結果</h2>
+<h3>(a) 大陸の地殻の割合を変えた効果(陸5.5割、3個ずつ。端の陸の最大値)</h3>
+<table><tr><th>設定</th><th>seed1</th><th>seed2</th><th>seed3</th></tr>
+<tr><td>既定(地殻=陸+1割)</td><td>90%</td><td>84%</td><td>90%</td></tr>
+<tr><td>地殻=陸と同じ</td><td class="ok">29%</td><td class="ok">21%</td><td class="ok">31%</td></tr>
+<tr><td>大陸を5個に</td><td>90%</td><td>94%</td><td>63%</td></tr>
+<tr><td>大陸の大きさのかたよりを0に</td><td>28%</td><td>50%</td><td>34%</td></tr>
+<tr><td>島の量を0に</td><td>88%</td><td>84%</td><td>91%</td></tr>
+<tr><td>地殻変動を弱く</td><td>89%</td><td>90%</td><td>91%</td></tr></table>
+<p>地殻を陸と同じにするのが一番効きました。理由の見立て: 既定では「陸+大陸棚」の面積まで大陸を育てるので、地図の端まで広がってしまう。</p>
+
+<h3>(b) 陸5割・地殻=陸・大陸3つで16個(seed1〜16)</h3>
+<table><tr><th>seed</th><th>上</th><th>下</th><th>左</th><th>右</th><th>上下を氷</th><th>90度回す</th></tr>
+<tr><td>1</td><td>0</td><td>0</td><td>0</td><td>19</td><td></td><td class="ok">○</td></tr>
+<tr><td>2</td><td>0</td><td>5</td><td>0</td><td>6</td><td></td><td class="ok">○</td></tr>
+<tr><td>3</td><td>0</td><td>19</td><td>11</td><td>0</td><td></td><td></td></tr>
+<tr><td>4</td><td>12</td><td>0</td><td>0</td><td>0</td><td class="ok">○</td><td></td></tr>
+<tr><td>5</td><td>0</td><td>0</td><td>0</td><td>4</td><td class="ok">○</td><td class="ok">○</td></tr>
+<tr><td>6</td><td>6</td><td>1</td><td>0</td><td>12</td><td></td><td></td></tr>
+<tr><td>7</td><td>0</td><td>0</td><td>0</td><td>0</td><td class="ok">○</td><td class="ok">○</td></tr>
+<tr><td>8</td><td>0</td><td>4</td><td>0</td><td>27</td><td></td><td class="ok">○</td></tr>
+<tr><td>9</td><td>0</td><td>0</td><td>8</td><td>0</td><td></td><td class="ok">○</td></tr>
+<tr><td>10</td><td>0</td><td>41</td><td>2</td><td>0</td><td class="ok">○</td><td></td></tr>
+<tr><td>11</td><td>0</td><td>29</td><td>0</td><td>1</td><td class="ok">○</td><td></td></tr>
+<tr><td>12</td><td>0</td><td>0</td><td>33</td><td>0</td><td></td><td class="ok">○</td></tr>
+<tr><td>13</td><td>0</td><td>26</td><td>3</td><td>0</td><td class="ok">○</td><td></td></tr>
+<tr><td>14</td><td>0</td><td>7</td><td>1</td><td>0</td><td class="ok">○</td><td></td></tr>
+<tr><td>15</td><td>0</td><td>0</td><td>0</td><td>48</td><td></td><td class="ok">○</td></tr>
+<tr><td>16</td><td>0</td><td>4</td><td>0</td><td>1</td><td class="ok">○</td><td class="ok">○</td></tr></table>
+<p>数字は端の陸の割合(%)。○は、氷にしない側の2辺の端の陸が5%以下。合格数: 上下を氷=8個、90度回す=9個、どちらかが○=<b>14個(約9割)</b>。合わない2個(seed3・6)は使わない。</p>
+
+<h2>4. 効かなかったこと(クラスの中を変えた試し)</h2>
+<p>PWGのコードには、大陸が地図の端に伸びにくくする仕組みがあります(端に近いほど育ちにくくする)。その強さと範囲を強めて試しましたが、端の陸はむしろ増えました(最大100%の世界も出た)。端の問題の原因は、そこではありません。コードは元に戻してあります。</p>
+
+<h2>5. 限界・未確認</h2>
+<ul>
+<li>端の陸が5%以下という数字だけで選んだ。絵は見ていない。16個のうち使えるものの見た目は未確認。</li>
+<li>設定値は陸5割の1通りだけ。陸4割・6割では確かめていない。</li>
+<li>世界は正方形(1024×1024)。1400×900の地図に置くと、左右に海が余り、画像全体の陸は約0.65倍になる(陸5割で約3割)。陸4〜6割の基準に合わせる対策(横に引き伸ばす、陸を増やすなど)は未検証。</li>
+<li>氷にする部分の見た目(白の置き方)は未作成。</li>
+</ul>
+<p><b>次の一手</b>: 世界を横いっぱいに引き伸ばす方法と、そのまま置く方法を、陸の割合と見た目で比べる。</p>
+<p><a href="index.html">ハブにもどる</a></p>
+</body></html>
