@@ -63,13 +63,19 @@ def main(wdir, outp, title, seed=1):
     if os.path.exists(wdir + '/rivers.png'):
         rv = (np.array(Image.open(wdir + '/rivers.png').convert('L'), np.float32) / 255) * land; rv = cv2.GaussianBlur(rv, (0, 0), 0.7)
         img = img * (1 - 0.8 * rv[..., None]) + np.array([80, 108, 128], np.float32) * 0.8 * rv[..., None]
-    n_gr = parts2.ground(img, land, bio, Hh, np.random.RandomState(seed + 12))
-    # --- 山(絵部品のみ・絵そのまま)
-    img, nm = mtn16.paint(img.astype(np.float32), Hh, land, bio, seed=seed, native=True, hi=52.0, dens=0.6)
-    # --- 丘・砂丘・砂漠の小物(絵部品をまばらに)
-    n2 = scatter(img, land, bio, Hh, rs, seed)
-    img = n2[0]
-    n_tw = parts2.town(img, land, bio, Hh, np.random.RandomState(seed + 13), wdir)
+    if os.environ.get('FM_V3', '1') == '1':
+        import compose, mtn17
+        mitems, region = mtn17.plan(Hh, land, bio, seed)
+        avoid = ndi.binary_dilation(region, iterations=8)
+        its = list(mitems); n_gr = parts2.ground(img, land, bio, Hh, np.random.RandomState(seed + 12), collect=its, avoid=avoid)
+        its += hills(land, bio, Hh, np.random.RandomState(seed + 14), avoid)
+        n_tw = parts2.town(img, land, bio, Hh, np.random.RandomState(seed + 13), wdir, collect=its, avoid=avoid)
+        nm = compose.render(img, its, land, ground_tint=cv2.GaussianBlur(img, (0, 0), 10)); n2 = (img, 0)
+    else:
+        n_gr = parts2.ground(img, land, bio, Hh, np.random.RandomState(seed + 12))
+        img, nm = mtn16.paint(img.astype(np.float32), Hh, land, bio, seed=seed, native=True, hi=52.0, dens=0.6)
+        n2 = scatter(img, land, bio, Hh, rs, seed); img = n2[0]
+        n_tw = parts2.town(img, land, bio, Hh, np.random.RandomState(seed + 13), wdir)
     # --- 枠と題
     OW, OH = 1500, 1000; ox, oy = (OW - W0) // 2, (OH - H0) // 2
     canvas = np.zeros((OH, OW, 3), np.float32) + np.array([222, 198, 152], np.float32)
@@ -85,6 +91,27 @@ def main(wdir, outp, title, seed=1):
     except Exception: pass
     pil.save(outp, quality=93)
     return dict(mountain_parts=nm, small_parts=n2[1], sea=n_sea, ground=n_gr, town=n_tw)
+
+def hills(land, bio, Hh, rs, avoid):
+    """低地の丘・砂丘・サボテンなどを「重ねの部品」として返す(奥から手前の順番に混ぜて描かれる)。"""
+    J = json.load(open(mtn16._SC)); lib = {}
+    for r in J['parts']:
+        if r['id'] in {'h33', 'm15', 'd06', 'd08', 'd24', 'd02', 'n07'}: continue
+        lib.setdefault(r['cat'], []).append(r['id'])
+    items = []
+    def samp(mask, sp):
+        ys, xs = np.nonzero(mask); n = int(len(ys) / sp ** 2)
+        return [(ys[k], xs[k]) for k in rs.choice(len(ys), min(n, len(ys)), replace=False)] if len(ys) else []
+    low = land & ~avoid
+    for bset, cats, sp, wr, hmax in [({4, 5, 6, 8, 12}, ['草の丘', '丘陵の連なり'], 30, (46, 90), 48), ({3, 9, 10, 2}, ['丘陵の連なり'], 44, (46, 84), 52), ({1, 2}, ['砂丘'], 32, (56, 110), 60)]:
+        m = ndi.binary_erosion(low & np.isin(bio, list(bset)) & (Hh < hmax), iterations=10)
+        for (y, x) in samp(m, sp):
+            cs = [c for c in cats if c in lib]
+            if cs: items.append(dict(y=y, x=x, pid=lib[cs[0] if len(cs) == 1 else cs[rs.randint(len(cs))]][0] if False else (lambda L: L[rs.randint(len(L))])(lib[cs[rs.randint(len(cs))]]), w=rs.uniform(*wr), kind='hill', foot=0.3, shadow=0.12, haze=0.0, hmax=70))
+    deco = ['d07', 'd09', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15', 'd16', 'd17', 'd18', 'd19', 'd20', 'd21', 'd23', 'd39']
+    md = ndi.binary_erosion(low & np.isin(bio, [1, 3]) & (Hh < 60), iterations=8)
+    for (y, x) in samp(md, 70): items.append(dict(y=y, x=x, pid=deco[rs.randint(len(deco))], w=rs.uniform(22, 38), kind='veg', shadow=0.1, hmax=90))
+    return items
 
 def scatter(img, land, bio, Hh, rs, seed):
     """丘・砂丘・サボテン・岩・オアシスなどの小さな絵部品を、群系に合わせてまばらに置く(絵そのまま)。"""

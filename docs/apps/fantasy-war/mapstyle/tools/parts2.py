@@ -49,9 +49,17 @@ def sample(rs, mask, spacing, prob=None):
 def ids(pre, a, b): return [f'{pre}{i:02d}' for i in range(a, b + 1)]
 CON = ids('tr', 1, 9) + ['tr17', 'tr19', 'tr20']; BROAD = ids('tr', 10, 16) + ['tr18', 'tr29']; PALM = ['tr24', 'tr26', 'tr27']; DEAD = ['tr25', 'tr28']
 
-def ground(out, land, bio, Hh, rs):
+def _kind(pid): return {'tr': 'veg', 'gr': 'veg', 'tw': 'town', 'ms': 'misc'}.get(pid[:2], 'veg')
+def _out(items, land, out, collect):
+    if collect is None: return draw(out, items, land)
+    for (y, x, pid, w, tn) in items:
+        k = _kind(pid); collect.append(dict(y=y, x=x, pid=pid, w=float(w), kind=k, tint=tn, shadow=0.0 if k == 'veg' else 0.18, hmax=140))
+    return len(items)
+
+def ground(out, land, bio, Hh, rs, collect=None, avoid=None):
     """山より先に: 森・草・低木・湿地"""
     H, W = land.shape; items = []; low = land & (Hh < 46)
+    if avoid is not None: low &= ~avoid
     ff = field(rs, (H, W), 70) * 0.7 + field(rs, (H, W), 22) * 0.3
     # 森(群系ごとに樹種を変える)
     for bset, kinds, thr, sp, wr in [({9}, [CON], .42, 11, (16, 24)), ({6, 8}, [CON, BROAD], .50, 12, (16, 26)), ({5, 7}, [BROAD, PALM], .46, 11, (18, 28)), ({4}, [BROAD], .70, 16, (16, 24)), ({10}, [CON], .78, 17, (12, 18)), ({12}, [BROAD], .60, 15, (16, 22))]:
@@ -71,7 +79,7 @@ def ground(out, land, bio, Hh, rs):
     m = low & (bio == 12); m = ndi.binary_erosion(m, iterations=3)
     for (y, x) in sample(rs, m, 16): items.append((y, x, ids('gr', 15, 20)[rs.randint(6)], rs.uniform(18, 26), 'grass'))
     for (y, x) in sample(rs, m, 36): items.append((y, x, ids('gr', 21, 24)[rs.randint(4)], rs.uniform(44, 64), 'none'))
-    return draw(out, items, land)
+    return _out(items, land, out, collect)
 
 def sea(out, land, rs):
     """海: 波・帆船・怪物・渦・羅針盤"""
@@ -87,9 +95,10 @@ def sea(out, land, rs):
     if len(ys): k = rs.randint(len(ys)); items.append((ys[k] + 50, xs[k], 'sa13', 110, 'none'))
     return draw(out, items, ~land)
 
-def town(out, land, bio, Hh, rs, wdir):
+def town(out, land, bio, Hh, rs, wdir, collect=None, avoid=None):
     """町・城・遺跡・洞窟・天幕など(山のあとに置く)"""
     H, W = land.shape; items = []; ok = land & (Hh < 62)
+    if avoid is not None: ok &= ~avoid
     try: cities = json.load(open(wdir + '/world-extra.json'))['cities']
     except Exception: cities = []
     seen = set(); near = np.zeros((H, W), bool)
@@ -106,4 +115,4 @@ def town(out, land, bio, Hh, rs, wdir):
     for (y, x) in sample(rs, mh & (Hh > 44), 190): items.append((y, x, ['ms20', 'ms21', 'ms24', 'ms25'][rs.randint(4)], rs.uniform(32, 42), 'none'))
     for (y, x) in sample(rs, m, 260): items.append((y, x, ['ms23', 'ms26', 'ms27', 'ms18', 'ms19'][rs.randint(5)], rs.uniform(16, 24), 'none'))
     for (y, x) in sample(rs, m, 420): items.append((y, x, ['ms11', 'ms12', 'ms22'][rs.randint(3)], rs.uniform(34, 44), 'none'))
-    return draw(out, items, land)
+    return _out(items, land, out, collect)
