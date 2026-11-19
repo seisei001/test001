@@ -1,5 +1,5 @@
 {
- "next": 134,
+ "next": 149,
  "ids": {
   "mapstyle/s0.jpg": "E001",
   "mapstyle/s1.jpg": "E002",
@@ -133,6 +133,21 @@
   "mapstyle/gv/lp35_own2.jpg": "E130",
   "mapstyle/gv/lp35_own4.jpg": "E131",
   "mapstyle/gv/lp35_own6.jpg": "E132",
-  "mapstyle/gv/lp35_own8.jpg": "E133"
+  "mapstyle/gv/lp35_own8.jpg": "E133",
+  "mapstyle/gv/lp36_az1.jpg": "E134",
+  "mapstyle/gv/lp36_az2.jpg": "E135",
+  "mapstyle/gv/lp36_az3.jpg": "E136",
+  "mapstyle/gv/lp36_az4.jpg": "E137",
+  "mapstyle/gv/lp36_az5.jpg": "E138",
+  "mapstyle/gv/lp36_pwg1.jpg": "E139",
+  "mapstyle/gv/lp36_pwg2.jpg": "E140",
+  "mapstyle/gv/lp36_pwg3.jpg": "E141",
+  "mapstyle/gv/lp36_pwg4.jpg": "E142",
+  "mapstyle/gv/lp36_pwg5.jpg": "E143",
+  "mapstyle/gv/lp36_own1.jpg": "E144",
+  "mapstyle/gv/lp36_own2.jpg": "E145",
+  "mapstyle/gv/lp36_own3.jpg": "E146",
+  "mapstyle/gv/lp36_own4.jpg": "E147",
+  "mapstyle/gv/lp36_own5.jpg": "E148"
  }
 }
