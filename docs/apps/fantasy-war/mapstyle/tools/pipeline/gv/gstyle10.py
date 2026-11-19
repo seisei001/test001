@@ -120,6 +120,8 @@ def render(my,out,seed=1,title='三極の大陸',sub='THE THREE CONTINENTS'):
     for y,x in zip(ys,xs):
         r=0.6+0.5*math.log(acc[y,x]/420)
         cv2.circle(rimg,(int(x),int(y)),int(round(min(r,2.2))),1.0,-1)
+    if os.path.exists(FM_WORLD+'rivers.png'):          # 世界データに川が付いていれば、その川を使う(高さから計算し直さない)
+        rimg=(np.array(Image.open(FM_WORLD+'rivers.png').convert('L'),np.float32)/255.0)*land
     rimg=cv2.GaussianBlur(rimg,(0,0),0.7)
     rc=np.array([70,120,150],np.float32)
     img=img*(1-0.85*rimg[...,None])+rc*0.85*rimg[...,None]

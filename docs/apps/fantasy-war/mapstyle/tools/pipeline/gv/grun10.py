@@ -44,6 +44,35 @@ for s,nm,px,py in cand[:9]:
     X,Y=px+ox,py+oy
     if any(abs(X-u)<150 and abs(Y-v)<60 for u,v in used) or nm in done: continue
     used.append((X,Y)); done.add(nm); txt((X,Y),nm,max(22,min(34,int(s**0.5/6))))
+# ---- 世界データの国境と都市(world-extra.json があるときだけ。無い世界は従来どおり)
+import os as _o2, json as _j
+_FW=_o2.environ['FM_WORLD'].rstrip('/')+'/'
+if _o2.path.exists(_FW+'world-extra.json'):
+    _wd=np.array(Image.open(_FW+'world-data.png')); _st=_wd[...,2].astype(np.int32)
+    # 国境: 隣り合う画素で国が違う所(両方とも陸)に、細い赤茶の線
+    bd=np.zeros(_st.shape,bool)
+    bd[:,1:]|=(_st[:,1:]!=_st[:,:-1])&(_st[:,1:]>0)&(_st[:,:-1]>0)
+    bd[1:,:]|=(_st[1:,:]!=_st[:-1,:])&(_st[1:,:]>0)&(_st[:-1,:]>0)
+    bd=ndi.binary_dilation(bd,iterations=2)
+    pat=((np.add.outer(np.arange(bd.shape[0]),np.arange(bd.shape[1]))//8)%3!=0)   # 点線にする
+    bm=ndi.gaussian_filter((bd&pat).astype(np.float32),0.6)
+    arr=np.array(pil).astype(np.float32); reg=arr[oy:oy+bm.shape[0],ox:ox+bm.shape[1]]
+    col=np.array([105,36,30],np.float32); reg[:]=reg*(1-0.95*bm[...,None])+col*0.95*bm[...,None]
+    pil=Image.fromarray(arr.clip(0,255).astype(np.uint8)); d=ImageDraw.Draw(pil)
+    # 都市: 国ごとの首都。名前は音の組み合わせで作る(同じ世界は同じ名前の傾向にそろえる)
+    rn=np.random.RandomState(my*7+1)
+    syl=['アル','ベル','カン','ド','ラ','ミ','ノル','セ','ヴァ','ロ','エル','ト','ガ','シ','マ','フィ','ク','リ','ハイ','ウ']
+    ends=['ス','ン','ア','ト','ド','ル','ム','ル','ナ']
+    _used=set()
+    for c in _j.load(open(_FW+'world-extra.json'))['cities']:
+        X,Y=c['x']+ox,c['y']+oy
+        for _t in range(30):
+            nm=''.join(rn.choice(syl,rn.randint(2,3)))+rn.choice(ends)
+            if nm not in _used: break
+        _used.add(nm)
+        d.ellipse([X-9,Y-9,X+9,Y+9],fill=(236,222,190),outline=(54,36,22),width=2)
+        d.ellipse([X-4,Y-4,X+4,Y+4],fill=(150,50,40))
+        txt((X+14,Y-2),nm,18,anchor='lm')
 # cities: river-adjacent sample points
 ys,xs=np.where((riv>0.5))
 rs=np.random.RandomState(my)

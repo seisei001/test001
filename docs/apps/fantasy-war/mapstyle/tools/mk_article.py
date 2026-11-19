@@ -148,6 +148,15 @@ def make(seed, outdir, land_frac=0.38, npts=16384):
     pal = np.array([[30, 70, 120], [236, 210, 150], [200, 190, 160], [190, 180, 90], [140, 190, 90], [60, 140, 70], [80, 150, 60], [30, 110, 60], [40, 120, 90], [60, 100, 70], [150, 160, 130], [240, 244, 248], [90, 140, 120]], np.uint8)
     img = pal[bi]; sh = np.clip((hr - 20) / 80, 0, 1)[..., None]; img = np.where(land[..., None], (img * (0.7 + 0.5 * sh)).clip(0, 255), pal[0]).astype(np.uint8)
     Image.fromarray(img).save(outdir + '/world-map.jpg', quality=85)
+    # ---- 8. 世界の追加データ: 川(流量の多い所を線で)と都市の位置(絵の処理がこれを使う)
+    import cv2
+    rv = np.zeros((OUT_H, OUT_W), np.uint8); thr = np.quantile(flux[L], 0.94)
+    toxy = lambda i: (int(P[i][0] / AW * OUT_W), int(P[i][1] * OUT_H))
+    for i in np.nonzero(L & (flux > thr) & (rec >= 0) & (h > 0.03) & (h[np.maximum(rec, 0)] > 0.012))[0]:
+        w = 1 + int(round(np.log(flux[i] / thr) * 0.9)); cv2.line(rv, toxy(i), toxy(rec[i]), 255, min(w, 4), cv2.LINE_AA)
+    Image.fromarray(rv).save(outdir + '/rivers.png')
+    cj = [dict(x=toxy(c)[0], y=toxy(c)[1], state=k + 1, flux=float(flux[c])) for k, c in enumerate(cities)]
+    json.dump(dict(cities=cj), open(outdir + '/world-extra.json', 'w'), ensure_ascii=False)
     return dict(seed=seed, gen_sec=round(time.time() - t0, 2), land_pct=round(float(land.mean()) * 100, 1),
                 biomes={int(k): round(float(v), 3) for k, v in zip(*np.unique(bi[land], return_counts=True)) for v in [v / land.sum()]},
                 states=int(len(np.unique(ow)) - 1))
