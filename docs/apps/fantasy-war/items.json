@@ -1817,6 +1817,24 @@
           "u": "mapstyle38.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle39",
+      "t": "ゆるい3Dの強さ調整(全体強く・山弱く)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "全体0.45→0.62、山の強調2倍→約1.55倍。差は小さい。判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle39.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle39",
+          "u": "mapstyle39.html"
+        }
+      ]
     }
   ],
   "past": [

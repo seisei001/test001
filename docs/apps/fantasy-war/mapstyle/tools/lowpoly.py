@@ -34,7 +34,7 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         hn = np.clip((Hg - 20) / (hmax - 20), 0, 1)
         dens = ndi.gaussian_filter((hn > 0.5).astype(np.float32), 22.0)       # 高い所が集まっている度合い
         we = np.clip((dens - 0.12) / 0.25, 0, 1) * np.clip((hn - 0.35) / 0.25, 0, 1)   # 強調: 山が集まる所の高い部分だけ
-        z = zmax * 0.45 * hn ** 1.3 * (1 + 1.0 * we)
+        z = zmax * float(os.environ.get('FM_LP_BASE', '0.45')) * hn ** 1.3 * (1 + float(os.environ.get('FM_LP_EMPH', '1.0')) * we)   # 既定=mapstyle38。mapstyle39は 0.62 / 0.55
         wm = np.maximum(we, np.clip((hn - 0.5) / 0.3, 0, 1)); Hm = Hg
     z = np.where(land, z, 0).astype(np.float32)
     zden = (np.percentile(z[land], 99.5) if gentle else zmax * 1.9)

@@ -24,18 +24,18 @@ img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(
 <li><b>明るい面(左)</b>はクリーム色〜白で灰色のまだら、<b>暗い面(右)</b>は灰褐色で、頂点から<b>扇状の筋</b>が下りる。</li>
 <li>暗い面側の輪郭は濃い茶色の線、明るい面側はごく薄い。</li>
 <li>峰が<b>3〜8個の群れ</b>になり、奥の大きな峰の前に小さな峰が重なる。足もとは茶色いすそで地面になじむ。</li></ul>
-<img src="mapstyle/gv/m24_cmp_gemini.jpg" alt="左=Gemini、中=Azgaar世界、右=PWG世界"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E074</small><p class="sub">左=Gemini / 中=Azgaar世界に載せた私の山 / 右=PWG世界に載せた私の山</p></div>
+<img src="mapstyle/gv/m24_cmp_gemini.jpg" alt="左=Gemini、中=Azgaar世界、右=PWG世界"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E079</small><p class="sub">左=Gemini / 中=Azgaar世界に載せた私の山 / 右=PWG世界に載せた私の山</p></div>
 <h2>3. 作った描き方(コード: mtn15.py)</h2>
 <div class="card"><ul>
 <li><b>置き場所</b>: 高さの高い所がまとまった地域だけに、列を作って峰を並べる。大きさは高さと「群れの濃淡の乱数」で決める。下の地図の絵や細かい高さは使わない。</li>
 <li><b>1つの峰</b>: 輪郭=(外へふくらむ曲線+副峰+ゆらぎ)/面=頂点から扇形に区切り、面ごとに明暗を変えて境目に細い線/暗い面=扇状の筋/輪郭=暗い面側だけ濃く/すそ=下の地面の色へ茶色でなじませ、足もとに薄い影。</li>
 <li>描く順は奥(上)から手前(下)。最後に陸の色の上へ重ねる。ほかの処理(稜線の細線・海・色彩加算)はそのまま。</li></ul></div>
 <h2>4. 結果(3つの世界・手調整なし)</h2>
-<div class="card"><img src="mapstyle/gv/m24_az.jpg" alt="Azgaar"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E075</small><p class="sub">Azgaar世界(山岳地帯が横に長く、山が帯状に並ぶ)</p></div>
-<div class="card"><img src="mapstyle/gv/m24_pwg.jpg" alt="PWG"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E076</small><p class="sub">PWG世界(山は小さな群れが数か所)</p></div>
-<div class="card"><img src="mapstyle/gv/m24_simple.jpg" alt="簡易生成"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E077</small><p class="sub">簡易生成の世界</p></div>
+<div class="card"><img src="mapstyle/gv/m24_az.jpg" alt="Azgaar"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E080</small><p class="sub">Azgaar世界(山岳地帯が横に長く、山が帯状に並ぶ)</p></div>
+<div class="card"><img src="mapstyle/gv/m24_pwg.jpg" alt="PWG"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E081</small><p class="sub">PWG世界(山は小さな群れが数か所)</p></div>
+<div class="card"><img src="mapstyle/gv/m24_simple.jpg" alt="簡易生成"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E082</small><p class="sub">簡易生成の世界</p></div>
 <h2>5. 前の山との比較(左=段階14、右=今回)</h2>
-<div class="card"><img src="mapstyle/gv/m24_ba_simple.jpg" alt="簡易生成の前後"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E078</small><img src="mapstyle/gv/m24_ba_pwg.jpg" alt="PWGの前後" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E079</small><p class="sub">上=簡易生成 / 下=PWG。直線辺の白い塊が、すそのある峰の群れになった。</p></div>
+<div class="card"><img src="mapstyle/gv/m24_ba_simple.jpg" alt="簡易生成の前後"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E083</small><img src="mapstyle/gv/m24_ba_pwg.jpg" alt="PWGの前後" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E084</small><p class="sub">上=簡易生成 / 下=PWG。直線辺の白い塊が、すそのある峰の群れになった。</p></div>
 <h2>時間とメモリ(実測・各1回)</h2>
 <div class="card"><ul>
 <li>山の絵を描く部分は約1秒。山の段階(段階14)を使わないので、処理の合計は<b>約6〜9秒、最大メモリ約600MB</b>(前は約8〜11秒・約770MB)。</li>
