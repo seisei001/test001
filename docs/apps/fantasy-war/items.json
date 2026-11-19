@@ -1727,6 +1727,24 @@
           "u": "mapstyle34.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle35",
+      "t": "ローポリ 3生成器×5世界",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "15世界すべてで一枚の絵にまとまった。山が多い世界は良く、低地中心は単調。次: 低地の描き分け。",
+      "log": [
+        "2026-11-20 mapstyle35.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle35",
+          "u": "mapstyle35.html"
+        }
+      ]
     }
   ],
   "past": [
