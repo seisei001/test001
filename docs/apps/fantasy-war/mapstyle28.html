@@ -1,0 +1,25 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>記事を読んで世界地図を作る</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}img{max-width:100%;border-radius:6px}table{border-collapse:collapse;font-size:.85em}td,th{border:1px solid #b9a98a;padding:4px 8px;vertical-align:top}a{color:#7a4a1a;word-break:break-all}</style></head><body>
+<h1>記事を読んで世界地図を作る(検証 11-19)</h1>
+<p><b>概要</b>: 世界地図・地形の作り方を書いた記事を読み、その考え方を自分のプログラム(mk_article.py)で作り直しました。コードは写さず、考え方だけを参考にしています。作った世界を、今までの絵の処理(山の部品方式)にそのまま通して、地図の絵まで仕上げました。1つの世界の生成は約6秒です。</p>
+<h2>読んだ記事と、そこから取った考え方</h2>
+<table><tr><th>記事</th><th>地図・地形の作り方(やさしく)</th><th>取り入れたか</th></tr>
+<tr><td><a href="https://mewo2.com/notes/terrain">mewo2「Generating fantasy maps」</a></td><td>①点をばらまいて1回だけ整える(約16,000点) ②円すい(島・山)・丘・傾きを足して高さを作る ③「陸の割合」で海面を決める ④水の通り道を調べて窪地を埋め、水の量(流量)を数える ⑤傾き×流量の平方根で地面を削る(強すぎると不自然なので上限をつける) ⑥海岸の細かい島をならす ⑦流量が多い所に都市を置き、都市から移動コスト(上り坂は高い・川や海は高い)で領域を広げて国境にする</td><td>①〜⑦すべて取り入れた(自前コード)</td></tr>
+<tr><td><a href="https://www.redblobgames.com/maps/polygon-map-generation/">Red Blob「polygon map generation」</a></td><td>端は必ず海にする。水(海・湖・川)からの距離で湿度を決め、気温と降水量の組み合わせで植生(生物群系)を決める。多角形の直線は後でノイズで揺らす</td><td>湿度=水域からの距離、植生の表を取り入れた。端を海にする。ノイズの揺らしは未実装</td></tr>
+<tr><td><a href="https://pvigier.github.io/2019/05/12/vagabond-map-generation.html">pvigier「Vagabond」</a></td><td>世界全体を一度に作り、川・都市・道を後から足せる作りにする。気温は北が寒い縦の傾きにノイズでゆがみをつける。降水は穏やかなノイズ。植生は気温と降水の表で決める</td><td>気温・降水・植生の決め方を取り入れた。点は1,024個でなく16,384個</td></tr>
+<tr><td><a href="https://cs418.cs.illinois.edu/website/text/erosion.html">イリノイ大 水力侵食の解説</a></td><td>雨→流れる→土を運ぶ・削る・積もらせる→蒸発、の繰り返し。格子法と粒子法がある</td><td>考え方は参考にしたが、今回の削りはmewo2方式(傾き×流量)。粒子法は未実装</td></tr>
+<tr><td><a href="https://www.redblobgames.com/maps/mapgen4/">Red Blob mapgen4</a></td><td>風・蒸発・降雨のシミュレーションで川と植生を決める。山と木は横から見た絵、川と海岸は上から見た線で描く(斜め投影)。手描きで地形の骨組みを指定できる</td><td>本文に数値はなく未実装。「山は横から見た絵」は、今までの山の部品方式と同じ考え方</td></tr>
+<tr><td><a href="https://dev.to/adilbouchnita/from-azgaars-fantasy-map-generator-to-playable-kingdom-building-a-world-pipeline-in-unity-48j6">Azgaar地図をUnityのゲームにする記事</a></td><td>地図を1回だけ書き出して、都市→領主領、地域→州にし、王国は毎回ランダムに領域を広げて作る。標高画像は侵食で谷や尾根を足す予定</td><td>地図データ+シミュレーション用の元データ、という分け方は今のデータ形式と同じ。王国の毎回生成は未実装</td></tr></table>
+<p>「異世界ファンタジーアプリの世界地図をどう作ったか」を書いた記事は見つかりませんでした。日本のインディーゲーム『ファンタジーマップシミュレーター』の紹介記事は、地図は自動生成か編集とだけ書かれ、作り方の説明がありませんでした。そのため近い内容の海外の開発記事と解説を読みました。</p>
+<h2>作った世界と、絵にした結果</h2>
+<h3>世界のもとの形(色は群系の仮の色)</h3><img src="mapstyle/gv/m28_raw3.jpg"> <img src="mapstyle/gv/m28_raw7.jpg">
+<h3>絵にした結果(山の部品方式まで通した)</h3><img src="mapstyle/gv/m28_art3.jpg"><img src="mapstyle/gv/m28_art7.jpg">
+<h2>時間とメモリ(実測)</h2>
+<table><tr><th>工程</th><th>秒</th></tr><tr><td>世界の生成(mk_article.py)</td><td>約6</td></tr><tr><td>絵の処理(地表+山の部品+仕上げ)</td><td>約7〜9</td></tr></table>
+<p>メモリは絵の処理で最大約600MB。生成側のメモリは未測定。</p>
+<h2>目視の評価</h2>
+<ul><li>良い点: 大陸・半島・湾・湖ができ、海岸線が自然にぎざぎざ。川が山から海へ枝分かれして流れる。気温と降水で、北は針葉樹林・氷、南は草原・砂地と帯ができた。山岳は高い所に集まり、山の部品の絵の選び方も合う。</li>
+<li>悪い点: 大陸が横一列に並びやすい(円すいの位置が乱数のため)。国境はデータにあるが絵にはまだ描いていない。風による雨の偏り(山の陰)がなく、山の向こう側が乾く表現がない。都市の位置は決まるが絵に出していない。</li></ul>
+<h2>限界・未確認</h2>
+<ul><li>世界は2種類(シード3と7)・目視のみ。ほかのシードの当たり外れは未確認。</li><li>記事の考え方だけを参考にし、コードは写していない(mewo2のコードにはMIT系の公開があるが、今回は読んでいない)。</li><li>降水・気温の数値は記事の概念に合わせて私が置いた仮の値。</li><li>国の数は13固定。国境は領域の割り当てまで(絵は未実装)。</li></ul>
+<p>次: 風と山の陰(降雨の偏り)を足す、または国境・都市を絵に出す。<br><a href="mapstyle27.html">前: 部品から山を作る</a></p></body></html>
