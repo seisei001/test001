@@ -1673,6 +1673,24 @@
           "u": "mapstyle31.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle32",
+      "t": "ローポリで地形を描く(第1版)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "左上の光で面ごとに陰を計算するローポリ版。立体感は出たが山が丸い塊で稜線が弱い。次: 稜線から手前へ断面を並べる方式。",
+      "log": [
+        "2026-11-20 mapstyle32.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle32",
+          "u": "mapstyle32.html"
+        }
+      ]
     }
   ],
   "past": [

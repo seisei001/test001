@@ -49,7 +49,7 @@ def main(wdir, outp, title, seed=1):
                 if on[i]: cv2.line(ink_sea, tuple(pts[i].astype(int)), tuple(pts[i + 1].astype(int)), 1.0, 1, cv2.LINE_AA)
     ink_sea = cv2.GaussianBlur(ink_sea, (0, 0), 0.6) * (~land)
     img = img * (1 - 0.55 * ink_sea[..., None]) + np.array([90, 110, 120], np.float32) * 0.55 * ink_sea[..., None]
-    n_sea = parts2.sea(img, land, np.random.RandomState(seed + 11))
+    n_sea = 0 if os.environ.get('FM_LOWPOLY', '0') == '1' else parts2.sea(img, land, np.random.RandomState(seed + 11))
     # --- 海岸のインク線(ゆらぎつき)
     cs, _ = cv2.findContours(land.astype(np.uint8) * 255, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     cl = np.zeros((H0, W0), np.float32)
@@ -63,7 +63,10 @@ def main(wdir, outp, title, seed=1):
     if os.path.exists(wdir + '/rivers.png'):
         rv = (np.array(Image.open(wdir + '/rivers.png').convert('L'), np.float32) / 255) * land; rv = cv2.GaussianBlur(rv, (0, 0), 0.7)
         img = img * (1 - 0.8 * rv[..., None]) + np.array([80, 108, 128], np.float32) * 0.8 * rv[..., None]
-    if os.environ.get('FM_V3', '1') == '1':
+    if os.environ.get('FM_LOWPOLY', '0') == '1':
+        import lowpoly
+        img, nm = lowpoly.paint(img, Hh, land, bio, seed); n_gr = n_tw = 0; n2 = (img, 0)
+    elif os.environ.get('FM_V3', '1') == '1':
         import compose, mtn17
         mitems, region = mtn17.plan(Hh, land, bio, seed)
         avoid = ndi.binary_dilation(region, iterations=8)
