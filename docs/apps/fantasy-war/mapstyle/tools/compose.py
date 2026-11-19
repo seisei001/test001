@@ -33,22 +33,24 @@ def load(pid, light=False):
         if L[:, w:].sum() > L[:, :w].sum() * 1.06: rgb = rgb[:, ::-1].copy(); a = a[:, ::-1].copy()
     _cache[k] = (rgb, a); return _cache[k]
 
+RAW = os.environ.get('FM_RAW', '1') == '1'   # 重ね絵(シャドーボックス)は絵を調整しない: 色味・かすみ・影・足もとのぼかし・反転なし。大きさと前後の順番だけ。
+
 def render(out, items, land, ground_tint=None):
     """items: dict(y,x,pid,w,kind,haze,tint,shadow,foot) を y の小さい(奥)順に貼る。out は直接書き換える。"""
     H, W = land.shape; n = 0
     for it in sorted(items, key=lambda d: d['y']):
         by, bx = int(it['y']), int(it['x'])
         if not (0 <= by < H and 0 <= bx < W) or not land[by, bx]: continue
-        kind = it.get('kind', 'veg'); p = load(it['pid'], light=kind in ('mtn', 'hill'))
+        kind = it.get('kind', 'veg'); p = load(it['pid'], light=(not RAW) and kind in ('mtn', 'hill'))
         if p is None: continue
         rgb, al = p; wd = it['w']; sc = wd / rgb.shape[1]
         if rgb.shape[0] * sc > it.get('hmax', 230): sc = it.get('hmax', 230) / rgb.shape[0]
         nw, nh = max(6, int(rgb.shape[1] * sc)), max(5, int(rgb.shape[0] * sc))
-        r = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_AREA) * np.array(TINT[it.get('tint', 'none')], np.float32)
+        r = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_AREA) * np.array(TINT['none' if RAW else it.get('tint', 'none')], np.float32)
         a = cv2.resize(al, (nw, nh), interpolation=cv2.INTER_AREA)
-        hz = it.get('haze', 0.0)
+        hz = 0.0 if RAW else it.get('haze', 0.0)
         if hz > 0: r = r * (1 - hz) + HAZE * hz                         # 空気遠近: 奥ほど青く薄く
-        ft = it.get('foot', 0.0)
+        ft = 0.0 if RAW else it.get('foot', 0.0)
         if ft > 0:                                                      # 足もとをなじませる
             k = max(3, int(nh * ft)); f = np.ones(nh, np.float32); f[-k:] = np.linspace(1, 0.0, k) ** 1.1; a = a * f[:, None]
         x0, y0 = int(bx - nw / 2), int(by - nh)
@@ -56,7 +58,7 @@ def render(out, items, land, ground_tint=None):
         if ya >= yb or xa >= xb: continue
         sy, sx = ya - y0, xa - x0; ey, ex = sy + yb - ya, sx + xb - xa
         # 影: 手前の物が、奥の物や地面に、右下へ影を落とす
-        sd = it.get('shadow', 0.0)
+        sd = 0.0 if RAW else it.get('shadow', 0.0)
         if sd > 0:
             dx, dy = max(2, int(nw * 0.10)), max(1, int(nh * 0.06)); pad = dx + 8
             sh = np.zeros((nh + pad, nw + pad), np.float32); sh[dy:dy + nh, dx:dx + nw] = a
@@ -68,7 +70,7 @@ def render(out, items, land, ground_tint=None):
                 out[ya2:yb2, xa2:xb2] *= (1 - sd * s2 * lm)[..., None]
         aa = a[sy:ey, sx:ex][..., None]
         rr = r[sy:ey, sx:ex]
-        if ground_tint is not None and kind in ('mtn', 'hill'):         # 下の地面の色味を少しだけ掛ける
+        if (not RAW) and ground_tint is not None and kind in ('mtn', 'hill'):         # 下の地面の色味を少しだけ掛ける
             g = ground_tint[ya:yb, xa:xb]; rr = rr * np.clip(0.82 + 0.18 * g / (g.mean(2, keepdims=True) + 1e-6), 0.88, 1.1)
         out[ya:yb, xa:xb] = out[ya:yb, xa:xb] * (1 - aa) + rr * aa; n += 1
     return n
