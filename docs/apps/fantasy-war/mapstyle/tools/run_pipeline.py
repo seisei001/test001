@@ -14,11 +14,11 @@ def opt(n, d=None):
 num = opt('--num', '99'); iro = opt('--iro'); mtn = opt('--mtn', 'stage14')   # --mtn icons = 山を下データと切り離して描く(段階15)
 wd, out, title, sub = [os.path.abspath(x) if i < 2 else x for i, x in enumerate(a[:4])]
 os.makedirs(out, exist_ok=True)
-env = dict(os.environ, FM_MTN=('icons' if mtn == 'icons' else ''), WROOT=wd, FM_WORLD=wd, FM_OUT=out, BASEJ=out + '/s5a.jpg', PYTHONDONTWRITEBYTECODE='1')
+env = dict(os.environ, FM_MTN=(mtn if mtn in ('icons','parts') else ''), WROOT=wd, FM_WORLD=wd, FM_OUT=out, BASEJ=out + '/s5a.jpg', PYTHONDONTWRITEBYTECODE='1')
 steps = [('1_地表(stage5w)', P + '/scale', ['python3', '-I', 'stage5w.py', out + '/']),
          ('2_山(stage14w)', P + '/mt', ['python3', 'stage14w.py', out + '/']),
          ('3_仕上げ(grun10)', P + '/gv', ['python3', 'grun10.py', num, title, sub])]
-if mtn == 'icons': steps = [steps[0], steps[2]]     # 山の段階(stage14)は使わない
+if mtn in ('icons','parts'): steps = [steps[0], steps[2]]     # 山の段階(stage14)は使わない
 res = []
 for name, cwd, cmd in steps:
     t0 = time.time(); pr = subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
