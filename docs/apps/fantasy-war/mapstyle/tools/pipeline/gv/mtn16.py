@@ -21,6 +21,8 @@ def _load():
     for r in J['parts']:
         if r['cat'] in SKIP or r['id'] in BAD: continue
         fp = os.path.join(_FW, r['img'])
+        fx = os.path.join(_FW, 'mapstyle', 'parts', 'fixed', r['id'] + '.png')
+        if os.environ.get('FM_FIXED', '1') != '0' and os.path.exists(fx): fp = fx
         if not os.path.exists(fp): continue
         im = cv2.imread(fp, cv2.IMREAD_UNCHANGED)
         if im is None or im.shape[2] < 4: continue

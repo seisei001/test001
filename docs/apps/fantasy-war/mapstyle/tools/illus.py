@@ -92,6 +92,8 @@ def scatter(img, land, bio, Hh, rs, seed):
     lib = {}
     for r in J['parts']:
         fp = os.path.join(FW, r['img'])
+        fx = os.path.join(FW, 'mapstyle', 'parts', 'fixed', r['id'] + '.png')
+        if os.environ.get('FM_FIXED', '1') != '0' and os.path.exists(fx): fp = fx
         if not os.path.exists(fp): continue
         if r['id'] in {'h33','m15','d06','d08','d24','d02','n07'}: continue
         lib.setdefault(r['cat'], []).append((r['id'], fp))
