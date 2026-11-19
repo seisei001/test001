@@ -1853,6 +1853,24 @@
           "u": "mapstyle40.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle41",
+      "t": "ポリゴンの面を半分にする(試作)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "面の数を約54%に。ローポリらしさが戻る一方、なめらかさは減る。細かさの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle41.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle41",
+          "u": "mapstyle41.html"
+        }
+      ]
     }
   ],
   "past": [

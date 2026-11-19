@@ -1,0 +1,18 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ポリゴンの面を半分にする試作</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h3{font-size:1em;margin:.8em 0 .2em}img{max-width:100%;border-radius:6px}table{border-collapse:collapse;font-size:.9em}td,th{border:1px solid #b9a77f;padding:3px 7px;text-align:center}</style></head><body>
+<h1>ポリゴンの面を半分にする(試作・11-20)</h1>
+<p><b>概要</b>: mapstyle40の設定(強さ・目の比・山の縁・山の範囲)はそのままに、面の数だけを約半分にしました(面の間隔を1.414倍。面の数は間隔の2乗に反比例するため)。各図は上=mapstyle40、下=今回です。</p>
+<table><tr><th>世界</th><th>mapstyle40の面の数</th><th>今回</th><th>割合</th></tr>
+<tr><td>seed7</td><td>9216</td><td>5020</td><td>54%</td></tr><tr><td>seed5</td><td>9386</td><td>5133</td><td>55%</td></tr><tr><td>seed16</td><td>8857</td><td>4752</td><td>54%</td></tr><tr><td>seed4</td><td>8872</td><td>4770</td><td>54%</td></tr><tr><td>seed1</td><td>8873</td><td>4766</td><td>54%</td></tr></table>
+<p>面の数は、実際に描いた面を数えた値(海の上の面を除く)。ちょうど半分ではなく約54%で、点の配置の乱れや、海岸・山頂に別に置く点の分が減らないため。</p>
+<h3>PWG seed7</h3><img src="mapstyle/gv/lp40_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E169</small><br><img src="mapstyle/gv/lp41_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h3>PWG seed5</h3><img src="mapstyle/gv/lp40_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E170</small><br><img src="mapstyle/gv/lp41_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small>
+<h3>PWG seed16</h3><img src="mapstyle/gv/lp40_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E171</small><br><img src="mapstyle/gv/lp41_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small>
+<h3>PWG seed4</h3><img src="mapstyle/gv/lp40_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E172</small><br><img src="mapstyle/gv/lp41_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small>
+<h3>PWG seed1</h3><img src="mapstyle/gv/lp40_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E173</small><br><img src="mapstyle/gv/lp41_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small>
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>面が大きくなり、ローポリらしい「面で出来た地形」の印象が戻った。mapstyle40のなめらかさは減る。</li>
+<li>山の稜線は、面が粗くなった分ぎざぎざが大きくなり、尖りがはっきりした所と、形が崩れた所が混ざる。</li>
+<li>面の数が半分になったので、描画が軽くなる見込み(処理時間は未測定)。</li></ul>
+<h2>限界・未確認</h2><ul><li>各1枚・目視のみ。iPhoneでの見え方・処理時間は未測定。</li><li>「面を半分」は、面の数を約半分、と解釈した。大きさ(面積)を半分、の意味なら逆になる。</li></ul>
+<p>次: 面の細かさをどちらにするか(mapstyle40の細かさ/今回/その間)を決めていただく。</p></body></html>

@@ -15,6 +15,7 @@ LIGHT = np.array([-0.55, -0.55, 0.63], np.float32); LIGHT /= np.linalg.norm(LIGH
 
 def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=True):
     rs = np.random.RandomState(seed * 5 + 1)
+    spacing = spacing * float(os.environ.get('FM_LP_SPMUL', '1.0'))      # 面の数を変える倍率(面を半分=1.414)
     H0, W0 = Hh.shape; img = img.astype(np.float32).copy()
     # ---- 地形のデフォルメ: 平均でならさず、近くの最大(頂・稜線)を拾い、高い所は尖らせ、低い所は平らにする
     Hl = np.where(land, Hh, 0).astype(np.float32)
