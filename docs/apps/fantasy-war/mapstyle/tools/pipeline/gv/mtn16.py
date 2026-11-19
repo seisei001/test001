@@ -27,7 +27,7 @@ def _load():
         ys, xs = np.nonzero(a > 0.3)
         if len(ys) < 50: continue
         y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-        P.append(dict(id=r['id'], cat=r['cat'], g=np.array(r['group'], np.float32), t=t[y0:y1, x0:x1], a=a[y0:y1, x0:x1]))
+        P.append(dict(id=r['id'], cat=r['cat'], g=np.array(r['group'], np.float32), t=rgb[y0:y1, x0:x1], a=a[y0:y1, x0:x1]))
     return P
 
 def _cos(u, V):
@@ -96,23 +96,18 @@ def paint(img, Hh, land, bio, seed=1, scale=1.0, dens=1.0, hi=60.0, min_region=7
         w /= w.sum(); p = P[top[rs.choice(len(top), p=w)]]
         used[p['id']] = used.get(p['id'], 0) + 1
         t, a = p['t'], p['a']
-        hh, ww = t.shape
+        hh, ww = t.shape[:2]
         sc = wd / ww
         sc = min(sc, 150.0 / hh) if hh > 0 else sc
         nw, nh = max(8, int(ww * sc)), max(6, int(hh * sc))
         if nw < 10 or nh < 6: continue
         ts = cv2.resize(t, (nw, nh), interpolation=cv2.INTER_AREA); as_ = cv2.resize(a, (nw, nh), interpolation=cv2.INTER_AREA)
-        # ---- ③色: 下の地面から岩の色を決め、寒い・高い所は雪色
+        # ---- ③色: 部品の絵(線と色)はそのまま使い、下の地面の色味を弱く掛けるだけにする
         x0, y0 = int(bx - nw / 2), int(by - nh)
         xi, yi = int(min(max(bx, 0), W0 - 1)), int(min(max(by, 0), H0 - 1))
         g = ground[yi, xi]
-        rock = 0.5 * g + 0.5 * np.array([150, 134, 112], np.float32)
-        snowy = float(np.clip(v[2] * 1.1 + max(0, v[0] - 0.75) * 1.2, 0, 1))
-        light = np.clip(rock * 1.28 + 14, 0, 255); dark = rock * 0.34
-        light = light * (1 - snowy) + np.array([246, 242, 232], np.float32) * snowy
-        dark = dark * (1 - 0.5 * snowy) + np.array([92, 92, 104], np.float32) * 0.5 * snowy
-        tt = np.clip((ts - 0.12) / 0.88, 0, 1)[..., None] ** 0.9
-        col = dark[None, None, :] * (1 - tt) + light[None, None, :] * tt
+        tintv = 0.78 + 0.22 * (g / (g.mean() + 1e-6)); tintv = np.clip(tintv, 0.8, 1.12)
+        col = np.clip(ts * tintv[None, None, :], 0, 255)
         # ④足もとのぼかし(地面になじませる)
         fade = np.ones(nh, np.float32); k = max(2, int(nh * 0.14)); fade[-k:] = np.linspace(1, 0.15, k)
         al = (as_ * fade[:, None])[..., None]

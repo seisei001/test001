@@ -47,7 +47,8 @@ for s,nm,px,py in cand[:9]:
 # cities: river-adjacent sample points
 ys,xs=np.where((riv>0.5))
 rs=np.random.RandomState(my)
-for k in rs.choice(len(ys),min(5,len(ys)),replace=False) if len(ys) else []:
+import os as _o
+for k in rs.choice(len(ys),min(5,len(ys)),replace=False) if (len(ys) and _o.environ.get('FM_MTN')!='parts') else []:
     X,Y=xs[k]+ox,ys[k]+oy
     d.rectangle([X-7,Y-7,X+7,Y+4],fill=(70,48,30),outline=(236,222,190)); d.polygon([(X-9,Y-7),(X,Y-17),(X+9,Y-7)],fill=(150,60,44),outline=(236,222,190))
 import os; pil.save(os.environ['FM_OUT'].rstrip('/')+f'/final.jpg',quality=93)
