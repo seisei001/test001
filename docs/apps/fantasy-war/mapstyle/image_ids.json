@@ -1,5 +1,5 @@
 {
- "next": 106,
+ "next": 108,
  "ids": {
   "mapstyle/s0.jpg": "E001",
   "mapstyle/s1.jpg": "E002",
@@ -105,6 +105,8 @@
   "mapstyle/gv/m30_e3.jpg": "E102",
   "mapstyle/gv/m30_e7.jpg": "E103",
   "mapstyle/gv/m31_az.jpg": "E104",
-  "mapstyle/gv/m31_art3.jpg": "E105"
+  "mapstyle/gv/m31_art3.jpg": "E105",
+  "mapstyle/gv/lp32_art3.jpg": "E106",
+  "mapstyle/gv/lp32_art7.jpg": "E107"
  }
 }
