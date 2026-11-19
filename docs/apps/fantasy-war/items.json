@@ -1871,6 +1871,24 @@
           "u": "mapstyle41.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle42",
+      "t": "ポリゴンの面を小さくする(試作)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "面の数を約2倍(17,000面)に。なめらかだがローポリの面の印象は薄れる。細かさの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle42.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle42",
+          "u": "mapstyle42.html"
+        }
+      ]
     }
   ],
   "past": [

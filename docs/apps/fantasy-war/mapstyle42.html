@@ -1,0 +1,18 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ポリゴンの面を小さくする試作</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h3{font-size:1em;margin:.8em 0 .2em}img{max-width:100%;border-radius:6px}table{border-collapse:collapse;font-size:.9em}td,th{border:1px solid #b9a77f;padding:3px 7px;text-align:center}</style></head><body>
+<h1>ポリゴンの面を小さくする(試作・11-20)</h1>
+<p><b>概要</b>: 面を半分にした(mapstyle41)の逆として、面を<b>mapstyle40よりも小さく</b>しました(面の間隔を0.707倍=面の数は約2倍)。ほかの設定はmapstyle40と同じです。各図は上=今回、下=比較にmapstyle40・41の面の数を表にしました。</p>
+<table><tr><th>世界</th><th>mapstyle41(粗い)</th><th>mapstyle40</th><th>今回(細かい)</th></tr>
+<tr><td>seed7</td><td>5,020</td><td>9,216</td><td>17,334</td></tr><tr><td>seed5</td><td>5,133</td><td>9,386</td><td>17,563</td></tr><tr><td>seed16</td><td>4,752</td><td>8,857</td><td>16,735</td></tr><tr><td>seed4</td><td>4,770</td><td>8,872</td><td>16,789</td></tr><tr><td>seed1</td><td>4,766</td><td>8,873</td><td>16,746</td></tr></table>
+<p>描画の時間は、5世界とも約2秒(mapstyle40は約1.2秒)。</p>
+<h3>PWG seed7(上=mapstyle40、下=今回)</h3><img src="mapstyle/gv/lp40_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E169</small><br><img src="mapstyle/gv/lp42_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h3>PWG seed5(上=mapstyle40、下=今回)</h3><img src="mapstyle/gv/lp40_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E170</small><br><img src="mapstyle/gv/lp42_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small>
+<h3>PWG seed16(上=mapstyle40、下=今回)</h3><img src="mapstyle/gv/lp40_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E171</small><br><img src="mapstyle/gv/lp42_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small>
+<h3>PWG seed4(上=mapstyle40、下=今回)</h3><img src="mapstyle/gv/lp40_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E172</small><br><img src="mapstyle/gv/lp42_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small>
+<h3>PWG seed1(上=mapstyle40、下=今回)</h3><img src="mapstyle/gv/lp40_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E173</small><br><img src="mapstyle/gv/lp42_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small>
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>面が細かくなり、地形がなめらかに見える。ローポリの「面」の印象は薄れ、陰影のついた起伏図に近づいた。</li>
+<li>山の稜線は細かくぎざぎざし、尾根の形が分かりやすい。低地の起伏も細かく見える。</li>
+<li>面の数が約2倍になり、描画時間は約1.5倍(約2秒)。iPhoneでの処理は未測定。</li></ul>
+<h2>限界・未確認</h2><ul><li>各1枚・目視のみ。iPhoneでの見え方・処理時間は未測定。</li><li>「さっきよりも面を小さく」は、さっき(mapstyle41)よりも小さく、かつmapstyle40よりも小さく、と解釈した(面の間隔0.707倍)。</li></ul>
+<p>次: 面の細かさを、粗い(41)・中間(40)・細かい(今回)のどれにするか決めていただく。</p></body></html>
