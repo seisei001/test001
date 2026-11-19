@@ -1709,6 +1709,24 @@
           "u": "mapstyle33.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle34",
+      "t": "ローポリ 手持ちの8世界",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "8世界すべてで一枚の絵にまとまった。山が多い世界は良く、少ない世界は単調。次: 低地の描き分け。",
+      "log": [
+        "2026-11-20 mapstyle34.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle34",
+          "u": "mapstyle34.html"
+        }
+      ]
     }
   ],
   "past": [
