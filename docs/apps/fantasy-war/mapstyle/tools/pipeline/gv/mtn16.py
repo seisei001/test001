@@ -36,7 +36,7 @@ def _cos(u, V):
     nu = np.linalg.norm(u) + 1e-6; nv = np.linalg.norm(V, axis=1) + 1e-6
     return (V @ u) / (nu * nv)
 
-def paint(img, Hh, land, bio, seed=1, scale=1.0, dens=0.55, hi=50.0, min_region=500, volc_rate=0.04, plat_rate=0.08):
+def paint(img, Hh, land, bio, seed=1, scale=1.0, dens=0.55, hi=50.0, min_region=500, volc_rate=0.04, plat_rate=0.08, native=False, skip_extra=()):
     rs = np.random.RandomState(seed * 11 + 5)
     P = _load()
     if not P: return img, 0
@@ -121,7 +121,11 @@ def paint(img, Hh, land, bio, seed=1, scale=1.0, dens=0.55, hi=50.0, min_region=
         shade = np.where(tt[..., None] < 0.20, 0.22 + 0.4 * tt[..., None], shade)
         gb = ground[ya:yb, xa:xb]
         col = np.zeros((nh, nw, 3), np.float32)
-        col[sy:ey, sx:ex] = np.clip(gb * shade[sy:ey, sx:ex] * 1.22 + 10, 0, 255)
+        if native:      # 絵そのまま: 部品の線と色を使い、下の水彩の色味を弱く掛けるだけ
+            tn = 0.80 + 0.20 * (gb / (gb.mean(axis=2, keepdims=True) + 1e-6)); tn = np.clip(tn, 0.85, 1.12)
+            col[sy:ey, sx:ex] = np.clip(ts[sy:ey, sx:ex] * tn, 0, 255)
+        else:
+            col[sy:ey, sx:ex] = np.clip(gb * shade[sy:ey, sx:ex] * 1.22 + 10, 0, 255)
         # ④足もとのぼかし(地面になじませる)
         fade = np.ones(nh, np.float32); k = max(3, int(nh * 0.30)); fade[-k:] = np.linspace(1, 0.0, k) ** 1.2
         al = (as_ * fade[:, None])[..., None]
