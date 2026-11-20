@@ -96,6 +96,14 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         nz = nz / (np.abs(nz).max() + 1e-6)
         T = np.clip(T * (1 + 0.30 * nz[..., None]), 0, 255)
         T8 = T.astype(np.uint8)[..., ::-1].copy()
+    dump = os.environ.get('FM_LP_DUMP', '')
+    if dump and uv:
+        # 3D表示用に、面(位置・高さ・面の並び)とテクスチャを書き出す(three.jsの試作が読む)
+        import json
+        fi = np.nonzero(keep)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
+        json.dump({'w': W0, 'h': H0, 'zmax': float(zmax), 'p': [[round(float(P[k, 0]), 1), round(float(P[k, 1]), 1), round(float(Z[k]), 1)] for k in used],
+                   'f': remap[tri[fi]].ravel().tolist()}, open(dump + '.json', 'w'), separators=(',', ':'))
+        cv2.imwrite(dump + '.jpg', T8, [cv2.IMWRITE_JPEG_QUALITY, 82])
     # ---- 奥(地図の上)から手前(下)へ重ねる。高さは画面の上へ
     kv = 0.9
     def proj(Q, zz): return np.stack([Q[:, 0], Q[:, 1] - zz * kv], 1)

@@ -1925,6 +1925,24 @@
           "u": "mapstyle44.html"
         }
       ]
+    },
+    {
+      "id": "c-world3d",
+      "t": "粗いローポリ+UV の3D表示(速度の試作)",
+      "layer": "world",
+      "who": "user",
+      "st": "now",
+      "parent": "d-world",
+      "now": "iPhoneで開いて「速度を測る」を押し、結果(コマ数)を教えてください。面5,020・テクスチャ1枚。",
+      "log": [
+        "2026-11-20 world3d.htmlに公開(three.js)。この環境では実機の速度は測れない。"
+      ],
+      "links": [
+        {
+          "t": "3D表示",
+          "u": "world3d.html"
+        }
+      ]
     }
   ],
   "past": [
