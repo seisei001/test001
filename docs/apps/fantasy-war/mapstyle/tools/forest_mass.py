@@ -61,7 +61,7 @@ def draw_tree(d, shapes, col):
 def _shade(c, k):
     return tuple(int(max(0, min(255, v * k))) for v in c)
 
-def broad3_tile(s, rng, color):
+def broad3_tile(s, rng, color, mode=None):
     """丸い樹冠(丸の集まり)+上に明るい三日月(光)+下に暗い三日月(陰)。sは幅の目安(px)"""
     P = int(s * 0.6); T = int(s) + 2 * P
     m = Image.new('L', (T, T), 0); d = ImageDraw.Draw(m)
@@ -76,7 +76,7 @@ def broad3_tile(s, rng, color):
     hi = ImageChops.subtract(m, ImageChops.offset(m, sh_dx, sh_dy))      # 左上の三日月=明るい
     lo = ImageChops.subtract(m, ImageChops.offset(m, -int(.10 * s), -int(.24 * s)))  # 下の三日月=暗い
     tile = Image.new('RGBA', (T, T), (0, 0, 0, 0))
-    mode = os.environ.get('FM_BROAD_MODE', 'top')
+    mode = mode or os.environ.get('FM_BROAD_MODE', 'top')
     if mode == 'moon':            # 上の三日月だけをばら撒く
         tile.paste(_shade(color, 1.15) + (255,), (0, 0), hi)
         return tile, hi
@@ -111,8 +111,8 @@ def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
             if tries % 6 == 0:
                 c = ((np.array(cov) > 127) & bm).sum() / area
             continue
-        if kind == 'broad3':     # 丸い樹冠+上の明るい三日月+下の暗い三日月。大きさは少しランダム
-            tile, tm = broad3_tile(s, rng, color)
+        if kind.startswith('broad3'):     # 丸い樹冠+上の明るい三日月+下の暗い三日月。大きさは少しランダム
+            tile, tm = broad3_tile(s, rng, color, kind.split('_')[1] if '_' in kind else None)
             pos = (int(x - tile.width / 2), int(y - tile.height / 2))
             layer.alpha_composite(tile, pos) if pos[0] >= 0 and pos[1] >= 0 and pos[0] + tile.width <= W and pos[1] + tile.height <= H else layer.paste(tile, pos, tile)
             cov.paste(255, pos, tm)
@@ -145,6 +145,28 @@ def make(kind, size, seed, tree_px, pal):
     img = Image.alpha_composite(img, l3); stages.append(img.copy())
     return stages, (c2, c3)
 
+def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40)):
+    """ユーザー指示(11-21 07:01): 暗い緑の下地→周りに『上の広葉樹』(丸い樹冠+上の三日月)を適度に→中は『下の三日月』(三日月だけ)を置く"""
+    import cv2
+    rng = np.random.default_rng(seed)
+    bm = blob_mask(size, rng)
+    W = size * SS
+    dist = cv2.distanceTransform((np.array(bm) > 127).astype(np.uint8), cv2.DIST_L2, 5)
+    edge = Image.fromarray(((dist > 0) & (dist <= band_frac * W)).astype(np.uint8) * 255)
+    inner = Image.fromarray((dist > band_frac * W).astype(np.uint8) * 255)
+    img = Image.new('RGBA', (W, W), (0, 0, 0, 0))
+    base = Image.new('RGBA', (W, W), pal['base'] + (255,)); base.putalpha(bm)
+    img = Image.alpha_composite(img, base); stages = [img.copy()]
+    covs = []
+    # 暗い層: 中=三日月、周り=上の広葉樹
+    li, c1 = fill_layer(inner, 'broad3_moon', rng, pal['dark'], cov_in[0], tree_px)
+    le, c2 = fill_layer(edge, 'broad3_top', rng, pal['dark'], cov_edge[0], tree_px)
+    img = Image.alpha_composite(Image.alpha_composite(img, li), le); stages.append(img.copy())
+    li, c3 = fill_layer(inner, 'broad3_moon', rng, pal['light'], cov_in[1], tree_px)
+    le, c4 = fill_layer(edge, 'broad3_top', rng, pal['light'], cov_edge[1], tree_px)
+    img = Image.alpha_composite(Image.alpha_composite(img, li), le); stages.append(img.copy())
+    return stages, (c1, c2, c3, c4)
+
 PAL = {
     'broad3': {'base': (38, 66, 34), 'dark': (58, 94, 44), 'light': (96, 138, 60)},
     'broad': {'base': (38, 66, 34), 'dark': (58, 94, 44), 'light': (96, 138, 60)},
@@ -152,6 +174,20 @@ PAL = {
 }
 
 if __name__ == '__main__':
+    out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    if len(sys.argv) > 3 and sys.argv[3] == 'mix':
+        ground = (214, 198, 150)
+        def flat(im, size):
+            bg = Image.new('RGBA', im.size, ground + (255,))
+            return Image.alpha_composite(bg, im).convert('RGB').resize((size, size), Image.LANCZOS)
+        S = 300
+        st, cv = make_mix(S, seed, (11, 24), PAL['broad3'])
+        print('mix coverage inner dark/light, edge dark/light:', ['%.2f' % c for c in cv])
+        st2, _ = make_mix(100, seed + 1, (4.0, 8.4), PAL['broad3'])
+        sheet = Image.new('RGB', (S * 3 + 20, S + 120), (244, 236, 216))
+        for c, im in enumerate(st): sheet.paste(flat(im, S), (c * (S + 10), 0))
+        sheet.paste(flat(st2[-1], 100), (0, S + 10))
+        sheet.save(out, quality=92); sys.exit()
     out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     ground = (214, 198, 150)
     def flat(im, size):
