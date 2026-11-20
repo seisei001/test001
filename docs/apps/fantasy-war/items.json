@@ -849,6 +849,24 @@
       "st": "now"
     },
     {
+      "id": "c-mapelements",
+      "t": "ファンタジー地図に足す要素の検証と案",
+      "layer": "world",
+      "who": "user",
+      "st": "now",
+      "parent": "d-world",
+      "now": "優先1=川・湖/方位記号・縮尺/海の深さ、2=地名・都市・森、3=国境・道(シミュレーター待ち)、4=飾り。層(レイヤー)で足す案。優先順位の判断待ち。",
+      "log": [
+        "2026-11-20 mapelements.htmlに公開(ハブ調査・Tor・10秒の決まり)。"
+      ],
+      "links": [
+        {
+          "t": "要素の案",
+          "u": "mapelements.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",
