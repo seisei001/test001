@@ -39,6 +39,14 @@ def main(wdir, outp, title, seed=1):
     sea_t = np.array([170, 190, 190], np.float32)
     k = np.clip(dist / 140.0, 0, 1) * 0.35 + 0.35
     img = parch * (1 - k[..., None]) + sea_t * k[..., None] * (0.92 + 0.12 * pn[..., None])
+    if os.environ.get('FM_DEPTH', '0') == '1':
+        # 海の深さの色(ユーザー指示 11-20): データの深さ(海のR値)を使い、浅い=明るい青灰、深い=濃い青。岸から離れるほど深い向きにも寄せる
+        # (データの深さは、世界の外の穴埋め部分との境目が見えてしまうため使わず、岸からの距離で決める)
+        dd = ndi.gaussian_filter(dist.astype(np.float32), 6)
+        dep = np.clip(dd / float(os.environ.get('FM_DEPTH_D', '230')), 0, 1) ** 0.85
+        deep_c = np.array(tuple(float(v) for v in os.environ.get('FM_DEEP', '86,122,150').split(',')), np.float32)
+        dk = (dep * float(os.environ.get('FM_DEPTH_K', '0.8')))[..., None]
+        img = img * (1 - dk) + deep_c * dk * (0.92 + 0.12 * pn[..., None])
     if coast2:
         # 浅瀬: 岸ぞいを明るい青緑にして、沖へ向かって海の色になじませる(明るさ約27%)
         shk = float(os.environ.get('FM_SHALLOW', '0.8')); shd = float(os.environ.get('FM_SHALLOW_D', '30'))

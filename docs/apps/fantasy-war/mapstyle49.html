@@ -1,0 +1,20 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>海の深さの色</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h2{font-size:1.1em;margin-top:1.3em}img{max-width:100%;border-radius:6px}</style></head><body>
+<h1>海の深さの色(試作・11-20)</h1>
+<p><b>概要</b>: 海を、岸の近くは明るい青灰、沖へ行くほど濃い青にしました。岸の浅瀬(明るい青緑)と波線はそのままで、その沖に深い色が広がります。方位記号・縮尺・川も入れた最新の絵です。</p>
+<h2>拡大(左=前、右=海の深さの色あり)</h2><img src="mapstyle/gv/lp49_zoom.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h2>全体(5世界)</h2><img src="mapstyle/gv/lp49_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small><br><img src="mapstyle/gv/lp49_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small><br><img src="mapstyle/gv/lp49_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small><br><img src="mapstyle/gv/lp49_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small><br><img src="mapstyle/gv/lp49_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E006</small>
+<h2>やったこと</h2>
+<ol><li>最初は、世界データの「海の深さ」をそのまま使った。すると、世界の正方形の外側(穴埋め部分)だけ極端に濃くなり、境目が縦の線として見えたので、やめた。</li>
+<li>いまは「岸からの距離」だけで決める。約230ピクセル沖で最も濃く、なめらかにつなぐ。色は深いほど青(RGB 86,122,150)で、濃さ約8割。</li></ol>
+<h2>目で見た評価(世界7と16)</h2>
+<ul><li>岸は明るく、沖は青く、地図らしい「海の奥行き」が出た。</li>
+<li>左右の端の沖は特に濃く、陸の周りは明るい帯になる。</li>
+<li>世界の海底の本当の深さではない(岸からの距離だけ)。深い海溝などは出ない。</li></ul>
+<h2>限界・未確認</h2>
+<ul><li>各世界1枚・目視のみ。iPhoneでの見え方は未測定。3D表示には未反映。</li>
+<li>世界16では、縮尺の棒が陸の右端に接している。位置の調整は未実施。</li>
+<li>内陸の大きな四角い湖は、いまも海と同じ扱いで、海と同じ青になる(未解決)。</li>
+<li>濃さ・色の数字は私が決めた初期値。</li></ul>
+<p><b>次の一手</b>: 海の濃さ(もっと濃く/薄く)を見て判断していただく。</p>
+<p><a href="index.html">ハブにもどる</a></p></body></html>

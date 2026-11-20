@@ -940,6 +940,24 @@
       ]
     },
     {
+      "id": "c-mapstyle49",
+      "t": "海の深さの色",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "岸からの距離で浅い=明るい青灰・沖=濃い青。濃さの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle49.htmlに公開(ユーザー: 進めて)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle49",
+          "u": "mapstyle49.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",
