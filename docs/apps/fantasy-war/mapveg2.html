@@ -23,6 +23,21 @@
 <li>実寸(左下)は、小さい画面ではつぶれて見える可能性があります(iPhoneでの見え方は未測定)。</li>
 <li>混交林、山の斜面、川・海岸との重なり、地形に沿った形は、まだ作っていません。</li>
 </ul>
-<p>道具: <a href="mapstyle/tools/forest_mass.py">mapstyle/tools/forest_mass.py</a></p>
+<p>道具(第1版): <a href="mapstyle/tools/forest_mass.py">mapstyle/tools/forest_mass.py</a></p>
+<h2>5. 第2版(11-21 06:47 ユーザー: 広葉樹のシルエットが下手・針葉樹はまし)</h2>
+<div class="n">広葉樹は、<b>Geminiの木の見本シートから、木1本ずつの影絵を9種</b>切り出して使い、置くときに左右反転・大きさをランダムにしました。針葉樹は、三角の高さ・太さを3通りにしました(形はそのまま)。評価はまだ聞いていません。</div>
+<p>切り出した広葉樹の影絵(9種):</p>
+<p><img src="mapstyle/gv/stamps_broad_preview.png" alt="広葉樹の影絵9種"></p>
+<p>第2版の結果(段階の見方は第2章と同じ):</p>
+<p><img src="mapstyle/gv/forest_mass_test2.png" alt="森の塊の試作 第2版"></p>
+<ul>
+<li>実測(下地に対する被覆率): 広葉樹 71%・41%、針葉樹 70%・40%。</li>
+<li>影絵の元は、Geminiの木の見本シート(角のある多角形の樹冠)なので、<b>丸ではなく角張った形</b>になります。</li>
+<li>「参考絵から輪郭を取る」のうち、参考地図(62枚)からの輪郭は<b>まだ取っていません</b>(元絵が小さく粗いので、1本ずつの輪郭が取りにくい)。Geminiのシートだけを使いました。</li>
+<li>密な塊・紅葉の大きな塊は、1本に分けられず使っていません。灰緑・桜・緑の広葉樹のみ(桜は色を変えて緑で使っています)。</li>
+<li>限界: 目視のみ。9種は少ない(繰り返しが見えるかもしれない)。世界地図には未搭載。</li>
+</ul>
+<p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)</p>
+
 <p><a href="mapveg0.html">R0 調査</a> / <a href="index.html">ハブへ戻る</a></p>
 </body></html>

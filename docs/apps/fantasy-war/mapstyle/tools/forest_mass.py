@@ -9,6 +9,14 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 SS = 3  # 描画は3倍で行い縮小(輪郭をなめらかに)
+import os, glob
+_STAMPS = None
+def stamps():
+    global _STAMPS
+    if _STAMPS is None:
+        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gv', 'stamps')
+        _STAMPS = [Image.open(p).split()[3] for p in sorted(glob.glob(os.path.join(d, 'broad_*.png')))]
+    return _STAMPS
 
 def blob_mask(size, rng, r_frac=0.40, rough=0.30):
     """端が不規則な塊(下地)のマスク"""
@@ -39,8 +47,8 @@ def tree_poly(kind, x, y, s, rng):
                               x + dx + .5 * s * rng.uniform(.7, .9), y + dy + .5 * s * rng.uniform(.7, .9))))
         return out
     # 針葉樹: 2段の三角
-    h = s * 1.5
-    w = s * .62
+    h = s * rng.choice([1.35, 1.5, 1.7])
+    w = s * rng.choice([.55, .62, .72])
     t1 = [(x, y - h / 2), (x - w / 2 * .72, y - h * .02), (x + w / 2 * .72, y - h * .02)]
     t2 = [(x, y - h * .22), (x - w / 2, y + h / 2), (x + w / 2, y + h / 2)]
     return [('p', t1), ('p', t2)]
@@ -64,6 +72,17 @@ def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
         tries += 1
         i = rng.integers(len(xs)); x, y = xs[i], ys[i]
         s = rng.uniform(*size_range) * SS
+        if kind == 'broad':      # 参考絵から取った影絵(複数)を、反転・大きさをランダムにして置く
+            st = stamps()[rng.integers(len(stamps()))]
+            if rng.random() < .5: st = st.transpose(Image.FLIP_LEFT_RIGHT)
+            k = s * 1.15 / max(st.size)
+            st = st.resize((max(2, int(st.width * k)), max(2, int(st.height * k))), Image.LANCZOS)
+            pos = (int(x - st.width / 2), int(y - st.height / 2))
+            layer.paste(Image.new('RGBA', st.size, color + (255,)), pos, st)
+            cov.paste(255, pos, st)
+            if tries % 6 == 0:
+                c = ((np.array(cov) > 127) & bm).sum() / area
+            continue
         sh = tree_poly(kind, x, y, s, rng)
         # 下の木が上に描かれる順序: y が大きい(手前)ほど後に描くため、ここでは単純に追加
         draw_tree(layd, sh, color + (255,))
