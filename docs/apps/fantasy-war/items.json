@@ -1889,6 +1889,24 @@
           "u": "mapstyle42.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle43",
+      "t": "ポリゴンの面を更に小さくする(試作)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "面の数約33,000(mapstyle40の約3.7倍)。面が見えず立体地図に近い。細かさの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle43.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle43",
+          "u": "mapstyle43.html"
+        }
+      ]
     }
   ],
   "past": [
