@@ -161,7 +161,7 @@ def main(wdir, outp, title, seed=1):
         lq = np.log10(Q[ys, xs] / qmin) / max(np.log10(max(Q.max(), qmin * 10) / qmin), 1e-3)
         rvc = np.zeros((H0 * S, W0 * S), np.float32)
         for y, x, t in zip(ys, xs, lq):
-            cv2.circle(rvc, (int(x * S + S // 2), int(y * S + S // 2)), int(round((0.7 + 1.9 * t ** 0.7) * S / 2 + 0.3)), 1.0, -1, cv2.LINE_AA)
+            cv2.circle(rvc, (int(x * S + S // 2), int(y * S + S // 2)), int(round((0.45 + 1.15 * t ** 0.7) * S / 2 + 0.3)), 1.0, -1, cv2.LINE_AA)
         rvc = cv2.GaussianBlur(rvc, (0, 0), 1.6 * S / 3); rvc = np.clip(rvc * 1.6, 0, 1)
         rv = cv2.resize(rvc, (W0, H0), interpolation=cv2.INTER_AREA) * land
         hi = np.clip((Hh - 60) / 25, 0, 1)                       # 高い山の上では薄く
