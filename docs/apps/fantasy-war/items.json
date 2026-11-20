@@ -921,6 +921,24 @@
       ]
     },
     {
+      "id": "c-mapstyle48",
+      "t": "縮尺(スケールバー)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "確定: 地図全体=地球と同じ大きさ。横幅1400px=地球一周で5000kmの棒を右下に。『横幅=一周』の読みの確認待ち。",
+      "log": [
+        "2026-11-20 mapstyle48.htmlに公開。ユーザー確定: 地図全体は地球と同じ大きさ(地球の縮尺をそのまま使う)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle48",
+          "u": "mapstyle48.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",

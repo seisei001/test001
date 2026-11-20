@@ -12,13 +12,13 @@ img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(
 <h1>標高から稜線の細い線を引く試作(プログラム)</h1>
 <div class="card"><b>概要</b>: ユーザーの指摘「積雪の描写がぼやけている。細い稜線を書いていないのは決定的な欠陥」を受け、標高データ(滲んだ地図)から稜線を抜き出し、その線と、斜面に沿った細い線を引く処理を作りました。<b>世界6の雪原には、稜線と枝の尾根の線が出て、Geminiの描き方の性格に近づきました。ただし線の数が少なく、Geminiの密な平行線には届いていません</b>。世界7ではほとんど見えません。</div>
 <h2>Geminiの描き方の確認(世界6の雪原)</h2>
-<div class="card"><img src="mapstyle/gv/snowcmp.jpg" alt="雪原の比較"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E062</small><p class="sub">左=私の前回(ぼかしのみ) / 右=Gemini。Geminiは白い雪面に、稜線とその枝に沿った灰色の細い線を一本ずつ引いている。斜面の向きは線の密さで示している。山の峰の線も、描き方は同じ(私の見立て)。</p></div>
+<div class="card"><img src="mapstyle/gv/snowcmp.jpg" alt="雪原の比較"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E061</small><p class="sub">左=私の前回(ぼかしのみ) / 右=Gemini。Geminiは白い雪面に、稜線とその枝に沿った灰色の細い線を一本ずつ引いている。斜面の向きは線の密さで示している。山の峰の線も、描き方は同じ(私の見立て)。</p></div>
 <h2>今回(左=今回の拡大 / 右=Gemini)</h2>
-<div class="card"><img src="mapstyle/gv/ridge6.jpg" alt="世界6の稜線"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E063</small></div>
+<div class="card"><img src="mapstyle/gv/ridge6.jpg" alt="世界6の稜線"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E062</small></div>
 <h2>全体(左=前回 / 中=今回 / 右=Gemini)</h2>
-<div class="card"><img src="mapstyle/gv/cmp7_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E064</small></div>
-<div class="card"><img src="mapstyle/gv/cmp7_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E065</small></div>
-<div class="card"><img src="mapstyle/gv/cmp7_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E066</small></div>
+<div class="card"><img src="mapstyle/gv/cmp7_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E063</small></div>
+<div class="card"><img src="mapstyle/gv/cmp7_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E064</small></div>
+<div class="card"><img src="mapstyle/gv/cmp7_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E065</small></div>
 <h2>やったこと</h2>
 <div class="card"><ul>
 <li>標高の「尾根らしさ」(凸の曲がり具合)を求め、高い所だけ強い所を細い線に痩せさせて稜線にした。</li>

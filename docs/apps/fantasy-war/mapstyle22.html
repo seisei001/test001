@@ -12,11 +12,11 @@ img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(
 <h1>海の浅瀬を明るくする試作(プログラム)</h1>
 <div class="card"><b>概要</b>: ユーザー指示「今の絵に足す形で浅瀬だけ色を明るくしてみて」を試しました。海の格子の高さの値が高い所を「浅瀬」とみなし、今の海の色(海岸からの距離で決めた濃淡)の上に、明るさを足しました。<b>海岸の周りに明るい帯が出ましたが、データの性質上、右側などに直線の境目が残ります</b>。</div>
 <h2>追加: 前と改善の平均にした版(ユーザー案)</h2>
-<div class="card"><b>左=今まで / 中=平均(浅瀬の足し方を半分に) / 右=浅瀬を全部足した版</b>。直線の境目が目立たなくなり、浅瀬の明るさは残りました。<b>この中の版を、今の標準にします</b>(足し方は約27%)。<img src="mapstyle/gv/cmp10_6.jpg" alt="世界6の平均"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E074</small><img src="mapstyle/gv/cmp10_5.jpg" alt="世界5の平均" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E075</small><img src="mapstyle/gv/cmp10_7.jpg" alt="世界7の平均" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E076</small><p class="sub">境目は完全には消えていない(世界6の右側にうっすら残る)。3枚の目視のみ。コード: <a href="mapstyle/gv/gstyle10_gen.py">gstyle10_gen.py</a></p></div>
+<div class="card"><b>左=今まで / 中=平均(浅瀬の足し方を半分に) / 右=浅瀬を全部足した版</b>。直線の境目が目立たなくなり、浅瀬の明るさは残りました。<b>この中の版を、今の標準にします</b>(足し方は約27%)。<img src="mapstyle/gv/cmp10_6.jpg" alt="世界6の平均"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E073</small><img src="mapstyle/gv/cmp10_5.jpg" alt="世界5の平均" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E074</small><img src="mapstyle/gv/cmp10_7.jpg" alt="世界7の平均" style="margin-top:8px"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E075</small><p class="sub">境目は完全には消えていない(世界6の右側にうっすら残る)。3枚の目視のみ。コード: <a href="mapstyle/gv/gstyle10_gen.py">gstyle10_gen.py</a></p></div>
 <h2>左=今まで / 右=浅瀬を全部足した版</h2>
-<div class="card"><img src="mapstyle/gv/cmp9_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E071</small><p class="sub">世界6(フィヨルド)</p></div>
-<div class="card"><img src="mapstyle/gv/cmp9_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E072</small><p class="sub">世界5(大陸3つ)</p></div>
-<div class="card"><img src="mapstyle/gv/cmp9_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E073</small><p class="sub">世界7(砂漠)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp9_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E070</small><p class="sub">世界6(フィヨルド)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp9_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E071</small><p class="sub">世界5(大陸3つ)</p></div>
+<div class="card"><img src="mapstyle/gv/cmp9_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E072</small><p class="sub">世界7(砂漠)</p></div>
 <h2>分かったこと(データ)</h2>
 <div class="card"><ul>
 <li>海の格子の高さの値は5〜49。大半が最も浅い値で、深い所の細かい起伏はほぼない。</li>
