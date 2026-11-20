@@ -76,9 +76,14 @@ def broad3_tile(s, rng, color):
     hi = ImageChops.subtract(m, ImageChops.offset(m, sh_dx, sh_dy))      # 左上の三日月=明るい
     lo = ImageChops.subtract(m, ImageChops.offset(m, -int(.10 * s), -int(.24 * s)))  # 下の三日月=暗い
     tile = Image.new('RGBA', (T, T), (0, 0, 0, 0))
+    mode = os.environ.get('FM_BROAD_MODE', 'top')
+    if mode == 'moon':            # 上の三日月だけをばら撒く
+        tile.paste(_shade(color, 1.15) + (255,), (0, 0), hi)
+        return tile, hi
     tile.paste(color + (255,), (0, 0), m)
-    tile.paste(_shade(color, 0.78) + (255,), (0, 0), lo)
-    tile.paste(_shade(color, 1.32) + (255,), (0, 0), hi)
+    if mode == 'both':            # 第3版: 下の暗い三日月も付ける
+        tile.paste(_shade(color, 0.78) + (255,), (0, 0), lo)
+    tile.paste(_shade(color, 1.32) + (255,), (0, 0), hi)   # 上の明るい三日月
     return tile, m
 
 def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
@@ -172,3 +177,4 @@ if __name__ == '__main__':
     for i, im in enumerate(real):
         sheet.paste(im, (i * (s2 + 10), 2 * (S + 10)))
     sheet.save(out, quality=92)
+
