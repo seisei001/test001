@@ -86,7 +86,7 @@ def broad3_tile(s, rng, color, mode=None):
     tile.paste(_shade(color, 1.32) + (255,), (0, 0), hi)   # 上の明るい三日月
     return tile, m
 
-def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
+def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None, accept=None):
     """base_mask内に、被覆率が target(0-1)になるまで木を置く。被覆はbase_maskに対する割合"""
     W, H = base_mask.size
     layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
@@ -99,6 +99,8 @@ def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
     while c < target and tries < 60000:
         tries += 1
         i = rng.integers(len(xs)); x, y = xs[i], ys[i]
+        if accept is not None and rng.random() > accept[y, x]:
+            continue
         s = rng.uniform(*size_range) * SS
         if kind == 'broad':      # 参考絵から取った影絵(複数)を、反転・大きさをランダムにして置く
             st = stamps()[rng.integers(len(stamps()))]
@@ -145,7 +147,7 @@ def make(kind, size, seed, tree_px, pal):
     img = Image.alpha_composite(img, l3); stages.append(img.copy())
     return stages, (c2, c3)
 
-def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0):
+def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0, light_gauss=None):
     """ユーザー指示(11-21 07:01): 暗い緑の下地→周りに『上の広葉樹』(丸い樹冠+上の三日月)を適度に→中は『下の三日月』(三日月だけ)を置く"""
     import cv2
     rng = np.random.default_rng(seed)
@@ -179,8 +181,19 @@ def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), co
         reg = (np.arange(W)[:, None] > line[None, :]).astype(np.uint8) * 255
         reg = Image.fromarray(reg)
         zi = ImageChops.multiply(inner, reg); ze = ImageChops.multiply(edge, reg)
-    li, c3 = fill_layer(zi, 'broad3_moon', rng, pal['light'], cov_in[1], tree_px)
-    le, c4 = fill_layer(ze, 'broad3_top', rng, pal['light'], cov_edge[1], tree_px)
+    acc = None; ci, ce = cov_in[1], cov_edge[1]
+    if light_gauss:   # ユーザー指示(11-21 07:52): 明るい部分の形・濃淡は、ガウス揺らぎ(なめらかな乱数の場)に任せる
+        ys_ = np.nonzero(np.array(bm) > 127)[0]; y0_, y1_ = ys_.min(), ys_.max()
+        rg = np.random.default_rng(seed + 1000 + light_gauss.get('seed', 0))
+        nz = rg.standard_normal((W, W)).astype(np.float32)
+        fld = cv2.GaussianBlur(nz, (0, 0), light_gauss.get('sigma', 0.11) * W)
+        fld = (fld - fld.mean()) / fld.std()
+        yy = (np.arange(W)[:, None] - y0_) / (y1_ - y0_) * 2 - 1       # 上=-1 … 下=+1
+        z = light_gauss.get('k', 1.8) * fld + light_gauss.get('bias', 0.5) * yy
+        acc = 1 / (1 + np.exp(-z))
+        ci = ce = light_gauss.get('cov', 0.22)
+    li, c3 = fill_layer(zi, 'broad3_moon', rng, pal['light'], ci, tree_px, accept=acc)
+    le, c4 = fill_layer(ze, 'broad3_top', rng, pal['light'], ce, tree_px, accept=acc)
     img = Image.alpha_composite(Image.alpha_composite(img, li), le); stages.append(img.copy())
     return stages, (c1, c2, c3, c4)
 
@@ -192,6 +205,21 @@ PAL = {
 
 if __name__ == '__main__':
     out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    if len(sys.argv) > 3 and sys.argv[3] == 'gauss':
+        ground = (214, 198, 150)
+        def flat(im, size):
+            bg = Image.new('RGBA', im.size, ground + (255,))
+            return Image.alpha_composite(bg, im).convert('RGB').resize((size, size), Image.LANCZOS)
+        S = 300
+        old, _ = make_mix(S, seed, (11, 24), PAL['broad3'], light_lower=0.45, light_dome=0.16)
+        g1, cv = make_mix(S, seed, (11, 24), PAL['broad3'], light_gauss={'seed': 0})
+        g2, _ = make_mix(S, seed, (11, 24), PAL['broad3'], light_gauss={'seed': 1})
+        print('gauss coverage:', ['%.2f' % c for c in cv])
+        r, _ = make_mix(100, seed + 1, (4.0, 8.4), PAL['broad3'], light_gauss={'seed': 0})
+        sheet = Image.new('RGB', (S * 3 + 20, S + 120), (244, 236, 216))
+        for c, im in enumerate((old[2], g1[2], g2[2])): sheet.paste(flat(im, S), (c * (S + 10), 0))
+        sheet.paste(flat(r[-1], 100), (0, S + 10))
+        sheet.save(out, quality=92); sys.exit()
     if len(sys.argv) > 3 and sys.argv[3] == 'dome':
         ground = (214, 198, 150)
         def flat(im, size):
