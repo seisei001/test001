@@ -47,6 +47,15 @@ def main(wdir, outp, title, seed=1):
         deep_c = np.array(tuple(float(v) for v in os.environ.get('FM_DEEP', '86,122,150').split(',')), np.float32)
         dk = (dep * float(os.environ.get('FM_DEPTH_K', '0.8')))[..., None]
         img = img * (1 - dk) + deep_c * dk * (0.92 + 0.12 * pn[..., None])
+        # もう少し濃いところ(11-20 ユーザー指示): 沖の深い所に、さらに濃い青の「深み」を、ゆらぎのある塊として足す
+        k2 = float(os.environ.get('FM_DEEP2_K', '0.0'))
+        if k2 > 0:
+            far = np.clip((dd - float(os.environ.get('FM_DEEP2_D0', '110'))) / 90.0, 0, 1)
+            nz2 = ndi.gaussian_filter(np.random.RandomState(seed + 41).randn(H0, W0).astype(np.float32), 28); nz2 = nz2 / (nz2.std() + 1e-6)
+            core = np.clip(far * (0.65 + 0.35 * nz2), 0, 1)
+            core = ndi.gaussian_filter(core, 5) * k2
+            d2c = np.array((42, 74, 112), np.float32)
+            img = img * (1 - core[..., None]) + d2c * core[..., None] * (0.94 + 0.1 * pn[..., None])
     if coast2:
         # 浅瀬: 岸ぞいを明るい青緑にして、沖へ向かって海の色になじませる(明るさ約27%)
         shk = float(os.environ.get('FM_SHALLOW', '0.8')); shd = float(os.environ.get('FM_SHALLOW_D', '30'))
