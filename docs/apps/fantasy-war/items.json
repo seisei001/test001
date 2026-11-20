@@ -867,6 +867,24 @@
       ]
     },
     {
+      "id": "c-mapstyle45",
+      "t": "海岸線の作り込み(v2)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "整えた海岸線・面のはみ出し消し・墨線・浜・浅瀬・波線5本。波線・浅瀬は控えめ。強さ・様式の判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle45.htmlに公開(ユーザー指示『海岸線の作り込み』)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle45",
+          "u": "mapstyle45.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",

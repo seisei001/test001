@@ -15,6 +15,17 @@ def main(wdir, outp, title, seed=1):
     rs = np.random.RandomState(seed); wdir = wdir.rstrip('/')
     wd = np.array(Image.open(wdir + '/world-data.png')); H0, W0 = wd.shape[:2]
     R = wd[..., 0].astype(np.float32); bio = wd[..., 1]; land = (bio > 0) & (R >= 20); Hh = R / 2.55
+    coast2 = os.environ.get('FM_COAST', '1') == '2'
+    if coast2:
+        # 海岸線v2(11-20): データの陸の形は保ち、階段状の角をなめらかにし、細かいゆらぎ(手描きの「ぎざぎざ」と「なめらかな浜」)を足す
+        def _nz(s):
+            return ndi.gaussian_filter(rs.randn(H0, W0).astype(np.float32), s)
+        F = ndi.gaussian_filter(land.astype(np.float32), 2.0)
+        F = F + 0.05 * _nz(3.0) / (_nz(3.0).std() + 1e-6) * 1.0 + 0.035 * _nz(1.3) / (_nz(1.3).std() + 1e-6)
+        landc = F > 0.5
+        landc = ndi.binary_opening(landc, iterations=1) | (land & ndi.binary_dilation(landc))   # 細かい点のごみを消す
+        landc = landc & ndi.binary_dilation(land, iterations=3)                                # 元の形から大きくずらさない
+        land_orig = land; land = landc
     # --- 羊皮紙
     def noise(sc):
         g = rs.rand(H0 // sc + 3, W0 // sc + 3).astype(np.float32); return cv2.resize(g, (W0, H0), interpolation=cv2.INTER_CUBIC)
@@ -22,9 +33,16 @@ def main(wdir, outp, title, seed=1):
     parch = np.array([226, 208, 168], np.float32) * (0.90 + 0.18 * pn)[..., None]
     # --- 海: 紙に薄い青灰色を重ね、岸から離れるほど少し濃く。岸に沿った波線を引く
     dist = ndi.distance_transform_edt(~land)
+    if coast2:
+        closed = ndi.binary_closing(land, structure=np.ones((3, 3), bool), iterations=7)   # 狭い入り江はふさいで線を入れない
+        dist_w = ndi.gaussian_filter(ndi.distance_transform_edt(~closed).astype(np.float32), 2.5)
     sea_t = np.array([170, 190, 190], np.float32)
     k = np.clip(dist / 140.0, 0, 1) * 0.35 + 0.35
     img = parch * (1 - k[..., None]) + sea_t * k[..., None] * (0.92 + 0.12 * pn[..., None])
+    if coast2:
+        # 浅瀬: 岸ぞいを明るい青緑にして、沖へ向かって海の色になじませる(明るさ約27%)
+        sh = np.exp(-dist_w / 16.0)[..., None] * 0.27
+        img = img * (1 - sh) + np.array([196, 222, 208], np.float32) * sh
     # --- 陸の水彩(群系ごとの薄い色)
     wash = {1: (232, 205, 140), 2: (214, 202, 170), 3: (206, 198, 126), 4: (176, 204, 126), 5: (150, 186, 108), 6: (150, 192, 112), 7: (120, 172, 108), 8: (132, 176, 124), 9: (128, 160, 122), 10: (190, 200, 184), 11: (240, 244, 248), 12: (150, 186, 160)}
     wl = np.zeros((H0, W0, 3), np.float32); 
@@ -36,7 +54,22 @@ def main(wdir, outp, title, seed=1):
     img = img * (1 - lw[..., None]) + (parch * (1 - a) + wl * a) * lw[..., None]
     # --- 波線(岸に沿った3本)
     ink_sea = np.zeros((H0, W0), np.float32)
-    for d0, w in [(10, 1.3), (24, 1.0), (42, 0.8)]:
+    if coast2:
+        # 岸ぞいの波線: 5本。間は沖ほど広がる。1本目は切れず、沖ほど切れ目が増えて薄くなる
+        for ki, (d0, duty, al) in enumerate([(7, 1.0, 1.0), (15, 0.85, 0.85), (26, 0.7, 0.7), (40, 0.55, 0.55), (58, 0.4, 0.4)]):
+            m = (dist_w < d0).astype(np.uint8) * 255
+            cs, _ = cv2.findContours(m, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+            for c in cs:
+                if len(c) < 80: continue
+                pts = c[:, 0, :].astype(np.float32); n = len(pts)
+                pts[:, 0] += wob(rs, n, 1.4 + ki * 0.4, 25); pts[:, 1] += wob(rs, n, 1.4 + ki * 0.4, 25)
+                per = 40 + ki * 25; ph = rs.rand() * 6.28
+                on = (np.sin(np.arange(n) * 6.28 / per + ph) > (1 - 2 * duty)) if duty < 1 else np.ones(n, bool)
+                lay = np.zeros((H0, W0), np.float32)
+                for i in range(0, n - 1):
+                    if on[i]: cv2.line(lay, tuple(pts[i].astype(int)), tuple(pts[i + 1].astype(int)), 1.0, 1, cv2.LINE_AA)
+                ink_sea = np.maximum(ink_sea, lay * al)
+    for d0, w in ([] if coast2 else [(10, 1.3), (24, 1.0), (42, 0.8)]):
         m = (dist < d0).astype(np.uint8) * 255
         cs, _ = cv2.findContours(m, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         for c in cs:
@@ -53,7 +86,7 @@ def main(wdir, outp, title, seed=1):
     # --- 海岸のインク線(ゆらぎつき)
     cs, _ = cv2.findContours(land.astype(np.uint8) * 255, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     cl = np.zeros((H0, W0), np.float32)
-    for c in cs:
+    for c in ([] if coast2 else cs):
         if len(c) < 30: continue
         pts = c[:, 0, :].astype(np.float32); n = len(pts)
         pts[:, 0] += wob(rs, n, 1.2, 9); pts[:, 1] += wob(rs, n, 1.2, 9)
@@ -65,7 +98,37 @@ def main(wdir, outp, title, seed=1):
         img = img * (1 - 0.8 * rv[..., None]) + np.array([80, 108, 128], np.float32) * 0.8 * rv[..., None]
     if os.environ.get('FM_LOWPOLY', '0') == '1':
         import lowpoly
+        img0 = img.copy()
         img, nm = lowpoly.paint(img, Hh, land, bio, seed); n_gr = n_tw = 0; n2 = (img, 0)
+        if coast2:
+            # 面のぎざぎざの出っぱりを消し、海岸線をデータの形(整えたもの)に合わせる
+            painted = np.abs(img - img0).sum(axis=2) > 6
+            a = cv2.GaussianBlur(land.astype(np.float32), (0, 0), 0.8)[..., None]
+            fill = img0                                   # 面がない陸は、下の水彩の色
+            inside = np.where(painted[..., None], img, fill)
+            img = img0 * (1 - a) + inside * a
+            # 浜: 岸の内側の細い砂色の帯(低い所だけ)
+            din = ndi.distance_transform_edt(land)
+            beach = np.clip(1 - din / 4.5, 0, 1) * land * (Hh < 30) * (0.75 + 0.25 * np.clip(_nz(2.0) / (_nz(2.0).std() + 1e-6), -1, 1))
+            img = img * (1 - 0.55 * beach[..., None]) + np.array([236, 222, 172], np.float32) * 0.55 * beach[..., None]
+            # 海岸のインク線: 切れない太めの線。光が左上なので右下側をやや太くする
+            S = 3; Hs, Ws = H0 * S, W0 * S
+            big = cv2.resize(land.astype(np.uint8) * 255, (Ws, Hs), interpolation=cv2.INTER_LINEAR)
+            big = cv2.GaussianBlur(big, (0, 0), 2.4); big = (big > 127).astype(np.uint8) * 255
+            cs, _ = cv2.findContours(big, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+            cl2 = np.zeros((Hs, Ws), np.float32)
+            for c in cs:
+                if len(c) < 60: continue
+                pts = c[:, 0, :].astype(np.float32); n = len(pts)
+                pts[:, 0] += wob(rs, n, 1.8, 25); pts[:, 1] += wob(rs, n, 1.8, 25)
+                tg = np.gradient(pts, axis=0); nrm = np.stack([tg[:, 1], -tg[:, 0]], 1); nrm /= (np.linalg.norm(nrm, axis=1, keepdims=True) + 1e-6)
+                # 輪郭の向き(外向き)に合わせ、右下向きの法線のとき太く
+                out = np.sign(np.sum(nrm * (pts - pts.mean(0)), axis=1).mean()) or 1.0
+                w = 2.6 + 2.2 * np.clip((nrm * out) @ np.array([0.7, 0.7]), 0, 1)
+                for i in range(0, n - 1):
+                    cv2.line(cl2, tuple(np.round(pts[i]).astype(int)), tuple(np.round(pts[i + 1]).astype(int)), 1.0, int(round(w[i])), cv2.LINE_AA)
+            cl2 = cv2.resize(cl2, (W0, H0), interpolation=cv2.INTER_AREA)
+            img = img * (1 - 0.92 * cl2[..., None]) + np.array([58, 40, 28], np.float32) * 0.92 * cl2[..., None]
     elif os.environ.get('FM_V3', '1') == '1':
         import compose, mtn17
         mitems, region = mtn17.plan(Hh, land, bio, seed)
