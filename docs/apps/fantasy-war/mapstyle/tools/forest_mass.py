@@ -86,6 +86,28 @@ def broad3_tile(s, rng, color, mode=None):
     tile.paste(_shade(color, 1.32) + (255,), (0, 0), hi)   # 上の明るい三日月
     return tile, m
 
+def conif3_tile(s, rng, color, mode='top'):
+    """針葉樹: 2段の三角の樹冠+左側(光の当たる側)の尖った三角。mode='moon'は尖った三角だけ"""
+    h = s * rng.choice([1.35, 1.5, 1.7]); w = s * rng.choice([.55, .62, .72])
+    P = int(s * .3); TW = int(w) + 2 * P + 2; TH = int(h) + 2 * P + 2
+    cx = TW / 2; top = P
+    t1 = [(cx, top), (cx - w / 2 * .72, top + h * .50), (cx + w / 2 * .72, top + h * .50)]
+    t2 = [(cx, top + h * .28), (cx - w / 2, top + h), (cx + w / 2, top + h)]
+    l1 = [(cx, top), (cx - w / 2 * .72, top + h * .50), (cx, top + h * .50)]      # 尖った三角(左半分)
+    l2 = [(cx, top + h * .28), (cx - w / 2, top + h), (cx, top + h)]
+    def poly(polys):
+        m = Image.new('L', (TW, TH), 0); d = ImageDraw.Draw(m)
+        for p in polys: d.polygon(p, fill=255)
+        return m
+    body, lit = poly([t1, t2]), poly([l1, l2])
+    tile = Image.new('RGBA', (TW, TH), (0, 0, 0, 0))
+    if mode == 'moon':
+        tile.paste(_shade(color, 1.15) + (255,), (0, 0), lit)
+        return tile, lit
+    tile.paste(color + (255,), (0, 0), body)
+    tile.paste(_shade(color, 1.32) + (255,), (0, 0), lit)
+    return tile, body
+
 def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None, accept=None):
     """base_mask内に、被覆率が target(0-1)になるまで木を置く。被覆はbase_maskに対する割合"""
     W, H = base_mask.size
@@ -110,6 +132,13 @@ def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None, a
             pos = (int(x - st.width / 2), int(y - st.height / 2))
             layer.paste(Image.new('RGBA', st.size, color + (255,)), pos, st)
             cov.paste(255, pos, st)
+            if tries % 6 == 0:
+                c = ((np.array(cov) > 127) & bm).sum() / area
+            continue
+        if kind.startswith('conif3'):
+            tile, tm = conif3_tile(s, rng, color, kind.split('_')[1])
+            pos = (int(x - tile.width / 2), int(y - tile.height * .62))
+            layer.paste(tile, pos, tile); cov.paste(255, pos, tm)
             if tries % 6 == 0:
                 c = ((np.array(cov) > 127) & bm).sum() / area
             continue
@@ -147,7 +176,7 @@ def make(kind, size, seed, tree_px, pal):
     img = Image.alpha_composite(img, l3); stages.append(img.copy())
     return stages, (c2, c3)
 
-def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0, light_gauss=None):
+def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0, light_gauss=None, kind_in='broad3_moon', kind_edge='broad3_top'):
     """ユーザー指示(11-21 07:01): 暗い緑の下地→周りに『上の広葉樹』(丸い樹冠+上の三日月)を適度に→中は『下の三日月』(三日月だけ)を置く"""
     import cv2
     rng = np.random.default_rng(seed)
@@ -161,8 +190,8 @@ def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), co
     img = Image.alpha_composite(img, base); stages = [img.copy()]
     covs = []
     # 暗い層: 中=三日月、周り=上の広葉樹
-    li, c1 = fill_layer(inner, 'broad3_moon', rng, pal['dark'], cov_in[0], tree_px)
-    le, c2 = fill_layer(edge, 'broad3_top', rng, pal['dark'], cov_edge[0], tree_px)
+    li, c1 = fill_layer(inner, kind_in, rng, pal['dark'], cov_in[0], tree_px)
+    le, c2 = fill_layer(edge, kind_edge, rng, pal['dark'], cov_edge[0], tree_px)
     img = Image.alpha_composite(Image.alpha_composite(img, li), le); stages.append(img.copy())
     zi, ze = inner, edge
     if light_lower:   # ユーザー指示(11-21 07:42): 中の暗い層を下地にして、明るい層は小さな範囲(手前=下側)だけ上書きする
@@ -192,8 +221,8 @@ def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), co
         z = light_gauss.get('k', 1.8) * fld + light_gauss.get('bias', 0.5) * yy
         acc = 1 / (1 + np.exp(-z))
         ci = ce = light_gauss.get('cov', 0.22)
-    li, c3 = fill_layer(zi, 'broad3_moon', rng, pal['light'], ci, tree_px, accept=acc)
-    le, c4 = fill_layer(ze, 'broad3_top', rng, pal['light'], ce, tree_px, accept=acc)
+    li, c3 = fill_layer(zi, kind_in, rng, pal['light'], ci, tree_px, accept=acc)
+    le, c4 = fill_layer(ze, kind_edge, rng, pal['light'], ce, tree_px, accept=acc)
     img = Image.alpha_composite(Image.alpha_composite(img, li), le); stages.append(img.copy())
     return stages, (c1, c2, c3, c4)
 
@@ -205,6 +234,31 @@ PAL = {
 
 if __name__ == '__main__':
     out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    if len(sys.argv) > 3 and sys.argv[3] == 'conif':
+        ground = (214, 198, 150)
+        def flat(im, size):
+            bg = Image.new('RGBA', im.size, ground + (255,))
+            return Image.alpha_composite(bg, im).convert('RGB').resize((size, size), Image.LANCZOS)
+        S = 300
+        kw = dict(kind_in='conif3_moon', kind_edge='conif3_top')
+        b8, _ = make_mix(S, seed, (11, 24), PAL['broad3'], light_gauss={'seed': 0})
+        c1, cv = make_mix(S, seed, (11, 22), PAL['conif'], light_gauss={'seed': 0}, **kw)
+        c2, _ = make_mix(S, seed, (11, 22), PAL['conif'], light_gauss={'seed': 1}, **kw)
+        print('conif coverage:', ['%.2f' % c for c in cv])
+        r1, _ = make_mix(100, seed + 1, (4.0, 8.0), PAL['broad3'], light_gauss={'seed': 0})
+        r2, _ = make_mix(100, seed + 1, (4.0, 8.0), PAL['conif'], light_gauss={'seed': 0}, **kw)
+        # 部品の拡大見本(上=全体の三角、下=尖った三角だけ)
+        rng = np.random.default_rng(5)
+        strip = Image.new('RGB', (S * 3 + 20, 130), (214, 198, 150))
+        for k in range(5):
+            for row, mode in enumerate(('top', 'moon')):
+                tl, _m = conif3_tile(40, rng, PAL['conif']['dark'], mode)
+                strip.paste(tl, (10 + k * 70 + (70 - tl.width) // 2, 5 + row * 62), tl)
+        sheet = Image.new('RGB', (S * 3 + 20, S + 120 + 140), (244, 236, 216))
+        for c, im in enumerate((b8[2], c1[2], c2[2])): sheet.paste(flat(im, S), (c * (S + 10), 0))
+        sheet.paste(flat(r1[-1], 100), (0, S + 10)); sheet.paste(flat(r2[-1], 100), (110, S + 10))
+        sheet.paste(strip, (0, S + 120))
+        sheet.save(out, quality=92); sys.exit()
     if len(sys.argv) > 3 and sys.argv[3] == 'gauss':
         ground = (214, 198, 150)
         def flat(im, size):
