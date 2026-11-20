@@ -164,8 +164,8 @@ def main(wdir, outp, title, seed=1):
             cv2.circle(rvc, (int(x * S + S // 2), int(y * S + S // 2)), int(round((0.45 + 1.15 * t ** 0.7) * S / 2 + 0.3)), 1.0, -1, cv2.LINE_AA)
         rvc = cv2.GaussianBlur(rvc, (0, 0), 1.6 * S / 3); rvc = np.clip(rvc * 1.6, 0, 1)
         rv = cv2.resize(rvc, (W0, H0), interpolation=cv2.INTER_AREA) * land
-        hi = np.clip((Hh - 60) / 25, 0, 1)                       # 高い山の上では薄く
-        rv = rv * (1 - 0.6 * hi)
+        hi = np.clip((Hh - float(os.environ.get('FM_RIVER_H', '48'))) / 12, 0, 1)   # 山の上の方には描かない(高さ48で薄れ始め、60で消える)
+        rv = rv * (1 - hi)
         img = img * (1 - 0.85 * rv[..., None]) + np.array([60, 104, 140], np.float32) * 0.85 * rv[..., None]
     # --- 枠と題
     OW, OH = 1500, 1000; ox, oy = (OW - W0) // 2, (OH - H0) // 2
