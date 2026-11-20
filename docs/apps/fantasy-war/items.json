@@ -885,6 +885,24 @@
       ]
     },
     {
+      "id": "c-mapstyle46",
+      "t": "川と湖(試作)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "PWGの流量・湖から川と湖を重ねた。支流の量・濃さの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle46.htmlに公開(ユーザー指示『次は川』)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle46",
+          "u": "mapstyle46.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",

@@ -12,7 +12,7 @@ img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(
 <h1>稜線を山の描き方にする+「色彩加算」(プログラム)</h1>
 <div class="card"><b>概要</b>: ユーザー指示の2つを試しました。(1)稜線の線を山の描き方に変える(稜線を引き、決まった陰の線を片側に付け、稜線の端は消す)。(2)最後に色の配分を整える独立処理「色彩加算」を作る。<b>(1)は世界6の雪原で、Geminiの「稜線に沿った短い平行線」に近い見た目になりました。(2)は独立の部品として動きますが、最初の版は派手な斑点になって失敗し、弱めた版では効果が海にしか見えません</b>。</div>
 <h2>1. 稜線の描き方(左=今回 / 右=Gemini)</h2>
-<div class="card"><img src="mapstyle/gv/ridge8.jpg" alt="稜線"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E065</small></div>
+<div class="card"><img src="mapstyle/gv/ridge8.jpg" alt="稜線"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E066</small></div>
 <div class="card"><ul>
 <li>標高から稜線を抜き出し、<b>端を4画素ぶん削って消した</b>(線の連なりが稲妻のように見える)。</li>
 <li>陰の線は、光の当たらない側(右下向き)の斜面にだけ、長さ一定(9画素)で引いた。</li>
@@ -25,9 +25,9 @@ img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(
 <li><b>配分表</b>: 今回は世界5・6・7それぞれのGeminiの絵から、地図の中身の色の割合を測って表にした(「何色に寄った地図か」の見本)。</li>
 <li><b>足し方</b>: 表より足りない色について、余っている色の所を、ゆるやかな斑(地形と無関係)で、色相を少しだけ近づける。暗くならないよう、明るさは表の値まで持ち上げる(最大1.12倍)。</li></ul></div>
 <h2>全体(左=色彩加算なし / 中=あり / 右=Gemini)</h2>
-<div class="card"><img src="mapstyle/gv/cmp8_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E066</small></div>
-<div class="card"><img src="mapstyle/gv/cmp8_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E067</small></div>
-<div class="card"><img src="mapstyle/gv/cmp8_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E068</small></div>
+<div class="card"><img src="mapstyle/gv/cmp8_5.jpg" alt="世界5"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E067</small></div>
+<div class="card"><img src="mapstyle/gv/cmp8_6.jpg" alt="世界6"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E068</small></div>
+<div class="card"><img src="mapstyle/gv/cmp8_7.jpg" alt="世界7"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E069</small></div>
 <h2>目で見た評価(私の印象。判断はユーザーに)</h2>
 <div class="card"><ul>
 <li><b>稜線</b>: 前回の「枝分かれの木」より、短い線が稜線に並ぶ見た目になり、Geminiに近づいた。世界5・7の山の線は、まだ小さい。</li>

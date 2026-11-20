@@ -9,6 +9,6 @@ await p.run(resolved, 'build', 1, (m: any) => { if (m.type === 'error') err = m.
 if (err) throw new Error(err);
 const hy: any = p.output('hydro')!.extra, bi: any = p.output('biome')!.extra, n = hy.n;
 const w = (name: string, a: ArrayBufferView) => writeFileSync(`${out}_${name}.bin`, Buffer.from(a.buffer, a.byteOffset, a.byteLength));
-w('elev', Float32Array.from(hy.elevation)); w('water', Uint8Array.from(hy.waterClass)); w('biome', Uint8Array.from(bi.biome));
+w('elev', Float32Array.from(hy.elevation)); w('disch', Float32Array.from(hy.discharge)); w('lake', Int32Array.from(hy.lakeId)); w('water', Uint8Array.from(hy.waterClass)); w('biome', Uint8Array.from(bi.biome));
 writeFileSync(`${out}.json`, JSON.stringify({ n, seed, pins }));
 console.log('ok', seed);

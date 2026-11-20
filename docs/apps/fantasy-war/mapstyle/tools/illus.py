@@ -143,6 +143,30 @@ def main(wdir, outp, title, seed=1):
         img, nm = mtn16.paint(img.astype(np.float32), Hh, land, bio, seed=seed, native=True, hi=52.0, dens=0.6)
         n2 = scatter(img, land, bio, Hh, rs, seed); img = n2[0]
         n_tw = parts2.town(img, land, bio, Hh, np.random.RandomState(seed + 13), wdir)
+    # --- 川と湖(FM_RIVER=1。pwg_rivers.pyが作る river_q.npy・lake.png があるとき)。山のあとに重ねる
+    if os.environ.get('FM_RIVER', '0') == '1' and os.path.exists(wdir + '/river_q.npy'):
+        Q = np.load(wdir + '/river_q.npy'); lk = cv2.imread(wdir + '/lake.png', 0) > 0
+        qmin = float(os.environ.get('FM_RIVER_Q', '12')); S = 3
+        lk = lk & land
+        # 湖: 明るい青灰の面+細い墨の輪郭
+        lkz = cv2.GaussianBlur(lk.astype(np.float32), (0, 0), 3.5) + 0.16 * ndi.gaussian_filter(np.random.RandomState(seed + 31).randn(H0, W0).astype(np.float32), 3.0) / 0.2
+        lkm = (lkz > 0.5) & land                                  # 四角い湖をなめらかにし、ゆらぎのある岸にする
+        lkf = cv2.GaussianBlur(lkm.astype(np.float32), (0, 0), 1.0)
+        lki = np.clip(lkf * 1.4 - 0.2, 0, 1)
+        img = img * (1 - 0.9 * lki[..., None]) + np.array([120, 176, 196], np.float32) * 0.9 * lki[..., None]
+        ring = np.clip(1 - np.abs(lkf - 0.5) * 5, 0, 1)
+        img = img * (1 - 0.6 * ring[..., None]) + np.array([70, 90, 100], np.float32) * 0.6 * ring[..., None]
+        # 川: 流量の対数で太さを決め、3倍の大きさに丸を並べてなめらかにする
+        ys, xs = np.nonzero((Q >= qmin) & land & ~ndi.binary_dilation(lk, iterations=1))
+        lq = np.log10(Q[ys, xs] / qmin) / max(np.log10(max(Q.max(), qmin * 10) / qmin), 1e-3)
+        rvc = np.zeros((H0 * S, W0 * S), np.float32)
+        for y, x, t in zip(ys, xs, lq):
+            cv2.circle(rvc, (int(x * S + S // 2), int(y * S + S // 2)), int(round((0.7 + 1.9 * t ** 0.7) * S / 2 + 0.3)), 1.0, -1, cv2.LINE_AA)
+        rvc = cv2.GaussianBlur(rvc, (0, 0), 1.6 * S / 3); rvc = np.clip(rvc * 1.6, 0, 1)
+        rv = cv2.resize(rvc, (W0, H0), interpolation=cv2.INTER_AREA) * land
+        hi = np.clip((Hh - 60) / 25, 0, 1)                       # 高い山の上では薄く
+        rv = rv * (1 - 0.6 * hi)
+        img = img * (1 - 0.85 * rv[..., None]) + np.array([60, 104, 140], np.float32) * 0.85 * rv[..., None]
     # --- 枠と題
     OW, OH = 1500, 1000; ox, oy = (OW - W0) // 2, (OH - H0) // 2
     canvas = np.zeros((OH, OW, 3), np.float32) + np.array([222, 198, 152], np.float32)

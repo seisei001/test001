@@ -1,0 +1,21 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>川と湖(試作)</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h2{font-size:1.1em;margin-top:1.3em}img{max-width:100%;border-radius:6px}</style></head><body>
+<h1>川と湖(試作・11-20)</h1>
+<p><b>概要</b>: PWG(世界生成器)が持つ「川の流量」と「湖」のデータを取り出し、絵の上に描きました。川は流量が多いほど太く、山の高い所では薄く、湖は青い面+細い輪郭です。海岸v2(mapstyle45)・浅瀬強めと同じ設定の上に重ねています。</p>
+<h2>拡大(左=川なし、右=川と湖あり)</h2><img src="mapstyle/gv/lp46_cmp.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h2>全体</h2><img src="mapstyle/gv/lp46_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small><br><img src="mapstyle/gv/lp46_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small><br><img src="mapstyle/gv/lp46_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small><br><img src="mapstyle/gv/lp46_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small><br><img src="mapstyle/gv/lp46_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E006</small>
+<h2>やったこと</h2>
+<ol><li>PWGの出力から、川の流量と湖の位置を取り出す道具(pwg_dump_world.ts)を直した。</li>
+<li>世界データと同じ位置・向きにそろえる道具(pwg_rivers.py)を作った。世界7・5・16・4は回転なし、世界1は回転あり。</li>
+<li>絵に重ねる処理(illus.py の FM_RIVER=1)を足した。川は「流量が毎秒12トン以上」の流れだけ描く(3トンにすると支流だらけで線の網になった)。</li></ol>
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>川が山から海へ流れる向きに見え、山脈のふもとから集まる形は自然。</li>
+<li>小さな青い湖が点々と入り、地図らしさが増した。</li>
+<li>川の線が少し均一で、手描きの細い・太いの強弱は弱い。</li></ul>
+<h2>限界・未確認</h2>
+<ul><li>各世界1枚・目視のみ。iPhoneでの見え方は未測定。</li>
+<li>大きな「四角い湖」は、データ側で海と同じ扱いになり、波線のある淡い四角として残っている(未解決)。</li>
+<li>川の太さ・湖のゆらぎの数字は私が決めた初期値。</li>
+<li>3D表示には未反映。川は山の絵に隠れる所がある。</li></ul>
+<p><b>次の一手</b>: 川の濃さ・太さ・どこまで描くか(支流を増やすか)を見て判断していただく。</p>
+<p><a href="index.html">ハブにもどる</a></p></body></html>
