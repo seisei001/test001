@@ -41,8 +41,9 @@ def main(wdir, outp, title, seed=1):
     img = parch * (1 - k[..., None]) + sea_t * k[..., None] * (0.92 + 0.12 * pn[..., None])
     if coast2:
         # 浅瀬: 岸ぞいを明るい青緑にして、沖へ向かって海の色になじませる(明るさ約27%)
-        sh = np.exp(-dist_w / 16.0)[..., None] * 0.27
-        img = img * (1 - sh) + np.array([196, 222, 208], np.float32) * sh
+        shk = float(os.environ.get('FM_SHALLOW', '0.8')); shd = float(os.environ.get('FM_SHALLOW_D', '30'))
+        sh = np.exp(-dist_w / shd)[..., None] * shk
+        img = img * (1 - sh) + np.array([206, 232, 222], np.float32) * sh
     # --- 陸の水彩(群系ごとの薄い色)
     wash = {1: (232, 205, 140), 2: (214, 202, 170), 3: (206, 198, 126), 4: (176, 204, 126), 5: (150, 186, 108), 6: (150, 192, 112), 7: (120, 172, 108), 8: (132, 176, 124), 9: (128, 160, 122), 10: (190, 200, 184), 11: (240, 244, 248), 12: (150, 186, 160)}
     wl = np.zeros((H0, W0, 3), np.float32); 
