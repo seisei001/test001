@@ -6,7 +6,7 @@
 # 使い方: python3 forest_mass.py out.png [seed]
 import sys, math
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
 SS = 3  # 描画は3倍で行い縮小(輪郭をなめらかに)
 import os, glob
@@ -58,6 +58,29 @@ def draw_tree(d, shapes, col):
         if k == 'e': d.ellipse(g, fill=col)
         else: d.polygon(g, fill=col)
 
+def _shade(c, k):
+    return tuple(int(max(0, min(255, v * k))) for v in c)
+
+def broad3_tile(s, rng, color):
+    """丸い樹冠(丸の集まり)+上に明るい三日月(光)+下に暗い三日月(陰)。sは幅の目安(px)"""
+    P = int(s * 0.6); T = int(s) + 2 * P
+    m = Image.new('L', (T, T), 0); d = ImageDraw.Draw(m)
+    cx = cy = T / 2
+    lobes = [(0, 0, .50)]
+    for _ in range(rng.integers(2, 4)):
+        a = rng.uniform(0, 6.28); lobes.append((.30 * math.cos(a), .24 * math.sin(a) + .06, rng.uniform(.30, .40)))
+    for dx, dy, r in lobes:
+        d.ellipse((cx + (dx - r) * s, cy + (dy - r) * s, cx + (dx + r) * s, cy + (dy + r) * s), fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(.6 * SS / 3)).point(lambda v: 255 if v > 127 else 0)
+    sh_dx, sh_dy = int(.14 * s), int(.20 * s)
+    hi = ImageChops.subtract(m, ImageChops.offset(m, sh_dx, sh_dy))      # 左上の三日月=明るい
+    lo = ImageChops.subtract(m, ImageChops.offset(m, -int(.10 * s), -int(.24 * s)))  # 下の三日月=暗い
+    tile = Image.new('RGBA', (T, T), (0, 0, 0, 0))
+    tile.paste(color + (255,), (0, 0), m)
+    tile.paste(_shade(color, 0.78) + (255,), (0, 0), lo)
+    tile.paste(_shade(color, 1.32) + (255,), (0, 0), hi)
+    return tile, m
+
 def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
     """base_mask内に、被覆率が target(0-1)になるまで木を置く。被覆はbase_maskに対する割合"""
     W, H = base_mask.size
@@ -80,6 +103,14 @@ def fill_layer(base_mask, kind, rng, color, target, size_range, existing=None):
             pos = (int(x - st.width / 2), int(y - st.height / 2))
             layer.paste(Image.new('RGBA', st.size, color + (255,)), pos, st)
             cov.paste(255, pos, st)
+            if tries % 6 == 0:
+                c = ((np.array(cov) > 127) & bm).sum() / area
+            continue
+        if kind == 'broad3':     # 丸い樹冠+上の明るい三日月+下の暗い三日月。大きさは少しランダム
+            tile, tm = broad3_tile(s, rng, color)
+            pos = (int(x - tile.width / 2), int(y - tile.height / 2))
+            layer.alpha_composite(tile, pos) if pos[0] >= 0 and pos[1] >= 0 and pos[0] + tile.width <= W and pos[1] + tile.height <= H else layer.paste(tile, pos, tile)
+            cov.paste(255, pos, tm)
             if tries % 6 == 0:
                 c = ((np.array(cov) > 127) & bm).sum() / area
             continue
@@ -110,6 +141,7 @@ def make(kind, size, seed, tree_px, pal):
     return stages, (c2, c3)
 
 PAL = {
+    'broad3': {'base': (38, 66, 34), 'dark': (58, 94, 44), 'light': (96, 138, 60)},
     'broad': {'base': (38, 66, 34), 'dark': (58, 94, 44), 'light': (96, 138, 60)},
     'conif': {'base': (24, 52, 46), 'dark': (36, 78, 62), 'light': (62, 112, 82)},
 }
@@ -123,14 +155,14 @@ if __name__ == '__main__':
         return im.resize((size, size), Image.LANCZOS)
     S = 300
     rows = []
-    for kind, tp in (('broad', (13, 20)), ('conif', (12, 18))):
+    for kind, tp in (('broad3', (11, 24)), ('conif', (12, 18))):
         st, cv = make(kind, S, seed, tp, PAL[kind])
         print(kind, 'coverage L2=%.2f L3=%.2f' % cv)
         rows.append([flat(s, S) for s in st])
     # 実寸(世界地図用): 塊を小さく、木も小さく
     s2 = 100
     real = []
-    for kind, tp in (('broad', (4.6, 7)), ('conif', (4.2, 6.4))):
+    for kind, tp in (('broad3', (4.0, 8.4)), ('conif', (4.2, 6.4))):
         st, cv = make(kind, s2, seed + 1, tp, PAL[kind])
         real.append(flat(st[-1], s2))
     sheet = Image.new('RGB', (S * 3 + 20, S * 2 + s2 + 30), (244, 236, 216))
