@@ -1907,6 +1907,24 @@
           "u": "mapstyle43.html"
         }
       ]
+    },
+    {
+      "id": "c-mapstyle44",
+      "t": "粗いローポリを面のUVで色付け(試作)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "粗いローポリ(約5,000面)に面ごとのUVでテクスチャを貼った。べったり感が減り質感が出た。絵柄は未決。",
+      "log": [
+        "2026-11-20 mapstyle44.htmlに公開。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle44",
+          "u": "mapstyle44.html"
+        }
+      ]
     }
   ],
   "past": [

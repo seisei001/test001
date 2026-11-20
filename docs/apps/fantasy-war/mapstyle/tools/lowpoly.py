@@ -83,6 +83,19 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     rock_t = np.clip((hzn - 0.30) / 0.35, 0, 1)[:, None]; col = base * (1 - rock_t) + ROCK * rock_t
     snow_t = np.clip((hzn - np.where(cold, 0.45, 0.78)) / 0.15, 0, 1)[:, None]; col = col * (1 - snow_t) + SNOW * snow_t
     col = col * shade[:, None] * rs.uniform(0.99, 1.01, (len(tri), 1))
+    uv = os.environ.get('FM_LP_UV', '0') == '1'
+    if uv:
+        # 面のUV加工: 地図の平面(UV=地図上の位置)に色の絵(テクスチャ)を作り、各面にその一部を貼って色を付ける。陰は面ごとに掛ける。
+        lut = np.zeros((16, 3), np.float32)
+        for k in range(16): lut[k] = BASE.get(k, (150, 170, 110))
+        T = lut[np.clip(bio, 0, 15)].copy()
+        hz = np.clip((Hh - 20) / (hmax - 20), 0, 1); coldm = np.isin(bio, [2, 9, 10, 11])
+        rt = np.clip((hz - 0.30) / 0.30, 0, 1)[..., None]; T = T * (1 - rt) + ROCK * rt
+        st_ = np.clip((hz - np.where(coldm, 0.45, 0.75)) / 0.15, 0, 1)[..., None]; T = T * (1 - st_) + SNOW * st_
+        nz = sum(ndi.gaussian_filter(rs.randn(H0, W0).astype(np.float32), s) * a for s, a in ((1.0, 0.5), (3.0, 1.2), (8.0, 1.6)))
+        nz = nz / (np.abs(nz).max() + 1e-6)
+        T = np.clip(T * (1 + 0.30 * nz[..., None]), 0, 255)
+        T8 = T.astype(np.uint8)[..., ::-1].copy()
     # ---- 奥(地図の上)から手前(下)へ重ねる。高さは画面の上へ
     kv = 0.9
     def proj(Q, zz): return np.stack([Q[:, 0], Q[:, 1] - zz * kv], 1)
@@ -105,7 +118,18 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         if not keep[i]: continue
         poly = np.array([SA[i], SB[i], SC[i]]); c = tuple(int(v) for v in np.clip(col[i], 0, 255)[::-1])
         pi = np.round(poly * 16).astype(np.int32)
-        cv2.fillConvexPoly(cv8, pi, c, lineType=cv2.LINE_AA, shift=4)
+        if uv:
+            sp3 = poly.astype(np.float32); x0b = int(max(np.floor(sp3[:, 0].min()) - 1, 0)); y0b = int(max(np.floor(sp3[:, 1].min()) - 1, 0))
+            x1b = int(min(np.ceil(sp3[:, 0].max()) + 2, W0)); y1b = int(min(np.ceil(sp3[:, 1].max()) + 2, H0))
+            if x1b <= x0b or y1b <= y0b: continue
+            M = cv2.getAffineTransform(np.array([A[i], B[i], C[i]], np.float32), sp3 - np.array([x0b, y0b], np.float32))
+            wp = cv2.warpAffine(T8, M, (x1b - x0b, y1b - y0b), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            wp = np.clip(wp.astype(np.float32) * float(shade[i]), 0, 255)
+            mk = np.zeros((y1b - y0b, x1b - x0b), np.uint8); cv2.fillConvexPoly(mk, np.round((poly - np.array([x0b, y0b])) * 16).astype(np.int32), 255, lineType=cv2.LINE_AA, shift=4)
+            a_ = (mk.astype(np.float32) / 255)[..., None]; reg = cv8[y0b:y1b, x0b:x1b].astype(np.float32)
+            cv8[y0b:y1b, x0b:x1b] = (reg * (1 - a_) + wp * a_).astype(np.uint8)
+        else:
+            cv2.fillConvexPoly(cv8, pi, c, lineType=cv2.LINE_AA, shift=4)
         if out_ink:
             for a, b in ((0, 1), (1, 2), (2, 0)):
                 k = tuple(sorted((int(tri[i, a]), int(tri[i, b]))))

@@ -1,0 +1,19 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>粗いローポリを面のUVで色付け</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h3{font-size:1em;margin:.8em 0 .2em}img{max-width:100%;border-radius:6px}</style></head><body>
+<h1>一番粗いローポリを、面のUV加工で色付けする(試作・11-20)</h1>
+<p><b>概要</b>: mapstyle41(一番粗いローポリ、面の数は約5,000)を、面ごとの<b>単色</b>ではなく、<b>UV加工</b>で色付けしました。UV加工とは、地図の平面に色の絵(テクスチャ)を先に作り、各面にその一部を貼り付けて色を付ける方法です。陰は面ごとにそのまま掛けています。各図は上=mapstyle41(単色)、下=今回(UV)。</p>
+<h2>やり方</h2>
+<ul><li>テクスチャ: 群系の色 + 高いほど岩・雪の色 + 細かい模様(3段階の大きさのむら)を、地図と同じ位置に作る。</li>
+<li>貼り方: 各面の3つの頂点について、地図上の位置(=UV)を、面の画面での形に合わせて貼り付ける(三角形ごとの変形)。山は高さの分だけ画面で上に伸びるので、模様も一緒に伸びる。</li></ul>
+<h3>PWG seed7</h3><img src="mapstyle/gv/lp41_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E174</small><br><img src="mapstyle/gv/lp44_pwg7.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E001</small>
+<h3>PWG seed5</h3><img src="mapstyle/gv/lp41_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E175</small><br><img src="mapstyle/gv/lp44_pwg5.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E002</small>
+<h3>PWG seed16</h3><img src="mapstyle/gv/lp41_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E176</small><br><img src="mapstyle/gv/lp44_pwg16.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E003</small>
+<h3>PWG seed4</h3><img src="mapstyle/gv/lp41_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E177</small><br><img src="mapstyle/gv/lp44_pwg4.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E004</small>
+<h3>PWG seed1</h3><img src="mapstyle/gv/lp41_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E178</small><br><img src="mapstyle/gv/lp44_pwg1.jpg"><small class="eid" style="display:block;font-size:.85em;font-weight:bold;color:#7a2e1e">絵番号 E005</small>
+<h2>目で見た評価(各1枚)</h2>
+<ul><li>面の形と陰は残ったまま、面の中に細かい模様がついた。単色の面の「べったり感」が減り、緑や砂色にむらが出て、絵としての質感が上がった。</li>
+<li>面の境目の色の段差が弱くなり、粗い面でもつながって見える。</li>
+<li>模様は今のところ乱数のむらだけ。草や岩の絵の模様(手描きの質感)ではない。</li>
+<li>上下の氷の帯にも模様が付き、前より氷らしい粒状に見える。</li></ul>
+<h2>限界・未確認</h2><ul><li>各1枚・目視のみ。iPhoneでの見え方・処理時間は未測定(描画は約1.8秒で、単色と同程度)。</li><li>「面でUV加工して色付け」は、面にテクスチャを貼る、と解釈した。別の意味ならご指摘ください。</li><li>テクスチャの絵柄(模様)は、まだ決めていない。</li></ul>
+<p>次: テクスチャの絵柄を、どういう質感にするか(草・砂・岩の手描きの模様など)決める。</p></body></html>
