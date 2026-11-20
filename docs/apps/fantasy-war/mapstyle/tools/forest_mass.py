@@ -145,7 +145,7 @@ def make(kind, size, seed, tree_px, pal):
     img = Image.alpha_composite(img, l3); stages.append(img.copy())
     return stages, (c2, c3)
 
-def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None):
+def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0):
     """ユーザー指示(11-21 07:01): 暗い緑の下地→周りに『上の広葉樹』(丸い樹冠+上の三日月)を適度に→中は『下の三日月』(三日月だけ)を置く"""
     import cv2
     rng = np.random.default_rng(seed)
@@ -171,6 +171,11 @@ def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), co
         xs = np.arange(W)
         wob = (np.sin(xs / W * 9 + ph[0]) * .5 + np.sin(xs / W * 17 + ph[1]) * .3 + np.sin(xs / W * 31 + ph[2]) * .2) * 0.06 * (y1 - y0)
         line = y0 + (1 - light_lower) * (y1 - y0) + wob
+        if light_dome:   # ユーザー指示(11-21 07:50): 明るい部分の上側を、少し上へ丸く(半円状に)持ち上げる
+            xm = np.nonzero(np.array(bm).max(axis=0) > 127)[0]
+            cxm, hw = (xm.min() + xm.max()) / 2, (xm.max() - xm.min()) / 2
+            u = np.clip((xs - cxm) / hw, -1, 1)
+            line = line - light_dome * (y1 - y0) * np.sqrt(np.clip(1 - u ** 2, 0, 1))
         reg = (np.arange(W)[:, None] > line[None, :]).astype(np.uint8) * 255
         reg = Image.fromarray(reg)
         zi = ImageChops.multiply(inner, reg); ze = ImageChops.multiply(edge, reg)
@@ -187,6 +192,20 @@ PAL = {
 
 if __name__ == '__main__':
     out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    if len(sys.argv) > 3 and sys.argv[3] == 'dome':
+        ground = (214, 198, 150)
+        def flat(im, size):
+            bg = Image.new('RGBA', im.size, ground + (255,))
+            return Image.alpha_composite(bg, im).convert('RGB').resize((size, size), Image.LANCZOS)
+        S = 300
+        new, cv = make_mix(S, seed, (11, 24), PAL['broad3'], light_lower=0.45, light_dome=0.16)
+        old, _ = make_mix(S, seed, (11, 24), PAL['broad3'], light_lower=0.45)
+        print('dome coverage:', ['%.2f' % c for c in cv])
+        r, _ = make_mix(100, seed + 1, (4.0, 8.4), PAL['broad3'], light_lower=0.45, light_dome=0.16)
+        sheet = Image.new('RGB', (S * 2 + 10, S + 120), (244, 236, 216))
+        for c, im in enumerate((old[2], new[2])): sheet.paste(flat(im, S), (c * (S + 10), 0))
+        sheet.paste(flat(r[-1], 100), (0, S + 10))
+        sheet.save(out, quality=92); sys.exit()
     if len(sys.argv) > 3 and sys.argv[3] == 'lowlight':
         ground = (214, 198, 150)
         def flat(im, size):
