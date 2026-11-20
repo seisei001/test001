@@ -958,6 +958,24 @@
       ]
     },
     {
+      "id": "c-mapstyle50",
+      "t": "森(木の絵)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "森の群系に木の絵(丸い葉・針葉樹)を置いた。大きさ・数・濃さの判断待ち。",
+      "log": [
+        "2026-11-20 mapstyle50.htmlに公開(ユーザー: 進めて)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle50",
+          "u": "mapstyle50.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",

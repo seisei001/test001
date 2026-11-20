@@ -184,6 +184,40 @@ def main(wdir, outp, title, seed=1):
         hi = np.clip((Hh - float(os.environ.get('FM_RIVER_H', '48'))) / 12, 0, 1)   # 山の上の方には描かない(高さ48で薄れ始め、60で消える)
         rv = rv * (1 - hi)
         img = img * (1 - 0.85 * rv[..., None]) + np.array([60, 104, 140], np.float32) * 0.85 * rv[..., None]
+    # --- 森(FM_FOREST=1)。森の群系に、小さな木の絵を、塊(森らしいまとまり)をつくって置く。山・川・湖・海岸・氷は避ける
+    if os.environ.get('FM_FOREST', '0') == '1':
+        rsf = np.random.RandomState(seed + 51); S = 3
+        forest = np.isin(bio, [5, 6, 7, 8, 9]) & land & (Hh < 52) & (bio != 11)
+        avoid = ndi.binary_dilation(~land, iterations=4) | (Hh < 21.5)
+        try: avoid = avoid | (rv > 0.12) | (lki > 0.2)
+        except NameError: pass
+        gz = ndi.gaussian_filter(rsf.randn(H0, W0).astype(np.float32), 14); gz = gz / (gz.std() + 1e-6)   # 森の濃い所・薄い所
+        dens = np.clip(0.55 + 0.5 * gz, 0.05, 1.0) * float(os.environ.get('FM_FOREST_K', '1.0'))
+        cand = np.argwhere(forest & ~avoid)
+        keep = rsf.rand(len(cand)) < dens[cand[:, 0], cand[:, 1]] * 0.012
+        pts = cand[keep]; pts = pts[np.argsort(pts[:, 0])]                    # 上から順に描く(下の木が手前)
+        tl = np.zeros((H0 * S, W0 * S, 3), np.float32); ta = np.zeros((H0 * S, W0 * S), np.float32)
+        for (y, x) in pts:
+            b = bio[y, x]; r = rsf.uniform(4.8, 7.4) * S; cx, cy = x * S + S // 2, y * S + S // 2
+            if b == 9:                                                       # 針葉樹(タイガ): 三角を2段
+                base = (52, 86, 70); hi = (86, 124, 94)
+                for k, (dy, w2, h2) in enumerate([(0.2, 0.85, 1.1), (-0.7, 0.62, 0.95)]):
+                    tri = np.array([[cx, cy + (dy - h2) * r], [cx - w2 * r, cy + dy * r], [cx + w2 * r, cy + dy * r]], np.int32)
+                    cv2.fillPoly(tl, [tri], base, cv2.LINE_AA); cv2.fillPoly(ta, [tri], 1.0, cv2.LINE_AA)
+                    cv2.polylines(tl, [tri], True, (30, 44, 34), 2, cv2.LINE_AA)
+                    cv2.line(tl, (int(cx), int(cy + (dy - h2) * r)), (int(cx - w2 * r * 0.55), int(cy + dy * r * 0.9)), hi, 2, cv2.LINE_AA)
+            else:                                                            # 広葉樹: 丸い樹冠+細い幹。熱帯は少し濃く
+                base = (58, 112, 62) if b in (7, 8) else (88, 142, 66); hi = (132, 178, 96)
+                cv2.line(tl, (int(cx), int(cy + r * 0.55)), (int(cx), int(cy + r * 1.05)), (40, 30, 22), max(2, S - 1), cv2.LINE_AA); cv2.line(ta, (int(cx), int(cy + r * 0.55)), (int(cx), int(cy + r * 1.05)), 1.0, max(2, S - 1), cv2.LINE_AA)
+                cv2.circle(tl, (int(cx), int(cy)), int(r * 0.78), base, -1, cv2.LINE_AA); cv2.circle(ta, (int(cx), int(cy)), int(r * 0.78), 1.0, -1, cv2.LINE_AA)
+                cv2.circle(tl, (int(cx - r * 0.2), int(cy - r * 0.22)), int(r * 0.34), hi, -1, cv2.LINE_AA)          # 左上のハイライト
+                cv2.circle(tl, (int(cx), int(cy)), int(r * 0.78), (30, 48, 32), 2, cv2.LINE_AA)
+        tl = cv2.resize(tl, (W0, H0), interpolation=cv2.INTER_AREA); ta = cv2.resize(ta, (W0, H0), interpolation=cv2.INTER_AREA)
+        # tl は色×面積で薄まるので、不透明度で割り戻す
+        tl = tl / np.maximum(ta[..., None], 1e-3)
+        a = (ta * 0.92)[..., None]
+        img = img * (1 - a) + tl[..., ::-1] * a * 1.0 if False else img * (1 - a) + tl * a
+        n_forest = len(pts)
     # --- 枠と題
     OW, OH = 1500, 1000; ox, oy = (OW - W0) // 2, (OH - H0) // 2
     canvas = np.zeros((OH, OW, 3), np.float32) + np.array([222, 198, 152], np.float32)

@@ -1,12 +1,12 @@
 {
- "next": 222,
+ "next": 228,
  "ids": {
-  "mapstyle/gv/lp49_zoom.jpg": "E001",
-  "mapstyle/gv/lp49_pwg7.jpg": "E002",
-  "mapstyle/gv/lp49_pwg5.jpg": "E003",
-  "mapstyle/gv/lp49_pwg16.jpg": "E004",
-  "mapstyle/gv/lp49_pwg4.jpg": "E005",
-  "mapstyle/gv/lp49_pwg1.jpg": "E006",
+  "mapstyle/gv/lp50_zoom.jpg": "E001",
+  "mapstyle/gv/lp50_pwg7.jpg": "E002",
+  "mapstyle/gv/lp50_pwg5.jpg": "E003",
+  "mapstyle/gv/lp50_pwg16.jpg": "E004",
+  "mapstyle/gv/lp50_pwg4.jpg": "E005",
+  "mapstyle/gv/lp50_pwg1.jpg": "E006",
   "mapstyle/s0.jpg": "E007",
   "mapstyle/s1.jpg": "E008",
   "mapstyle/s2.jpg": "E009",
@@ -221,6 +221,12 @@
   "mapstyle/gv/lp48_pwg16.jpg": "E218",
   "mapstyle/gv/lp48_pwg4.jpg": "E219",
   "mapstyle/gv/lp48_pwg1.jpg": "E220",
-  "mapstyle/gv/scalebar_gemini.jpg": "E221"
+  "mapstyle/gv/scalebar_gemini.jpg": "E221",
+  "mapstyle/gv/lp49_zoom.jpg": "E222",
+  "mapstyle/gv/lp49_pwg7.jpg": "E223",
+  "mapstyle/gv/lp49_pwg5.jpg": "E224",
+  "mapstyle/gv/lp49_pwg16.jpg": "E225",
+  "mapstyle/gv/lp49_pwg4.jpg": "E226",
+  "mapstyle/gv/lp49_pwg1.jpg": "E227"
  }
 }
