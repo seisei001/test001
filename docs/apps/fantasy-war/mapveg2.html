@@ -127,7 +127,17 @@
 <li>目で見た見立て(未確認): 地図の水彩風の淡い色に対して、塊は色が濃く、縁がはっきりしていて、確かに「浮いて」見えます。海岸に近い所では陸からはみ出し、山の上にも載っています。元からある小さな木の上にも重なっています。</li>
 <li>限界: 目視のみ。色や縁の調整はまだしていません。置き場は仮。iPhoneでの見え方は未測定。</li>
 </ul>
-<p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)、<a href="mapstyle/tools/forest_on_map.py">forest_on_map.py</a>(地図に置く試験)、<a href="mapstyle/tools/forest_mass_README.md">再生手順</a></p>
+<h2>15. 元の木を全部取って、木の多い所に森の塊を足す(11-21 08:17 ユーザー指示)</h2>
+<p><img src="mapstyle/gv/forest_on_map2.png" alt="木を取り森の塊を足した世界地図"></p>
+<p><img src="mapstyle/gv/forest_on_map2_zoom.png" alt="拡大(北東)"></p>
+<ul>
+<li>やったこと: ①元の地図の小さな木を全部取る(木なしの絵=mapstyle49 の世界5を使用) ②木の多かった所(元の木の密度が高い所)に、第10版の森の塊を30個足す(広葉樹20・針葉樹10)。大きさは密度に応じて80〜130画素。</li>
+<li>解釈(未確認): 「木の要素の出し方=木が多い場所、木が多くなるだろう場所」を、元の木の密度が高い所=今後も木が多い所、と読みました。群系データは使っていません。</li>
+<li>仕組み(やさしく): 木なしの絵と木ありの絵の差が「木」。その差をなめらかにして濃さの地図にし、濃い所に森の塊を置く。針葉樹か広葉樹かは、元の木の色(青みが強いと針葉樹)で決める。塊は木のあった範囲からはみ出さないよう切る。</li>
+<li>目で見た見立て(未確認): 木の多い所は森の塊になり、北の針葉樹と南の広葉樹の分かれ方は元のまま残った。一方、塊の緑は水彩風の地図より濃く、まだ浮く。山の斜面にも塊がかかる(元の木があったため)。</li>
+<li>限界: 目視のみ。色・縁の馴染ませは未実施。木なしの絵は前の版の絵で、他の違いがないかは未確認。iPhone未測定。</li>
+</ul>
+<p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)、<a href="mapstyle/tools/forest_on_map.py">forest_on_map.py</a>(地図に置く試験)、<a href="mapstyle/tools/forest_replace_trees.py">forest_replace_trees.py</a>(木を取り替える)、<a href="mapstyle/tools/forest_mass_README.md">再生手順</a></p>
 
 <p><a href="mapveg0.html">R0 調査</a> / <a href="index.html">ハブへ戻る</a></p>
 </body></html>
