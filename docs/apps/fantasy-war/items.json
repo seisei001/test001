@@ -903,6 +903,24 @@
       ]
     },
     {
+      "id": "c-mapstyle47",
+      "t": "方位記号(Gemini)",
+      "layer": "world",
+      "who": "check",
+      "st": "now",
+      "parent": "d-world",
+      "now": "Geminiの方位記号を左下に乗算で重ねた。大きさ・位置・NE等の文字の判断待ち。縮尺は距離の根拠待ち。",
+      "log": [
+        "2026-11-20 mapstyle47.htmlに公開(ユーザー: 方位記号はGeminiに書かせよう)。"
+      ],
+      "links": [
+        {
+          "t": "mapstyle47",
+          "u": "mapstyle47.html"
+        }
+      ]
+    },
+    {
       "id": "c-world-still",
       "t": "世界の立体地図(一枚絵の試作)を見る",
       "layer": "world",
