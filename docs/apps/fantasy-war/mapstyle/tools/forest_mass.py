@@ -5,6 +5,7 @@
 #  広葉樹と針葉樹は別々に作る。
 # 使い方: python3 forest_mass.py out.png [seed]
 import sys, math
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
@@ -36,6 +37,27 @@ def blob_mask(size, rng, r_frac=0.40, rough=0.30):
     im = Image.new('L', (W, H), 0)
     ImageDraw.Draw(im).polygon(pts, fill=255)
     return im
+
+def blob_mask_gauss(size, seed, sigma=0.07, k=0.75, r_frac=0.36):
+    """下地の形もガウス揺らぎで決める(ユーザー指示 11-21 07:59):
+    なめらかな乱数の場に、中心ほど高い丘を足し、一定の高さ以上を下地にする。"""
+    W = size * SS
+    rg = np.random.default_rng(seed)
+    nz = rg.standard_normal((W, W)).astype(np.float32)
+    fld = cv2.GaussianBlur(nz, (0, 0), sigma * W)
+    fld = (fld - fld.mean()) / (fld.std() + 1e-9)
+    yy, xx = np.mgrid[0:W, 0:W].astype(np.float32)
+    rr = np.hypot(xx - W / 2, yy - W / 2) / (r_frac * W)      # 中心0、基準の半径で1
+    z = k * fld + 1.3 * (1 - rr ** 2) - 0.0 * rr                          # 丘(中心が高い)+揺らぎ
+    m = (z > np.quantile(z, 0.60)).astype(np.uint8)   # 面積を一定(約40%)にそろえる
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m)
+    if n > 1:
+        big = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA])); m = (lab == big).astype(np.uint8)
+    # 穴をふさぐ(外側につながらない背景を塗る。まわりに1画素の背景をつけて数える)
+    inv = np.pad((1 - m).astype(np.uint8), 1, constant_values=1)
+    n2, l2, _s, _c = cv2.connectedComponentsWithStats(inv)
+    m = (l2[1:-1, 1:-1] != l2[0, 0]).astype(np.uint8)
+    return Image.fromarray(m * 255)
 
 def tree_poly(kind, x, y, s, rng):
     """シルエットの多角形/円の描画関数を返す"""
@@ -176,11 +198,11 @@ def make(kind, size, seed, tree_px, pal):
     img = Image.alpha_composite(img, l3); stages.append(img.copy())
     return stages, (c2, c3)
 
-def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0, light_gauss=None, kind_in='broad3_moon', kind_edge='broad3_top'):
+def make_mix(size, seed, tree_px, pal, band_frac=0.14, cov_edge=(0.60, 0.40), cov_in=(0.70, 0.40), light_lower=None, light_dome=0.0, light_gauss=None, kind_in='broad3_moon', kind_edge='broad3_top', base_gauss=None):
     """ユーザー指示(11-21 07:01): 暗い緑の下地→周りに『上の広葉樹』(丸い樹冠+上の三日月)を適度に→中は『下の三日月』(三日月だけ)を置く"""
     import cv2
     rng = np.random.default_rng(seed)
-    bm = blob_mask(size, rng)
+    bm = blob_mask_gauss(size, seed + 500 + base_gauss.get('seed', 0), base_gauss.get('sigma', 0.07), base_gauss.get('k', 1.0)) if base_gauss else blob_mask(size, rng)
     W = size * SS
     dist = cv2.distanceTransform((np.array(bm) > 127).astype(np.uint8), cv2.DIST_L2, 5)
     edge = Image.fromarray(((dist > 0) & (dist <= band_frac * W)).astype(np.uint8) * 255)
@@ -234,6 +256,21 @@ PAL = {
 
 if __name__ == '__main__':
     out = sys.argv[1]; seed = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    if len(sys.argv) > 3 and sys.argv[3] == 'gbase':
+        ground = (214, 198, 150); S = 300
+        def flat(im, size):
+            bg = Image.new('RGBA', im.size, ground + (255,))
+            return Image.alpha_composite(bg, im).convert('RGB').resize((size, size), Image.LANCZOS)
+        kw = dict(kind_in='conif3_moon', kind_edge='conif3_top')
+        cols = []
+        for bs in (0, 1, 2):
+            b, _ = make_mix(S, seed, (11, 24), PAL['broad3'], light_gauss={'seed': 0}, base_gauss={'seed': bs})
+            c, cv = make_mix(S, seed, (11, 22), PAL['conif'], light_gauss={'seed': 0}, base_gauss={'seed': bs}, **kw)
+            print('seed', bs, 'conif cov', ['%.2f' % x for x in cv]); cols.append((b[2], c[2]))
+        sheet = Image.new('RGB', (S * 3 + 20, S * 2 + 10), (244, 236, 216))
+        for ci, (b, c) in enumerate(cols):
+            sheet.paste(flat(b, S), (ci * (S + 10), 0)); sheet.paste(flat(c, S), (ci * (S + 10), S + 10))
+        sheet.save(out, quality=92); sys.exit()
     if len(sys.argv) > 3 and sys.argv[3] == 'conif':
         ground = (214, 198, 150)
         def flat(im, size):
