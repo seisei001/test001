@@ -1044,7 +1044,8 @@
       "now": "調査済み。上位概念として mapveg0.html に公開。ユーザーの確認待ち(見せ方A〜D、工夫、縮尺、限界)。",
       "log": [
         "2026-11-21 作成(二段方式)。",
-        "2026-11-21 R0実施: 7つの資料(ProFantasy・Fantastic Maps・Here Dragons Abound・Tor.com・スコットランド国立図書館)を調査し mapveg0.html に公開。世界地図向けの直接の資料は見つからず(限界)。"
+        "2026-11-21 R0実施: 7つの資料(ProFantasy・Fantastic Maps・Here Dragons Abound・Tor.com・スコットランド国立図書館)を調査し mapveg0.html に公開。世界地図向けの直接の資料は見つからず(限界)。",
+        "2026-11-21 06:04 ユーザーがGeminiの木の見本シート(15点)を提供。ドライブ fantasy_map_forests.zip → mapstyle/gv/ref_forests_gemini.png、mapveg0.html に掲載(採用は未決)。"
       ],
       "links": [
         {
