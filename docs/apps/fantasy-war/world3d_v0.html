@@ -1,0 +1,50 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>粗いローポリの3D表示(速度の試作)</title>
+<style>html,body{margin:0;height:100%;background:#d9cfb4;font-family:sans-serif;color:#2b2418;overflow:hidden;touch-action:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#ui{position:fixed;left:0;right:0;top:0;padding:8px;background:rgba(244,236,216,.88);font-size:13px;line-height:1.5}
+#ui button,#ui select{font-size:15px;padding:6px 10px;margin:2px;border:1px solid #8a7a52;background:#f4ecd8;border-radius:6px}
+#st{white-space:pre-wrap}</style></head><body>
+<canvas id="c"></canvas>
+<div id="ui"><b>粗いローポリ+UVテクスチャの3D表示(試作)</b><br>
+世界 <select id="w"><option value="7">seed7</option><option value="5">seed5</option><option value="16">seed16</option><option value="4">seed4</option><option value="1">seed1</option><option value="pm51">PWG5-1+森</option><option value="pm52">PWG5-2+森</option><option value="pm53">PWG5-3+森</option><option value="pm54">PWG5-4+森</option><option value="pm55">PWG5-5+森</option><option value="pm55n">PWG5-5(森なし)</option><option value="sp31">球体PWG 2:1(周長8192km・seed31・海で切った)</option><option value="sp32">球体PWG 2:1(周長8192km・seed32・海で切った)</option></select>
+<select id="q"><option value="">粗(5千面)</option><option value="_m">中(1.7万面・seed7のみ)</option><option value="_f">細(3.4万面・seed7のみ)</option></select><button id="zi">近づく</button><button id="zo">遠ざかる</button><button id="m">速度を測る(5秒)</button><button id="v">視点リセット</button>
+<div id="st">読み込み中…</div></div>
+<script type="module">
+import * as THREE from '../sekai-hex/design/vendor/three.module.min.js';
+const cv=document.getElementById('c'), st=document.getElementById('st');
+const R=new THREE.WebGLRenderer({canvas:cv,antialias:true}); R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene(); S.background=new THREE.Color(0xaabdbe);
+const cam=new THREE.PerspectiveCamera(40,1,1,6000);
+const L=new THREE.DirectionalLight(0xffffff,1.1); L.position.set(-0.55,0.63,-0.55).multiplyScalar(1000); S.add(L,new THREE.AmbientLight(0xffffff,0.55));
+const D0=()=>(innerWidth/innerHeight<1?2600:1500); let az=0,el=0.9,dist=D0(),mesh=null,info='',sea=null;
+function resize(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();} addEventListener('resize',resize); resize();
+function place(){cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,0,0);}
+async function load(id,q=''){
+ st.textContent='読み込み中…'; const t0=performance.now();
+ const d=await (await fetch(`w3d/world${id}${q}.json`)).json();
+ const tex=await new THREE.TextureLoader().loadAsync(`w3d/world${id}${q}.jpg`); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+ const n=d.p.length, pos=new Float32Array(n*3), uv=new Float32Array(n*2), VS=1.1;
+ for(let i=0;i<n;i++){const [x,y,z]=d.p[i]; pos[i*3]=x-d.w/2; pos[i*3+1]=z*VS; pos[i*3+2]=y-d.h/2; uv[i*2]=x/d.w; uv[i*2+1]=1-y/d.h;}
+ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+ g.setIndex(d.f); g.computeVertexNormals();
+ const mat=new THREE.MeshLambertMaterial({map:tex,flatShading:true,side:THREE.DoubleSide});
+ if(mesh){S.remove(mesh);mesh.geometry.dispose();mesh.material.map.dispose();} mesh=new THREE.Mesh(g,mat); S.add(mesh);
+ if(!sea){sea=new THREE.Mesh(new THREE.PlaneGeometry(d.w*1.2,d.h*1.2),new THREE.MeshLambertMaterial({color:0xb4c4c0})); sea.rotation.x=-Math.PI/2; sea.position.y=-1; S.add(sea);}
+ info=`面の数 ${d.f.length/3} / 頂点 ${n} / 読み込み ${(performance.now()-t0).toFixed(0)}ms / 画面 ${R.domElement.width}×${R.domElement.height}`;
+ result='';st.textContent=info+'\nドラッグで回す。「速度を測る」で5秒間の平均コマ数を出す。';
+}
+// ドラッグで回す(ピンチは使わない)
+let dr=null; cv.addEventListener('pointerdown',e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!dr)return; az-=(e.clientX-dr[0])*0.006; el=Math.min(1.45,Math.max(0.15,el+(e.clientY-dr[1])*0.006)); dr=[e.clientX,e.clientY];});
+cv.addEventListener('pointerup',()=>dr=null);
+document.getElementById('zi').onclick=()=>dist=Math.max(300,dist*0.8); document.getElementById('zo').onclick=()=>dist=Math.min(5000,dist*1.25);
+document.getElementById('v').onclick=()=>{az=0;el=0.9;dist=D0();};
+const qs=document.getElementById('q'),ws=document.getElementById('w');
+const reload=()=>{if(ws.value!=='7')qs.value='';load(ws.value,qs.value);}; ws.onchange=reload; qs.onchange=()=>{if(ws.value!=='7'){qs.value='';st.textContent='中・細はseed7だけです。';return;} reload();};
+let meas=null,result='',frames=0,fpsT=performance.now(),fps=0;
+document.getElementById('m').onclick=()=>{result='';meas={t0:performance.now(),n:0,max:0,last:performance.now()};};
+function loop(){requestAnimationFrame(loop); if(meas)az+=0.01; place(); R.render(S,cam); const now=performance.now();
+ frames++; if(now-fpsT>1000){fps=frames*1000/(now-fpsT);frames=0;fpsT=now; if(!meas&&!result)st.textContent=info+`\nいまのコマ数 ${fps.toFixed(0)} fps`;}
+ if(meas){meas.n++;meas.max=Math.max(meas.max,now-meas.last);meas.last=now; if(now-meas.t0>5000){const f=meas.n*1000/(now-meas.t0); result=info+`\n【測定結果】5秒の平均 ${f.toFixed(1)} fps / 最も遅い1コマ ${meas.max.toFixed(0)}ms\n端末: ${navigator.userAgent.replace(/\).*/,')').slice(0,80)}`; st.textContent=result; meas=null;}}}
+await load(7); loop();
+</script></body></html>
