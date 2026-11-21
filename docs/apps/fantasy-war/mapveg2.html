@@ -137,7 +137,18 @@
 <li>目で見た見立て(未確認): 木の多い所は森の塊になり、北の針葉樹と南の広葉樹の分かれ方は元のまま残った。一方、塊の緑は水彩風の地図より濃く、まだ浮く。山の斜面にも塊がかかる(元の木があったため)。</li>
 <li>限界: 目視のみ。色・縁の馴染ませは未実施。木なしの絵は前の版の絵で、他の違いがないかは未確認。iPhone未測定。</li>
 </ul>
-<p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)、<a href="mapstyle/tools/forest_on_map.py">forest_on_map.py</a>(地図に置く試験)、<a href="mapstyle/tools/forest_replace_trees.py">forest_replace_trees.py</a>(木を取り替える)、<a href="mapstyle/tools/forest_mass_README.md">再生手順</a></p>
+<h2>16. 地形の上に貼り付ける(11-21 09:10 ユーザー案: 下地のアンジュレーションを活かすため、地形の上に下地を描いてからUV加工で貼る。山の作り方でやったやつ)</h2>
+<p><img src="mapstyle/gv/forest_uv_base.jpg" alt="森なし(ローポリ・UV貼り)"></p>
+<p><img src="mapstyle/gv/forest_uv_with.jpg" alt="森の層をUVで貼った世界"></p>
+<p><img src="mapstyle/gv/forest_uv_zoom.png" alt="拡大"></p>
+<ul>
+<li>解釈(未確認): 山の作り方(面ごとのUV加工=地図の位置を使って絵を面に貼り、面ごとに陰を掛ける)に、森の絵を「透明な層」として差し込む。森は平らな絵として置かず、地形の面に貼られて陰を受ける。</li>
+<li>やったこと: lowpoly.py に層の差し込み口(FM_LP_OVERLAY)を足した。層は forest_world_layer.py が、世界データの森の群系(広葉樹の群系・タイガ)に第10版の塊(13個、うち針葉樹1)を置いて作る。上の絵=森なし、中=森あり。</li>
+<li>目で見た見立て(未確認): 塊が地形の面の陰を受けるので、平らに貼るより地面に馴染む。丘や山の斜面では、陰が塊の上に掛かる。一方、低地はこの3Dがゆるく、効果は小さい。</li>
+<li>注意: これは世界5ではなく、別の世界(tapworld-pwg)の絵です(世界5の元データがハブに見当たらないため)。木の置き方は第15章(元の木の密度)ではなく、群系から決めた別の方法。</li>
+<li>限界: 目視のみ。塊の色の濃さはそのまま(水彩風への馴染ませは未実施)。木の大きさは面の細かさとの兼ね合いが未調整。iPhone未測定。</li>
+</ul>
+<p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)、<a href="mapstyle/tools/forest_on_map.py">forest_on_map.py</a>(地図に置く試験)、<a href="mapstyle/tools/forest_replace_trees.py">forest_replace_trees.py</a>(木を取り替える)、<a href="mapstyle/tools/forest_world_layer.py">forest_world_layer.py</a>(森の層)、<a href="mapstyle/tools/lowpoly.py">lowpoly.py</a>(FM_LP_OVERLAY)、<a href="mapstyle/tools/forest_mass_README.md">再生手順</a></p>
 
 <p><a href="mapveg0.html">R0 調査</a> / <a href="index.html">ハブへ戻る</a></p>
 </body></html>

@@ -95,6 +95,14 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         nz = sum(ndi.gaussian_filter(rs.randn(H0, W0).astype(np.float32), s) * a for s, a in ((1.0, 0.5), (3.0, 1.2), (8.0, 1.6)))
         nz = nz / (np.abs(nz).max() + 1e-6)
         T = np.clip(T * (1 + 0.30 * nz[..., None]), 0, 255)
+        ov = os.environ.get('FM_LP_OVERLAY', '')
+        if ov:
+            # 透明な層(地図と同じ位置=UV同位置の絵。例: 森の下地+木)をテクスチャに重ねる。面に貼られ、面の陰が掛かる(ユーザー案 11-21)
+            O = cv2.imread(ov, cv2.IMREAD_UNCHANGED)
+            if O is not None and O.shape[2] == 4:
+                if O.shape[:2] != (H0, W0): O = cv2.resize(O, (W0, H0), interpolation=cv2.INTER_AREA)
+                oa = (O[..., 3:4].astype(np.float32) / 255) * float(os.environ.get('FM_LP_OVA', '1.0'))
+                T = T * (1 - oa) + O[..., 2::-1].astype(np.float32) * oa
         T8 = T.astype(np.uint8)[..., ::-1].copy()
     dump = os.environ.get('FM_LP_DUMP', '')
     if dump and uv:
