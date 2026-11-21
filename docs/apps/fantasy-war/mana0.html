@@ -1,0 +1,15 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>魔力の地脈(実装・確認用)</title>
+<style>body{font-family:sans-serif;background:#f4ecd8;color:#2b2418;margin:0;padding:16px;line-height:1.7}h1{font-size:1.3em}h2{font-size:1.1em;margin-top:1.3em}li{margin:.2em 0}img{max-width:100%;border:1px solid #c9b88a}</style></head><body>
+<h1>魔力の地脈(実装・確認用・11-21)</h1>
+<p style="background:#fff6dc;border-left:4px solid #a4552f;padding:6px 10px"><b>位置づけ</b>: ユーザー指示(11-21 17:27・19:01)の実装。<b>見せ方は後で決める</b>ので、下の絵は確認用の仮です(白い点=魔力の濃い所(結び目)、白い線=つながり)。</p>
+<p><b>概要</b>: 世界にガウス揺らぎの場を作り、その「薄い所」を魔力の濃い所(結び目)とし、<b>薄い所を通る道筋</b>で結び目どうしをつなぎました。これが魔力の地脈です。陸の上だけで、海をまたぐ線は作りません。</p>
+<h2>作り方(言葉で)</h2>
+<ol><li>陸の上になめらかな乱数の濃淡(ガウス揺らぎ)を作る。</li><li>薄い所の中心を結び目にする。</li><li>隣り合う結び目を、薄い所を通りやすい道筋で結ぶ(薄い所ほど通りやすい)。</li><li>全体がつながる最小の線に、安い道筋の輪を足す。</li></ol>
+<h2>PWG5の5世界(種=世界の番号)</h2>
+<p>結び目/つながり: pm51=29/26、pm52=25/23、pm53=19/17、pm54=27/24、pm55=27/25。同じ種で同じ結果(再実行で一致を確認)。</p>
+<p>pm55<br><img src="mapstyle/vein/pm55_check.jpg" alt="pm55"></p><p>pm51<br><img src="mapstyle/vein/pm51_check.jpg" alt="pm51"></p>
+<p>全世界の絵: <a href="mapstyle/vein/pm52_check.jpg">pm52</a> / <a href="mapstyle/vein/pm53_check.jpg">pm53</a> / <a href="mapstyle/vein/pm54_check.jpg">pm54</a>。魔力の強さの図(白=強い): <a href="mapstyle/vein/pm55_field.png">pm55</a>。データ: <a href="mapstyle/vein/pm55_veins.json">pm55_veins.json</a></p>
+<h2>限界・未確認</h2>
+<ul><li>目視のみ。稜線との関係(最初の「稜線の上」)は未確認で、いまは地形全体の薄い所を通る(稜線は使っていない)。</li><li>線は地形の高さを見ていない(山を越える線もある)。海岸ぞいを走る線がある。</li><li>回して見る3D表示には未搭載(作業規則の「3Dにも載せる」は次の作業)。</li><li>魔力の強さが魔法の強さにどう効くか(才能8・種族3・場所の魔力2)のシミュレーター側は未実装。浮島(斥力)も未実装。</li><li>陸が正方形の枠で切れる既知の課題が残る世界を使っている。数・間隔は初期値。</li></ul>
+<p>道具: <a href="mapstyle/tools/mana_vein.py">mana_vein.py</a>(<code>python3 -I mana_vein.py &lt;世界dir&gt; &lt;出力の前置き&gt; &lt;種&gt; --min-dist=18 --z=-0.3</code>)</p>
+<p><a href="isekai1.html">共起の集計</a> / <a href="index.html">ハブへ戻る</a></p></body></html>
