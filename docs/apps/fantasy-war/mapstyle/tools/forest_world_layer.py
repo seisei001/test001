@@ -20,8 +20,14 @@ for kind, msk in (('broad', broad & low), ('conif', conif & low)):
         if D[y, x] < 0.30: break
         if all((x - px) ** 2 + (y - py) ** 2 > 78 ** 2 for px, py, _ in placed):
             size = int(78 + 45 * D[y, x]); i = len(placed); placed.append((x, y, kind))
-            if kind == 'broad': L, _ = fm.make_mix(size, seed + i, (4.0, 8.4), fm.PAL['broad3'], light_gauss={'seed': i % 3}, base_gauss={'seed': i % 3})
-            else: L, _ = fm.make_mix(size, seed + i, (4.2, 7.0), fm.PAL['conif'], light_gauss={'seed': i % 3}, base_gauss={'seed': i % 3}, kind_in='conif3_moon', kind_edge='conif3_top')
+            L = None
+            for t in range(6):          # 内側が空になる小さな塊は、種を変えてやり直す
+                try:
+                    if kind == 'broad': L, _ = fm.make_mix(size, seed + i + 97 * t, (4.0, 8.4), fm.PAL['broad3'], light_gauss={'seed': i % 3}, base_gauss={'seed': (i + t) % 3})
+                    else: L, _ = fm.make_mix(size, seed + i + 97 * t, (4.2, 7.0), fm.PAL['conif'], light_gauss={'seed': i % 3}, base_gauss={'seed': (i + t) % 3}, kind_in='conif3_moon', kind_edge='conif3_top')
+                    break
+                except ValueError: L = None
+            if L is None: continue
             arr = np.array(L[-1].resize((size, size), Image.LANCZOS)); x0, y0 = int(x - size / 2), int(y - size / 2)
             ys, xs = max(0, y0), max(0, x0); ye, xe = min(H0, y0 + size), min(W0, x0 + size)
             a = arr[ys - y0:ye - y0, xs - x0:xe - x0].copy(); a[..., 3] = (a[..., 3] * reg[ys:ye, xs:xe]).astype(np.uint8)

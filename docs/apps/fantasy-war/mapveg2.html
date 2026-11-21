@@ -148,6 +148,18 @@
 <li>注意: これは世界5ではなく、別の世界(tapworld-pwg)の絵です(世界5の元データがハブに見当たらないため)。木の置き方は第15章(元の木の密度)ではなく、群系から決めた別の方法。</li>
 <li>限界: 目視のみ。塊の色の濃さはそのまま(水彩風への馴染ませは未実施)。木の大きさは面の細かさとの兼ね合いが未調整。iPhone未測定。</li>
 </ul>
+<h2>17. 世界のデータから作り直し(11-21 09:16 ユーザー: 世界から作り直して。なぜデータを取っていないのか、取るように指示した)</h2>
+<p><b>経緯(私の落ち度)</b>: 世界データはドライブ「ファンタジー世界戦争/世界データ」に保管する決まりなのに、第16章では先にそこを探さず、別の世界(ハブ内の古い1つ)で試しました。今回、ドライブから取得しました。</p>
+<p><img src="mapstyle/gv/forest_uv5_montage.jpg" alt="PWG5世界(陸4〜5割)に森の層をUV貼り"></p>
+<p><img src="mapstyle/gv/forest_uv5_pm55.jpg" alt="pm55 森あり"></p>
+<p><img src="mapstyle/gv/forest_uv5_pm55_base.jpg" alt="pm55 森なし"></p>
+<ul>
+<li>使ったデータ: ドライブ「世界データ_PWG5_陸4-5割_2026-11-20.zip」の5世界(pm51〜pm55)。世界データ(高さ・群系)から、地表→ローポリ(面ごとのUV)まで作り直し、森の層(広葉樹の群系=広葉樹の塊、タイガ=針葉樹の塊)をUVで貼りました。上の大きい絵=5世界、中=pm55の森あり、下=森なし。</li>
+<li>目で見た見立て(未確認): 5世界とも、森の塊が面の陰を受けて地形に沿って見える(山の斜面で特に)。針葉樹と広葉樹の分かれ方は群系どおり。低地では効果がゆるい。</li>
+<li><b>見つけた欠け</b>: 以前の「世界5」(mapstyle49〜50で使った3つの大陸の世界)の元データは、ドライブにもハブにも無い。ドライブにあるのは、11-20の「PWG5・自作5・Azgaar5(陸4〜5割)」と「バックアップ(自作・Azgaar等)」。以前の世界5は保管されていなかったため、同じ世界での比較はできない。</li>
+<li>気づいた不具合: 5世界とも陸が正方形の枠で切れて見える所がある(既知の課題。mapstyle37以来)。</li>
+<li>限界: 目視のみ。塊の色は水彩風に未調整。小さな塊は内側が空になり作れない場合があり、種を変えてやり直した。iPhone未測定。</li>
+</ul>
 <p>道具: <a href="mapstyle/tools/extract_stamps.py">extract_stamps.py</a>(影絵の切り出し)、<a href="mapstyle/tools/forest_mass.py">forest_mass.py</a>(森の塊)、<a href="mapstyle/tools/forest_on_map.py">forest_on_map.py</a>(地図に置く試験)、<a href="mapstyle/tools/forest_replace_trees.py">forest_replace_trees.py</a>(木を取り替える)、<a href="mapstyle/tools/forest_world_layer.py">forest_world_layer.py</a>(森の層)、<a href="mapstyle/tools/lowpoly.py">lowpoly.py</a>(FM_LP_OVERLAY)、<a href="mapstyle/tools/forest_mass_README.md">再生手順</a></p>
 
 <p><a href="mapveg0.html">R0 調査</a> / <a href="index.html">ハブへ戻る</a></p>
