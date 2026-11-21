@@ -9,6 +9,12 @@ W, Hh = 1400, 700
 MAP = {0:0,1:11,2:2,3:10,4:9,5:9,6:6,7:8,8:4,9:4,10:1,11:2,12:3,13:3,14:5,15:7,16:7,17:10,18:11,19:12,20:12,21:12,22:12,23:4,24:1,25:2,26:12,27:12}  # pwg_convert.py と同じ
 def main(pre, outdir, name, seed=1):
     el = np.fromfile(pre + '_elev.bin', np.float32).reshape(Hh, W); wa = np.fromfile(pre + '_water.bin', np.uint8).reshape(Hh, W); bi = np.fromfile(pre + '_biome.bin', np.uint8).reshape(Hh, W)
+    # 左右が陸続きなら、陸が最も少ない縦の列(周囲も含めて)を新しい左右の端にずらして、海で切る(経度の回転=球体では何も壊れない)
+    col = ((el > 0) & (wa != 2))[100:600].sum(0).astype(float); k = 5   # 数えるのは中緯度(上下の極の約14%を除く。極の陸は伸びた帯で、切れ目には使えない)
+    sm = np.convolve(np.concatenate([col[-k:], col, col[:k]]), np.ones(2 * k + 1) / (2 * k + 1), 'valid')
+    cut_col = int(np.argmin(sm)); shift = -cut_col
+    el = np.roll(el, shift, 1); wa = np.roll(wa, shift, 1); bi = np.roll(bi, shift, 1)
+    print('切れ目の列', cut_col, '端の陸(中緯度・画素)', int(((el[100:600, 0] > 0) & (wa[100:600, 0] != 2)).sum()), '(元の最大', int(col.max()), '平均', round(float(col.mean()), 1), ')')
     lake = (wa == 2)
     land = (el > 0) & ~lake
     el = ndi.gaussian_filter(el, 0.8)
