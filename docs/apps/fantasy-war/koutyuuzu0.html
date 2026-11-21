@@ -1,0 +1,187 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>航宙図(試作)</title>
+<style>
+:root{--bg:#f4ecd8;--ink:#2b2418;--sub:#6a5b3c;--line:#c9b88a}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:sans-serif;line-height:1.6}
+#top{position:relative;height:50vh;min-height:300px}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#hud{position:absolute;left:0;right:0;top:0;padding:6px 8px;background:rgba(244,236,216,.86);font-size:12px}
+main{padding:10px 12px 40px}
+h1{font-size:1.15em;margin:.2em 0}h2{font-size:1em;margin:1em 0 .3em}
+button,select,input{font-size:15px;padding:5px 9px;margin:2px;border:1px solid #8a7a52;background:#fffaf0;border-radius:6px}
+canvas.v{width:100%;display:block;border:1px solid var(--line);background:#1b2433;touch-action:manipulation}
+.lg span{display:inline-block;margin:0 8px 0 0;font-size:13px}.lg i{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:3px;border:1px solid #0006}
+.note{background:#fff6dc;border-left:4px solid #a4552f;padding:6px 10px;font-size:13px}
+table{border-collapse:collapse;font-size:13px}td,th{border:1px solid var(--line);padding:2px 8px}
+small{color:var(--sub)}
+</style></head><body>
+<div id="top"><canvas id="c"></canvas><div id="hud">読み込み中…</div></div>
+<main>
+<h1>航宙図(試作・11-21)</h1>
+<p class="note">空の通行図。毎回ガウス揺らぎで作る(種で再現)。上=立体図、下=二面図(上面図=世界地図に重ねた図/側面図=横から見た高さ)。浮島は全部の図に同時に出ます。<b>試作</b>で、数や形は初期値です。</p>
+<div>
+世界 <select id="w"><option>pm55</option><option>pm51</option><option>pm52</option><option>pm53</option><option>pm54</option></select>
+種 <input id="seed" type="number" style="width:7em">
+<button id="mk">この種で作る</button><button id="rnd">作り直す(新しい種)</button><button id="pz">止める</button>
+</div>
+<div class="lg"><span><i style="background:#7a3aa8"></i>入れない(ダウンフォース・落ちて全滅)</span><span><i style="background:#e0a030"></i>龍種の生息域(入れるが見つかると甚大)</span><span><i style="background:#5ad8ff"></i>気流の回廊</span><span><i style="background:#fff"></i>気流の粒</span><span><i style="background:#8a6a3a"></i>浮島</span></div>
+<h2>上面図(世界地図に重ねた図)</h2><canvas id="top2" class="v"></canvas>
+<h2>側面図(南から見た高さ。横=世界の東西)</h2><canvas id="side" class="v"></canvas>
+<div id="info"></div>
+<h2>限界・未確認</h2>
+<ul style="font-size:13px"><li>気流は「ガウス揺らぎの流れ関数」から作った流れで、本物の気流の計算ではありません。</li><li>高さの帯は未決。空の層は仮に一枚(高さ150)で、浮島は高さ110〜230にばらけさせた仮の値。</li><li>側面図は全域を重ねた投影なので、手前と奥は区別できません。</li><li>海の禁域・航路は未実装。龍種の生息域は見つかる判定を未実装(色だけ)。</li><li>iPhoneでの速度は未測定。</li></ul>
+<p><a href="mana0.html">魔力の地脈</a> / <a href="index.html">ハブへ戻る</a></p>
+</main>
+<script type="module">
+import * as THREE from '../sekai-hex/design/vendor/three.module.min.js';
+const GS=10, WW=1400, WH=900, GW=WW/GS, GH=WH/GS, VS=1.1, ALT=150, ALTMAX=260;
+const $=id=>document.getElementById(id);
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+function gnoise(r){return Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(6.2831853*r());}
+function blur(a,w,h,sig){const R=Math.ceil(sig*3),k=[];let s=0;for(let i=-R;i<=R;i++){const v=Math.exp(-i*i/(2*sig*sig));k.push(v);s+=v;}k.forEach((v,i)=>k[i]=v/s);
+ const t=new Float32Array(w*h),o=new Float32Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=0;for(let i=-R;i<=R;i++){const xx=Math.min(w-1,Math.max(0,x+i));v+=a[y*w+xx]*k[i+R];}t[y*w+x]=v;}
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=0;for(let i=-R;i<=R;i++){const yy=Math.min(h-1,Math.max(0,y+i));v+=t[yy*w+x]*k[i+R];}o[y*w+x]=v;}return o;}
+function std(a){let m=0;for(const v of a)m+=v;m/=a.length;let s=0;for(const v of a)s+=(v-m)*(v-m);s=Math.sqrt(s/a.length)+1e-9;return a.map(v=>(v-m)/s);}
+function field(seed,sig){const r=rng(seed),f=new Float32Array(GW*GH);
+ for(const [k,a] of [[1,1],[.5,.45]]){const n=new Float32Array(GW*GH);for(let i=0;i<n.length;i++)n[i]=gnoise(r);const b=std(blur(n,GW,GH,sig*k));for(let i=0;i<f.length;i++)f[i]+=a*b[i];}
+ return std(f);}
+function quant(a,q){const s=Float32Array.from(a).sort();return s[Math.floor(q*(s.length-1))];}
+
+// ---------- 世界(地面) ----------
+const cv=$('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene();S.background=new THREE.Color(0x0f1624);
+const cam=new THREE.PerspectiveCamera(40,1,1,6000);
+const L=new THREE.DirectionalLight(0xffffff,1.0);L.position.set(-550,630,-550);S.add(L,new THREE.AmbientLight(0xffffff,.6));
+let az=0.25,el=0.75,dist=1900;
+function resize(){const w=cv.clientWidth,h=cv.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();dist=w/h<1?3000:1700;}
+addEventListener('resize',()=>{resize();draw2d();});
+function place(){cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,60,0);}
+let dr=null;cv.addEventListener('pointerdown',e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!dr)return;az-=(e.clientX-dr[0])*.006;el=Math.min(1.45,Math.max(.15,el+(e.clientY-dr[1])*.006));dr=[e.clientX,e.clientY];});
+cv.addEventListener('pointerup',()=>dr=null);
+let ground=null,seaM=null,Hg=new Float32Array(GW*GH),mapImg=null,worldId='';
+async function loadWorld(id){
+ const d=await (await fetch(`w3d/world${id}.json`)).json();
+ const tex=await new THREE.TextureLoader().loadAsync(`w3d/world${id}.jpg`);tex.colorSpace=THREE.SRGBColorSpace;
+ mapImg=await new Promise(ok=>{const im=new Image();im.onload=()=>ok(im);im.src=`w3d/world${id}.jpg`;});
+ const n=d.p.length,pos=new Float32Array(n*3),uv=new Float32Array(n*2);
+ for(let i=0;i<n;i++){const [x,y,z]=d.p[i];pos[i*3]=x-d.w/2;pos[i*3+1]=z*VS;pos[i*3+2]=y-d.h/2;uv[i*2]=x/d.w;uv[i*2+1]=1-y/d.h;}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(d.f);g.computeVertexNormals();
+ if(ground){S.remove(ground);ground.geometry.dispose();ground.material.map.dispose();}
+ ground=new THREE.Mesh(g,new THREE.MeshLambertMaterial({map:tex,flatShading:true,side:THREE.DoubleSide}));S.add(ground);
+ if(!seaM){seaM=new THREE.Mesh(new THREE.PlaneGeometry(WW*1.2,WH*1.2),new THREE.MeshLambertMaterial({color:0x4a6a8a}));seaM.rotation.x=-Math.PI/2;seaM.position.y=-1;S.add(seaM);}
+ Hg.fill(0);const P=d.p,F=d.f;                       // 地面の高さの格子(三角形を格子に落とす)
+ for(let t=0;t<F.length;t+=3){const a=P[F[t]],b=P[F[t+1]],c=P[F[t+2]];
+  const x0=Math.max(0,Math.floor(Math.min(a[0],b[0],c[0])/GS)),x1=Math.min(GW-1,Math.ceil(Math.max(a[0],b[0],c[0])/GS));
+  const y0=Math.max(0,Math.floor(Math.min(a[1],b[1],c[1])/GS)),y1=Math.min(GH-1,Math.ceil(Math.max(a[1],b[1],c[1])/GS));
+  const den=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);if(Math.abs(den)<1e-9)continue;
+  for(let cy=y0;cy<=y1;cy++)for(let cx=x0;cx<=x1;cx++){const px=(cx+.5)*GS,py=(cy+.5)*GS;
+   const l1=((b[1]-c[1])*(px-c[0])+(c[0]-b[0])*(py-c[1]))/den,l2=((c[1]-a[1])*(px-c[0])+(a[0]-c[0])*(py-c[1]))/den,l3=1-l1-l2;
+   if(l1>=-.02&&l2>=-.02&&l3>=-.02){Hg[cy*GW+cx]=(l1*a[2]+l2*b[2]+l3*c[2])*VS;}}}
+ worldId=id;
+}
+// ---------- 航宙図の作成(毎回ガウス揺らぎ) ----------
+let seed=1,psi,vx,vy,spd,Dm,Rm,corr=[],parts=[],isl=[],sel=-1,zoneGroup=null,pts=null,pausedF=false;
+const NP=2600;
+function build(sd){
+ seed=sd;$('seed').value=sd;
+ psi=field(sd*7+1,12);Dm=new Uint8Array(GW*GH);Rm=new Uint8Array(GW*GH);
+ vx=new Float32Array(GW*GH);vy=new Float32Array(GW*GH);spd=new Float32Array(GW*GH);
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,xl=Math.max(0,x-1),xr=Math.min(GW-1,x+1),yu=Math.max(0,y-1),yd=Math.min(GH-1,y+1);
+  vx[i]=(psi[yd*GW+x]-psi[yu*GW+x])/2;vy[i]=-(psi[y*GW+xr]-psi[y*GW+xl])/2;spd[i]=Math.hypot(vx[i],vy[i]);}
+ const p95=quant(spd,.95);for(let i=0;i<spd.length;i++){const s=spd[i]/p95;vx[i]/=p95;vy[i]/=p95;spd[i]=Math.min(1,s);}
+ const D=field(sd*7+2,6),Rg=field(sd*7+3,7),td=quant(D,.88),tr=quant(Rg,.86);   // ダウンフォースは上位約12%・龍種は上位約14%(重ならない所)
+ for(let i=0;i<D.length;i++){if(D[i]>=td)Dm[i]=1;else if(Rg[i]>=tr)Rm[i]=1;}
+ corr=[];for(let i=0;i<spd.length;i++)if(!Dm[i]&&spd[i]>.5)corr.push(i);
+ // 粒
+ const r=rng(sd*13+5);parts=[];for(let k=0;k<NP;k++)parts.push(respawn({},r));
+ // 浮島(回廊の上に5つ。互いに150以上離す)
+ isl=[];const names='ABCDE',r2=rng(sd*17+9);let guard=0;
+ while(isl.length<5&&guard++<4000){const i=corr[Math.floor(r2()*corr.length)],x=(i%GW+.5)*GS,y=(Math.floor(i/GW)+.5)*GS;
+  if(isl.every(o=>Math.hypot(o.x-x,o.y-y)>170))isl.push({n:'浮島'+names[isl.length],x,y,alt:110+Math.floor(r2()*120),ph:r2()*6.28});}
+ buildZones();buildIslands();sel=-1;cacheBase();updateInfo();
+}
+function respawn(p,r){const i=corr[Math.floor(r()*corr.length)];p.x=(i%GW+r())*GS;p.y=(Math.floor(i/GW)+r())*GS;p.age=0;p.life=5+r()*9;p.yo=(r()-.5)*14;return p;}
+const cellAt=(x,y)=>Math.min(GH-1,Math.max(0,Math.floor(y/GS)))*GW+Math.min(GW-1,Math.max(0,Math.floor(x/GS)));
+// ---------- 立体図の部品 ----------
+function buildZones(){
+ if(zoneGroup){S.remove(zoneGroup);zoneGroup.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+ zoneGroup=new THREE.Group();
+ const mk=(mask,color,op,h,y0)=>{let n=0;for(const v of mask)n+=v;if(!n)return;const m=new THREE.InstancedMesh(new THREE.BoxGeometry(GS,h,GS),new THREE.MeshBasicMaterial({color,transparent:true,opacity:op,depthWrite:false}),n);
+  const M=new THREE.Matrix4();let k=0;for(let i=0;i<mask.length;i++)if(mask[i]){M.setPosition((i%GW+.5)*GS-WW/2,y0+h/2,(Math.floor(i/GW)+.5)*GS-WH/2);m.setMatrixAt(k++,M);}zoneGroup.add(m);};
+ mk(Dm,0x7a3aa8,.17,ALTMAX,0);mk(Rm,0xe0a030,.2,130,65);
+ S.add(zoneGroup);
+ if(pts){S.remove(pts);pts.geometry.dispose();}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(NP*3),3));
+ pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xeafcff,size:2.6,sizeAttenuation:false,transparent:true,opacity:.9,depthWrite:false}));pts.frustumCulled=false;S.add(pts);
+}
+let islG=null;
+function buildIslands(){
+ if(islG){S.remove(islG);islG.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+ islG=new THREE.Group();
+ isl.forEach(o=>{const g=new THREE.Group();
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(17,26,6),new THREE.MeshLambertMaterial({color:0xc9a06a,flatShading:true}));cone.rotation.x=Math.PI;cone.position.y=-13;
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(20,19,5,8),new THREE.MeshLambertMaterial({color:0x9fd070,flatShading:true}));
+  const sh=new THREE.Mesh(new THREE.CircleGeometry(18,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.35,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.scale.setScalar(3.2);
+  const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+  const ln=new THREE.Line(lg,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.45}));ln.frustumCulled=false;
+  g.add(cone,top);islG.add(g);islG.add(sh);islG.add(ln);o.g=g;o.sh=sh;o.ln=ln;o.top=top;});
+ S.add(islG);
+}
+function syncIslands(){isl.forEach((o,i)=>{const gh=Hg[cellAt(o.x,o.y)];const X=o.x-WW/2,Z=o.y-WH/2;
+  o.g.position.set(X,o.alt+Math.sin(t*.8+o.ph)*3,Z);o.sh.position.set(X,gh+1.5,Z);
+  const a=o.ln.geometry.attributes.position;a.setXYZ(0,X,gh,Z);a.setXYZ(1,X,o.g.position.y-8,Z);a.needsUpdate=true;
+  o.top.material.color.setHex(i===sel?0xffe36a:0x9fd070);o.g.scale.setScalar(i===sel?4.2:3.2);});}
+// ---------- 更新 ----------
+let t=0,last=performance.now();
+function step(dt){
+ const r=Math.random;const pa=pts.geometry.attributes.position;
+ parts.forEach((p,k)=>{const i=cellAt(p.x,p.y);
+  if(Dm[i]){respawn(p,r);}else{const sp=48*(0.35+0.65*spd[i]);p.x+=vx[i]*sp/Math.max(.35,Math.hypot(vx[i],vy[i]))*dt*.9;p.y+=vy[i]*sp/Math.max(.35,Math.hypot(vx[i],vy[i]))*dt*.9;p.age+=dt;
+   if(p.x<0||p.x>=WW||p.y<0||p.y>=WH||p.age>p.life)respawn(p,r);}
+  pa.setXYZ(k,p.x-WW/2,ALT+p.yo,p.y-WH/2);});pa.needsUpdate=true;
+ isl.forEach(o=>{const i=cellAt(o.x,o.y);const m=Math.max(.35,Math.hypot(vx[i],vy[i]));let nx=o.x+vx[i]/m*14*dt,ny=o.y+vy[i]/m*14*dt;    // 浮島は気流に乗ってゆっくり動く
+  if(nx<20||nx>WW-20||ny<20||ny>WH-20||Dm[cellAt(nx,ny)]){o.back=(o.back||0)+1;const j=Math.floor(Math.random()*corr.length);if(o.back>40){o.x=(corr[j]%GW+.5)*GS;o.y=(Math.floor(corr[j]/GW)+.5)*GS;o.back=0;}}else{o.x=nx;o.y=ny;o.back=0;}});
+}
+// ---------- 二面図 ----------
+let base=null;
+function cacheBase(){const W=$('top2').clientWidth||600,H=Math.round(W*WH/WW);base=document.createElement('canvas');base.width=WW;base.height=WH;const g=base.getContext('2d');
+ if(mapImg){g.drawImage(mapImg,0,0,WW,WH);g.fillStyle='rgba(10,16,30,.35)';g.fillRect(0,0,WW,WH);}
+ for(let i=0;i<Dm.length;i++){const x=(i%GW)*GS,y=Math.floor(i/GW)*GS;if(Dm[i]){g.fillStyle='rgba(122,58,168,.62)';g.fillRect(x,y,GS,GS);}else if(Rm[i]){g.fillStyle='rgba(224,160,48,.5)';g.fillRect(x,y,GS,GS);}else if(spd[i]>.5){g.fillStyle='rgba(90,216,255,.16)';g.fillRect(x,y,GS,GS);}}
+}
+function fit(c,aspect){const W=c.clientWidth,dpr=Math.min(devicePixelRatio||1,2);c.width=W*dpr;c.height=W*aspect*dpr;c.style.height=(W*aspect)+'px';const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);return [g,W,W*aspect];}
+function draw2d(){if(!base)return;
+ {const [g,W,H]=fit($('top2'),WH/WW);g.drawImage(base,0,0,W,H);const sx=W/WW;
+  g.fillStyle='rgba(255,255,255,.85)';for(let k=0;k<parts.length;k+=2){const p=parts[k];g.fillRect(p.x*sx,p.y*sx,1.4,1.4);}
+  isl.forEach((o,i)=>{g.beginPath();g.arc(o.x*sx,o.y*sx,i===sel?9:6,0,6.3);g.fillStyle=i===sel?'#ffe36a':'#8a6a3a';g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();g.fillStyle='#fff';g.font='11px sans-serif';g.fillText(o.n,o.x*sx+9,o.y*sx+4);});}
+ {const [g,W,H]=fit($('side'),.42),sx=W/WW,sy=y=>H-6-(y/ALTMAX)*(H-14);
+  g.fillStyle='#1b2433';g.fillRect(0,0,W,H);
+  for(let x=0;x<GW;x++){let d=0,r=0;for(let y=0;y<GH;y++){const i=y*GW+x;if(Dm[i])d++;else if(Rm[i])r++;}
+   if(d){g.fillStyle=`rgba(122,58,168,${Math.min(.5,.1+d/GH*1.0)})`;g.fillRect(x*GS*sx,sy(ALTMAX),GS*sx+.6,sy(0)-sy(ALTMAX));}
+   if(r){g.fillStyle=`rgba(224,160,48,${Math.min(.5,.1+r/GH*1.0)})`;g.fillRect(x*GS*sx,sy(195),GS*sx+.6,sy(65)-sy(195));}}
+  g.strokeStyle='rgba(90,216,255,.6)';g.setLineDash([4,4]);g.beginPath();g.moveTo(0,sy(ALT));g.lineTo(W,sy(ALT));g.stroke();g.setLineDash([]);   // 空の層(仮)
+  g.fillStyle='#5b7a4a';g.beginPath();g.moveTo(0,sy(0));for(let x=0;x<GW;x++){let m=0;for(let y=0;y<GH;y++)m=Math.max(m,Hg[y*GW+x]);g.lineTo((x+.5)*GS*sx,sy(m));}g.lineTo(W,sy(0));g.closePath();g.fill();
+  g.fillStyle='rgba(255,255,255,.8)';g.font='10px sans-serif';[0,100,200].forEach(a=>g.fillText(a,2,sy(a)-2));g.fillText('高さ',2,10);
+  isl.forEach((o,i)=>{const x=o.x*sx,y=sy(o.alt);g.beginPath();g.arc(x,y,i===sel?8:5.5,0,6.3);g.fillStyle=i===sel?'#ffe36a':'#8a6a3a';g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();g.fillStyle='#fff';g.font='11px sans-serif';g.fillText(o.n,x+8,y+4);});}
+}
+function pick(e,c,fn){const b=c.getBoundingClientRect(),px=(e.clientX-b.left),py=(e.clientY-b.top);let bi=-1,bd=1e9;isl.forEach((o,i)=>{const [x,y]=fn(o,b);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;bi=i;}});sel=bd<30?bi:-1;updateInfo();}
+$('top2').addEventListener('pointerdown',e=>pick(e,$('top2'),(o,b)=>[o.x*b.width/WW,o.y*b.width/WW]));
+$('side').addEventListener('pointerdown',e=>pick(e,$('side'),(o,b)=>[o.x*b.width/WW,b.height-6-(o.alt/ALTMAX)*(b.height-14)]));
+function updateInfo(){const n=Dm.length,cd=Dm.reduce((a,v)=>a+v,0),cr=Rm.reduce((a,v)=>a+v,0);
+ $('info').innerHTML=`<h2>この航宙図</h2><div style="font-size:13px">種 ${seed} / 世界 ${worldId}<br>入れない ${(cd/n*100).toFixed(0)}% / 龍種の生息域 ${(cr/n*100).toFixed(0)}% / 気流の回廊 ${(corr.length/n*100).toFixed(0)}%(全域に対する割合)</div>
+ <table><tr><th>浮島</th><th>東西</th><th>南北</th><th>高さ</th></tr>${isl.map((o,i)=>`<tr${i===sel?' style="background:#ffe9a8"':''}><td>${o.n}</td><td>${o.x.toFixed(0)}</td><td>${o.y.toFixed(0)}</td><td>${o.alt}</td></tr>`).join('')}</table><small>図の浮島をタップすると、全部の図で強調されます。</small>`;}
+// ---------- 動かす ----------
+function loop(){requestAnimationFrame(loop);const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;if(!pausedF){t+=dt;step(dt);}
+ place();syncIslands();R.render(S,cam);draw2d();}
+$('mk').onclick=()=>build(parseInt($('seed').value)||1);
+$('rnd').onclick=()=>build(Math.floor(Math.random()*9000)+1);
+$('pz').onclick=()=>{pausedF=!pausedF;$('pz').textContent=pausedF?'動かす':'止める';};
+$('w').onchange=async()=>{await loadWorld($('w').value);build(seed);};
+resize();
+const qs=new URLSearchParams(location.search);
+await loadWorld(qs.get('w')||'pm55');if(qs.get('w'))$('w').value=qs.get('w');
+build(parseInt(qs.get('seed'))||Math.floor(Math.random()*9000)+1);
+$('hud').textContent='ドラッグで回す。白い粒=気流、茶色=浮島、紫=入れない、橙=龍種の生息域。';
+loop();
+window.__ready=true;window.__set=(a,e,d)=>{az=a;el=e;dist=d;};
+</script></body></html>
