@@ -43,7 +43,14 @@ def main(pre, outdir, name, seed=1):
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
     if D is not None:
         import water_layer
-        ov = outdir + '/water-layer.png'; print(water_layer.make(G, lake, land0, H, ov, shift, seed)); os.environ['FM_LP_OVERLAY'] = ov
+        wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed))
+        import cv2, forest_world_layer, sea_layer; from PIL import Image as _I
+        wl = cv2.imread(wo, cv2.IMREAD_UNCHANGED); wl = _I.fromarray(cv2.cvtColor(wl, cv2.COLOR_BGRA2RGBA))
+        sea_layer.colormap(land, seed).save(name + '_sea.jpg', quality=92)   # 3Dの海の面に貼る色の地図
+        lay = sea_layer.build(land, seed)                              # 海の深さ・浅瀬(11-23 全実装に統合)
+        lay.alpha_composite(forest_world_layer.build(dat, seed))       # 森の塊(第10版)
+        lay.alpha_composite(wl)                                        # 川の水面・湖(いちばん上)
+        ov = outdir + '/water-layer.png'; cv2.imwrite(ov, cv2.cvtColor(np.array(lay), cv2.COLOR_RGBA2BGRA)); os.environ['FM_LP_OVERLAY'] = ov
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
     lowpoly.paint(img, H, land, BI, seed)
