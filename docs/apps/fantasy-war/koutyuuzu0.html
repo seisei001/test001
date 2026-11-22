@@ -172,23 +172,65 @@ function buildZones(){
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(NP*3),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(NP*3),3));
  pts=new THREE.Points(g,new THREE.PointsMaterial({size:2.8,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));pts.frustumCulled=false;S.add(pts);
 }
-let islG=null;
+let islG=null,ISLTEX=null;
+const ITYPES=['岩峰','遺跡','滝','森','鉱山','集落','水晶','城'];
+function islRng(s){return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+const GBOX=new THREE.BoxGeometry(1,1,1),GCONE5=new THREE.ConeGeometry(1,1,5),GCONE4=new THREE.ConeGeometry(1,1,4),GCYL=new THREE.CylinderGeometry(1,1,1,6),GICO=new THREE.IcosahedronGeometry(1,0),GOCT=new THREE.OctahedronGeometry(1);
+// 小部品(頂点色)を1つにまとめる。y0=底の高さ、h=高さ、(rx,rz)=太さ
+function prop(P,C,g,x,y0,z,rx,h,rz,col,ry,mid){const q=g.index?g.toNonIndexed():g.clone();
+ const m=new THREE.Matrix4().compose(new THREE.Vector3(x,y0+(mid?0:h/2),z),new THREE.Quaternion().setFromEuler(new THREE.Euler(0,ry||0,0)),new THREE.Vector3(rx,(g===GICO||g===GOCT)?h/2:h,rz));
+ // BoxGeometryは高さ1、他は高さ1(円錐・円柱)。上の倍率で箱だけ補正
+ q.applyMatrix4(m);const a=q.attributes.position.array,c=new THREE.Color(col);
+ for(let i=0;i<a.length;i+=3){P.push(a[i],a[i+1],a[i+2]);C.push(c.r,c.g,c.b);}}
+function makeIsland(t,seed){
+ const R=20,N=10,r=islRng(seed*977+t*131+5),ang=[],rad=[];
+ for(let i=0;i<N;i++){ang.push(i/N*6.2832);rad.push(R*(.86+.26*r()));}
+ const ring=(k,y)=>ang.map((a,i)=>[Math.cos(a)*rad[i]*k,y,Math.sin(a)*rad[i]*k]);
+ const AP=[],AU=[],tu=(x,z)=>(t*128+64+x*3)/1024,tv=(x,z)=>1-(64+z*3)/384,bu=(x,z)=>(t*128+64-x*3)/1024,bv=(x,z)=>1-(192+z*3)/384;
+ const A=(p,top)=>{AP.push(p[0],p[1],p[2]);AU.push(top?tu(p[0],p[2]):bu(p[0],p[2]),top?tv(p[0],p[2]):bv(p[0],p[2]));};
+ const r0=ring(1,0),c0=[0,1.4,0];
+ for(let i=0;i<N;i++){const j=(i+1)%N;A(c0,1);A(r0[j],1);A(r0[i],1);}            // 上面
+ const r1=ring(.97,-4),r2=ring(.6,-12).map(p=>[p[0]+(r()-.5)*3,p[1],p[2]+(r()-.5)*3]),ap=[(r()-.5)*4,-26,(r()-.5)*4];
+ for(let i=0;i<N;i++){const j=(i+1)%N;A(r1[i],0);A(r1[j],0);A(r2[i],0);A(r1[j],0);A(r2[j],0);A(r2[i],0);A(r2[i],0);A(r2[j],0);A(ap,0);} // 下の岩
+ const g1=new THREE.BufferGeometry();g1.setAttribute('position',new THREE.Float32BufferAttribute(AP,3));g1.setAttribute('uv',new THREE.Float32BufferAttribute(AU,2));g1.computeVertexNormals();
+ const P=[],C=[];
+ const rim=[[.55,.45,.28],[.6,.5,.35],[.5,.4,.3],[.5,.38,.24],[.5,.5,.5],[.58,.45,.28],[.2,.2,.3],[.52,.5,.45]][t];
+ for(let i=0;i<N;i++){const j=(i+1)%N,q=[r0[i],r0[j],r1[j],r1[i]],c=new THREE.Color(rim[0],rim[1],rim[2]);for(const k of [0,1,2,0,2,3]){P.push(...q[k]);C.push(c.r,c.g,c.b);}}
+ for(let i=0;i<9;i++){const a=i/9*6.2832+r()*.3,cr=R*.95;prop(P,C,GICO,Math.cos(a)*cr,-4+r()*2,Math.sin(a)*cr,6+r()*2.5,5,6+r()*2.5,0xf2f8ff,r()*3,1);}
+ for(let i=0;i<4;i++){const a=r()*6.28;prop(P,C,GICO,Math.cos(a)*7,-9,Math.sin(a)*7,5,4,5,0xe8f0fa,0,1);}
+ const gr=()=>new THREE.Color().setHSL(.27+r()*.06,.5,.28+r()*.1).getHex();
+ const pos=(m)=>{const a=r()*6.28,d=Math.sqrt(r())*m;return [Math.cos(a)*d,Math.sin(a)*d];};
+ const tree=(x,z,s)=>{prop(P,C,GBOX,x,0,z,.5*s,2*s,.5*s,0x6b4a2b);prop(P,C,GCONE5,x,1.6*s,z,2*s,3.6*s,2*s,gr());prop(P,C,GCONE5,x,3.6*s,z,1.5*s,3*s,1.5*s,gr());};
+ const rock=(x,z,s,c)=>prop(P,C,GICO,x,-.5,z,s*1.3,s*1.4,s,c||0x8d9199,r()*3,1);
+ if(t==0){rock(-4,2,4.5);rock(3,-2,5.5);rock(0,5,3.2);rock(-1,-5,4);prop(P,C,GCONE5,-1,0,-1,6,11,6,0x7f838b);tree(6,4,1.4);}
+ else if(t==1){for(let i=0;i<6;i++){const [x,z]=pos(11);prop(P,C,GBOX,x,0,z,1.5,3+r()*4,1.5,0xb9ad98,r());}rock(-5,3,2.5,0xa09a8c);rock(6,-4,2.2,0xa09a8c);prop(P,C,GCONE5,0,0,0,9,4,9,0x7c9a5e);}
+ else if(t==2){prop(P,C,GBOX,rad[0]*.92,-17,0,1.8,17.5,4.2,0x4aa6e4);prop(P,C,GICO,rad[0]*.8,-17,0,5,3,5,0xcfe8fa,0,1);prop(P,C,GBOX,-3,0,-2,3,2,3,0xc9a36b);prop(P,C,GCONE4,-3,2,-2,3,2,3,0xa4452f,.78);tree(-9,5,1);tree(2,-8,1.1);rock(-8,-5,3);}
+ else if(t==3){for(let i=0;i<15;i++){const [x,z]=pos(14);tree(x,z,.9+r()*.8);}}
+ else if(t==4){prop(P,C,GCONE5,-2,0,0,8,16,8,0x8a8d93);prop(P,C,GCONE5,-2,12,0,2.6,4.5,2.6,0xf2f2f2);prop(P,C,GCONE5,6,0,3,5.5,10,5.5,0x7d8087);prop(P,C,GCONE5,-9,0,-3,5,9,5,0x777a80);prop(P,C,GBOX,-2,16,0,.25,4,.25,0x6b4a2b);prop(P,C,GBOX,-1.2,18.4,0,1.6,1.1,.1,0xd8392b);}
+ else if(t==5){for(let i=0;i<8;i++){const [x,z]=pos(12),s=1+r()*.5;prop(P,C,GBOX,x,0,z,3*s,2.2*s,3*s,0xc79a62,r());prop(P,C,GCONE4,x,2.2*s,z,3*s,2*s,3*s,0xa8452b,.78+r());}for(let i=0;i<3;i++){const [x,z]=pos(12);prop(P,C,GBOX,x,0,z,4,.3,2.4,0xc9b24a);}tree(8,-6,1);}
+ else if(t==6){prop(P,C,GOCT,-1,5,0,4.5,12,4.5,0xa05bf0,.3,1);for(let i=0;i<9;i++){const [x,z]=pos(13),s=.8+r()*1.6;prop(P,C,GOCT,x,s*1.6,z,s,s*3.4,s,r()<.5?0x9a58e8:0x4fb8e0,r()*3,1);}}
+ else{prop(P,C,GBOX,0,0,0,7,9,7,0x9aa0a8);prop(P,C,GCONE4,0,9,0,5.2,4,5.2,0xb4452f,.78);[[-9,-9],[9,-9],[-9,9],[9,9]].forEach(([x,z])=>{prop(P,C,GCYL,x,0,z,1.9,10,1.9,0x8f959d);prop(P,C,GCONE5,x,10,z,2.4,3.5,2.4,0xb4452f);});prop(P,C,GBOX,0,0,-9,14,3.5,1.2,0x8f959d);prop(P,C,GBOX,0,0,9,14,3.5,1.2,0x8f959d);}
+ const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g2.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g2.computeVertexNormals();
+ return [g1,g2];
+}
 function buildIslands(){
  if(islG){S.remove(islG);islG.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
  islG=new THREE.Group();
- isl.forEach(o=>{const g=new THREE.Group();
-  const cone=new THREE.Mesh(new THREE.ConeGeometry(17,26,6),new THREE.MeshLambertMaterial({color:0x8b7355,flatShading:true}));cone.rotation.x=Math.PI;cone.position.y=-13;
-  const top=new THREE.Mesh(new THREE.CylinderGeometry(20,19,5,8),new THREE.MeshLambertMaterial({color:0x7c9a5e,flatShading:true}));
+ if(!ISLTEX){ISLTEX=new THREE.TextureLoader().load('assets/islands/atlas.png');if(THREE.SRGBColorSpace)ISLTEX.colorSpace=THREE.SRGBColorSpace;}
+ isl.forEach((o,i)=>{const g=new THREE.Group();o.t=i%8;
+  const [g1,g2]=makeIsland(o.t,i+seed);
+  const top=new THREE.Mesh(g1,new THREE.MeshLambertMaterial({map:ISLTEX,flatShading:true,side:THREE.DoubleSide}));
+  const pr=new THREE.Mesh(g2,new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true,side:THREE.DoubleSide}));
   const sh=new THREE.Mesh(new THREE.CircleGeometry(18,16),new THREE.MeshBasicMaterial({color:0x1b2733,transparent:true,opacity:.28,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.scale.setScalar(3.2);
   const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
   const ln=new THREE.Line(lg,new THREE.LineBasicMaterial({color:0x4a5a68,transparent:true,opacity:.6}));ln.frustumCulled=false;
-  g.add(cone,top);islG.add(g);islG.add(sh);islG.add(ln);o.g=g;o.sh=sh;o.ln=ln;o.top=top;});
+  g.add(top,pr);islG.add(g);islG.add(sh);islG.add(ln);o.g=g;o.sh=sh;o.ln=ln;o.top=top;});
  S.add(islG);
 }
 function syncIslands(){isl.forEach((o,i)=>{const gh=Hg[cellAt(o.x,o.y)];const X=o.x-WW/2,Z=o.y-WH/2;
-  o.g.position.set(X,o.z+BODY*o.s,Z);o.sh.position.set(X,gh+1.5,Z);o.sh.scale.setScalar(3.2*o.s);
+  o.g.position.set(X,o.z+BODY*o.s+20*o.s*(0),Z);o.sh.position.set(X,gh+1.5,Z);o.sh.scale.setScalar(3.2*o.s);
   const a=o.ln.geometry.attributes.position;a.setXYZ(0,X,gh,Z);a.setXYZ(1,X,o.z,Z);a.needsUpdate=true;
-  o.top.material.color.setHex(i===sel?0xf2b705:0x7c9a5e);o.g.scale.setScalar((i===sel?4.2:3.2)*o.s);});}
+  o.top.material.color.setHex(i===sel?0xffd866:0xffffff);o.g.scale.setScalar((i===sel?4.2:3.2)*o.s);});}
 // ---------- 浮島の斥力(気流+地表の斥力(上と横)+魔力の斥力+ダウンフォースの押し返し) ----------
 // 浮島は地表との斥力で浮き、魔力が濃い所ではその斥力が足される。山腹では横にも押し返される。
 const BODY=83, BR=64, CONE=54, RR=140, RC=Math.ceil(RR/GS), GRAV=40, DAMP=1.6, FLOW=22, HOV0=25, RD=70, KD=1.2, HG=5;
