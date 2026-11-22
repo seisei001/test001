@@ -23,7 +23,7 @@ small{color:var(--sub)}
 種 <input id="seed" type="number" style="width:7em">
 <button id="mk">この種で作る</button><button id="rnd">作り直す(新しい種)</button><button id="pz">止める</button>
 </div>
-<div class="lg"><span><i style="background:repeating-linear-gradient(45deg,#c2185b55 0 2px,#fff0 2px 5px);border:1.5px solid #c2185b"></i>入れない(ダウンフォース・高さの層ごとに別の場所)</span><span><i style="border:1.5px dashed #e08a00;background:#e08a0022"></i>龍種の生息域(入れるが見つかると甚大)</span><span><i style="background:linear-gradient(90deg,#8db7e8,#1f6fd0)"></i>気流(薄い→速い)</span><span><i style="background:#7c9a5e;border:1.5px solid #4a3a2a;border-radius:7px"></i>浮島</span></div>
+<div class="lg"><span><i style="background:repeating-linear-gradient(45deg,#c2185b55 0 2px,#fff0 2px 5px);border:1.5px solid #c2185b"></i>入れない(ダウンフォース・高さの層ごとに別の場所)</span><span><i style="border:1.5px dashed #e08a00;background:#e08a0022"></i>龍種の生息域(入れるが見つかると甚大)</span><span><i style="background:linear-gradient(90deg,#8db7e8,#1f6fd0)"></i>気流(薄い→速い)</span><span><i style="background:#ffd64038;border:1.5px solid #e0b020"></i>上昇気流(魔力だまり付近)</span><span><i style="background:#7c9a5e;border:1.5px solid #4a3a2a;border-radius:7px"></i>浮島</span></div>
 <h2>上面図(世界地図に重ねた図)</h2><canvas id="top2" class="v"></canvas>
 <h2>側面図(南から見た高さ。横=世界の東西)</h2><canvas id="side" class="v"></canvas>
 <div id="info"></div>
@@ -96,9 +96,10 @@ async function loadWorld(id){
 // ---------- 航宙図の作成(毎回ガウス揺らぎ) ----------
 // 気流は高さで変わる: 低・中・高の3層(それぞれ別のガウス揺らぎの流れ関数)を、高さに応じてなめらかにつなぐ。上層ほど速い。さらに上昇・下降の風(別の揺らぎ)がある。
 const LZ=[110,260,420],LF=[.8,1,1.35],LSG=[12,14,18],WK=.3;
-let VX=[],VY=[],SP=[],Wf=null,FX=0,FY=0,FS=0,FLF=1;
+let VX=[],VY=[],SP=[],Wf=null,Wg=null,CX=null,CY=null,CV=.6,FX=0,FY=0,FS=0,FLF=1;
 function spdAt(i,z){let a,b,t;if(z<=LZ[0]){a=b=0;t=0;}else if(z>=LZ[2]){a=b=2;t=0;}else if(z<LZ[1]){a=0;b=1;t=(z-LZ[0])/(LZ[1]-LZ[0]);}else{a=1;b=2;t=(z-LZ[1])/(LZ[2]-LZ[1]);}
- FX=VX[a][i]*(1-t)+VX[b][i]*t;FY=VY[a][i]*(1-t)+VY[b][i]*t;FS=Math.min(1,Math.hypot(FX,FY));FLF=LF[a]*(1-t)+LF[b]*t;return FS;}
+ FX=VX[a][i]*(1-t)+VX[b][i]*t;FY=VY[a][i]*(1-t)+VY[b][i]*t;if(CX){const c=CV*(1-2*Math.min(1,z/ALTMAX));FX+=CX[i]*c;FY+=CY[i]*c;}   // 上昇・下降の風に伴う横の流れ(低い所は上昇域へ集まり、高い所は上昇域から広がる)
+FS=Math.min(1,Math.hypot(FX,FY));FLF=LF[a]*(1-t)+LF[b]*t;return FS;}
 let seed=1,psi,vx,vy,spd,Dm,Rm,Df,Rf,td,tr,corr=[],parts=[],isl=[],sel=-1,zoneGroup=null,pts=null,pausedF=false,segD=[],segR=[],Dl=[],segDl=[],Rlo=null,Rhi=null,gt=0,lvEv=0,lvLast='';
 const DZ=[[0,230],[150,370],[290,520]],LV=[50,130,210,290,370],KL=1.5,LVN=['最下層','下層','中層','上層','最上層'],DZN=['低い','中ほど','高い'];
 const dW=(i,z)=>{let w=0;for(let k=0;k<3;k++)if(Dl[k][i]){const lo=DZ[k][0],hi=DZ[k][1],e=z<lo?lo-z:z>hi?z-hi:0;w=Math.max(w,Math.max(0,1-e/60));}return w;};
@@ -113,7 +114,7 @@ function build(sd){
    ax[i]=(ps[yd*GW+x]-ps[yu*GW+x])/2;ay[i]=-(ps[y*GW+xr]-ps[y*GW+xl])/2;as[i]=Math.hypot(ax[i],ay[i]);}
   const p95=quant(as,.95);for(let i=0;i<as.length;i++){ax[i]/=p95;ay[i]/=p95;as[i]=Math.min(1,as[i]/p95);}
   VX.push(ax);VY.push(ay);SP.push(as);}
- vx=VX[1];vy=VY[1];spd=SP[1];Wf=field(sd*7+5,9);for(let i=0;i<Wf.length;i++)Wf[i]=Math.max(-1,Math.min(1,Wf[i]*.6));
+ vx=VX[1];vy=VY[1];spd=SP[1];Wg=field(sd*7+5,9);for(let i=0;i<Wg.length;i++)Wg[i]=Math.max(-1,Math.min(1,Wg[i]*.6));Wf=Float32Array.from(Wg);CX=CY=null;
  Df=field(sd*7+2,6);Rf=field(sd*7+3,7);td=quant(Df,.88);tr=quant(Rf,.86);
  Dl=[];segDl=[];for(let k=0;k<3;k++){const f=k?field(sd*7+2+100*k,6):Df,th=quant(f,k?.935:.935),m=new Uint8Array(GW*GH);for(let i=0;i<f.length;i++)if(f[i]>=th){m[i]=1;Dm[i]=1;}Dl.push(m);segDl.push(contour(f,th));}   // 入れない所(ダウンフォース)は高さの層ごとに別の場所
  for(let i=0;i<Df.length;i++){if(!Dm[i]&&Rf[i]>=tr)Rm[i]=1;}
@@ -128,7 +129,7 @@ function build(sd){
  {const o2=[0,1,2,3,4];for(let i=4;i>0;i--){const j=Math.floor(r2()*(i+1));[o2[i],o2[j]]=[o2[j],o2[i]];}isl.forEach((o,i)=>{o.lv=o2[i%5];o.nt=15+r2()*40;});}
  gt=0;lvEv=0;lvLast='';
  isl.forEach(o=>{const g0=Hg[cellAt(o.x,o.y)]+HOV0+20;o.z=Math.max(g0,LV[o.lv]);o.alt=o.z+BODY*o.s/2;});
- buildMana(worldId);buildZones();buildIslands();sel=-1;cacheBase();updateInfo();
+ buildMana(worldId);buildWind();buildZones();buildIslands();sel=-1;cacheBase();updateInfo();
 }
 function respawn(p,r){const i=corr[Math.floor(r()*corr.length)];p.x=(i%GW+r())*GS;p.y=(Math.floor(i/GW)+r())*GS;p.age=0;p.life=5+r()*9;p.yo=0;p.z=40+r()*(ALTMAX-80);return p;}
 const cellAt=(x,y)=>Math.min(GH-1,Math.max(0,Math.floor(y/GS)))*GW+Math.min(GW-1,Math.max(0,Math.floor(x/GS)));
@@ -187,6 +188,13 @@ const cfg={h:1,m:1,dn:1,ii:1,cr:1}, stat={steps:0,hit:0,res:0,minD:1e9,ii:0,minI
 const Mm=new Float32Array(GW*GH);
 const bu=h=>BODY*Math.min(1,h/CONE);                       // 浮島の下面(円すい)の、軸から横へhの所の高さ
 function hashS(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function buildWind(){   // 上下の風 = ガウス揺らぎ(弱め) + 魔力だまり付近の上昇 − ダウンフォースの域の下降。横の流れは、その上下の風の集まり・広がり
+ const n=GW*GH,mb=blur(Mm,GW,GH,5),mx=quant(mb,.97)||1,dmk=new Float32Array(n);for(let i=0;i<n;i++)dmk[i]=Dm[i];const db=blur(dmk,GW,GH,4),dx=quant(db,.97)||1;
+ for(let i=0;i<n;i++){const u=Math.min(1,Math.max(0,(mb[i]/mx-.25)/.75)),d=Math.min(1,db[i]/dx);Wf[i]=Math.max(-1,Math.min(1,.35*Wg[i]+u-d));}
+ const ws=blur(Wf,GW,GH,4),gx=new Float32Array(n),gy=new Float32Array(n),gm=new Float32Array(n);
+ for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x;gx[i]=ws[y*GW+Math.min(GW-1,x+1)]-ws[y*GW+Math.max(0,x-1)];gy[i]=ws[Math.min(GH-1,y+1)*GW+x]-ws[Math.max(0,y-1)*GW+x];gm[i]=Math.hypot(gx[i],gy[i]);}
+ const p=quant(gm,.95)||1;for(let i=0;i<n;i++){gx[i]=Math.max(-1.5,Math.min(1.5,gx[i]/p));gy[i]=Math.max(-1.5,Math.min(1.5,gy[i]/p));}
+ CX=gx;CY=gy;}
 function buildMana(id){                                      // 地表の魔力の濃さ(連続値0〜1)。世界ごとの別のガウス揺らぎ。海の上まで広げる。航宙図は読むだけ。
  const r=rng(hashS('mana'+id)),f=new Float32Array(GW*GH);let a=1;
  for(const sg of [6,3,1.5,.8]){const n=new Float32Array(GW*GH);for(let i=0;i<n.length;i++)n[i]=gnoise(r);const b=std(blur(n,GW,GH,sg));for(let i=0;i<f.length;i++)f[i]+=a*b[i];a*=.9;}
@@ -253,7 +261,7 @@ function cacheBase(){base=document.createElement('canvas');base.width=WW;base.he
  if(mapC){g.drawImage(mapC,0,0,WW,WH);}else{g.fillStyle='#e8edf1';g.fillRect(0,0,WW,WH);}
  g.fillStyle='rgba(255,255,255,.25)';g.fillRect(0,0,WW,WH);
  hatch=hatch||mkHatch();const pat=g.createPattern(hatch,'repeat');
- for(let i=0;i<Dm.length;i++){const x=(i%GW)*GS,y=Math.floor(i/GW)*GS;if(Dm[i]){g.fillStyle='rgba(194,24,91,.10)';g.fillRect(x,y,GS,GS);g.fillStyle=pat;g.fillRect(x,y,GS,GS);}else if(Rm[i]){g.fillStyle='rgba(224,138,0,.12)';g.fillRect(x,y,GS,GS);}}
+ for(let i=0;i<Dm.length;i++){const x=(i%GW)*GS,y=Math.floor(i/GW)*GS;if(!Dm[i]&&Wf[i]>.45){g.fillStyle='rgba(255,214,64,.22)';g.fillRect(x,y,GS,GS);}if(Dm[i]){g.fillStyle='rgba(194,24,91,.10)';g.fillRect(x,y,GS,GS);g.fillStyle=pat;g.fillRect(x,y,GS,GS);}else if(Rm[i]){g.fillStyle='rgba(224,138,0,.12)';g.fillRect(x,y,GS,GS);}}
  g.lineWidth=2;g.strokeStyle=CDs;g.beginPath();for(const s of segD){g.moveTo(s[0],s[1]);g.lineTo(s[2],s[3]);}g.stroke();
  g.strokeStyle=CRs;g.setLineDash([9,6]);g.beginPath();for(const s of segR){g.moveTo(s[0],s[1]);g.lineTo(s[2],s[3]);}g.stroke();g.setLineDash([]);
 }
