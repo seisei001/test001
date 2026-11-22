@@ -28,7 +28,7 @@ small{color:var(--sub)}
 <h2>側面図(南から見た高さ。横=世界の東西)</h2><canvas id="side" class="v"></canvas>
 <div id="info"></div>
 <h2>限界・未確認</h2>
-<ul style="font-size:13px"><li><b>浮島の動き(11-22 追加)</b>: 気流で横へ流れ、地表の面からの斥力(上と横)と、魔力の濃さによる斥力(上)で浮き、ダウンフォースの域からは押し返されます。高さは島ごとの「層」(5段階: 最下層〜最上層)で決まり、約25〜70秒ごとに層が変わったり、2島が層を入れ替えたりします(11-22 15:50。層の高さ(島の下端)50/130/210/290/370、入れ替わる間隔・確率は私の初期値)。山の上・魔力の濃い所では層より少し高くなります。</li><li>浮島の斥力の力の強さ・届く距離・魔力の効きは私の初期値(ユーザーの指定ではない)です。魔力の濃さ・ダウンフォース・上昇気流は、「上の図(航宙図側のガウス揺らぎ)+下の図(世界ごとの地表のガウス揺らぎ)」の合計で決めます(11-22 18:50 ユーザー決定。それまでの『相関させない』を変更)。魔力の場は海の上まで広げた仮の場で、魔力の地脈の道具(mana_vein2.py)の実データではなく、道具側はまだ合計にしていません。</li><li>気流は流れ関数から作った流れで、本物の気流の計算ではありません。下の気流=地形(ぼかした高さの等高線に沿う)+ガウス揺らぎ、上の気流=ガウス揺らぎ、中の気流=下と上の合計です(11-22 18:52 ユーザー決定)。</li><li>高さの帯は未決。気流は低(110)・中(260)・高(420)の3層で、高さに応じてなめらかに補間(11-22 15:30。上層ほど速く、上昇・下降の風もある。層の高さ・速さの比・風の強さは私の初期値)。入れない=3つの高さ層(0〜230/150〜370/290〜520)でそれぞれ別の場所、龍種の高さ帯は場所ごとに約40〜480の間で違う(11-22 15:50。層の高さ・幅・場所は私の初期値)。全体の高さ範囲は0〜520(11-22に高さの幅を約2倍へ拡大。値は私の初期値)。</li><li>側面図は全域を重ねた投影なので、手前と奥は区別できません。</li><li>海の禁域・航路は未実装。龍種に見つかる判定も未実装(色だけ)。</li><li>色の使い方は航空図の見た目を参考にした初期案で、ユーザーの評価待ち。iPhoneでの速度は未測定。</li></ul>
+<ul style="font-size:13px"><li><b>浮島の動き(11-22 追加)</b>: 気流で横へ流れ、地表の面からの斥力(上と横)と、魔力の濃さによる斥力(上)で浮き、ダウンフォースの域からは押し返されます。高さは島ごとの「層」(5段階: 最下層〜最上層)で決まり、約25〜70秒ごとに層が変わったり、2島が層を入れ替えたりします(11-22 15:50。層の高さ(島の下端)50/130/210/290/370、入れ替わる間隔・確率は私の初期値)。山の上・魔力の濃い所では層より少し高くなります。</li><li>浮島の斥力の力の強さ・届く距離・魔力の効きは私の初期値(ユーザーの指定ではない)です。魔力の濃さ・ダウンフォース・上昇気流は、「上の図(航宙図側のガウス揺らぎ)+下の図(世界ごとの地表のガウス揺らぎ)」の合計で決めます(11-22 18:50 ユーザー決定。それまでの『相関させない』を変更)。魔力の場は海の上まで広げた仮の場で、魔力の地脈の道具(mana_vein2.py)の実データではなく、道具側はまだ合計にしていません。</li><li>気流は流れ関数から作った流れで、本物の気流の計算ではありません。基本の流れは海流を参考にした大きな環流(隣どうしは逆回り、境が速い帯、西側の縁で強い)に、ガウス揺らぎの蛇行を足したものです(11-22 19:06 ユーザー指示)。下の気流=その流れ+地形、上の気流=その流れ、中の気流=下と上の合計です(11-22 18:52 ユーザー決定)。</li><li>高さの帯は未決。気流は低(110)・中(260)・高(420)の3層で、高さに応じてなめらかに補間(11-22 15:30。上層ほど速く、上昇・下降の風もある。層の高さ・速さの比・風の強さは私の初期値)。入れない=3つの高さ層(0〜230/150〜370/290〜520)でそれぞれ別の場所、龍種の高さ帯は場所ごとに約40〜480の間で違う(11-22 15:50。層の高さ・幅・場所は私の初期値)。全体の高さ範囲は0〜520(11-22に高さの幅を約2倍へ拡大。値は私の初期値)。</li><li>側面図は全域を重ねた投影なので、手前と奥は区別できません。</li><li>海の禁域・航路は未実装。龍種に見つかる判定も未実装(色だけ)。</li><li>色の使い方は航空図の見た目を参考にした初期案で、ユーザーの評価待ち。iPhoneでの速度は未測定。</li></ul>
 <p><a href="mana0.html">魔力の地脈</a> / <a href="index.html">ハブへ戻る</a></p>
 </main>
 <script type="module">
@@ -96,7 +96,7 @@ async function loadWorld(id){
 // ---------- 航宙図の作成(毎回ガウス揺らぎ) ----------
 // 気流は高さで変わる: 低・中・高の3層(それぞれ別のガウス揺らぎの流れ関数)を、高さに応じてなめらかにつなぐ。上層ほど速い。さらに上昇・下降の風(別の揺らぎ)がある。
 const LZ=[110,260,420],LF=[.8,1,1.35],LSG=[12,14,18],WK=.3;
-let VX=[],VY=[],SP=[],Wf=null,Wg=null,CX=null,CY=null,CV=.6,FX=0,FY=0,FS=0,FLF=1;
+let VX=[],VY=[],SP=[],Wf=null,Wg=null,CX=null,CY=null,CV=.3,FX=0,FY=0,FS=0,FLF=1;
 function spdAt(i,z){let a,b,t;if(z<=LZ[0]){a=b=0;t=0;}else if(z>=LZ[2]){a=b=2;t=0;}else if(z<LZ[1]){a=0;b=1;t=(z-LZ[0])/(LZ[1]-LZ[0]);}else{a=1;b=2;t=(z-LZ[1])/(LZ[2]-LZ[1]);}
  FX=VX[a][i]*(1-t)+VX[b][i]*t;FY=VY[a][i]*(1-t)+VY[b][i]*t;if(CX){const c=CV*(1-2*Math.min(1,z/ALTMAX));FX+=CX[i]*c;FY+=CY[i]*c;}   // 上昇・下降の風に伴う横の流れ(低い所は上昇域へ集まり、高い所は上昇域から広がる)
 FS=Math.min(1,Math.hypot(FX,FY));FLF=LF[a]*(1-t)+LF[b]*t;return FS;}
@@ -111,8 +111,12 @@ function build(sd){
  buildMana(worldId);
  VX=[];VY=[];SP=[];
  // 気流の流れ関数: 下の気流=地形+ガウス揺らぎ、上の気流=ガウス揺らぎ、中の気流=下と上の合計(ユーザー決定 11-22 18:52)
- const own=[0,1,2].map(k=>field(k?sd*7+1+k*10:sd*7+1,LSG[k])),T=std(blur(Hg,GW,GH,4)),PS=[new Float32Array(GW*GH),new Float32Array(GW*GH),new Float32Array(GW*GH)];   // T=ぼかした地形(流れは山のまわりを等高線に沿って回る)
- for(let i=0;i<GW*GH;i++){PS[0][i]=.7071*(own[0][i]+T[i]);PS[2][i]=own[2][i];PS[1][i]=.7071*(PS[0][i]+PS[2][i]);}
+ // 海流を参考にした基本の流れ: 大きな循環(環流)が並び、隣の環流は逆回りで、境の所が速い帯(海流)になり、西側の縁で細く強くなる(西岸強化)。そこにガウス揺らぎの蛇行・渦を足す
+ const gyre=(nx,ny,ox,oy,sg)=>{const g=new Float32Array(GW*GH);for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const X=(x+.5)/GW*nx+ox,Y=(y+.5)/GH*ny+oy,fx=Math.floor(X),fy=Math.floor(Y),t=X-fx,u=Y-fy;g[y*GW+x]=Math.sin(Math.PI*Math.pow(t,.62))*Math.sin(Math.PI*u)*(((fy%2)+2)%2?-1:1)*sg;}return std(g);};
+ const rg=rng(sd*31+7),nxg=2+Math.floor(rg()*2),oxg=rg(),oyg=rg()*.5;
+ const GY=[gyre(nxg,2,oxg,oyg,1),gyre(nxg,2,oxg+.12,oyg+.1,1),gyre(nxg,2,oxg+.25,oyg+.2,1)];
+ const own=[0,1,2].map(k=>{const f=field(k?sd*7+1+k*10:sd*7+1,LSG[k]),o=new Float32Array(GW*GH);for(let i=0;i<o.length;i++)o[i]=.95*GY[k][i]+.2*f[i];return o;}),T=std(blur(Hg,GW,GH,7)),PS=[new Float32Array(GW*GH),new Float32Array(GW*GH),new Float32Array(GW*GH)];   // T=ぼかした地形(流れは山のまわりを等高線に沿って回る)
+ for(let i=0;i<GW*GH;i++){PS[0][i]=.7071*(own[0][i]+.5*T[i]);PS[2][i]=own[2][i];PS[1][i]=.7071*(PS[0][i]+PS[2][i]);}
  for(let k=0;k<3;k++){const ps=PS[k],ax=new Float32Array(GW*GH),ay=new Float32Array(GW*GH),as=new Float32Array(GW*GH);
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,xl=Math.max(0,x-1),xr=Math.min(GW-1,x+1),yu=Math.max(0,y-1),yd=Math.min(GH-1,y+1);
    ax[i]=(ps[yd*GW+x]-ps[yu*GW+x])/2;ay[i]=-(ps[y*GW+xr]-ps[y*GW+xl])/2;as[i]=Math.hypot(ax[i],ay[i]);}
@@ -317,6 +321,6 @@ loop();
 window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]},zr=isl.map(()=>[1e9,-1e9]);
  for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));levelStep(dt);if(k%20===0)isl.forEach((q,qi)=>{zr[qi][0]=Math.min(zr[qi][0],q.alt);zr[qi][1]=Math.max(zr[qi][1],q.alt);const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
  return {vr:+(zr.reduce((a,v)=>a+v[1]-v[0],0)/zr.length).toFixed(0),steps:stat.steps,hit:stat.hit,res:stat.res,ii:stat.ii,minII:+stat.minII.toFixed(0),out:+(stat.out/stat.steps*100).toFixed(1),minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
-window.__cv=v=>{CV=v;};window.__pos=()=>isl.map(q=>[q.x,q.y,q.vx,q.vy]);window.__par=(a,b,c,d,e)=>{RI=a;KI=b;KC=c;if(d!==undefined)KM=d;if(e!==undefined)BOBA=e;};window.__isl=()=>isl.map(q=>({lv:q.lv,alt:+q.alt.toFixed(0),s:q.s,k:q.k,c:+(q.z-Hg[cellAt(q.x,q.y)]).toFixed(0)}));window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
+window.__cv=v=>{CV=v;};window.__vec=z=>{const o=[];for(let y=0;y<GH;y+=2)for(let x=0;x<GW;x+=2){const i=y*GW+x;spdAt(i,z);o.push([x,y,FX,FY]);}return o;};window.__pos=()=>isl.map(q=>[q.x,q.y,q.vx,q.vy]);window.__par=(a,b,c,d,e)=>{RI=a;KI=b;KC=c;if(d!==undefined)KM=d;if(e!==undefined)BOBA=e;};window.__isl=()=>isl.map(q=>({lv:q.lv,alt:+q.alt.toFixed(0),s:q.s,k:q.k,c:+(q.z-Hg[cellAt(q.x,q.y)]).toFixed(0)}));window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
 window.__ready=true;window.__set=(a,e,d)=>{az=a;el=e;dist=d;};
 </script></body></html>
