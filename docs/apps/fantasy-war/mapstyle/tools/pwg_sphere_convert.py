@@ -46,6 +46,7 @@ def main(pre, outdir, name, seed=1):
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
     lowpoly.paint(img, H, land, BI, seed)
+    if D is not None: water_layer.write_ribbons(G, land0, lake, H, shift, name)      # 川=地形に沿う帯(3D) 11-22 21:45
     return {'land': float(land.mean()), 'w': W, 'h': Hh}
 if __name__ == '__main__':
     print(main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 1))

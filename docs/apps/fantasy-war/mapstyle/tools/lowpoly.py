@@ -94,7 +94,10 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         st_ = np.clip((hz - np.where(coldm, 0.45, 0.75)) / 0.15, 0, 1)[..., None]; T = T * (1 - st_) + SNOW * st_
         nz = sum(ndi.gaussian_filter(rs.randn(H0, W0).astype(np.float32), s) * a for s, a in ((1.0, 0.5), (3.0, 1.2), (8.0, 1.6)))
         nz = nz / (np.abs(nz).max() + 1e-6)
-        T = np.clip(T * (1 + 0.30 * nz[..., None]), 0, 255)
+        # 急な面ほど絵が平面貼りで伸びるので、細かい模様(ノイズ)を弱める(11-22 21:45)。傾きは3D表示の高さ倍率1.1で測る
+        gy_, gx_ = np.gradient(ndi.gaussian_filter(Hh.astype(np.float32), 1.2)); sl2 = 1.0 + (1.1 * np.hypot(gx_, gy_)) ** 2
+        nzf = np.clip(1.0 / sl2, 0.12, 1.0)
+        T = np.clip(T * (1 + 0.30 * (nz * nzf)[..., None]), 0, 255)
         ov = os.environ.get('FM_LP_OVERLAY', '')
         if ov:
             # 透明な層(地図と同じ位置=UV同位置の絵。例: 森の下地+木)をテクスチャに重ねる。面に貼られ、面の陰が掛かる(ユーザー案 11-21)

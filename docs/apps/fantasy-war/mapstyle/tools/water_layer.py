@@ -13,6 +13,25 @@ def load_graph(pre):
     g = {k: np.fromfile(f'{pre}_{k}.bin', t) for k, t in [('rlon', np.float32), ('rlat', np.float32), ('rq', np.float32), ('rstr', np.uint8), ('rdown', np.int32)]}
     return g
 
+def river_segs(g, W0, H0, shift, H, min_order=4, wet=None):
+    """川の線分(x0,y0,x1,y1,幅)を返す。3Dでは帯(実寸の幅)にするために使う(伸びない川)。"""
+    lon, lat, q, st, dn = g['rlon'], g['rlat'], g['rq'], g['rstr'], g['rdown']
+    x = (((lon + 180) / 360 * W0 + shift) % W0).astype(np.float32); y = ((90 - lat) / 180 * H0).astype(np.float32)
+    n = len(dn); root = np.where(dn >= 0, dn, np.arange(n))
+    for _ in range(30): root = root[root]
+    reach = np.ones(n, bool)
+    if wet is not None:
+        near = ndi.binary_dilation(wet, iterations=3)
+        reach = near[np.clip(y[root].astype(int), 0, H0 - 1), np.clip(x[root].astype(int), 0, W0 - 1)]
+    ok = (dn >= 0) & (st >= min_order) & reach; ok &= (dn != np.arange(n))
+    i = np.nonzero(ok)[0]; j = dn[i]
+    keep = (np.abs(x[i] - x[j]) < W0 / 2) & (st[j] >= min_order); i, j = i[keep], j[keep]
+    wpx = np.clip(0.55 + 1.0 * np.log10(np.maximum(q, 30) / 30), 0.55, 3.2)
+    hh = H[np.clip(y[i].astype(int), 0, H0 - 1), np.clip(x[i].astype(int), 0, W0 - 1)]
+    vis = 1 - np.clip((hh - 78) / 14, 0, 1)
+    m = vis >= 0.3; i, j, vis = i[m], j[m], vis[m]
+    return x[i], y[i], x[j], y[j], wpx[j] * vis
+
 def river_masks(g, W0, H0, shift, H, min_order=3, S=4, wet=None):
     """川の線を W0xH0 の S倍の細かさで描き、(ふち, 川筋)の2枚の濃さ(0〜1)を返す。"""
     lon, lat, q, st, dn = g['rlon'], g['rlat'], g['rq'], g['rstr'], g['rdown']
@@ -42,11 +61,12 @@ def river_masks(g, W0, H0, shift, H, min_order=3, S=4, wet=None):
     ink = cv2.resize(ink, (W0, H0), interpolation=cv2.INTER_AREA); fill = cv2.resize(fill, (W0, H0), interpolation=cv2.INTER_AREA)
     return np.clip(ink * 1.5, 0, 1), np.clip(fill * 1.8, 0, 1)
 
-def make(g, lake, land0, H, out, shift, seed=1, min_order=int(__import__('os').environ.get('RIV_ORD', '4'))):
+def make(g, lake, land0, H, out, shift, seed=1, rivers_in_texture=False, min_order=int(__import__('os').environ.get('RIV_ORD', '4'))):
     H0, W0 = H.shape
     lkz = cv2.GaussianBlur(lake.astype(np.float32), (0, 0), 1.5)
     lki = np.clip(lkz * 1.6 - 0.25, 0, 1); ring = np.clip(1 - np.abs(lkz - 0.5) * 5, 0, 1)
-    ink, fill = river_masks(g, W0, H0, shift, H, min_order, wet=(~land0) | lake)
+    if rivers_in_texture: ink, fill = river_masks(g, W0, H0, shift, H, min_order, wet=(~land0) | lake)
+    else: ink = fill = np.zeros((H0, W0), np.float32)      # 川は絵にせず、3Dで地形に沿う帯にする(絵だと急な面で伸びる 11-22 21:45)
     ink *= (1 - lki); fill *= (1 - lki)
     rgb = np.zeros((H0, W0, 3), np.float32); a = np.zeros((H0, W0), np.float32)
     rgb, a = over(rgb, a, (126, 204, 238), 0.92 * lki)
@@ -56,3 +76,67 @@ def make(g, lake, land0, H, out, shift, seed=1, min_order=int(__import__('os').e
     O = np.dstack([rgb[..., ::-1], a * 255]).astype(np.uint8)       # BGRA
     cv2.imwrite(out, O)
     return {'川の線の画素': int((fill > 0.3).sum()), '湖の画素': int((lki > 0.5).sum()), '最小の順位': min_order}
+
+
+def river_chains(g, W0, H0, shift, H, min_order, wet):
+    """選んだ川の線分を、合流点までの一本の連なり(節点列と幅)にまとめる。"""
+    lon, lat, q, st, dn = g['rlon'], g['rlat'], g['rq'], g['rstr'], g['rdown']
+    x = (((lon + 180) / 360 * W0 + shift) % W0).astype(np.float32); y = ((90 - lat) / 180 * H0).astype(np.float32)
+    n = len(dn); root = np.where(dn >= 0, dn, np.arange(n))
+    for _ in range(30): root = root[root]
+    near = ndi.binary_dilation(wet, iterations=3)
+    reach = near[np.clip(y[root].astype(int), 0, H0 - 1), np.clip(x[root].astype(int), 0, W0 - 1)]
+    ok = (dn >= 0) & (st >= min_order) & reach & (dn != np.arange(n))
+    keep = np.zeros(n, bool); idx = np.nonzero(ok)[0]
+    k2 = (np.abs(x[idx] - x[dn[idx]]) < W0 / 2) & (st[dn[idx]] >= min_order); ok[idx[~k2]] = False
+    wpx = np.clip(0.55 + 1.0 * np.log10(np.maximum(q, 30) / 30), 0.55, 3.2)
+    hh = H[np.clip(y.astype(int), 0, H0 - 1), np.clip(x.astype(int), 0, W0 - 1)]
+    vis = 1 - np.clip((hh - 78) / 14, 0, 1); ok &= vis >= 0.3
+    indeg = np.zeros(n, int); np.add.at(indeg, dn[ok], 1)
+    chains = []
+    heads = np.nonzero(ok & (indeg != 1))[0]            # 源流・合流の直後から始める
+    for h in heads:
+        c = [int(h)]; cur = int(h)
+        while True:
+            nx = int(dn[cur])
+            c.append(nx)
+            if not ok[nx] or indeg[nx] != 1: break          # 合流点か、選ばれない節点で終える(その点は含む)
+            cur = nx
+        chains.append(c)
+    return x, y, wpx * vis, chains
+
+def write_ribbons(g, land0, lake, H, shift, name, min_order=None, step=1.7, lift=0.7):
+    """川を、地形の面の上に置く帯(実寸の幅)にして <name>_riv.json に書く。絵(UV)にしないので、急な面でも伸びない。
+    形式: q=座標の倍率10、v=int16(x,y,z)の並びをbase64、c=連なりごとの(左右の対)の数。ビューアが x-w/2, z*VS, y-h/2 に置く。"""
+    import json, base64, matplotlib.tri as mtri
+    min_order = int(__import__('os').environ.get('RIV_ORD', '4')) if min_order is None else min_order
+    H0, W0 = H.shape
+    d = json.load(open(name + '.json')); P = np.array(d['p'], np.float64); F = np.array(d['f']).reshape(-1, 3)
+    interp = mtri.LinearTriInterpolator(mtri.Triangulation(P[:, 0], P[:, 1], F), P[:, 2])
+    x, y, w, chains = river_chains(g, W0, H0, shift, H, min_order, (~land0) | lake)
+    WID = 1.25; V = []; C = []
+    for ch in chains:
+        a = np.array(ch); px, py, pw = x[a].astype(np.float64), y[a].astype(np.float64), w[a].astype(np.float64)
+        pw[-1] = max(pw[-1], pw[-2] if len(pw) > 1 else 0)
+        if len(px) < 2: continue
+        seg = np.hypot(np.diff(px), np.diff(py)); s = np.concatenate([[0], np.cumsum(seg)])
+        if s[-1] < 0.5: continue
+        m = max(2, int(np.ceil(s[-1] / step)) + 1); t = np.linspace(0, s[-1], m)
+        qx, qy, qw = np.interp(t, s, px), np.interp(t, s, py), np.interp(t, s, pw)
+        dx, dy = np.gradient(qx), np.gradient(qy); nrm = np.hypot(dx, dy) + 1e-9; nx, ny = -dy / nrm, dx / nrm
+        hw = qw * WID / 2
+        lx, ly, rx, ry = qx + nx * hw, qy + ny * hw, qx - nx * hw, qy - ny * hw
+        zl, zr, zc = interp(lx, ly), interp(rx, ry), interp(qx, qy)
+        okp = ~(np.ma.getmaskarray(zl) | np.ma.getmaskarray(zr) | np.ma.getmaskarray(zc))
+        zz = np.maximum(np.maximum(np.ma.filled(zl, 0), np.ma.filled(zr, 0)), np.ma.filled(zc, 0)) + lift
+        run = []
+        for k in range(m + 1):                                       # 面の外にかかる所で連なりを切る
+            if k < m and okp[k]: run.append(k)
+            else:
+                if len(run) >= 2:
+                    for r in run: V += [[lx[r], ly[r], zz[r]], [rx[r], ry[r], zz[r]]]
+                    C.append(len(run))
+                run = []
+    V = np.round(np.array(V, np.float64) * 10).astype(np.int16)
+    json.dump({'q': 10, 'v': base64.b64encode(V.tobytes()).decode(), 'c': C}, open(name + '_riv.json', 'w'), separators=(',', ':'))
+    print({'帯の連なり': len(C), '頂点': int(len(V))})

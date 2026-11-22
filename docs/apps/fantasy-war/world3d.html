@@ -18,7 +18,7 @@ const R=new THREE.WebGLRenderer({canvas:cv,antialias:true}); R.setPixelRatio(Mat
 const S=new THREE.Scene(); S.background=new THREE.Color(0xaabdbe);
 const cam=new THREE.PerspectiveCamera(40,1,1,6000);
 const L=new THREE.DirectionalLight(0xffffff,1.1); L.position.set(-0.55,0.63,-0.55).multiplyScalar(1000); S.add(L,new THREE.AmbientLight(0xffffff,0.55));
-const D0=()=>(innerWidth/innerHeight<1?2600:1500); let az=0,el=0.9,dist=D0(),mesh=null,sea=null,info='';
+const D0=()=>(innerWidth/innerHeight<1?2600:1500); let az=0,el=0.9,dist=D0(),mesh=null,sea=null,riv=null,info='';
 const VS=1.1;
 function resize(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();} addEventListener('resize',resize); resize();
 function place(){cam.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist,Math.cos(az)*Math.cos(el)*dist);cam.lookAt(0,0,0);}
@@ -32,6 +32,13 @@ async function load(id){
  g.setIndex(d.f); g.computeVertexNormals();
  const mat=new THREE.MeshLambertMaterial({map:tex,flatShading:true,side:THREE.DoubleSide});
  if(mesh){S.remove(mesh);mesh.geometry.dispose();mesh.material.map.dispose();} mesh=new THREE.Mesh(g,mat); S.add(mesh);
+ if(riv){S.remove(riv);riv.geometry.dispose();riv=null;}
+ try{const rr=await fetch(`w3d/world${id}_riv.json`); if(rr.ok){const r=await rr.json();   // 川=地形に沿う帯(実寸の幅。絵にしないので伸びない)
+  const bin=atob(r.v), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); const q=new Int16Array(u8.buffer), k=1/r.q;
+  const rp=new Float32Array(q.length), ri=[]; for(let i=0;i<q.length;i+=3){rp[i]=q[i]*k-d.w/2; rp[i+1]=q[i+2]*k*VS; rp[i+2]=q[i+1]*k-d.h/2;}
+  let o=0; for(const m of r.c){for(let j=0;j<m-1;j++){const a=o+2*j; ri.push(a,a+1,a+2, a+1,a+3,a+2);} o+=2*m;}
+  const rg=new THREE.BufferGeometry(); rg.setAttribute('position',new THREE.BufferAttribute(rp,3)); rg.setIndex(ri);
+  riv=new THREE.Mesh(rg,new THREE.MeshBasicMaterial({color:0x6ecdf5,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})); S.add(riv);}}catch(e){console.log('river',e);}
  if(sea)S.remove(sea); sea=new THREE.Mesh(new THREE.PlaneGeometry(d.w*1.2,d.h*1.2),new THREE.MeshLambertMaterial({color:0xb4c4c0})); sea.rotation.x=-Math.PI/2; sea.position.y=-1; S.add(sea);
  info=`面 ${d.f.length/3} / 読み込み ${(performance.now()-t0).toFixed(0)}ms`;
  st.textContent=info+'\nドラッグで回す。';
