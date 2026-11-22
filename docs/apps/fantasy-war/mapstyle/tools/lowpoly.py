@@ -92,6 +92,7 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         hz = np.clip((Hh - 20) / (hmax - 20), 0, 1); coldm = np.isin(bio, [2, 9, 10, 11])
         rt = np.clip((hz - 0.30) / 0.30, 0, 1)[..., None]; T = T * (1 - rt) + ROCK * rt
         st_ = np.clip((hz - np.where(coldm, 0.45, 0.75)) / 0.15, 0, 1)[..., None]; T = T * (1 - st_) + SNOW * st_
+        Tb = T.copy()      # 模様なしの色(アトラス用)
         nz = sum(ndi.gaussian_filter(rs.randn(H0, W0).astype(np.float32), s) * a for s, a in ((1.0, 0.5), (3.0, 1.2), (8.0, 1.6)))
         nz = nz / (np.abs(nz).max() + 1e-6)
         # 急な面ほど絵が平面貼りで伸びるので、細かい模様(ノイズ)を弱める(11-22 21:45)。傾きは3D表示の高さ倍率1.1で測る
@@ -106,6 +107,7 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
                 if O.shape[:2] != (H0, W0): O = cv2.resize(O, (W0, H0), interpolation=cv2.INTER_AREA)
                 oa = (O[..., 3:4].astype(np.float32) / 255) * float(os.environ.get('FM_LP_OVA', '1.0'))
                 T = T * (1 - oa) + O[..., 2::-1].astype(np.float32) * oa
+                Tb = Tb * (1 - oa) + O[..., 2::-1].astype(np.float32) * oa
         T8 = T.astype(np.uint8)[..., ::-1].copy()
     dump = os.environ.get('FM_LP_DUMP', '')
     if dump and uv:
@@ -114,7 +116,17 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         fi = np.nonzero(keep)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
         json.dump({'w': W0, 'h': H0, 'zmax': float(zmax), 'p': [[round(float(P[k, 0]), 1), round(float(P[k, 1]), 1), round(float(Z[k]), 1)] for k in used],
                    'f': remap[tri[fi]].ravel().tolist()}, open(dump + '.json', 'w'), separators=(',', ':'))
-        cv2.imwrite(dump + '.jpg', T8, [cv2.IMWRITE_JPEG_QUALITY, 82])
+        if os.environ.get('FM_LP_ATLAS', '0') == '1':
+            # 伸び率そのままのUV展開+その上で絵を作る(11-22 21:50)。面ごとにUV(tuv)を持たせる
+            import atlas_unwrap
+            Fu = remap[tri[fi]]; Pu = np.array([[P[k, 0], P[k, 1]] for k in used]); Zu = np.array([Z[k] for k in used])
+            Tb_bgr = Tb.astype(np.uint8)[..., ::-1].copy()
+            atl, uvs, dens = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed)
+            dd = json.load(open(dump + '.json')); dd['tuv'] = np.round(uvs.reshape(-1), 5).tolist(); dd['dens'] = round(dens, 2)
+            json.dump(dd, open(dump + '.json', 'w'), separators=(',', ':'))
+            cv2.imwrite(dump + '.jpg', atl, [cv2.IMWRITE_JPEG_QUALITY, 85]); print('アトラス密度(3D1単位あたりの画素)', round(dens, 2))
+        else:
+            cv2.imwrite(dump + '.jpg', T8, [cv2.IMWRITE_JPEG_QUALITY, 82])
     # ---- 奥(地図の上)から手前(下)へ重ねる。高さは画面の上へ
     kv = 0.9
     def proj(Q, zz): return np.stack([Q[:, 0], Q[:, 1] - zz * kv], 1)

@@ -39,7 +39,7 @@ def main(pre, outdir, name, seed=1):
     os.makedirs(outdir, exist_ok=True)
     dat = np.zeros((Hh, W, 3), np.uint8); dat[..., 0] = np.clip(H * 2.55, 0, 255).astype(np.uint8); dat[..., 1] = BI; dat[..., 2] = ST
     Image.fromarray(dat).save(outdir + '/world-data.png')
-    os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_DUMP'] = name
+    os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
     if D is not None:
         import water_layer
         ov = outdir + '/water-layer.png'; print(water_layer.make(G, lake, land0, H, ov, shift, seed)); os.environ['FM_LP_OVERLAY'] = ov
