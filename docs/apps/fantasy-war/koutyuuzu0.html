@@ -28,7 +28,7 @@ small{color:var(--sub)}
 <h2>側面図(南から見た高さ。横=世界の東西)</h2><canvas id="side" class="v"></canvas>
 <div id="info"></div>
 <h2>限界・未確認</h2>
-<ul style="font-size:13px"><li><b>浮島の動き(11-22 追加)</b>: 気流で横へ流れ、地表の面からの斥力(上と横)と、魔力の濃さによる斥力(上)で浮き、ダウンフォースの域からは押し返されます。地表が低く魔力が無い所では低く、山の上・魔力の濃い所では高くなります。</li><li>浮島の斥力の力の強さ・届く距離・魔力の効きは私の初期値(ユーザーの指定ではない)です。魔力の濃さは、世界ごとの別のガウス揺らぎを海の上まで広げた仮の場で、魔力の地脈の道具(mana_vein2.py)の実データではありません。</li><li>気流は「ガウス揺らぎの流れ関数」から作った流れで、本物の気流の計算ではありません。</li><li>高さの帯は未決。空の層は仮に一枚(高さ300)、入れない=0〜520、龍種=130〜390は仮の値(11-22に高さの幅を約2倍へ拡大。値は私の初期値)。</li><li>側面図は全域を重ねた投影なので、手前と奥は区別できません。</li><li>海の禁域・航路は未実装。龍種に見つかる判定も未実装(色だけ)。</li><li>色の使い方は航空図の見た目を参考にした初期案で、ユーザーの評価待ち。iPhoneでの速度は未測定。</li></ul>
+<ul style="font-size:13px"><li><b>浮島の動き(11-22 追加)</b>: 気流で横へ流れ、地表の面からの斥力(上と横)と、魔力の濃さによる斥力(上)で浮き、ダウンフォースの域からは押し返されます。地表が低く魔力が無い所では低く、山の上・魔力の濃い所では高くなります。</li><li>浮島の斥力の力の強さ・届く距離・魔力の効きは私の初期値(ユーザーの指定ではない)です。魔力の濃さは、世界ごとの別のガウス揺らぎを海の上まで広げた仮の場で、魔力の地脈の道具(mana_vein2.py)の実データではありません。</li><li>気流は「ガウス揺らぎの流れ関数」から作った流れで、本物の気流の計算ではありません。</li><li>高さの帯は未決。気流は低(110)・中(260)・高(420)の3層で、高さに応じてなめらかに補間(11-22 15:30。上層ほど速く、上昇・下降の風もある。層の高さ・速さの比・風の強さは私の初期値)。入れない=0〜520、龍種=130〜390は仮の値(11-22に高さの幅を約2倍へ拡大。値は私の初期値)。</li><li>側面図は全域を重ねた投影なので、手前と奥は区別できません。</li><li>海の禁域・航路は未実装。龍種に見つかる判定も未実装(色だけ)。</li><li>色の使い方は航空図の見た目を参考にした初期案で、ユーザーの評価待ち。iPhoneでの速度は未測定。</li></ul>
 <p><a href="mana0.html">魔力の地脈</a> / <a href="index.html">ハブへ戻る</a></p>
 </main>
 <script type="module">
@@ -94,20 +94,28 @@ async function loadWorld(id){
  worldId=id;
 }
 // ---------- 航宙図の作成(毎回ガウス揺らぎ) ----------
+// 気流は高さで変わる: 低・中・高の3層(それぞれ別のガウス揺らぎの流れ関数)を、高さに応じてなめらかにつなぐ。上層ほど速い。さらに上昇・下降の風(別の揺らぎ)がある。
+const LZ=[110,260,420],LF=[.8,1,1.35],LSG=[12,14,18],WK=.3;
+let VX=[],VY=[],SP=[],Wf=null,FX=0,FY=0,FS=0,FLF=1;
+function spdAt(i,z){let a,b,t;if(z<=LZ[0]){a=b=0;t=0;}else if(z>=LZ[2]){a=b=2;t=0;}else if(z<LZ[1]){a=0;b=1;t=(z-LZ[0])/(LZ[1]-LZ[0]);}else{a=1;b=2;t=(z-LZ[1])/(LZ[2]-LZ[1]);}
+ FX=VX[a][i]*(1-t)+VX[b][i]*t;FY=VY[a][i]*(1-t)+VY[b][i]*t;FS=Math.min(1,Math.hypot(FX,FY));FLF=LF[a]*(1-t)+LF[b]*t;return FS;}
 let seed=1,psi,vx,vy,spd,Dm,Rm,Df,Rf,td,tr,corr=[],parts=[],isl=[],sel=-1,zoneGroup=null,pts=null,pausedF=false,segD=[],segR=[];
-const NP=2600;
+const NP=3600;
 function build(sd){
  seed=sd;$('seed').value=sd;
- psi=field(sd*7+1,12);Dm=new Uint8Array(GW*GH);Rm=new Uint8Array(GW*GH);
- vx=new Float32Array(GW*GH);vy=new Float32Array(GW*GH);spd=new Float32Array(GW*GH);
- for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,xl=Math.max(0,x-1),xr=Math.min(GW-1,x+1),yu=Math.max(0,y-1),yd=Math.min(GH-1,y+1);
-  vx[i]=(psi[yd*GW+x]-psi[yu*GW+x])/2;vy[i]=-(psi[y*GW+xr]-psi[y*GW+xl])/2;spd[i]=Math.hypot(vx[i],vy[i]);}
- const p95=quant(spd,.95);for(let i=0;i<spd.length;i++){const s=spd[i]/p95;vx[i]/=p95;vy[i]/=p95;spd[i]=Math.min(1,s);}
+ Dm=new Uint8Array(GW*GH);Rm=new Uint8Array(GW*GH);
+ VX=[];VY=[];SP=[];
+ for(let k=0;k<3;k++){const ps=field(k?sd*7+1+k*10:sd*7+1,LSG[k]),ax=new Float32Array(GW*GH),ay=new Float32Array(GW*GH),as=new Float32Array(GW*GH);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,xl=Math.max(0,x-1),xr=Math.min(GW-1,x+1),yu=Math.max(0,y-1),yd=Math.min(GH-1,y+1);
+   ax[i]=(ps[yd*GW+x]-ps[yu*GW+x])/2;ay[i]=-(ps[y*GW+xr]-ps[y*GW+xl])/2;as[i]=Math.hypot(ax[i],ay[i]);}
+  const p95=quant(as,.95);for(let i=0;i<as.length;i++){ax[i]/=p95;ay[i]/=p95;as[i]=Math.min(1,as[i]/p95);}
+  VX.push(ax);VY.push(ay);SP.push(as);}
+ vx=VX[1];vy=VY[1];spd=SP[1];Wf=field(sd*7+5,9);for(let i=0;i<Wf.length;i++)Wf[i]=Math.max(-1,Math.min(1,Wf[i]*.6));
  Df=field(sd*7+2,6);Rf=field(sd*7+3,7);td=quant(Df,.88);tr=quant(Rf,.86);
  for(let i=0;i<Df.length;i++){if(Df[i]>=td)Dm[i]=1;else if(Rf[i]>=tr)Rm[i]=1;}
  const Rv=Float32Array.from(Rf);for(let i=0;i<Rv.length;i++)if(Dm[i])Rv[i]=-9;     // 龍種の縁は、入れない所と重ならない部分だけ
  segD=contour(Df,td);segR=contour(Rv,tr);
- corr=[];for(let i=0;i<spd.length;i++)if(!Dm[i]&&spd[i]>.5)corr.push(i);
+ corr=[];for(let i=0;i<spd.length;i++)if(!Dm[i]&&Math.max(SP[0][i],SP[1][i],SP[2][i])>.5)corr.push(i);
  const r=rng(sd*13+5);parts=[];for(let k=0;k<NP;k++)parts.push(respawn({},r));
  isl=[];const names='ABCDE',r2=rng(sd*17+9),rn=rng(sd*23+1);let guard=0;
  while(isl.length<5&&guard++<4000){const i=corr[Math.floor(r2()*corr.length)],x=(i%GW+.5)*GS,y=(Math.floor(i/GW)+.5)*GS;
@@ -115,7 +123,7 @@ function build(sd){
  isl.forEach(o=>{o.z=Hg[cellAt(o.x,o.y)]+HOV0+20;o.alt=o.z+BODY*o.s/2;});
  buildMana(worldId);buildZones();buildIslands();sel=-1;cacheBase();updateInfo();
 }
-function respawn(p,r){const i=corr[Math.floor(r()*corr.length)];p.x=(i%GW+r())*GS;p.y=(Math.floor(i/GW)+r())*GS;p.age=0;p.life=5+r()*9;p.yo=(r()-.5)*40;return p;}
+function respawn(p,r){const i=corr[Math.floor(r()*corr.length)];p.x=(i%GW+r())*GS;p.y=(Math.floor(i/GW)+r())*GS;p.age=0;p.life=5+r()*9;p.yo=0;p.z=40+r()*(ALTMAX-80);return p;}
 const cellAt=(x,y)=>Math.min(GH-1,Math.max(0,Math.floor(y/GS)))*GW+Math.min(GW-1,Math.max(0,Math.floor(x/GS)));
 // ---------- 立体図の部品: 空域の殻(薄い面+縁の線) ----------
 function label(txt){const c=document.createElement('canvas');c.width=128;c.height=48;const g=c.getContext('2d');g.font='bold 30px sans-serif';g.fillStyle='#4a5a68';g.fillText(txt,4,34);
@@ -194,14 +202,16 @@ function moveIsl(o,dt){
  let ix=0,iy=0,iz=0;if(cfg.ii)for(const q of isl){if(q===o)continue;const ex=o.x-q.x,ey=o.y-q.y,ez=(o.z-q.z)*.6,d=Math.hypot(ex,ey,ez);
   const RIo=RI*(o.s+q.s)/2;if(d<RIo&&d>1e-3){const w=1-d/RIo,F=w*w*KI*q.k;ix+=ex/d*F;iy+=ey/d*F;iz+=ez/d*F;}
   const hd=Math.hypot(ex,ey);if(hd<(o.s+q.s)*BR*.8&&Math.abs(o.z-q.z)<B)stat.ii++;if(hd<stat.minII)stat.minII=hd;}
- // 気流の回廊へ戻す力(回廊の外では、気流の速い側へ。地図の端からも押し戻す)
- let cx2=0,cy2=0;if(cfg.cr){const sc=spd[ci];if(sc<.7){const L=40,g=(x,y)=>spd[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]*(Dm[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]?0:1);
+ spdAt(ci,o.alt);const fxz=FX,fyz=FY,fsz=FS,flz=FLF;   // 島の今の高さの気流
+ // 気流の回廊へ戻す力(回廊の外では、その高さで気流の速い側へ。地図の端からも押し戻す)
+ let cx2=0,cy2=0;if(cfg.cr){const sc=fsz;if(sc<.7){const L=40,g=(x,y)=>{const c=cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)));return Dm[c]?0:spdAt(c,o.alt);};
    cx2=(g(o.x+L,o.y)-g(o.x-L,o.y))*KC*(.7-sc);cy2=(g(o.x,o.y+L)-g(o.x,o.y-L))*KC*(.7-sc);}
   const E=90;if(o.x<E)cx2+=(1-o.x/E)*KC;if(o.x>WW-E)cx2-=(1-(WW-o.x)/E)*KC;if(o.y<E)cy2+=(1-o.y/E)*KC;if(o.y>WH-E)cy2-=(1-(WH-o.y)/E)*KC;}
- stat.out+=(spd[ci]<.5||Dm[ci])?1:0;
+ stat.out+=(fsz<.5||Dm[ci])?1:0;
+ fz+=WK*Wf[ci];   // 上昇・下降の風
  fz+=iz*.3;
  o.tt=(o.tt||0)+dt;if(BOBA)fz+=BOBA*(.5+.5*o.k)*Math.sin(o.tt*6.283/(14+10*o.ph/6.283)+o.ph);   // 浮島自身の上下の揺れ(私の追加)
- const m=Math.max(.35,Math.hypot(vx[ci],vy[ci])),tx=vx[ci]/m*FLOW,ty=vy[ci]/m*FLOW;
+ const m=Math.max(.35,Math.hypot(fxz,fyz)),tx=fxz/m*FLOW*flz,ty=fyz/m*FLOW*flz;
  const near=Math.min(1,Math.hypot(fx,fy)*4),fl=1-.7*near;                       // 山腹に近いほど気流に流される分を弱める
  o.vx+=((tx*fl-o.vx)*1.2+(fx*HG+dxn+ix+cx2)*GRAV)*dt;o.vy+=((ty*fl-o.vy)*1.2+(fy*HG+dyn+iy+cy2)*GRAV)*dt;
  const sp=Math.hypot(o.vx,o.vy);if(sp>40){o.vx*=40/sp;o.vy*=40/sp;}
@@ -216,10 +226,10 @@ const SL=[.55,.72,.91],FA=[.12,.42,.82];   // 気流の色: 薄い青(遅い)→
 function step(dt){
  const r=Math.random;const pa=pts.geometry.attributes.position,ca=pts.geometry.attributes.color;
  parts.forEach((p,k)=>{const i=cellAt(p.x,p.y);
-  if(Dm[i]){respawn(p,r);}else{const m=Math.max(.35,Math.hypot(vx[i],vy[i])),sp=48*(0.35+0.65*spd[i]);p.x+=vx[i]/m*sp*dt*.9;p.y+=vy[i]/m*sp*dt*.9;p.age+=dt;
+  if(Dm[i]){respawn(p,r);}else{spdAt(i,p.z);const m=Math.max(.35,Math.hypot(FX,FY)),sp=48*(.35+.65*FS)*FLF;p.x+=FX/m*sp*dt*.9;p.y+=FY/m*sp*dt*.9;p.z=Math.min(ALTMAX-30,Math.max(30,p.z+Wf[i]*10*dt));p.age+=dt;
    if(p.x<0||p.x>=WW||p.y<0||p.y>=WH||p.age>p.life)respawn(p,r);}
-  const s=spd[cellAt(p.x,p.y)];p.s=s;
-  pa.setXYZ(k,p.x-WW/2,ALT+p.yo,p.y-WH/2);ca.setXYZ(k,SL[0]+(FA[0]-SL[0])*s,SL[1]+(FA[1]-SL[1])*s,SL[2]+(FA[2]-SL[2])*s);});pa.needsUpdate=true;ca.needsUpdate=true;
+  const s=spdAt(cellAt(p.x,p.y),p.z);p.s=s;
+  pa.setXYZ(k,p.x-WW/2,p.z,p.y-WH/2);ca.setXYZ(k,SL[0]+(FA[0]-SL[0])*s,SL[1]+(FA[1]-SL[1])*s,SL[2]+(FA[2]-SL[2])*s);});pa.needsUpdate=true;ca.needsUpdate=true;
  isl.forEach(o=>moveIsl(o,dt));
 }
 // ---------- 二面図(航空図の色づかい) ----------
@@ -248,10 +258,11 @@ function draw2d(){if(!base)return;
   const dc=x=>{for(let y=0;y<GH;y++)if(Dm[y*GW+x])return 1;return 0;},rc=x=>{for(let y=0;y<GH;y++)if(Rm[y*GW+x])return 1;return 0;};
   for(const [a,b] of runs(rc)){g.fillStyle='rgba(224,138,0,.10)';g.fillRect(a*GS*sx,sy(R1),(b-a)*GS*sx,sy(R0)-sy(R1));g.strokeStyle=CRs;g.lineWidth=1.4;g.setLineDash([6,4]);g.strokeRect(a*GS*sx,sy(R1),(b-a)*GS*sx,sy(R0)-sy(R1));g.setLineDash([]);}
   for(const [a,b] of runs(dc)){g.fillStyle='rgba(194,24,91,.09)';g.fillRect(a*GS*sx,sy(ALTMAX),(b-a)*GS*sx,sy(0)-sy(ALTMAX));g.strokeStyle=CDs;g.lineWidth=1.6;g.strokeRect(a*GS*sx,sy(ALTMAX),(b-a)*GS*sx,sy(0)-sy(ALTMAX));}
-  g.strokeStyle='rgba(31,111,208,.7)';g.setLineDash([5,4]);g.lineWidth=1.2;g.beginPath();g.moveTo(22,sy(ALT));g.lineTo(W,sy(ALT));g.stroke();g.setLineDash([]);
-  g.fillStyle='rgba(31,111,208,.9)';g.fillText('空の層(仮)',W-62,sy(ALT)-3);
+  g.strokeStyle='rgba(31,111,208,.7)';g.setLineDash([5,4]);g.lineWidth=1.2;g.beginPath();for(const z of LZ){g.moveTo(22,sy(z));g.lineTo(W,sy(z));}g.stroke();g.setLineDash([]);
+  g.fillStyle='rgba(31,111,208,.9)';['低層','中層','高層'].forEach((n,k)=>g.fillText(n+'の気流',W-62,sy(LZ[k])-3));
   g.fillStyle='#b8a98a';g.strokeStyle='#8a7a52';g.lineWidth=1;g.beginPath();g.moveTo(0,sy(0));for(let x=0;x<GW;x++){let m=0;for(let y=0;y<GH;y++)m=Math.max(m,Hg[y*GW+x]);g.lineTo((x+.5)*GS*sx,sy(m));}g.lineTo(W,sy(0));g.closePath();g.fill();g.stroke();
   g.fillStyle='#6a7a88';g.fillText('高さ',2,10);
+  for(let k=0;k<parts.length;k+=2){const p=parts[k];g.fillStyle=col(p.s||0);g.fillRect(p.x*sx,sy(p.z),1.8,1.8);}   // 気流の粒(高さごと)
   isl.forEach((o,i)=>{const x=o.x*sx,y=sy(o.alt);mark(g,x,y,i===sel?8:5.5,i===sel,o.s);g.fillStyle='#22303c';g.font='11px sans-serif';g.fillText(o.n,x+9,y+4);});}
 }
 function pick(e,c,fn){const b=c.getBoundingClientRect(),px=(e.clientX-b.left),py=(e.clientY-b.top);let bi=-1,bd=1e9;isl.forEach((o,i)=>{const [x,y]=fn(o,b);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;bi=i;}});sel=bd<30?bi:-1;updateInfo();}
@@ -271,7 +282,7 @@ resize();
 const qs=new URLSearchParams(location.search);
 await loadWorld(qs.get('w')||'pm55');if(qs.get('w'))$('w').value=qs.get('w');
 build(parseInt(qs.get('seed'))||Math.floor(Math.random()*9000)+1);
-$('hud').textContent='ドラッグで回す。青い粒=気流(濃いほど速い)、赤紫=入れない、橙=龍種の生息域、丸い島=浮島。';
+$('hud').textContent='ドラッグで回す。青い粒=気流(濃いほど速い。高さで向きと速さが変わる)、赤紫=入れない、橙=龍種の生息域、丸い島=浮島。';
 loop();
 window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]},zr=isl.map(()=>[1e9,-1e9]);
  for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));if(k%20===0)isl.forEach((q,qi)=>{zr[qi][0]=Math.min(zr[qi][0],q.alt);zr[qi][1]=Math.max(zr[qi][1],q.alt);const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
