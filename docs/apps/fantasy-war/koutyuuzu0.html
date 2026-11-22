@@ -167,7 +167,8 @@ function syncIslands(){isl.forEach((o,i)=>{const gh=Hg[cellAt(o.x,o.y)];const X=
 // ---------- 浮島の斥力(気流+地表の斥力(上と横)+魔力の斥力+ダウンフォースの押し返し) ----------
 // 浮島は地表との斥力で浮き、魔力が濃い所ではその斥力が足される。山腹では横にも押し返される。
 const BODY=83, BR=64, CONE=54, RR=140, RC=Math.ceil(RR/GS), GRAV=40, DAMP=1.6, FLOW=14, HOV0=25, KM=.7, RD=70, KD=.2, HG=5;
-const cfg={h:1,m:1,dn:1}, stat={steps:0,hit:0,res:0,minD:1e9};
+let RI=300, KI=6, KC=2;
+const cfg={h:1,m:1,dn:1,ii:1,cr:1}, stat={steps:0,hit:0,res:0,minD:1e9,ii:0,minII:1e9,out:0};
 const Mm=new Float32Array(GW*GH);
 const bu=h=>BODY*Math.min(1,h/CONE);                       // 浮島の下面(円すい)の、軸から横へhの所の高さ
 function hashS(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
@@ -188,9 +189,19 @@ function moveIsl(o,dt){
  const ci=cellAt(o.x,o.y);fz+=cfg.m*KM*Mm[ci];
  let dxn=0,dyn=0;if(cfg.dn){const rc=Math.ceil(RD/GS);for(let dy=-rc;dy<=rc;dy++){const cy=cy0+dy;if(cy<0||cy>=GH)continue;for(let dx=-rc;dx<=rc;dx++){const cx=cx0+dx;if(cx<0||cx>=GW||!Dm[cy*GW+cx])continue;
    const ex=o.x-(cx+.5)*GS,ey=o.y-(cy+.5)*GS,d=Math.hypot(ex,ey);if(d<RD&&d>1e-3){const w=1-d/RD;dxn+=ex/d*w*w*KD;dyn+=ey/d*w*w*KD;}}}}
+ // 浮島どうしの斥力(近いほど強い。縦の距離も含める)
+ let ix=0,iy=0,iz=0;if(cfg.ii)for(const q of isl){if(q===o)continue;const ex=o.x-q.x,ey=o.y-q.y,ez=(o.z-q.z)*.6,d=Math.hypot(ex,ey,ez);
+  if(d<RI&&d>1e-3){const w=1-d/RI,F=w*w*KI;ix+=ex/d*F;iy+=ey/d*F;iz+=ez/d*F;}
+  const hd=Math.hypot(ex,ey);if(hd<2*BR*.8&&Math.abs(o.z-q.z)<BODY)stat.ii++;if(hd<stat.minII)stat.minII=hd;}
+ // 気流の回廊へ戻す力(回廊の外では、気流の速い側へ。地図の端からも押し戻す)
+ let cx2=0,cy2=0;if(cfg.cr){const sc=spd[ci];if(sc<.7){const L=40,g=(x,y)=>spd[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]*(Dm[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]?0:1);
+   cx2=(g(o.x+L,o.y)-g(o.x-L,o.y))*KC*(.7-sc);cy2=(g(o.x,o.y+L)-g(o.x,o.y-L))*KC*(.7-sc);}
+  const E=90;if(o.x<E)cx2+=(1-o.x/E)*KC;if(o.x>WW-E)cx2-=(1-(WW-o.x)/E)*KC;if(o.y<E)cy2+=(1-o.y/E)*KC;if(o.y>WH-E)cy2-=(1-(WH-o.y)/E)*KC;}
+ stat.out+=(spd[ci]<.5||Dm[ci])?1:0;
+ fz+=iz*.3;
  const m=Math.max(.35,Math.hypot(vx[ci],vy[ci])),tx=vx[ci]/m*FLOW,ty=vy[ci]/m*FLOW;
  const near=Math.min(1,Math.hypot(fx,fy)*4),fl=1-.7*near;                       // 山腹に近いほど気流に流される分を弱める
- o.vx+=((tx*fl-o.vx)*1.2+(fx*HG+dxn)*GRAV)*dt;o.vy+=((ty*fl-o.vy)*1.2+(fy*HG+dyn)*GRAV)*dt;
+ o.vx+=((tx*fl-o.vx)*1.2+(fx*HG+dxn+ix+cx2)*GRAV)*dt;o.vy+=((ty*fl-o.vy)*1.2+(fy*HG+dyn+iy+cy2)*GRAV)*dt;
  const sp=Math.hypot(o.vx,o.vy);if(sp>40){o.vx*=40/sp;o.vy*=40/sp;}
  o.vz+=((fz-1)*GRAV-DAMP*o.vz)*dt;o.z=Math.min(ALTMAX-BODY/2-2,Math.max(2,o.z+o.vz*dt));
  const nx=o.x+o.vx*dt,ny=o.y+o.vy*dt;
@@ -260,9 +271,9 @@ await loadWorld(qs.get('w')||'pm55');if(qs.get('w'))$('w').value=qs.get('w');
 build(parseInt(qs.get('seed'))||Math.floor(Math.random()*9000)+1);
 $('hud').textContent='ドラッグで回す。青い粒=気流(濃いほど速い)、赤紫=入れない、橙=龍種の生息域、丸い島=浮島。';
 loop();
-window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1},o||{});stat.steps=stat.hit=stat.res=0;stat.minD=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]};
+window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]};
  for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));if(k%20===0)isl.forEach(q=>{const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
- return {steps:stat.steps,hit:stat.hit,res:stat.res,minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
-window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
+ return {steps:stat.steps,hit:stat.hit,res:stat.res,ii:stat.ii,minII:+stat.minII.toFixed(0),out:+(stat.out/stat.steps*100).toFixed(1),minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
+window.__par=(a,b,c)=>{RI=a;KI=b;KC=c;};window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
 window.__ready=true;window.__set=(a,e,d)=>{az=a;el=e;dist=d;};
 </script></body></html>
