@@ -69,8 +69,8 @@ def make(g, lake, land0, H, out, shift, seed=1, rivers_in_texture=False, min_ord
     else: ink = fill = np.zeros((H0, W0), np.float32)      # 川は絵にせず、3Dで地形に沿う帯にする(絵だと急な面で伸びる 11-22 21:45)
     ink *= (1 - lki); fill *= (1 - lki)
     rgb = np.zeros((H0, W0, 3), np.float32); a = np.zeros((H0, W0), np.float32)
-    rgb, a = over(rgb, a, (126, 204, 238), 0.92 * lki)
-    rgb, a = over(rgb, a, (72, 128, 170), 0.6 * ring * (lkz > 0.05))
+    rgb, a = over(rgb, a, (92, 150, 214), 0.94 * lki)
+    rgb, a = over(rgb, a, (34, 58, 140), 0.7 * ring * (lkz > 0.05))
     rgb, a = over(rgb, a, (70, 130, 175), 0.5 * ink)                     # 墨色のふち
     rgb, a = over(rgb, a, (110, 205, 245), 0.97 * fill)                  # 青の川筋
     O = np.dstack([rgb[..., ::-1], a * 255]).astype(np.uint8)       # BGRA
