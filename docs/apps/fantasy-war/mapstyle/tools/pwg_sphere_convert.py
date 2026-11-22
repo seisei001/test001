@@ -30,13 +30,6 @@ def main(pre, outdir, name, seed=1):
     H = np.where(land, np.where(el <= q, 20.3 + 45.7 * np.clip(el, 0, None) / q, 66 + 34 * np.clip((el - q) / max(mx - q, 1), 0, 1)), np.where(el > 0, 19.0, np.clip(19.5 + el / 250, 2, 19.5)))
     if D is not None:                           # 湖面=まわりの陸の高さより少し下
         w_ = (land0).astype(np.float32); Hn = ndi.gaussian_filter(H * w_, 4) / (ndi.gaussian_filter(w_, 4) + 1e-6); H = np.where(lake, np.maximum(Hn - 1.0, 20.0), H)
-    # 3D表示の高さ: 実際の標高(km)を、世界の大きさ(周長8192km=1400画素)の縮尺で画素にし、誇張の倍率kを掛ける(11-22 21:56 ユーザー指示)
-    #   k=30: 最高峰(約8.2km)が世界幅の約3%・面の9割が伸び率1.3倍以内(実測)。以前は実寸比の約60〜115倍で、針のような山だった。
-    KM_PX = float(os.environ.get('FM_LP_KMPX', '5.851')); EXAG = float(os.environ.get('FM_LP_EXAG', '30')); VS_ = 1.1
-    Hd = np.where(land0, 0.8 + EXAG * np.clip(el, 0, None) / 1000 / KM_PX / VS_, 0.0)
-    if D is not None:
-        w_ = land0.astype(np.float32); Hn = ndi.gaussian_filter(Hd * w_, 4) / (ndi.gaussian_filter(w_, 4) + 1e-6); Hd = np.where(lake, np.maximum(Hn - 0.3, 0.5), Hd)
-    os.makedirs(outdir, exist_ok=True); np.save(outdir + '/zdisp.npy', Hd.astype(np.float32)); os.environ['FM_LP_ZDISP'] = outdir + '/zdisp.npy'
     BI = np.zeros((Hh, W), int)
     for k, v in MAP.items(): BI[bi == k] = v
     BI[~land] = 0
@@ -46,6 +39,7 @@ def main(pre, outdir, name, seed=1):
     os.makedirs(outdir, exist_ok=True)
     dat = np.zeros((Hh, W, 3), np.uint8); dat[..., 0] = np.clip(H * 2.55, 0, 255).astype(np.uint8); dat[..., 1] = BI; dat[..., 2] = ST
     Image.fromarray(dat).save(outdir + '/world-data.png')
+    for k_, v_ in (('FM_LP_GENTLE', '1'), ('FM_LP_BASE', '0.535'), ('FM_LP_EMPH', '0.775'), ('FM_LP_D0', '0.17'), ('FM_LP_SP', '1.3'), ('FM_LP_RING', '1')): os.environ.setdefault(k_, v_)   # ハブ(カード6E mapstyle40)の山の強調の基準 11-22 22:05
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
     if D is not None:
         import water_layer

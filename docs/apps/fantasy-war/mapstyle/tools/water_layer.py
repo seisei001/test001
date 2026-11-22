@@ -87,6 +87,9 @@ def river_chains(g, W0, H0, shift, H, min_order, wet):
     near = ndi.binary_dilation(wet, iterations=3)
     reach = near[np.clip(y[root].astype(int), 0, H0 - 1), np.clip(x[root].astype(int), 0, W0 - 1)]
     ok = (dn >= 0) & (st >= min_order) & reach & (dn != np.arange(n))
+    # 特徴的な川だけ選ぶ(ユーザー指示 11-22 22:01): 流域の最大の順位がbasin_min以上の大河の系統だけ描く
+    rmax = np.zeros(n, np.int32); np.maximum.at(rmax, root, st.astype(np.int32))
+    ok &= rmax[root] >= int(__import__('os').environ.get('RIV_BASIN', '6'))
     keep = np.zeros(n, bool); idx = np.nonzero(ok)[0]
     k2 = (np.abs(x[idx] - x[dn[idx]]) < W0 / 2) & (st[dn[idx]] >= min_order); ok[idx[~k2]] = False
     wpx = np.clip(0.55 + 1.0 * np.log10(np.maximum(q, 30) / 30), 0.55, 3.2)
@@ -109,12 +112,12 @@ def write_ribbons(g, land0, lake, H, shift, name, min_order=None, step=1.7, lift
     """川を、地形の面の上に置く帯(実寸の幅)にして <name>_riv.json に書く。絵(UV)にしないので、急な面でも伸びない。
     形式: q=座標の倍率10、v=int16(x,y,z)の並びをbase64、c=連なりごとの(左右の対)の数。ビューアが x-w/2, z*VS, y-h/2 に置く。"""
     import json, base64, matplotlib.tri as mtri
-    min_order = int(__import__('os').environ.get('RIV_ORD', '4')) if min_order is None else min_order
+    min_order = int(__import__('os').environ.get('RIV_ORD', '5')) if min_order is None else min_order
     H0, W0 = H.shape
     d = json.load(open(name + '.json')); P = np.array(d['p'], np.float64); F = np.array(d['f']).reshape(-1, 3)
     interp = mtri.LinearTriInterpolator(mtri.Triangulation(P[:, 0], P[:, 1], F), P[:, 2])
     x, y, w, chains = river_chains(g, W0, H0, shift, H, min_order, (~land0) | lake)
-    WID = 1.25; V = []; C = []
+    WID = float(__import__('os').environ.get('RIV_WID', '1.8')); V = []; C = []   # 特徴的な川は太めに強調
     for ch in chains:
         a = np.array(ch); px, py, pw = x[a].astype(np.float64), y[a].astype(np.float64), w[a].astype(np.float64)
         pw[-1] = max(pw[-1], pw[-2] if len(pw) > 1 else 0)
