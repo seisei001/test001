@@ -16,10 +16,18 @@ def main(pre, outdir, name, seed=1):
     el = np.roll(el, shift, 1); wa = np.roll(wa, shift, 1); bi = np.roll(bi, shift, 1)
     print('切れ目の列', cut_col, '端の陸(中緯度・画素)', int(((el[100:600, 0] > 0) & (wa[100:600, 0] != 2)).sum()), '(元の最大', int(col.max()), '平均', round(float(col.mean()), 1), ')')
     lake = (wa == 2)
-    land = (el > 0) & ~lake
+    D = None
+    if os.path.exists(pre + '_disch.bin'):     # 川・湖(pwg_sphere_probe2.ts の出力。2800x1400で標本→2x2の最大値)
+        D = np.fromfile(pre + '_disch.bin', np.float32).reshape(2 * Hh, 2 * W).reshape(Hh, 2, W, 2).max(axis=(1, 3))
+        LK = (np.fromfile(pre + '_lake.bin', np.int32).reshape(2 * Hh, 2 * W) >= 0).reshape(Hh, 2, W, 2).max(axis=(1, 3))
+        D = np.roll(D, shift, 1); lake = lake | np.roll(LK, shift, 1)
+    land = (el > 0) | lake                      # 湖も面を残し、湖面として描く(穴にしない)
+    land0 = land & ~lake
     el = ndi.gaussian_filter(el, 0.8)
-    lm = el[land]; q = np.quantile(lm, 0.94); mx = lm.max()
+    lm = el[land0]; q = np.quantile(lm, 0.94); mx = lm.max()
     H = np.where(land, np.where(el <= q, 20.3 + 45.7 * np.clip(el, 0, None) / q, 66 + 34 * np.clip((el - q) / max(mx - q, 1), 0, 1)), np.where(el > 0, 19.0, np.clip(19.5 + el / 250, 2, 19.5)))
+    if D is not None:                           # 湖面=まわりの陸の高さより少し下
+        w_ = (land0).astype(np.float32); Hn = ndi.gaussian_filter(H * w_, 4) / (ndi.gaussian_filter(w_, 4) + 1e-6); H = np.where(lake, np.maximum(Hn - 1.0, 20.0), H)
     BI = np.zeros((Hh, W), int)
     for k, v in MAP.items(): BI[bi == k] = v
     BI[~land] = 0
@@ -30,6 +38,9 @@ def main(pre, outdir, name, seed=1):
     dat = np.zeros((Hh, W, 3), np.uint8); dat[..., 0] = np.clip(H * 2.55, 0, 255).astype(np.uint8); dat[..., 1] = BI; dat[..., 2] = ST
     Image.fromarray(dat).save(outdir + '/world-data.png')
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_DUMP'] = name
+    if D is not None:
+        import water_layer
+        ov = outdir + '/water-layer.png'; print(water_layer.make(D, lake, land0, H, ov, seed)); os.environ['FM_LP_OVERLAY'] = ov
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
     lowpoly.paint(img, H, land, BI, seed)
