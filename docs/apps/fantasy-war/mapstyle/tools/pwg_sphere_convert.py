@@ -17,6 +17,8 @@ def main(pre, outdir, name, seed=1):
     print('切れ目の列', cut_col, '端の陸(中緯度・画素)', int(((el[100:600, 0] > 0) & (wa[100:600, 0] != 2)).sum()), '(元の最大', int(col.max()), '平均', round(float(col.mean()), 1), ')')
     lake = (wa == 2)
     D = None
+    G = None
+    if os.path.exists(pre + '_rlon.bin'): import water_layer; G = water_layer.load_graph(pre)
     if os.path.exists(pre + '_disch.bin'):     # 川・湖(pwg_sphere_probe2.ts の出力。2800x1400で標本→2x2の最大値)
         D = np.fromfile(pre + '_disch.bin', np.float32).reshape(2 * Hh, 2 * W).reshape(Hh, 2, W, 2).max(axis=(1, 3))
         LK = (np.fromfile(pre + '_lake.bin', np.int32).reshape(2 * Hh, 2 * W) >= 0).reshape(Hh, 2, W, 2).max(axis=(1, 3))
@@ -40,7 +42,7 @@ def main(pre, outdir, name, seed=1):
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_DUMP'] = name
     if D is not None:
         import water_layer
-        ov = outdir + '/water-layer.png'; print(water_layer.make(D, lake, land0, H, ov, seed)); os.environ['FM_LP_OVERLAY'] = ov
+        ov = outdir + '/water-layer.png'; print(water_layer.make(G, lake, land0, H, ov, shift, seed)); os.environ['FM_LP_OVERLAY'] = ov
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
     lowpoly.paint(img, H, land, BI, seed)
