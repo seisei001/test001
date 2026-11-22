@@ -63,19 +63,28 @@ def river_masks(g, W0, H0, shift, H, min_order=3, S=4, wet=None):
 
 def make(g, lake, land0, H, out, shift, seed=1, rivers_in_texture=False, min_order=int(__import__('os').environ.get('RIV_ORD', '4'))):
     H0, W0 = H.shape
-    lkz = cv2.GaussianBlur(lake.astype(np.float32), (0, 0), 1.5)
-    lki = np.clip(lkz * 1.6 - 0.25, 0, 1); ring = np.clip(1 - np.abs(lkz - 0.5) * 5, 0, 1)
+    lk = lake.astype(bool); lkz = cv2.GaussianBlur(lk.astype(np.float32), (0, 0), 1.5)
+    lki = np.clip(lkz * 1.6 - 0.25, 0, 1)
+    # 湖の見せ方(ユーザー指示 11-23 00:56): 中=今の色、外周は海と同様に薄く(浅い縁の淡い帯)。小さな湖は目立たせず、大きな湖だけ濃淡(縁が浅く中心が深い)で目立たせる
+    lab, nl = ndi.label(lk); area = np.bincount(lab.ravel(), minlength=nl + 1).astype(np.float32)
+    edt = ndi.distance_transform_edt(lk); maxd = np.maximum(np.asarray(ndi.maximum(edt, lab, np.arange(nl + 1)), np.float32), 1.0)
+    _, (iy, ix) = ndi.distance_transform_edt(~lk, return_indices=True); labn = lab[iy, ix]          # ぼかした縁も最寄りの湖に属させる
+    big = np.clip((area - 60.0) / (400.0 - 60.0), 0, 1)[labn]                                       # 0=小さい湖 1=大きい湖(面積の画素数)
+    depth = np.clip(edt / maxd[labn], 0, 1)
+    shore = np.exp(-np.maximum(edt, 0) / 1.6) * lk                                                  # 外周の浅い縁(淡い帯)
     if rivers_in_texture: ink, fill = river_masks(g, W0, H0, shift, H, min_order, wet=(~land0) | lake)
     else: ink = fill = np.zeros((H0, W0), np.float32)      # 川は絵にせず、3Dで地形に沿う帯にする(絵だと急な面で伸びる 11-22 21:45)
     ink *= (1 - lki); fill *= (1 - lki)
     rgb = np.zeros((H0, W0, 3), np.float32); a = np.zeros((H0, W0), np.float32)
-    rgb, a = over(rgb, a, (92, 150, 214), 0.94 * lki)
-    rgb, a = over(rgb, a, (34, 58, 140), 0.7 * ring * (lkz > 0.05))
+    rgb, a = over(rgb, a, (92, 150, 214), (0.40 + 0.55 * big) * lki)                                # 中=今の色(小さい湖は薄く)
+    deep = (depth ** 0.9) * big                                                                     # 大きい湖だけ、中心ほど濃い青
+    rgb, a = over(rgb, a, (34, 66, 160), 0.85 * deep * lki)
+    rgb, a = over(rgb, a, (205, 228, 242), (0.22 + 0.36 * big) * shore * lki)                       # 外周: 海の浅瀬のように淡く
     rgb, a = over(rgb, a, (70, 130, 175), 0.5 * ink)                     # 墨色のふち
     rgb, a = over(rgb, a, (110, 205, 245), 0.97 * fill)                  # 青の川筋
     O = np.dstack([rgb[..., ::-1], a * 255]).astype(np.uint8)       # BGRA
     cv2.imwrite(out, O)
-    return {'川の線の画素': int((fill > 0.3).sum()), '湖の画素': int((lki > 0.5).sum()), '最小の順位': min_order}
+    return {'川の線の画素': int((fill > 0.3).sum()), '湖の画素': int((lki > 0.5).sum()), '湖の数': int(nl), '大きい湖(>=400画素)': int((area[1:] >= 400).sum()), '最小の順位': min_order}
 
 
 def river_chains(g, W0, H0, shift, H, min_order, wet):
