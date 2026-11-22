@@ -49,10 +49,10 @@ def make(g, lake, land0, H, out, shift, seed=1, min_order=int(__import__('os').e
     ink, fill = river_masks(g, W0, H0, shift, H, min_order, wet=(~land0) | lake)
     ink *= (1 - lki); fill *= (1 - lki)
     rgb = np.zeros((H0, W0, 3), np.float32); a = np.zeros((H0, W0), np.float32)
-    rgb, a = over(rgb, a, (120, 176, 196), 0.92 * lki)
-    rgb, a = over(rgb, a, (70, 90, 100), 0.6 * ring * (lkz > 0.05))
-    rgb, a = over(rgb, a, (52, 66, 84), 0.55 * ink)                     # 墨色のふち
-    rgb, a = over(rgb, a, (84, 142, 190), 0.95 * fill)                  # 青の川筋
+    rgb, a = over(rgb, a, (126, 204, 238), 0.92 * lki)
+    rgb, a = over(rgb, a, (72, 128, 170), 0.6 * ring * (lkz > 0.05))
+    rgb, a = over(rgb, a, (70, 130, 175), 0.5 * ink)                     # 墨色のふち
+    rgb, a = over(rgb, a, (110, 205, 245), 0.97 * fill)                  # 青の川筋
     O = np.dstack([rgb[..., ::-1], a * 255]).astype(np.uint8)       # BGRA
     cv2.imwrite(out, O)
     return {'川の線の画素': int((fill > 0.3).sum()), '湖の画素': int((lki > 0.5).sum()), '最小の順位': min_order}
