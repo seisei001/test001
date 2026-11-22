@@ -114,12 +114,15 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
         # 3D表示用に、面(位置・高さ・面の並び)とテクスチャを書き出す(three.jsの試作が読む)
         import json
         fi = np.nonzero(keep)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
-        json.dump({'w': W0, 'h': H0, 'zmax': float(zmax), 'p': [[round(float(P[k, 0]), 1), round(float(P[k, 1]), 1), round(float(Z[k]), 1)] for k in used],
+        Zout = Z
+        if os.environ.get('FM_LP_ZDISP'):      # 3D表示の高さだけ、実寸の縮尺×誇張倍率で置き換える(色・面の分け方は元のまま)
+            Zd = np.load(os.environ['FM_LP_ZDISP']); Zout = Zd[np.clip(P[:, 1].astype(int), 0, Zd.shape[0] - 1), np.clip(P[:, 0].astype(int), 0, Zd.shape[1] - 1)]
+        json.dump({'w': W0, 'h': H0, 'zmax': float(zmax), 'p': [[round(float(P[k, 0]), 1), round(float(P[k, 1]), 1), round(float(Zout[k]), 2)] for k in used],
                    'f': remap[tri[fi]].ravel().tolist()}, open(dump + '.json', 'w'), separators=(',', ':'))
         if os.environ.get('FM_LP_ATLAS', '0') == '1':
             # 伸び率そのままのUV展開+その上で絵を作る(11-22 21:50)。面ごとにUV(tuv)を持たせる
             import atlas_unwrap
-            Fu = remap[tri[fi]]; Pu = np.array([[P[k, 0], P[k, 1]] for k in used]); Zu = np.array([Z[k] for k in used])
+            Fu = remap[tri[fi]]; Pu = np.array([[P[k, 0], P[k, 1]] for k in used]); Zu = np.array([Zout[k] for k in used])
             Tb_bgr = Tb.astype(np.uint8)[..., ::-1].copy()
             atl, uvs, dens = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed)
             dd = json.load(open(dump + '.json')); dd['tuv'] = np.round(uvs.reshape(-1), 5).tolist(); dd['dens'] = round(dens, 2)
