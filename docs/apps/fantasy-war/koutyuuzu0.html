@@ -166,8 +166,8 @@ function syncIslands(){isl.forEach((o,i)=>{const gh=Hg[cellAt(o.x,o.y)];const X=
   o.top.material.color.setHex(i===sel?0xf2b705:0x7c9a5e);o.g.scale.setScalar((i===sel?4.2:3.2)*o.s);});}
 // ---------- 浮島の斥力(気流+地表の斥力(上と横)+魔力の斥力+ダウンフォースの押し返し) ----------
 // 浮島は地表との斥力で浮き、魔力が濃い所ではその斥力が足される。山腹では横にも押し返される。
-const BODY=83, BR=64, CONE=54, RR=140, RC=Math.ceil(RR/GS), GRAV=40, DAMP=1.6, FLOW=14, HOV0=25, KM=.7, RD=70, KD=.2, HG=5;
-let RI=300, KI=6, KC=2;
+const BODY=83, BR=64, CONE=54, RR=140, RC=Math.ceil(RR/GS), GRAV=40, DAMP=1.6, FLOW=14, HOV0=25, RD=70, KD=.2, HG=5;
+let RI=300, KI=6, KC=2, KM=.9, BOBA=1;
 const cfg={h:1,m:1,dn:1,ii:1,cr:1}, stat={steps:0,hit:0,res:0,minD:1e9,ii:0,minII:1e9,out:0};
 const Mm=new Float32Array(GW*GH);
 const bu=h=>BODY*Math.min(1,h/CONE);                       // 浮島の下面(円すい)の、軸から横へhの所の高さ
@@ -200,6 +200,7 @@ function moveIsl(o,dt){
   const E=90;if(o.x<E)cx2+=(1-o.x/E)*KC;if(o.x>WW-E)cx2-=(1-(WW-o.x)/E)*KC;if(o.y<E)cy2+=(1-o.y/E)*KC;if(o.y>WH-E)cy2-=(1-(WH-o.y)/E)*KC;}
  stat.out+=(spd[ci]<.5||Dm[ci])?1:0;
  fz+=iz*.3;
+ o.tt=(o.tt||0)+dt;if(BOBA)fz+=BOBA*(.5+.5*o.k)*Math.sin(o.tt*6.283/(14+10*o.ph/6.283)+o.ph);   // 浮島自身の上下の揺れ(私の追加)
  const m=Math.max(.35,Math.hypot(vx[ci],vy[ci])),tx=vx[ci]/m*FLOW,ty=vy[ci]/m*FLOW;
  const near=Math.min(1,Math.hypot(fx,fy)*4),fl=1-.7*near;                       // 山腹に近いほど気流に流される分を弱める
  o.vx+=((tx*fl-o.vx)*1.2+(fx*HG+dxn+ix+cx2)*GRAV)*dt;o.vy+=((ty*fl-o.vy)*1.2+(fy*HG+dyn+iy+cy2)*GRAV)*dt;
@@ -272,9 +273,9 @@ await loadWorld(qs.get('w')||'pm55');if(qs.get('w'))$('w').value=qs.get('w');
 build(parseInt(qs.get('seed'))||Math.floor(Math.random()*9000)+1);
 $('hud').textContent='ドラッグで回す。青い粒=気流(濃いほど速い)、赤紫=入れない、橙=龍種の生息域、丸い島=浮島。';
 loop();
-window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]};
- for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));if(k%20===0)isl.forEach(q=>{const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
- return {steps:stat.steps,hit:stat.hit,res:stat.res,ii:stat.ii,minII:+stat.minII.toFixed(0),out:+(stat.out/stat.steps*100).toFixed(1),minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
-window.__par=(a,b,c)=>{RI=a;KI=b;KC=c;};window.__isl=()=>isl.map(q=>({s:q.s,k:q.k,c:+(q.z-Hg[cellAt(q.x,q.y)]).toFixed(0)}));window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
+window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]},zr=isl.map(()=>[1e9,-1e9]);
+ for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));if(k%20===0)isl.forEach((q,qi)=>{zr[qi][0]=Math.min(zr[qi][0],q.alt);zr[qi][1]=Math.max(zr[qi][1],q.alt);const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
+ return {vr:+(zr.reduce((a,v)=>a+v[1]-v[0],0)/zr.length).toFixed(0),steps:stat.steps,hit:stat.hit,res:stat.res,ii:stat.ii,minII:+stat.minII.toFixed(0),out:+(stat.out/stat.steps*100).toFixed(1),minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
+window.__par=(a,b,c,d,e)=>{RI=a;KI=b;KC=c;if(d!==undefined)KM=d;if(e!==undefined)BOBA=e;};window.__isl=()=>isl.map(q=>({s:q.s,k:q.k,c:+(q.z-Hg[cellAt(q.x,q.y)]).toFixed(0)}));window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
 window.__ready=true;window.__set=(a,e,d)=>{az=a;el=e;dist=d;};
 </script></body></html>
