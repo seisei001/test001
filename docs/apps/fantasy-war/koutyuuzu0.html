@@ -109,10 +109,10 @@ function build(sd){
  segD=contour(Df,td);segR=contour(Rv,tr);
  corr=[];for(let i=0;i<spd.length;i++)if(!Dm[i]&&spd[i]>.5)corr.push(i);
  const r=rng(sd*13+5);parts=[];for(let k=0;k<NP;k++)parts.push(respawn({},r));
- isl=[];const names='ABCDE',r2=rng(sd*17+9);let guard=0;
+ isl=[];const names='ABCDE',r2=rng(sd*17+9),rn=rng(sd*23+1);let guard=0;
  while(isl.length<5&&guard++<4000){const i=corr[Math.floor(r2()*corr.length)],x=(i%GW+.5)*GS,y=(Math.floor(i/GW)+.5)*GS;
-  if(isl.every(o=>Math.hypot(o.x-x,o.y-y)>170))isl.push({n:'浮島'+names[isl.length],x,y,z:0,vx:0,vy:0,vz:0,alt:0,ph:r2()*6.28});}
- isl.forEach(o=>{o.z=Hg[cellAt(o.x,o.y)]+HOV0+20;o.alt=o.z+BODY/2;});
+  if(isl.every(o=>Math.hypot(o.x-x,o.y-y)>170))isl.push({n:'浮島'+names[isl.length],x,y,z:0,vx:0,vy:0,vz:0,alt:0,ph:r2()*6.28,s:+(.6+1.1*rn()).toFixed(2),k:+(.6+.9*rn()).toFixed(2)});}
+ isl.forEach(o=>{o.z=Hg[cellAt(o.x,o.y)]+HOV0+20;o.alt=o.z+BODY*o.s/2;});
  buildMana(worldId);buildZones();buildIslands();sel=-1;cacheBase();updateInfo();
 }
 function respawn(p,r){const i=corr[Math.floor(r()*corr.length)];p.x=(i%GW+r())*GS;p.y=(Math.floor(i/GW)+r())*GS;p.age=0;p.life=5+r()*9;p.yo=(r()-.5)*40;return p;}
@@ -161,9 +161,9 @@ function buildIslands(){
  S.add(islG);
 }
 function syncIslands(){isl.forEach((o,i)=>{const gh=Hg[cellAt(o.x,o.y)];const X=o.x-WW/2,Z=o.y-WH/2;
-  o.g.position.set(X,o.z+BODY,Z);o.sh.position.set(X,gh+1.5,Z);
+  o.g.position.set(X,o.z+BODY*o.s,Z);o.sh.position.set(X,gh+1.5,Z);o.sh.scale.setScalar(3.2*o.s);
   const a=o.ln.geometry.attributes.position;a.setXYZ(0,X,gh,Z);a.setXYZ(1,X,o.z,Z);a.needsUpdate=true;
-  o.top.material.color.setHex(i===sel?0xf2b705:0x7c9a5e);o.g.scale.setScalar(i===sel?4.2:3.2);});}
+  o.top.material.color.setHex(i===sel?0xf2b705:0x7c9a5e);o.g.scale.setScalar((i===sel?4.2:3.2)*o.s);});}
 // ---------- 浮島の斥力(気流+地表の斥力(上と横)+魔力の斥力+ダウンフォースの押し返し) ----------
 // 浮島は地表との斥力で浮き、魔力が濃い所ではその斥力が足される。山腹では横にも押し返される。
 const BODY=83, BR=64, CONE=54, RR=140, RC=Math.ceil(RR/GS), GRAV=40, DAMP=1.6, FLOW=14, HOV0=25, KM=.7, RD=70, KD=.2, HG=5;
@@ -179,20 +179,21 @@ function buildMana(id){                                      // 地表の魔力�
 }
 const G0=(()=>{let s=0;for(let dy=-RC;dy<=RC;dy++)for(let dx=-RC;dx<=RC;dx++){const h=Math.hypot(dx*GS,dy*GS),ez=HOV0+bu(h),d=Math.hypot(h,ez);if(d<RR&&d>1e-3){const w=1-d/RR;s+=w*w*ez/d;}}return s;})();   // 平らな地面の上、下端の高さHOV0で釣り合う力
 function moveIsl(o,dt){
+ const B=BODY*o.s,Br=BR*o.s,Cn=CONE*o.s,bu=h=>B*Math.min(1,h/Cn);   // 島ごとの大きさ(o.s)と斥力の強さ(o.k)
  const cx0=Math.floor(o.x/GS),cy0=Math.floor(o.y/GS);let fx=0,fy=0,fz=0,hit=false,dm=1e9;
  for(let dy=-RC;dy<=RC;dy++){const cy=cy0+dy;if(cy<0||cy>=GH)continue;
   for(let dx=-RC;dx<=RC;dx++){const cx=cx0+dx;if(cx<0||cx>=GW)continue;
    const ex=o.x-(cx+.5)*GS,ey=o.y-(cy+.5)*GS,h=Math.hypot(ex,ey),sz=Hg[cy*GW+cx],ez=o.z+bu(h)-sz,d=Math.hypot(h,ez);
-   if(h<=BR&&ez<2)hit=true;if(d<dm)dm=d;
-   if(d<RR&&d>1e-3){const w=1-d/RR,F=w*w/G0/d;fx+=ex*F;fy+=ey*F;fz+=ez*F;}}}
+   if(h<=Br&&ez<2)hit=true;if(d<dm)dm=d;
+   if(d<RR&&d>1e-3){const w=1-d/RR,F=(.5+.5*o.k)*w*w/G0/d;fx+=ex*F;fy+=ey*F;fz+=ez*F;}}}
  if(!cfg.h){fx=0;fy=0;}
- const ci=cellAt(o.x,o.y);fz+=cfg.m*KM*Mm[ci];
+ const ci=cellAt(o.x,o.y);fz+=cfg.m*KM*o.k*Mm[ci];
  let dxn=0,dyn=0;if(cfg.dn){const rc=Math.ceil(RD/GS);for(let dy=-rc;dy<=rc;dy++){const cy=cy0+dy;if(cy<0||cy>=GH)continue;for(let dx=-rc;dx<=rc;dx++){const cx=cx0+dx;if(cx<0||cx>=GW||!Dm[cy*GW+cx])continue;
    const ex=o.x-(cx+.5)*GS,ey=o.y-(cy+.5)*GS,d=Math.hypot(ex,ey);if(d<RD&&d>1e-3){const w=1-d/RD;dxn+=ex/d*w*w*KD;dyn+=ey/d*w*w*KD;}}}}
  // 浮島どうしの斥力(近いほど強い。縦の距離も含める)
  let ix=0,iy=0,iz=0;if(cfg.ii)for(const q of isl){if(q===o)continue;const ex=o.x-q.x,ey=o.y-q.y,ez=(o.z-q.z)*.6,d=Math.hypot(ex,ey,ez);
-  if(d<RI&&d>1e-3){const w=1-d/RI,F=w*w*KI;ix+=ex/d*F;iy+=ey/d*F;iz+=ez/d*F;}
-  const hd=Math.hypot(ex,ey);if(hd<2*BR*.8&&Math.abs(o.z-q.z)<BODY)stat.ii++;if(hd<stat.minII)stat.minII=hd;}
+  const RIo=RI*(o.s+q.s)/2;if(d<RIo&&d>1e-3){const w=1-d/RIo,F=w*w*KI*q.k;ix+=ex/d*F;iy+=ey/d*F;iz+=ez/d*F;}
+  const hd=Math.hypot(ex,ey);if(hd<(o.s+q.s)*BR*.8&&Math.abs(o.z-q.z)<B)stat.ii++;if(hd<stat.minII)stat.minII=hd;}
  // 気流の回廊へ戻す力(回廊の外では、気流の速い側へ。地図の端からも押し戻す)
  let cx2=0,cy2=0;if(cfg.cr){const sc=spd[ci];if(sc<.7){const L=40,g=(x,y)=>spd[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]*(Dm[cellAt(Math.min(WW-1,Math.max(0,x)),Math.min(WH-1,Math.max(0,y)))]?0:1);
    cx2=(g(o.x+L,o.y)-g(o.x-L,o.y))*KC*(.7-sc);cy2=(g(o.x,o.y+L)-g(o.x,o.y-L))*KC*(.7-sc);}
@@ -203,10 +204,10 @@ function moveIsl(o,dt){
  const near=Math.min(1,Math.hypot(fx,fy)*4),fl=1-.7*near;                       // 山腹に近いほど気流に流される分を弱める
  o.vx+=((tx*fl-o.vx)*1.2+(fx*HG+dxn+ix+cx2)*GRAV)*dt;o.vy+=((ty*fl-o.vy)*1.2+(fy*HG+dyn+iy+cy2)*GRAV)*dt;
  const sp=Math.hypot(o.vx,o.vy);if(sp>40){o.vx*=40/sp;o.vy*=40/sp;}
- o.vz+=((fz-1)*GRAV-DAMP*o.vz)*dt;o.z=Math.min(ALTMAX-BODY/2-2,Math.max(2,o.z+o.vz*dt));
+ o.vz+=((fz-1)*GRAV-DAMP*o.vz)*dt;o.z=Math.min(ALTMAX-B/2-2,Math.max(2,o.z+o.vz*dt));
  const nx=o.x+o.vx*dt,ny=o.y+o.vy*dt;
  if(nx<20||nx>WW-20||ny<20||ny>WH-20||Dm[cellAt(nx,ny)]){stat.res++;const j=corr[Math.floor(Math.random()*corr.length)];o.x=(j%GW+.5)*GS;o.y=(Math.floor(j/GW)+.5)*GS;o.vx=o.vy=o.vz=0;o.z=Hg[cellAt(o.x,o.y)]+HOV0+20;}else{o.x=nx;o.y=ny;}
- o.alt=o.z+BODY/2;stat.steps++;if(hit)stat.hit++;if(dm<stat.minD)stat.minD=dm;
+ o.alt=o.z+B/2;stat.steps++;if(hit)stat.hit++;if(dm<stat.minD)stat.minD=dm;
 }
 // ---------- 更新 ----------
 let t=0,last=performance.now(),lastInfo=0;
@@ -233,11 +234,11 @@ function cacheBase(){base=document.createElement('canvas');base.width=WW;base.he
 }
 function fit(c,aspect){const W=c.clientWidth,dpr=Math.min(devicePixelRatio||1,2);c.width=W*dpr;c.height=W*aspect*dpr;c.style.height=(W*aspect)+'px';const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);return [g,W,W*aspect];}
 const col=s=>`rgb(${Math.round(255*(SL[0]+(FA[0]-SL[0])*s))},${Math.round(255*(SL[1]+(FA[1]-SL[1])*s))},${Math.round(255*(SL[2]+(FA[2]-SL[2])*s))})`;
-function mark(g,x,y,rad,on){g.beginPath();g.arc(x,y,rad,0,6.3);g.fillStyle=on?'#f2b705':'#7c9a5e';g.fill();g.strokeStyle='#33414d';g.lineWidth=1.6;g.stroke();}
+function mark(g,x,y,rad,on,sz){rad*=(.6+.4*(sz||1));g.beginPath();g.arc(x,y,rad,0,6.3);g.fillStyle=on?'#f2b705':'#7c9a5e';g.fill();g.strokeStyle='#33414d';g.lineWidth=1.6;g.stroke();}
 function draw2d(){if(!base)return;
  {const [g,W,H]=fit($('top2'),WH/WW);g.drawImage(base,0,0,W,H);const sx=W/WW;
   for(let k=0;k<parts.length;k+=2){const p=parts[k];g.fillStyle=col(p.s||0);g.fillRect(p.x*sx,p.y*sx,1.6,1.6);}
-  isl.forEach((o,i)=>{mark(g,o.x*sx,o.y*sx,i===sel?9:6.5,i===sel);g.fillStyle='#22303c';g.font='11px sans-serif';g.fillText(o.n,o.x*sx+10,o.y*sx+4);});}
+  isl.forEach((o,i)=>{mark(g,o.x*sx,o.y*sx,i===sel?9:6.5,i===sel,o.s);g.fillStyle='#22303c';g.font='11px sans-serif';g.fillText(o.n,o.x*sx+10,o.y*sx+4);});}
  {const [g,W,H]=fit($("side"),.6),sx=W/WW,sy=y=>H-8-(y/ALTMAX)*(H-18);
   g.fillStyle='#f6f8fa';g.fillRect(0,0,W,H);
   g.strokeStyle='#dbe2e8';g.lineWidth=1;g.fillStyle='#6a7a88';g.font='10px sans-serif';
@@ -250,14 +251,14 @@ function draw2d(){if(!base)return;
   g.fillStyle='rgba(31,111,208,.9)';g.fillText('空の層(仮)',W-62,sy(ALT)-3);
   g.fillStyle='#b8a98a';g.strokeStyle='#8a7a52';g.lineWidth=1;g.beginPath();g.moveTo(0,sy(0));for(let x=0;x<GW;x++){let m=0;for(let y=0;y<GH;y++)m=Math.max(m,Hg[y*GW+x]);g.lineTo((x+.5)*GS*sx,sy(m));}g.lineTo(W,sy(0));g.closePath();g.fill();g.stroke();
   g.fillStyle='#6a7a88';g.fillText('高さ',2,10);
-  isl.forEach((o,i)=>{const x=o.x*sx,y=sy(o.alt);mark(g,x,y,i===sel?8:5.5,i===sel);g.fillStyle='#22303c';g.font='11px sans-serif';g.fillText(o.n,x+9,y+4);});}
+  isl.forEach((o,i)=>{const x=o.x*sx,y=sy(o.alt);mark(g,x,y,i===sel?8:5.5,i===sel,o.s);g.fillStyle='#22303c';g.font='11px sans-serif';g.fillText(o.n,x+9,y+4);});}
 }
 function pick(e,c,fn){const b=c.getBoundingClientRect(),px=(e.clientX-b.left),py=(e.clientY-b.top);let bi=-1,bd=1e9;isl.forEach((o,i)=>{const [x,y]=fn(o,b);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;bi=i;}});sel=bd<30?bi:-1;updateInfo();}
 $('top2').addEventListener('pointerdown',e=>pick(e,$('top2'),(o,b)=>[o.x*b.width/WW,o.y*b.width/WW]));
 $('side').addEventListener('pointerdown',e=>pick(e,$('side'),(o,b)=>[o.x*b.width/WW,b.height-8-(o.alt/ALTMAX)*(b.height-18)]));
 function updateInfo(){const n=Dm.length,cd=Dm.reduce((a,v)=>a+v,0),cr=Rm.reduce((a,v)=>a+v,0);
  $('info').innerHTML=`<h2>この航宙図</h2><div style="font-size:13px">種 ${seed} / 世界 ${worldId}<br>入れない ${(cd/n*100).toFixed(0)}%(高さ0〜${ALTMAX}) / 龍種の生息域 ${(cr/n*100).toFixed(0)}%(高さ${R0}〜${R1}) / 気流の回廊 ${(corr.length/n*100).toFixed(0)}%(全域に対する割合)</div>
- <table><tr><th>浮島</th><th>東西</th><th>南北</th><th>下端の高さ</th><th>地表から</th><th>魔力</th></tr>${isl.map((o,i)=>`<tr${i===sel?' style="background:#ffe9a8"':''}><td>${o.n}</td><td>${o.x.toFixed(0)}</td><td>${o.y.toFixed(0)}</td><td>${o.z.toFixed(0)}</td><td>${(o.z-Hg[cellAt(o.x,o.y)]).toFixed(0)}</td><td>${Mm[cellAt(o.x,o.y)].toFixed(2)}</td></tr>`).join('')}</table><small>図の浮島をタップすると、全部の図で強調されます。</small>`;}
+ <table><tr><th>浮島</th><th>大きさ</th><th>斥力</th><th>東西</th><th>南北</th><th>下端の高さ</th><th>地表から</th><th>魔力</th></tr>${isl.map((o,i)=>`<tr${i===sel?' style="background:#ffe9a8"':''}><td>${o.n}</td><td>${o.s.toFixed(1)}</td><td>${o.k.toFixed(1)}</td><td>${o.x.toFixed(0)}</td><td>${o.y.toFixed(0)}</td><td>${o.z.toFixed(0)}</td><td>${(o.z-Hg[cellAt(o.x,o.y)]).toFixed(0)}</td><td>${Mm[cellAt(o.x,o.y)].toFixed(2)}</td></tr>`).join('')}</table><small>図の浮島をタップすると、全部の図で強調されます。</small>`;}
 // ---------- 動かす ----------
 function loop(){requestAnimationFrame(loop);const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;if(!pausedF){t+=dt;step(dt);}
  if(now-lastInfo>1000){lastInfo=now;updateInfo();}place();syncIslands();R.render(S,cam);draw2d();}
@@ -274,6 +275,6 @@ loop();
 window.__sim=(sec,o)=>{Object.assign(cfg,{h:1,m:1,dn:1,ii:1,cr:1},o||{});stat.steps=stat.hit=stat.res=stat.ii=stat.out=0;stat.minD=stat.minII=1e9;const dt=.05,acc={lo:[0,0],hi:[0,0]};
  for(let k=0;k<sec/dt;k++){isl.forEach(q=>moveIsl(q,dt));if(k%20===0)isl.forEach(q=>{const mm=Mm[cellAt(q.x,q.y)],c=q.z-Hg[cellAt(q.x,q.y)];if(mm>.5){acc.hi[0]+=c;acc.hi[1]++;}else if(mm<.05){acc.lo[0]+=c;acc.lo[1]++;}});}
  return {steps:stat.steps,hit:stat.hit,res:stat.res,ii:stat.ii,minII:+stat.minII.toFixed(0),out:+(stat.out/stat.steps*100).toFixed(1),minD:+stat.minD.toFixed(1),hov_mana:acc.hi[1]?+(acc.hi[0]/acc.hi[1]).toFixed(1):null,hov_none:acc.lo[1]?+(acc.lo[0]/acc.lo[1]).toFixed(1):null};};
-window.__par=(a,b,c)=>{RI=a;KI=b;KC=c;};window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
+window.__par=(a,b,c)=>{RI=a;KI=b;KC=c;};window.__isl=()=>isl.map(q=>({s:q.s,k:q.k,c:+(q.z-Hg[cellAt(q.x,q.y)]).toFixed(0)}));window.__build=build;window.__world=async id=>{await loadWorld(id);build(seed);};
 window.__ready=true;window.__set=(a,e,d)=>{az=a;el=e;dist=d;};
 </script></body></html>
