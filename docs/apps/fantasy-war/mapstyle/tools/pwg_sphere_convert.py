@@ -15,6 +15,15 @@ def main(pre, outdir, name, seed=1):
     cut_col = int(np.argmin(sm)); shift = -cut_col
     el = np.roll(el, shift, 1); wa = np.roll(wa, shift, 1); bi = np.roll(bi, shift, 1)
     print('切れ目の列', cut_col, '端の陸(中緯度・画素)', int(((el[100:600, 0] > 0) & (wa[100:600, 0] != 2)).sum()), '(元の最大', int(col.max()), '平均', round(float(col.mean()), 1), ')')
+    # 極北: 実際の世界地図(北極は海・陸は北緯約83度まで)に合わせ、北緯78度から陸を海へなだらかに沈め、84度より北は海にする(データの変換。南は南極大陸の例にならいそのまま)
+    pn = os.environ.get('FM_POLE_N', '78,84')
+    if pn != '0':
+        p0, p1 = [float(v) for v in pn.split(',')]
+        lat = 90 - 180 * (np.arange(Hh) + 0.5) / Hh; f = np.clip((p1 - lat) / (p1 - p0), 0, 1)[:, None]
+        print('極北: 北緯%g〜%g度で陸を海へ沈める(沈める前の北緯85〜90度の陸 %.0f%%)' % (p0, p1, 100 * (el[:int(5 / 180 * Hh)] > 0).mean()))
+        el = np.where(f < 1, el * f - (1 - f) * 60, el); wa = np.where((f < 0.5), 0, wa).astype(wa.dtype)
+        POLEMASK = (f >= 0.5)
+    else: POLEMASK = np.ones((Hh, 1), bool)
     lake = (wa == 2)
     D = None
     G = None
@@ -23,6 +32,7 @@ def main(pre, outdir, name, seed=1):
         D = np.fromfile(pre + '_disch.bin', np.float32).reshape(2 * Hh, 2 * W).reshape(Hh, 2, W, 2).max(axis=(1, 3))
         LK = (np.fromfile(pre + '_lake.bin', np.int32).reshape(2 * Hh, 2 * W) >= 0).reshape(Hh, 2, W, 2).max(axis=(1, 3))
         D = np.roll(D, shift, 1); lake = lake | np.roll(LK, shift, 1)
+        lake = lake & POLEMASK; D = np.where(POLEMASK, D, 0)
     land = (el > 0) | lake                      # 湖も面を残し、湖面として描く(穴にしない)
     land0 = land & ~lake
     el = ndi.gaussian_filter(el, 0.8)
