@@ -51,7 +51,7 @@ else:
     for x in set(order) ^ set(have): warn.append('ラグの並び順の一覧(_order.txt)とファイルが合わない: ' + x)
     for f in [os.path.join(H, 'rag', x) for x in order if os.path.exists(os.path.join(H, 'rag', x))]:
         L = open(f, encoding='utf-8').read().split('\n')
-        if not (L[1].startswith('検索語:') and L[2].startswith('状態:')): warn.append('ラグの形が違う(2行目=検索語・3行目=状態): ' + os.path.basename(f))
+        if not (L[1].startswith('検索語:') and L[2].startswith('状態:') and all(h in L for h in ('## 今', '## これから', '## 過去'))): warn.append('ラグの形が違う(2行目=検索語・3行目=状態・区分=今/これから/過去): ' + os.path.basename(f))
         if len('\n'.join(L)) > 3500: warn.append('ラグが長い(3500字超。1カード=1トピックに分ける): ' + os.path.basename(f))
 print('--- 検査 ---')
 print('\n'.join('注意: ' + w for w in warn) if warn else '注意なし')
