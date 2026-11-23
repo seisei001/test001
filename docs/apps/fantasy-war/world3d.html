@@ -53,7 +53,7 @@ async function load(id){
   const rg=new THREE.BufferGeometry(); rg.setAttribute('position',new THREE.BufferAttribute(rp,3)); rg.setAttribute('uv',new THREE.BufferAttribute(ru,2)); rg.setIndex(ri);
   riv=new THREE.Mesh(rg,new THREE.MeshBasicMaterial({map:rivTex(),side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})); S.add(riv);}}catch(e){console.log('river',e);}
  if(sea)S.remove(sea); sea=new THREE.Mesh(new THREE.PlaneGeometry(d.w*1.2,d.h*1.2),new THREE.MeshBasicMaterial({color:0xb4c4c0})); sea.rotation.x=-Math.PI/2; sea.position.y=-2.5; S.add(sea);
- try{const t2=await new THREE.TextureLoader().loadAsync(`w3d/world${id}_sea.jpg`); t2.colorSpace=THREE.SRGBColorSpace; const p2=new THREE.Mesh(new THREE.PlaneGeometry(d.w,d.h),new THREE.MeshBasicMaterial({map:t2})); p2.position.z=2.0; sea.add(p2);}catch(e){}   // 海の深さの色(岸から沖へ濃く・岸ぞいの浅瀬)
+ try{const t2=await new THREE.TextureLoader().loadAsync(`w3d/world${id}_sea.jpg`); t2.colorSpace=THREE.SRGBColorSpace; const p2=new THREE.Mesh(new THREE.PlaneGeometry(d.w,d.h),new THREE.MeshBasicMaterial({map:t2})); p2.position.z=2.45; sea.add(p2);}catch(e){}   // 海の深さの色(岸から沖へ濃く・岸ぞいの浅瀬)
  info=`面 ${d.f.length/3} / 読み込み ${(performance.now()-t0).toFixed(0)}ms`;
  st.textContent=info+'\nドラッグで回す。';
  window.__ready=id;

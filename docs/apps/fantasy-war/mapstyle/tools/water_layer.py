@@ -43,6 +43,8 @@ def river_masks(g, W0, H0, shift, H, min_order=3, S=4, wet=None):
         near = ndi.binary_dilation(wet, iterations=3)
         reach = near[np.clip(y[root].astype(int), 0, H0 - 1), np.clip(x[root].astype(int), 0, W0 - 1)]
     ok = (dn >= 0) & (st >= min_order) & reach; ok &= (dn != np.arange(n))
+    rmax = np.zeros(n, np.int32); np.maximum.at(rmax, root, st.astype(np.int32))     # 特徴的な川だけ(ユーザー指示 11-22 22:01): 流域の最大の順位が6以上の大河の系統だけ
+    ok &= rmax[root] >= int(__import__('os').environ.get('RIV_BASIN', '6'))
     i = np.nonzero(ok)[0]; j = dn[i]
     keep = (np.abs(x[i] - x[j]) < W0 / 2) & (st[j] >= min_order)         # 左右の端をまたぐ線・下流が小さい支流の端は描かない
     i, j = i[keep], j[keep]

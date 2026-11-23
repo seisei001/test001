@@ -61,7 +61,7 @@ def main(pre, outdir, name, seed=1):
     layers.append(forest_world_layer.build(dat, seed))                               # 森の塊(第10版)
     if D is not None:
         import water_layer
-        wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed, rivers_in_texture=True))   # 川と湖も絵の中に描く
+        wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed, rivers_in_texture=True, min_order=5))   # 川と湖も絵の中に描く
         wl = cv2.imread(wo, cv2.IMREAD_UNCHANGED); layers.append(_I.fromarray(cv2.cvtColor(wl, cv2.COLOR_BGRA2RGBA)))
     pic = flat_picture.draw(H, land, BI, seed, layers)
     pp = outdir + '/world-picture.png'; cv2.imwrite(pp, cv2.cvtColor(pic, cv2.COLOR_RGB2BGR)); _I.fromarray(pic).save(name + '_sea.jpg', quality=92)   # 海の面にも同じ絵を貼る(陸は立体が覆う)

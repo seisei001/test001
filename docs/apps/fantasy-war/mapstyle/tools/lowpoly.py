@@ -66,25 +66,13 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     ey, ex = np.nonzero(edgem); sel = rs.rand(len(ey)) < 0.02; pts += [(x, y) for x, y in zip(ex[sel], ey[sel])]
     P = np.array(pts, np.float32); P[:, 0] = np.clip(P[:, 0], 0, W0 - 1); P[:, 1] = np.clip(P[:, 1], 0, H0 - 1)
     P = np.unique(P.round(1), axis=0)
-    PIC = os.environ.get('FM_LP_PICTURE', '')
-    if PIC:
-        # 最上位仕様(11-24): 立体の縁は絵の海岸線ただ一つ。陸の外の点は使わず、陸の輪郭(海岸線)に頂点を置く
-        _l8 = land.astype(np.uint8)
-        _ok = ndi.binary_dilation(land, iterations=1)[np.clip(P[:, 1].astype(int), 0, H0 - 1), np.clip(P[:, 0].astype(int), 0, W0 - 1)]
-        P = P[_ok]
-        cs, _ = cv2.findContours(np.pad(_l8, 1), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        cp = [c[:, 0, :].astype(np.float32) - 1 for c in (cv2.approxPolyDP(c, float(os.environ.get('FM_LP_COASTEPS', '1.0')), True) for c in cs) if len(c) >= 3]
-        if cp: P = np.unique(np.concatenate([P] + cp).round(1), axis=0)
-        P[:, 0] = np.clip(P[:, 0], 0, W0 - 1); P[:, 1] = np.clip(P[:, 1], 0, H0 - 1)
+    PIC = os.environ.get('FM_LP_PICTURE', '')      # 平坦な絵(世界地図一枚)。あればアトラスはこの絵をそのまま貼る
     zi = np.clip(P[:, 1].astype(int), 0, H0 - 1); xi = np.clip(P[:, 0].astype(int), 0, W0 - 1)
     Z = z[zi, xi]
     tri = Delaunay(P).simplices
     A, B, C = P[tri[:, 0]], P[tri[:, 1]], P[tri[:, 2]]
     cen = (A + B + C) / 3; cy = np.clip(cen[:, 1].astype(int), 0, H0 - 1); cx = np.clip(cen[:, 0].astype(int), 0, W0 - 1)
     keep = land[cy, cx]
-    if PIC:
-        _lm = lambda Q: land[np.clip(Q[:, 1].round().astype(int), 0, H0 - 1), np.clip(Q[:, 0].round().astype(int), 0, W0 - 1)]
-        keep = keep & _lm((A + B) / 2) & _lm((B + C) / 2) & _lm((C + A) / 2)
     za, zb, zc = Z[tri[:, 0]], Z[tri[:, 1]], Z[tri[:, 2]]
     # ---- 面の向きと陰(左斜め上から): 地図の上=奥、画面の下=手前。縦の高さは画面で上へ立ち上がる
     e1 = np.stack([B[:, 0] - A[:, 0], B[:, 1] - A[:, 1], (zb - za) * 1.0], 1); e2 = np.stack([C[:, 0] - A[:, 0], C[:, 1] - A[:, 1], (zc - za) * 1.0], 1)
