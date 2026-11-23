@@ -46,7 +46,10 @@ else:
         if b and past: warn.append('過去の項目に確認ボタンがある(過去の試作は過去の管理に集める): ' + i['id'])
         if b and b.get('s') not in ('未決', '決定'): warn.append('確認ボタンの s は 未決 か 決定: ' + i['id'])
         if not past and i.get('links'): warn.append('今の項目にリンクが残っている(確認ボタンは btn に1つだけ。他は過去の管理へ): ' + i['id'])
-    for f in sorted(glob.glob(os.path.join(H, 'rag/r*.md'))):
+    order = open(os.path.join(H, 'rag/_order.txt'), encoding='utf-8').read().split()
+    have = sorted(os.path.basename(f) for f in glob.glob(os.path.join(H, 'rag/*.md')) if not os.path.basename(f).startswith('_'))
+    for x in set(order) ^ set(have): warn.append('ラグの並び順の一覧(_order.txt)とファイルが合わない: ' + x)
+    for f in [os.path.join(H, 'rag', x) for x in order if os.path.exists(os.path.join(H, 'rag', x))]:
         L = open(f, encoding='utf-8').read().split('\n')
         if not (L[1].startswith('検索語:') and L[2].startswith('状態:')): warn.append('ラグの形が違う(2行目=検索語・3行目=状態): ' + os.path.basename(f))
         if len('\n'.join(L)) > 3500: warn.append('ラグが長い(3500字超。1カード=1トピックに分ける): ' + os.path.basename(f))
