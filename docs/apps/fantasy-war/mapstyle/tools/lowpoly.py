@@ -115,7 +115,10 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     if dump and uv:
         # 3D表示用に、面(位置・高さ・面の並び)とテクスチャを書き出す(three.jsの試作が読む)
         import json
-        fi = np.nonzero(keep)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
+        # 面は『海岸線(平坦な絵の陸の縁)にかかる面』まで残す。縁の形は絵の陸の透明度で決め、面の縁は出さない(ユーザー仕様 11-24)
+        _lv = lambda Q: land[np.clip(Q[:, 1].astype(int), 0, H0 - 1), np.clip(Q[:, 0].astype(int), 0, W0 - 1)]
+        keep3 = keep | _lv(A) | _lv(B) | _lv(C)
+        fi = np.nonzero(keep3)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
         Zout = Z
         if os.environ.get('FM_LP_ZDISP'):      # 3D表示の高さだけ、実寸の縮尺×誇張倍率で置き換える(色・面の分け方は元のまま)
             Zd = np.load(os.environ['FM_LP_ZDISP']); Zout = Zd[np.clip(P[:, 1].astype(int), 0, Zd.shape[0] - 1), np.clip(P[:, 0].astype(int), 0, Zd.shape[1] - 1)]
@@ -126,7 +129,8 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
             import atlas_unwrap
             Fu = remap[tri[fi]]; Pu = np.array([[P[k, 0], P[k, 1]] for k in used]); Zu = np.array([Zout[k] for k in used])
             Tb_bgr = Tb.astype(np.uint8)[..., ::-1].copy()
-            atl, uvs, dens = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed)
+            atl, uvs, dens, alp = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed, mask=ndi.gaussian_filter(land.astype(np.float32), 0.6))
+            cv2.imwrite(dump + '_a.png', alp)
             dd = json.load(open(dump + '.json')); dd['tuv'] = np.round(uvs.reshape(-1), 5).tolist(); dd['dens'] = round(dens, 2)
             json.dump(dd, open(dump + '.json', 'w'), separators=(',', ':'))
             cv2.imwrite(dump + '.jpg', atl, [cv2.IMWRITE_JPEG_QUALITY, 85]); print('アトラス密度(3D1単位あたりの画素)', round(dens, 2))
