@@ -9,7 +9,7 @@ H = os.path.dirname(os.path.abspath(__file__))
 d = json.load(open(os.environ.get('ITEMS') or os.path.join(H, '../../fantasy-war/items.json'), encoding='utf-8'))
 items = d['items']; ids = {i['id']: i for i in items}
 groups = {x['id'] for k in ('layers', 'works') for x in d.get(k, [])}
-now = [i for i in items if i.get('st') == 'now']
+now = [i for i in items if i.get('st') == 'now' or (not i.get('who') and i.get('st') != 'past')]  # 今の作業+分類(親の入れ物)
 kids = {}
 for i in now: kids.setdefault(i.get('parent'), []).append(i)
 warn = []
