@@ -5,5 +5,5 @@ import glob
 L=['# 世界ハニカム ラグ目次(検索の入口)','ハブに落とした内容を整理したもの。1カード=1トピック。印: [確]ユーザー決定 [案]私の提案 [評]ユーザー評価 [ボツ]不採用 [置]置換済み。答える前に該当カードを検索し、状態を確かめる。未決を決定として扱わない。','ハブの原本記録=repoの STATE.md / STATE_LOG.md / OVERVIEW.md(検索に入れない)。作業規則=docs/apps/fantasy-war/CLAUDE.md。','']
 for f in sorted(glob.glob('rag/r*.md')):
     t=open(f,encoding='utf-8').read().split('\n')
-    L.append('%s %s'%(f[4:-3].upper(),t[0].lstrip('# ')))
+    L.append('- '+t[0].lstrip('# '))
 open('rag/_index.md','w',encoding='utf-8').write('\n'.join(L)+'\n'); print('\n'.join(L))
