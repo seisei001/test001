@@ -39,7 +39,7 @@ def main(pre, outdir, name, seed=1):
     os.makedirs(outdir, exist_ok=True)
     dat = np.zeros((Hh, W, 3), np.uint8); dat[..., 0] = np.clip(H * 2.55, 0, 255).astype(np.uint8); dat[..., 1] = BI; dat[..., 2] = ST
     Image.fromarray(dat).save(outdir + '/world-data.png')
-    for k_, v_ in (('FM_LP_GENTLE', '1'), ('FM_LP_BASE', '0.48'), ('FM_LP_EMPH', '0.775'), ('FM_LP_D0', '0.17'), ('FM_LP_SP', '1.3'), ('FM_LP_RING', '1')): os.environ.setdefault(k_, v_)   # ハブ(カード6E mapstyle40)の山の強調の基準 11-22 22:05
+    for k_, v_ in (('FM_LP_GENTLE', '1'), ('FM_LP_BASE', '0.37'), ('FM_LP_PEXP', '1.9'), ('FM_LP_SMOOTH', '1.5'), ('FM_LP_EMPH', '0.775'), ('FM_LP_D0', '0.17'), ('FM_LP_SP', '1.3'), ('FM_LP_RING', '1')): os.environ.setdefault(k_, v_)   # ハブ(カード6E mapstyle40)の山の強調の基準 11-22 22:05
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
     if D is not None:
         import water_layer

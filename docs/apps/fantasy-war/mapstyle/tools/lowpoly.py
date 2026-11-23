@@ -31,11 +31,13 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     if gentle:
         # ゆるい3D(11-20 ユーザー案): 最大値で頂を広げない。地図全体を軽くならした高さでゆるく盛り上げ、
         # 高い山が集まる所(高い所の密度が高い所)だけ、少し強調する。
-        Hg = ndi.gaussian_filter(Hl, 2.5)
-        hn = np.clip((Hg - 20) / (hmax - 20), 0, 1)
+        Hg = ndi.gaussian_filter(Hl, float(os.environ.get('FM_LP_SMOOTH', '2.5')))
+        _pe = float(os.environ.get('FM_LP_PEXP', '0'))                    # 山の断面: >0 なら『なだらかな曲面から頂が尖る』(上を切らず、下に凸の曲線)
+        _hn_raw = (Hg - 20) / (hmax - 20)
+        hn = np.clip(_hn_raw, 0, 1.35 if _pe > 0 else 1)
         dens = ndi.gaussian_filter((hn > 0.5).astype(np.float32), 22.0)       # 高い所が集まっている度合い
         d0 = float(os.environ.get('FM_LP_D0', '0.12')); we = np.clip((dens - d0) / 0.25, 0, 1) * np.clip((hn - 0.35) / 0.25, 0, 1)   # 強調: 山が集まる所の高い部分だけ
-        z = zmax * float(os.environ.get('FM_LP_BASE', '0.45')) * hn ** 1.3 * (1 + float(os.environ.get('FM_LP_EMPH', '1.0')) * we)   # 既定=mapstyle38。mapstyle39は 0.62 / 0.55
+        z = zmax * float(os.environ.get('FM_LP_BASE', '0.45')) * hn ** (_pe if _pe > 0 else 1.3) * (1 + float(os.environ.get('FM_LP_EMPH', '1.0')) * we)   # 既定=mapstyle38。mapstyle39は 0.62 / 0.55
         wm = np.maximum(we, np.clip((hn - 0.5) / 0.3, 0, 1)); Hm = Hg
     z = np.where(land, z, 0).astype(np.float32)
     zden = (np.percentile(z[land], 99.5) if gentle else zmax * 1.9)
