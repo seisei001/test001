@@ -1203,7 +1203,9 @@
    "links": [
     {
      "t": "要素の案",
-     "u": "mapelements.html"
+     "u": "mapelements.html",
+     "h": "mapelements.html",
+     "l": "要素の案"
     }
    ],
    "past": true
@@ -1223,7 +1225,9 @@
    "links": [
     {
      "t": "mapstyle45",
-     "u": "mapstyle45.html"
+     "u": "mapstyle45.html",
+     "h": "mapstyle45.html",
+     "l": "mapstyle45"
     }
    ],
    "past": true
@@ -1243,7 +1247,9 @@
    "links": [
     {
      "t": "mapstyle46",
-     "u": "mapstyle46.html"
+     "u": "mapstyle46.html",
+     "h": "mapstyle46.html",
+     "l": "mapstyle46"
     }
    ],
    "past": true
@@ -1263,7 +1269,9 @@
    "links": [
     {
      "t": "mapstyle47",
-     "u": "mapstyle47.html"
+     "u": "mapstyle47.html",
+     "h": "mapstyle47.html",
+     "l": "mapstyle47"
     }
    ],
    "past": true
@@ -1284,7 +1292,9 @@
    "links": [
     {
      "t": "mapstyle48",
-     "u": "mapstyle48.html"
+     "u": "mapstyle48.html",
+     "h": "mapstyle48.html",
+     "l": "mapstyle48"
     }
    ],
    "past": true
@@ -1304,7 +1314,9 @@
    "links": [
     {
      "t": "mapstyle49",
-     "u": "mapstyle49.html"
+     "u": "mapstyle49.html",
+     "h": "mapstyle49.html",
+     "l": "mapstyle49"
     }
    ],
    "past": true
@@ -1325,7 +1337,9 @@
    "links": [
     {
      "t": "mapstyle50",
-     "u": "mapstyle50.html"
+     "u": "mapstyle50.html",
+     "h": "mapstyle50.html",
+     "l": "mapstyle50"
     }
    ],
    "past": true
@@ -1346,7 +1360,9 @@
    "links": [
     {
      "t": "mapveg1",
-     "u": "mapveg1.html"
+     "u": "mapveg1.html",
+     "h": "mapveg1.html",
+     "l": "mapveg1"
     }
    ],
    "past": true
@@ -1412,11 +1428,15 @@
    "links": [
     {
      "t": "mapveg0(調査)",
-     "u": "mapveg0.html"
+     "u": "mapveg0.html",
+     "h": "mapveg0.html",
+     "l": "mapveg0(調査)"
     },
     {
      "t": "mapveg1(設計案)",
-     "u": "mapveg1.html"
+     "u": "mapveg1.html",
+     "h": "mapveg1.html",
+     "l": "mapveg1(設計案)"
     }
    ],
    "st": "past",
@@ -1453,11 +1473,15 @@
    "links": [
     {
      "t": "mapveg2(試作)",
-     "u": "mapveg2.html"
+     "u": "mapveg2.html",
+     "h": "mapveg2.html",
+     "l": "mapveg2(試作)"
     },
     {
      "t": "mapveg0(調査)",
-     "u": "mapveg0.html"
+     "u": "mapveg0.html",
+     "h": "mapveg0.html",
+     "l": "mapveg0(調査)"
     }
    ],
    "st": "past",
@@ -1526,19 +1550,27 @@
     },
     {
      "t": "isekai0(材料集め)",
-     "u": "isekai0.html"
+     "u": "isekai0.html",
+     "h": "isekai0.html",
+     "l": "isekai0(材料集め)"
     },
     {
      "t": "isekai1(共起の集計)",
-     "u": "isekai1.html"
+     "u": "isekai1.html",
+     "h": "isekai1.html",
+     "l": "isekai1(共起の集計)"
     },
     {
      "t": "魔力の地脈(実装)",
-     "u": "mana0.html"
+     "u": "mana0.html",
+     "h": "mana0.html",
+     "l": "魔力の地脈(実装)"
     },
     {
      "t": "物語の種",
-     "u": "story0.html"
+     "u": "story0.html",
+     "h": "story0.html",
+     "l": "物語の種"
     }
    ],
    "past": true,
@@ -2533,7 +2565,9 @@
    "links": [
     {
      "t": "山の部品 見本1",
-     "u": "mapstyle25.html"
+     "u": "mapstyle25.html",
+     "h": "mapstyle25.html",
+     "l": "山の部品 見本1"
     }
    ],
    "past": true
@@ -2619,7 +2653,9 @@
    "links": [
     {
      "t": "絵の番号表",
-     "u": "mapstyle_ids.html"
+     "u": "mapstyle_ids.html",
+     "h": "mapstyle_ids.html",
+     "l": "絵の番号表"
     }
    ],
    "past": true
@@ -2640,7 +2676,9 @@
    "links": [
     {
      "t": "mapstyle31",
-     "u": "mapstyle31.html"
+     "u": "mapstyle31.html",
+     "h": "mapstyle31.html",
+     "l": "mapstyle31"
     }
    ],
    "past": true
@@ -2660,7 +2698,9 @@
    "links": [
     {
      "t": "mapstyle32",
-     "u": "mapstyle32.html"
+     "u": "mapstyle32.html",
+     "h": "mapstyle32.html",
+     "l": "mapstyle32"
     }
    ],
    "past": true
@@ -2680,7 +2720,9 @@
    "links": [
     {
      "t": "mapstyle33",
-     "u": "mapstyle33.html"
+     "u": "mapstyle33.html",
+     "h": "mapstyle33.html",
+     "l": "mapstyle33"
     }
    ],
    "past": true
@@ -2700,7 +2742,9 @@
    "links": [
     {
      "t": "mapstyle34",
-     "u": "mapstyle34.html"
+     "u": "mapstyle34.html",
+     "h": "mapstyle34.html",
+     "l": "mapstyle34"
     }
    ],
    "past": true
@@ -2720,7 +2764,9 @@
    "links": [
     {
      "t": "mapstyle35",
-     "u": "mapstyle35.html"
+     "u": "mapstyle35.html",
+     "h": "mapstyle35.html",
+     "l": "mapstyle35"
     }
    ],
    "past": true
@@ -2740,7 +2786,9 @@
    "links": [
     {
      "t": "mapstyle36",
-     "u": "mapstyle36.html"
+     "u": "mapstyle36.html",
+     "h": "mapstyle36.html",
+     "l": "mapstyle36"
     }
    ],
    "past": true
@@ -2760,7 +2808,9 @@
    "links": [
     {
      "t": "PWGの使い方",
-     "u": "pwg_usage.html"
+     "u": "pwg_usage.html",
+     "h": "pwg_usage.html",
+     "l": "PWGの使い方"
     }
    ],
    "past": true
@@ -2780,7 +2830,9 @@
    "links": [
     {
      "t": "mapstyle37",
-     "u": "mapstyle37.html"
+     "u": "mapstyle37.html",
+     "h": "mapstyle37.html",
+     "l": "mapstyle37"
     }
    ],
    "past": true
@@ -2800,7 +2852,9 @@
    "links": [
     {
      "t": "mapstyle38",
-     "u": "mapstyle38.html"
+     "u": "mapstyle38.html",
+     "h": "mapstyle38.html",
+     "l": "mapstyle38"
     }
    ],
    "past": true
@@ -2820,7 +2874,9 @@
    "links": [
     {
      "t": "mapstyle39",
-     "u": "mapstyle39.html"
+     "u": "mapstyle39.html",
+     "h": "mapstyle39.html",
+     "l": "mapstyle39"
     }
    ],
    "past": true
@@ -2840,7 +2896,9 @@
    "links": [
     {
      "t": "mapstyle40",
-     "u": "mapstyle40.html"
+     "u": "mapstyle40.html",
+     "h": "mapstyle40.html",
+     "l": "mapstyle40"
     }
    ],
    "past": true
@@ -2860,7 +2918,9 @@
    "links": [
     {
      "t": "mapstyle41",
-     "u": "mapstyle41.html"
+     "u": "mapstyle41.html",
+     "h": "mapstyle41.html",
+     "l": "mapstyle41"
     }
    ],
    "past": true
@@ -2880,7 +2940,9 @@
    "links": [
     {
      "t": "mapstyle42",
-     "u": "mapstyle42.html"
+     "u": "mapstyle42.html",
+     "h": "mapstyle42.html",
+     "l": "mapstyle42"
     }
    ],
    "past": true
@@ -2900,7 +2962,9 @@
    "links": [
     {
      "t": "mapstyle43",
-     "u": "mapstyle43.html"
+     "u": "mapstyle43.html",
+     "h": "mapstyle43.html",
+     "l": "mapstyle43"
     }
    ],
    "past": true
@@ -2920,7 +2984,9 @@
    "links": [
     {
      "t": "mapstyle44",
-     "u": "mapstyle44.html"
+     "u": "mapstyle44.html",
+     "h": "mapstyle44.html",
+     "l": "mapstyle44"
     }
    ],
    "past": true
@@ -2940,7 +3006,9 @@
    "links": [
     {
      "t": "3D表示",
-     "u": "world3d.html"
+     "u": "world3d.html",
+     "h": "world3d.html",
+     "l": "3D表示"
     }
    ],
    "past": true
@@ -2977,32 +3045,45 @@
     "2026-11-22 19:06 ユーザー指摘: 気流が流れていない→海流を参考に環流+境の速い帯+西岸強化で作り直し(STATE 6G 19:06)。評価待ち。",
     "2026-11-22 19:15 ユーザー指示: 浮島の絵からローポリ+UVで立体にして浮かせる→実施(STATE 6G 19:15)。評価待ち。",
     "2026-11-23 22:18 世界地図とのセット表記が決まり、g-final の下に移した。",
-    "2026-11-24 07:26 ユーザー: 親を統合世界地図に変更(航宙図は世界地図の子ではない。f-pair・f-verify は両方にまたがる)。"
+    "2026-11-24 07:26 ユーザー: 親を統合世界地図に変更(航宙図は世界地図の子ではない。f-pair・f-verify は両方にまたがる)。",
+    "2026-11-24 07:35 ユーザー指示: ハブのトップにあった航宙図のボタンは外す。航宙図は、この項目(航宙図の作成)の「見る」リンク(航宙図(試作))から開く。"
    ],
    "links": [
     {
      "t": "航宙図(試作)",
-     "u": "koutyuuzu0.html"
+     "u": "koutyuuzu0.html",
+     "h": "koutyuuzu0.html",
+     "l": "航宙図(試作)"
     },
     {
      "t": "球体PWGの試作(seed11)",
-     "u": "mapstyle/pwgsphere/s11.png"
+     "u": "mapstyle/pwgsphere/s11.png",
+     "h": "mapstyle/pwgsphere/s11.png",
+     "l": "球体PWGの試作(seed11)"
     },
     {
      "t": "球体PWGの試作(seed23・3大陸)",
-     "u": "mapstyle/pwgsphere/s23.png"
+     "u": "mapstyle/pwgsphere/s23.png",
+     "h": "mapstyle/pwgsphere/s23.png",
+     "l": "球体PWGの試作(seed23・3大陸)"
     },
     {
      "t": "球体PWG 周長8192km",
-     "u": "mapstyle/pwgsphere/p8192.png"
+     "u": "mapstyle/pwgsphere/p8192.png",
+     "h": "mapstyle/pwgsphere/p8192.png",
+     "l": "球体PWG 周長8192km"
     },
     {
      "t": "PWG球体とAzgaarの比較",
-     "u": "mapstyle/pwgsphere/cmp8192.png"
+     "u": "mapstyle/pwgsphere/cmp8192.png",
+     "h": "mapstyle/pwgsphere/cmp8192.png",
+     "l": "PWG球体とAzgaarの比較"
     },
     {
      "t": "回して見る3D(世界を選ぶ→球体PWG 2:1)",
-     "u": "world3d.html"
+     "u": "world3d.html",
+     "h": "world3d.html",
+     "l": "回して見る3D(世界を選ぶ→球体PWG 2:1)"
     }
    ]
   },
