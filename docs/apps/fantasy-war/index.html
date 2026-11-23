@@ -48,7 +48,6 @@ function render(){
   if(v==='c'&&!k){
     o+='</div><div class="meth">階層型課題解消管理法</div><h1>ファンタジー世界戦争</h1>'+tabs('c');
     if(D.phase)o+='<div class="box" style="border-left:4px solid var(--ac)"><b>いまの段階</b>'+esc(D.phase)+'</div>';
-    o+='<a class="btn main" href="world3d.html"><span>🌐</span><span class="n">世界地図の3D表示(球体PWG展開)<small style="color:#dbe6ff">山・森・川・湖・海。回して見る</small></span><span class="go" style="color:#fff">›</span></a>';
     const hand=by('who','hand').length;
     if(hand)o+='<a class="btn" href="#w/hand" style="border-color:var(--hand)"><span class="n">✋ あなたの手作業が'+hand+'件あります</span><span class="go">›</span></a>';
     o+='<h2>世界のしくみの層(大きい→小さい)</h2>';
@@ -76,6 +75,7 @@ function render(){
     o+='<div class="box"><b>これは何か</b>試行錯誤の辞書です。途中のものも含めて解決済みとして過去に移した試作・調査・検討で、今後の別の層で使えるものがあります(2026-11-22・11-23 ユーザー指示)。ファイルは消していません。いまの試作中と『どこまでやったか』は、トップの各項目の『いま』にあります。</div>';
     const A=D.all.filter(x=>x.past&&x.who);o+='<h2>試作・調査(作業の項目 '+A.length+'件)</h2>'+A.map(x=>row(x,'layer')).join('');
     const G=D.all.filter(x=>x.past&&!x.who);o+='<h2>分類・設計の項目('+G.length+'件)</h2>'+G.map(x=>row(x,'layer')).join('');
+    const B=D.all.filter(x=>x.past&&x.links&&x.links.length);o+='<h2>過去の試作・ボツのリンク集('+B.length+'件)</h2><div class="box"><details><summary>まとめて開く(確認のボタンは、いまの項目の下に1つだけ。過去の試作はここに集める)</summary>'+B.map(x=>'<div style="margin:10px 0"><b>'+esc(x.t)+'</b><br>'+x.links.map(l=>'<a href="'+l.h+'">'+esc(l.l||l.h)+'</a>').join(' / ')+'</div>').join('')+'</details></div>';
   }else if(v==='i'){
     const i=D.all.find(x=>x.id===k);if(!i){location.hash='c';return}
     o+=' › <a href="#c/'+i.layer+'">'+esc(L(i.layer).t)+'</a>'+anc(i).map(p=>' › <a href="#i/'+p.id+'">'+esc(p.t)+'</a>').join('')+' › <a href="#i/'+k+'">'+esc(i.t)+'</a></div><h1>'+esc(i.t)+'</h1>';
@@ -84,7 +84,7 @@ function render(){
     o+='<div class="box" style="border-left:4px solid var(--'+(i.past?'mu':'wip')+')"><b>'+(i.past?'過去(解決済み)':'いまの内容')+'</b>'+esc(i.now)+'</div>';
     if(kids(i).length){o+='<h2>この中の項目('+leaves(i)+'件)</h2>'+kids(i).map(x=>row(x,'work')).join('')}
     if(i.who)o+='<div class="box log"><b>途中経過</b>'+(i.log.length?i.log.map(x=>'<div>'+esc(x)+'</div>').join(''):'<div class="empty">まだありません</div>')+'</div>';
-    if(i.links.length){o+='<h2>見る(試作)</h2>';for(const x of i.links)o+='<a class="btn main" href="'+x.h+'"><span class="n">🔨 '+esc(x.l)+'</span><span class="go">›</span></a>'}else if(i.who)o+='<div class="empty">見る物はまだありません(届いたらここに出ます)</div>';
+    if(!i.past&&i.btn){o+='<h2>確認('+esc(i.btn.s)+')</h2><a class="btn main" href="'+i.btn.h+'"><span class="n">🔨 '+esc(i.btn.l)+'</span><span style="font-size:.78rem;border:1px solid #fff;border-radius:99px;padding:1px 8px">'+esc(i.btn.s)+'</span><span class="go">›</span></a>'}else if(i.who&&!i.past)o+='<div class="empty">確認する物はまだありません</div>';
   }
   document.getElementById('app').innerHTML=o+body;scrollTo(0,0);
 }
