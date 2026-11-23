@@ -17,7 +17,11 @@ def build(wd, seed=1, octs=7, pool_t=1.0, vein_t=0.0, min_px=3, decay=0.9, base=
     H0, W0 = wd.shape[:2]; land0 = (wd[..., 1] > 0) & (wd[..., 0] >= 20)
     s = 2; h, w = H0 // s, W0 // s
     land = cv2.resize(land0.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
-    F = field(h, w, seed, base * w, octs, decay); Z = (F - F[land].mean()) / F[land].std()
+    # 四元素(地・水・火・風)の魔素: 各1枚のガウス揺らぎ(種を変えて4枚)。魔力量の場=4枚の重ね合わせ(ユーザー確定 11-24 05:48)
+    ELEM = ['地', '水', '火', '風']
+    Fe = [field(h, w, seed * 10 + k, base * w, octs, decay) for k in range(4)]
+    Ze = [(f - f[land].mean()) / f[land].std() for f in Fe]
+    F = sum(Ze); Z = (F - F[land].mean()) / F[land].std()
     deep = -Z                                                # 大きいほど魔力が濃い(場が薄い)
     # 魔力だまり: 濃さがしきい値を超える連結した面
     lab, n = ndi.label((deep > pool_t) & land)
@@ -26,7 +30,8 @@ def build(wd, seed=1, octs=7, pool_t=1.0, vein_t=0.0, min_px=3, decay=0.9, base=
         m = lab == i; a = int(m.sum())
         if a < min_px: continue
         ys, xs = np.nonzero(m); k = int(np.argmax(deep[m]))
-        pools.append(dict(x=int(xs.mean() * s), y=int(ys.mean() * s), area=a * s * s, depth=round(float(deep[m].max()), 2), peak=[int(xs[k] * s), int(ys[k] * s)]))
+        el = {ELEM[k]: round(float(-Ze[k][m].mean()), 2) for k in range(4)}   # だまり内の各元素の濃さ(大きいほど濃い)
+        pools.append(dict(elem=el, x=int(xs.mean() * s), y=int(ys.mean() * s), area=a * s * s, depth=round(float(deep[m].max()), 2), peak=[int(xs[k] * s), int(ys[k] * s)]))
     # 地脈: 濃さがしきい値(ゆるめ)を超える所の中心線
     V = (deep > vein_t) & land; V = ndi.binary_closing(V, iterations=1) & land
     sk = skeletonize(V)
