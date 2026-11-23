@@ -1,4 +1,4 @@
-# ラグ(Projectsの hub/cards/)=日記(STATE.md等)から有意なものを抽出した検索機能。元は rag/ の r00〜rNN.md(トピック別)。仕様の正は日記。_index.md が目次(hub/STATE.md)。
+# ラグ(Projectsの hub/cards/)=ハブに落とした内容を整理したもの。元は rag/ の r00〜rNN.md(トピック別)。
 # 旧方式(STATE.md の日記から cards/ を作る)は 2026-11-24 に廃止。旧カードは cards_old/(辞書)。
 # 使い方: 決定を受けたら該当の rag/rNN.md をその場で書き換え、Projectsの hub/cards/rNN.md へ project_write(local_path)する。目次を変えたら下を実行して _index.md を作り直し hub/STATE.md へ。
 import glob
