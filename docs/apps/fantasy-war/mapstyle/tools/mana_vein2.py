@@ -6,6 +6,8 @@ from PIL import Image
 from scipy import ndimage as ndi
 from skimage.morphology import skeletonize
 
+WEAK_MAX = 100   # 弱い魔力だまりの上限(私の仮の数。ユーザーは『適当』)
+
 def field(h, w, seed, base, octs, decay=0.72):
     rng = np.random.default_rng(seed); f = np.zeros((h, w), np.float32)
     for k in range(octs):                                   # 大きな波から細かい波まで(波の大きさ=半分ずつ、強さ=約0.7倍ずつ)
@@ -32,14 +34,23 @@ def build(wd, seed=1, octs=7, pool_t=1.0, vein_t=0.0, min_px=3, decay=0.9, base=
         ys, xs = np.nonzero(m); k = int(np.argmax(deep[m]))
         el = {ELEM[k]: round(float(-Ze[k][m].mean()), 2) for k in range(4)}   # だまり内の各元素の濃さ(大きいほど濃い)
         pools.append(dict(elem=el, x=int(xs.mean() * s), y=int(ys.mean() * s), area=a * s * s, depth=round(float(deep[m].max()), 2), peak=[int(xs[k] * s), int(ys[k] * s)]))
-    # 地脈: 濃さがしきい値(ゆるめ)を超える所の中心線
+    # 強さの段階(ユーザー確定 11-24 05:53): 強め12・中くらい80・弱いのは適当(上限は私の仮=WEAK_MAX)。濃さの順
+    pools.sort(key=lambda q: -q['depth'])
+    for i, q in enumerate(pools): q['tier'] = '強' if i < 12 else ('中' if i < 92 else '弱')
+    pools = pools[:92 + WEAK_MAX]
+    # 地脈: 元素ごとに別々(ユーザー確定 11-24 05:53)。各元素の場の濃い所(しきい値を超える所)の中心線
+    elem_veins = {}; skel = {}
+    for k in range(4):
+        Vk = ndi.binary_closing((-Ze[k] > vein_t) & land, iterations=1) & land; skk = skeletonize(Vk); skel[ELEM[k]] = skk
+        c, nk = ndi.label(skk, structure=np.ones((3, 3)))
+        elem_veins[ELEM[k]] = dict(length_px=int(skk.sum()) * s, networks=int(nk))
     V = (deep > vein_t) & land; V = ndi.binary_closing(V, iterations=1) & land
     sk = skeletonize(V)
     nb = ndi.convolve(sk.astype(np.uint8), np.ones((3, 3), np.uint8), mode='constant') - 1
     ends = int((sk & (nb == 1)).sum()); junc = int((sk & (nb >= 3)).sum())
     comp, nc = ndi.label(sk, structure=np.ones((3, 3)))
     sizes = ndi.sum(sk, comp, range(1, nc + 1)) if nc else []
-    return dict(pools=pools, vein=dict(length_px=int(sk.sum()) * s, ends=ends, junctions=junc, networks=int(nc), biggest=int(max(sizes)) * s if nc else 0)), sk, V, pool_mask(lab, pools, deep, pool_t), land, Z
+    return dict(pools=pools, elem_veins=elem_veins, skel=skel, vein=dict(length_px=int(sk.sum()) * s, ends=ends, junctions=junc, networks=int(nc), biggest=int(max(sizes)) * s if nc else 0)), sk, V, pool_mask(lab, pools, deep, pool_t), land, Z
 
 def pool_mask(lab, pools, deep, t): return (deep > t)
 
@@ -48,8 +59,11 @@ if __name__ == '__main__':
     opt = {a.split('=')[0]: a.split('=')[1] for a in sys.argv[1:] if a.startswith('--') and '=' in a}
     wd = np.array(Image.open(args[0] + '/world-data.png')); seed = int(args[2]) if len(args) > 2 else 1
     d, sk, V, P, land, Z = build(wd, seed, int(opt.get('--oct', 7)), float(opt.get('--pool', 1.0)), float(opt.get('--vein', 0.0)), decay=float(opt.get('--decay', 0.9)), base=float(opt.get('--base', 0.03)))
-    json.dump(dict(seed=seed, size=[wd.shape[1], wd.shape[0]], pools=d['pools'], vein=d['vein'], note='座標は世界データの画素(2:1や正方形の世界でも同じ)。area=画素数。depth=濃さ(標準偏差の何倍か)'), open(args[1] + '_mana2.json', 'w'), ensure_ascii=False)
+    json.dump(dict(seed=seed, size=[wd.shape[1], wd.shape[0]], pools=d['pools'], elem_veins=d['elem_veins'], vein=d['vein'], note='座標は世界データの画素(2:1や正方形の世界でも同じ)。area=画素数。depth=濃さ(標準偏差の何倍か)'), open(args[1] + '_mana2.json', 'w'), ensure_ascii=False)
     base = np.where(land[..., None], np.array([218, 214, 196], np.uint8), np.array([200, 216, 232], np.uint8)).astype(np.uint8)
-    base[V] = (150, 120, 200); base[P & land] = (255, 190, 60); sk2 = cv2.dilate(sk.astype(np.uint8), np.ones((2, 2), np.uint8)).astype(bool); base[sk2] = (90, 40, 150)
+    base[P & land] = (255, 235, 200)
+    for nm, col in zip(['地', '水', '火', '風'], [(150, 100, 40), (40, 90, 200), (210, 50, 40), (60, 160, 90)]):
+        base[cv2.dilate(d['skel'][nm].astype(np.uint8), np.ones((2, 2), np.uint8)).astype(bool)] = col
+    for q in d['pools']: cv2.circle(base, (q['x'] // 2, q['y'] // 2), {'強': 6, '中': 3, '弱': 1}[q['tier']], (255, 190, 60), -1)
     Image.fromarray(base).resize((base.shape[1] * 2, base.shape[0] * 2), Image.NEAREST).save(args[1] + '_mana2.png')
-    print(len(d['pools']), '魔力だまり', d['vein'])
+    from collections import Counter; print(Counter(q['tier'] for q in d['pools']), d['elem_veins'])
