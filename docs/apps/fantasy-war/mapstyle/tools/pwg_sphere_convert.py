@@ -50,6 +50,7 @@ def main(pre, outdir, name, seed=1):
         lay = sea_layer.build(land, seed)                              # 海の深さ・浅瀬(11-23 全実装に統合)
         lay.alpha_composite(forest_world_layer.build(dat, seed))       # 森の塊(第10版)
         lay.alpha_composite(wl)                                        # 川の水面・湖(いちばん上)
+        lay.alpha_composite(sea_layer.coast_ink(land))                  # 海岸線の細い墨線(陸側の縁・mapstyle45の考え方)
         ov = outdir + '/water-layer.png'; cv2.imwrite(ov, cv2.cvtColor(np.array(lay), cv2.COLOR_RGBA2BGRA)); os.environ['FM_LP_OVERLAY'] = ov
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
