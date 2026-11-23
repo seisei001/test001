@@ -3,7 +3,7 @@
 import numpy as np, cv2
 from scipy import ndimage as ndi
 
-def build(P, Z, F, Tbase_bgr, VS=1.1, S=2048, pad=2, seed=1, noise_amp=0.30, mask=None):
+def build(P, Z, F, Tbase_bgr, VS=1.1, S=2048, pad=2, seed=1, noise_amp=0.30):
     """P:(n,2)点の地図位置 Z:(n,)高さ F:(m,3)面の点番号 Tbase_bgr:(H,W,3)色の地図(模様なし)。
     返す: アトラス画像(S,S,3 uint8 BGR)、面ごとの3頂点のUV (m,3,2)、密度(3D1単位あたりの画素)"""
     H0, W0 = Tbase_bgr.shape[:2]
@@ -53,7 +53,4 @@ def build(P, Z, F, Tbase_bgr, VS=1.1, S=2048, pad=2, seed=1, noise_amp=0.30, mas
     nz /= (np.abs(nz[used]).max() + 1e-6)
     out = np.clip(col * (1 + noise_amp * nz[..., None]), 0, 255)
     out[~used] = (206, 223, 235)[::-1]
-    # 陸の透明度(平坦な絵の陸の縁)。立体の縁は面でなく絵の海岸線で決める
-    al = cv2.remap(mask.astype(np.float32), xm, ym, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE) if mask is not None else np.ones((S, S), np.float32)
-    al = np.where(used, al, 0)
-    return out.astype(np.uint8), uvs, float(dens), np.clip(al * 255, 0, 255).astype(np.uint8)
+    return out.astype(np.uint8), uvs, float(dens)

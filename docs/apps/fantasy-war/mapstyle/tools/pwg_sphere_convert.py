@@ -54,22 +54,22 @@ def main(pre, outdir, name, seed=1):
     dat = np.zeros((Hh, W, 3), np.uint8); dat[..., 0] = np.clip(H * 2.55, 0, 255).astype(np.uint8); dat[..., 1] = BI; dat[..., 2] = ST
     Image.fromarray(dat).save(outdir + '/world-data.png')
     for k_, v_ in (('FM_LP_GENTLE', '1'), ('FM_LP_BASE', '0.37'), ('FM_LP_PEXP', '1.9'), ('FM_LP_SMOOTH', '1.5'), ('FM_LP_EMPH', '0.775'), ('FM_LP_D0', '0.17'), ('FM_LP_SP', '1.3'), ('FM_LP_RING', '1')): os.environ.setdefault(k_, v_)   # ハブ(カード6E mapstyle40)の山の強調の基準 11-22 22:05
+    # ---- ①平坦な絵を先に描く(最上位仕様 11-24。STATE.md カード0): 海・海岸線・地面の色・川・湖・森を一枚に ----
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
+    import cv2, forest_world_layer, flat_picture; from PIL import Image as _I
+    layers = []
+    layers.append(forest_world_layer.build(dat, seed))                               # 森の塊(第10版)
     if D is not None:
         import water_layer
-        wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed))
-        import cv2, forest_world_layer, sea_layer; from PIL import Image as _I
-        wl = cv2.imread(wo, cv2.IMREAD_UNCHANGED); wl = _I.fromarray(cv2.cvtColor(wl, cv2.COLOR_BGRA2RGBA))
-        sea_layer.colormap(land, seed).save(name + '_sea.jpg', quality=92)   # 3Dの海の面に貼る色の地図
-        lay = sea_layer.build(land, seed)                              # 海の深さ・浅瀬(11-23 全実装に統合)
-        lay.alpha_composite(forest_world_layer.build(dat, seed))       # 森の塊(第10版)
-        lay.alpha_composite(wl)                                        # 川の水面・湖(いちばん上)
-        lay.alpha_composite(sea_layer.coast_ink(land))                  # 海岸線の細い墨線(陸側の縁・mapstyle45の考え方)
-        ov = outdir + '/water-layer.png'; cv2.imwrite(ov, cv2.cvtColor(np.array(lay), cv2.COLOR_RGBA2BGRA)); os.environ['FM_LP_OVERLAY'] = ov
+        wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed, rivers_in_texture=True))   # 川と湖も絵の中に描く
+        wl = cv2.imread(wo, cv2.IMREAD_UNCHANGED); layers.append(_I.fromarray(cv2.cvtColor(wl, cv2.COLOR_BGRA2RGBA)))
+    pic = flat_picture.draw(H, land, BI, seed, layers)
+    pp = outdir + '/world-picture.png'; cv2.imwrite(pp, cv2.cvtColor(pic, cv2.COLOR_RGB2BGR)); _I.fromarray(pic).save(name + '_sea.jpg', quality=92)   # 海の面にも同じ絵を貼る(陸は立体が覆う)
+    # ---- ②ローポリを作り ③その絵をUVで貼る(絵はそのまま。立体側で足さない) ----
+    os.environ['FM_LP_PICTURE'] = pp; os.environ.pop('FM_LP_OVERLAY', None)
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
     lowpoly.paint(img, H, land, BI, seed)
-    if D is not None: water_layer.write_ribbons(G, land0, lake, H, shift, name)      # 川=地形に沿う帯(3D) 11-22 21:45
     return {'land': float(land.mean()), 'w': W, 'h': Hh}
 if __name__ == '__main__':
     print(main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 1))

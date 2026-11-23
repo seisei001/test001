@@ -10,9 +10,9 @@ def build(raw, seed, work=None):
     name = 'worldsp%d' % seed
     r = subprocess.run([sys.executable, '-I', os.path.join(T, 'pwg_sphere_convert.py'), os.path.join(raw, 'r%d' % seed), work, name, str(seed)], cwd=work, capture_output=True, text=True)
     if r.returncode: print(r.stderr[-1500:]); raise SystemExit('変換に失敗 seed%d' % seed)
-    for f in ('.json', '.jpg', '_a.png', '_riv.json', '_sea.jpg'): shutil.copy(os.path.join(work, name + f), os.path.join(FW, 'w3d', name + f))
+    for f in ('.json', '.jpg', '_sea.jpg'): shutil.copy(os.path.join(work, name + f), os.path.join(FW, 'w3d', name + f))
     d = os.path.join(FW, 'mapstyle', 'pwgsphere', 'sp%d' % seed); os.makedirs(d, exist_ok=True)
-    for f in ('world-data.png', 'water-layer.png'): shutil.copy(os.path.join(work, f), os.path.join(d, f))
+    for f in ('world-data.png', 'world-picture.png'): shutil.copy(os.path.join(work, f), os.path.join(d, f))
     print('seed', seed, '完了 %.1f秒' % (time.time() - t0)); print(r.stdout.strip())
 if __name__ == '__main__':
     raw = sys.argv[1]

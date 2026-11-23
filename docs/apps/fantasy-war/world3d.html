@@ -43,10 +43,7 @@ async function load(id){
   g.setAttribute('position',new THREE.BufferAttribute(p2,3)); g.setAttribute('uv',new THREE.BufferAttribute(u2,2)); g.computeVertexNormals();
  } else { g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.setIndex(d.f); g.computeVertexNormals(); }
  const mat=new THREE.MeshLambertMaterial({map:tex,flatShading:true,side:THREE.DoubleSide});
- try{ // 陸の縁は平坦な絵の海岸線で決める(面の縁は出さない)。陸の透明度の絵 _a.png があれば、海側を切り抜く
-  const am=await new THREE.TextureLoader().loadAsync(`w3d/world${id}_a.png`); mat.alphaMap=am; mat.alphaTest=0.5; mat.needsUpdate=true;
- }catch(e){}
- if(mesh){S.remove(mesh);mesh.geometry.dispose();mesh.material.map.dispose(); if(mesh.material.alphaMap)mesh.material.alphaMap.dispose();} mesh=new THREE.Mesh(g,mat); S.add(mesh);
+ if(mesh){S.remove(mesh);mesh.geometry.dispose();mesh.material.map.dispose();} mesh=new THREE.Mesh(g,mat); S.add(mesh);
  if(riv){S.remove(riv);riv.geometry.dispose();riv=null;}
  try{const rr=await fetch(`w3d/world${id}_riv.json`); if(rr.ok){const r=await rr.json();   // 川=地形に沿う帯(実寸の幅。絵にしないので伸びない)
   const bin=atob(r.v), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); const q=new Int16Array(u8.buffer), k=1/r.q;

@@ -66,12 +66,25 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     ey, ex = np.nonzero(edgem); sel = rs.rand(len(ey)) < 0.02; pts += [(x, y) for x, y in zip(ex[sel], ey[sel])]
     P = np.array(pts, np.float32); P[:, 0] = np.clip(P[:, 0], 0, W0 - 1); P[:, 1] = np.clip(P[:, 1], 0, H0 - 1)
     P = np.unique(P.round(1), axis=0)
+    PIC = os.environ.get('FM_LP_PICTURE', '')
+    if PIC:
+        # 最上位仕様(11-24): 立体の縁は絵の海岸線ただ一つ。陸の外の点は使わず、陸の輪郭(海岸線)に頂点を置く
+        _l8 = land.astype(np.uint8)
+        _ok = ndi.binary_dilation(land, iterations=1)[np.clip(P[:, 1].astype(int), 0, H0 - 1), np.clip(P[:, 0].astype(int), 0, W0 - 1)]
+        P = P[_ok]
+        cs, _ = cv2.findContours(np.pad(_l8, 1), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        cp = [c[:, 0, :].astype(np.float32) - 1 for c in (cv2.approxPolyDP(c, float(os.environ.get('FM_LP_COASTEPS', '1.0')), True) for c in cs) if len(c) >= 3]
+        if cp: P = np.unique(np.concatenate([P] + cp).round(1), axis=0)
+        P[:, 0] = np.clip(P[:, 0], 0, W0 - 1); P[:, 1] = np.clip(P[:, 1], 0, H0 - 1)
     zi = np.clip(P[:, 1].astype(int), 0, H0 - 1); xi = np.clip(P[:, 0].astype(int), 0, W0 - 1)
     Z = z[zi, xi]
     tri = Delaunay(P).simplices
     A, B, C = P[tri[:, 0]], P[tri[:, 1]], P[tri[:, 2]]
     cen = (A + B + C) / 3; cy = np.clip(cen[:, 1].astype(int), 0, H0 - 1); cx = np.clip(cen[:, 0].astype(int), 0, W0 - 1)
     keep = land[cy, cx]
+    if PIC:
+        _lm = lambda Q: land[np.clip(Q[:, 1].round().astype(int), 0, H0 - 1), np.clip(Q[:, 0].round().astype(int), 0, W0 - 1)]
+        keep = keep & _lm((A + B) / 2) & _lm((B + C) / 2) & _lm((C + A) / 2)
     za, zb, zc = Z[tri[:, 0]], Z[tri[:, 1]], Z[tri[:, 2]]
     # ---- 面の向きと陰(左斜め上から): 地図の上=奥、画面の下=手前。縦の高さは画面で上へ立ち上がる
     e1 = np.stack([B[:, 0] - A[:, 0], B[:, 1] - A[:, 1], (zb - za) * 1.0], 1); e2 = np.stack([C[:, 0] - A[:, 0], C[:, 1] - A[:, 1], (zc - za) * 1.0], 1)
@@ -115,10 +128,7 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
     if dump and uv:
         # 3D表示用に、面(位置・高さ・面の並び)とテクスチャを書き出す(three.jsの試作が読む)
         import json
-        # 面は『海岸線(平坦な絵の陸の縁)にかかる面』まで残す。縁の形は絵の陸の透明度で決め、面の縁は出さない(ユーザー仕様 11-24)
-        _lv = lambda Q: land[np.clip(Q[:, 1].astype(int), 0, H0 - 1), np.clip(Q[:, 0].astype(int), 0, W0 - 1)]
-        keep3 = keep | _lv(A) | _lv(B) | _lv(C)
-        fi = np.nonzero(keep3)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
+        fi = np.nonzero(keep)[0]; used = np.unique(tri[fi].ravel()); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
         Zout = Z
         if os.environ.get('FM_LP_ZDISP'):      # 3D表示の高さだけ、実寸の縮尺×誇張倍率で置き換える(色・面の分け方は元のまま)
             Zd = np.load(os.environ['FM_LP_ZDISP']); Zout = Zd[np.clip(P[:, 1].astype(int), 0, Zd.shape[0] - 1), np.clip(P[:, 0].astype(int), 0, Zd.shape[1] - 1)]
@@ -128,9 +138,8 @@ def paint(img, Hh, land, bio, seed=1, spacing=10, zmax=64.0, levels=4, out_ink=T
             # 伸び率そのままのUV展開+その上で絵を作る(11-22 21:50)。面ごとにUV(tuv)を持たせる
             import atlas_unwrap
             Fu = remap[tri[fi]]; Pu = np.array([[P[k, 0], P[k, 1]] for k in used]); Zu = np.array([Zout[k] for k in used])
-            Tb_bgr = Tb.astype(np.uint8)[..., ::-1].copy()
-            atl, uvs, dens, alp = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed, mask=ndi.gaussian_filter(land.astype(np.float32), 0.6))
-            cv2.imwrite(dump + '_a.png', alp)
+            Tb_bgr = (cv2.imread(PIC) if PIC else Tb.astype(np.uint8)[..., ::-1].copy())
+            atl, uvs, dens = atlas_unwrap.build(Pu, Zu, Fu, Tb_bgr, seed=seed, noise_amp=(0.0 if PIC else 0.30))
             dd = json.load(open(dump + '.json')); dd['tuv'] = np.round(uvs.reshape(-1), 5).tolist(); dd['dens'] = round(dens, 2)
             json.dump(dd, open(dump + '.json', 'w'), separators=(',', ':'))
             cv2.imwrite(dump + '.jpg', atl, [cv2.IMWRITE_JPEG_QUALITY, 85]); print('アトラス密度(3D1単位あたりの画素)', round(dens, 2))
