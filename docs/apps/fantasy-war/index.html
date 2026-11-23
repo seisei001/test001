@@ -74,7 +74,7 @@ function render(){
     const its=by('who',k);o+=its.length?its.map(i=>row(i,'layer')).join(''):'<div class="empty">✅ いまはありません</div>';
   }else if(v==='a'){
     o+=' › <a href="#a">過去の検討</a></div><div class="meth">階層型課題解消管理法</div><h1>過去の検討(解決済み)</h1>'+tabs('');
-    o+='<div class="box"><b>これは何か</b>最終版の形に更改するため、途中のものも含めて解決済みとして過去に移した試作・調査・検討です(2026-11-22 ユーザー指示)。ファイルは消していません。</div>';
+    o+='<div class="box"><b>これは何か</b>試行錯誤の辞書です。途中のものも含めて解決済みとして過去に移した試作・調査・検討で、今後の別の層で使えるものがあります(2026-11-22・11-23 ユーザー指示)。ファイルは消していません。いまの試作中と『どこまでやったか』は、トップの各項目の『いま』にあります。</div>';
     const A=D.all.filter(x=>x.past&&x.who);o+='<h2>試作・調査(作業の項目 '+A.length+'件)</h2>'+A.map(x=>row(x,'layer')).join('');
     const G=D.all.filter(x=>x.past&&!x.who);o+='<h2>分類・設計の項目('+G.length+'件)</h2>'+G.map(x=>row(x,'layer')).join('');
   }else if(v==='i'){
