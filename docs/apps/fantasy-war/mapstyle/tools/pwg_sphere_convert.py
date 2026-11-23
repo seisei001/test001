@@ -43,7 +43,11 @@ def main(pre, outdir, name, seed=1):
     BI = np.zeros((Hh, W), int)
     for k, v in MAP.items(): BI[bi == k] = v
     BI[~land] = 0
-    rs = np.random.RandomState(seed); ys, xs = np.nonzero(land); idx = rs.choice(len(ys), 12, replace=False)
+    # 極圏(北緯・南緯66度より極側)は極寒で人が住めない: 国を置かず(国=0)、70度より極側の陸は氷河(群系11)にする。国の点分割は住める陸だけで行う。
+    latr = np.abs(90 - 180 * (np.arange(Hh) + 0.5) / Hh)[:, None] * np.ones((1, W)); polar66 = latr >= 66; BI[land & (latr >= 70)] = 11
+    hab = land & ~polar66
+    print('住める陸(極圏を除く)の割合 %.1f%% / 陸全体 %.1f%% / 極圏の陸 %.1f%%(陸のうち)' % (100 * hab.mean(), 100 * land.mean(), 100 * (land & polar66).sum() / max(land.sum(), 1)))
+    rs = np.random.RandomState(seed); ys, xs = np.nonzero(hab); idx = rs.choice(len(ys), 12, replace=False)
     seeds = np.stack([ys[idx], xs[idx]], 1); ST = np.zeros((Hh, W), int)
     d2 = ((ys[:, None] - seeds[None, :, 0]) ** 2 + (xs[:, None] - seeds[None, :, 1]) ** 2); ST[ys, xs] = d2.argmin(1) + 1
     os.makedirs(outdir, exist_ok=True)

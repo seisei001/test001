@@ -26,6 +26,11 @@ def build(land, seed=1, depth_k=0.8, depth_d=230.0, shallow_k=0.8, shallow_d=30.
         for d0, k in ((5.0, 0.55), (11.0, 0.42), (19.0, 0.30), (30.0, 0.20)):
             ln = np.clip(1.0 - np.abs(dq - d0) / 0.75, 0, 1) * np.clip((brk + 0.35) * 3, 0, 1)
             over((250, 252, 248), ln * k * wave_k)
+    # 海氷(極寒の海): 緯度66度より極側で、白い氷が極に向かって増える(ところどころ割れる)
+    lat = np.abs(90 - 180 * (np.arange(H) + 0.5) / H)[:, None] * np.ones((1, W), np.float32)
+    ice_n = ndi.gaussian_filter(np.random.RandomState(seed + 91).randn(H, W).astype(np.float32), 7); ice_n /= (ice_n.std() + 1e-6)
+    ice = np.clip((lat - 66.0) / 14.0 + 0.25 * ice_n * np.clip((lat - 60.0) / 10.0, 0, 1), 0, 1)
+    over((238, 246, 250), ice * 0.88)
     a = a * sea; out = np.dstack([rgb, a * 255]).clip(0, 255).astype(np.uint8)
     return Image.fromarray(out, 'RGBA')
 
