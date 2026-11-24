@@ -15,15 +15,7 @@ def main(pre, outdir, name, seed=1):
     cut_col = int(np.argmin(sm)); shift = -cut_col
     el = np.roll(el, shift, 1); wa = np.roll(wa, shift, 1); bi = np.roll(bi, shift, 1)
     print('切れ目の列', cut_col, '端の陸(中緯度・画素)', int(((el[100:600, 0] > 0) & (wa[100:600, 0] != 2)).sum()), '(元の最大', int(col.max()), '平均', round(float(col.mean()), 1), ')')
-    # 極北: 実際の世界地図(北極は海・陸は北緯約83度まで)に合わせ、北緯78度から陸を海へなだらかに沈め、84度より北は海にする(データの変換。南は南極大陸の例にならいそのまま)
-    pn = os.environ.get('FM_POLE_N', '78,84')
-    if pn != '0':
-        p0, p1 = [float(v) for v in pn.split(',')]
-        lat = 90 - 180 * (np.arange(Hh) + 0.5) / Hh; f = np.clip((p1 - lat) / (p1 - p0), 0, 1)[:, None]
-        print('極北: 北緯%g〜%g度で陸を海へ沈める(沈める前の北緯85〜90度の陸 %.0f%%)' % (p0, p1, 100 * (el[:int(5 / 180 * Hh)] > 0).mean()))
-        el = np.where(f < 1, el * f - (1 - f) * 60, el); wa = np.where((f < 0.5), 0, wa).astype(wa.dtype)
-        POLEMASK = (f >= 0.5)
-    else: POLEMASK = np.ones((Hh, 1), bool)
+    POLEMASK = np.ones((Hh, 1), bool)                                   # 極の沈め処理は無し(11-24 23:17 ユーザー: 不要。両極は雪や氷を絵で表現する=絵の問題だけ)
     lake = (wa == 2)
     D = None
     G = None
@@ -37,16 +29,15 @@ def main(pre, outdir, name, seed=1):
     land0 = land & ~lake
     el = ndi.gaussian_filter(el, 0.8)
     lm = el[land0]; q = np.quantile(lm, 0.94); mx = lm.max()
-    H = np.where(land, np.where(el <= q, 20.3 + 45.7 * np.clip(el, 0, None) / q, 66 + 34 * np.clip((el - q) / max(mx - q, 1), 0, 1)), np.where(el > 0, 19.0, np.clip(19.5 + el / 250, 2, 19.5)))
-    if D is not None:                           # 湖面=まわりの陸の高さより少し下
-        w_ = (land0).astype(np.float32); Hn = ndi.gaussian_filter(H * w_, 4) / (ndi.gaussian_filter(w_, 4) + 1e-6); H = np.where(lake, np.maximum(Hn - 1.0, 20.0), H)
+    H = np.where(land, np.where(el <= q, 20.3 + 45.7 * np.clip(el, 0, None) / q, 66 + 34 * np.clip((el - q) / max(mx - q, 1), 0, 1)), 19.5)
+    if D is not None:                           # 湖=まわりの陸の高さのまま(水の高さは地図データが持たない 11-24 23:17)
+        w_ = (land0).astype(np.float32); Hn = ndi.gaussian_filter(H * w_, 4) / (ndi.gaussian_filter(w_, 4) + 1e-6); H = np.where(lake, Hn, H)
     BI = np.zeros((Hh, W), int)
     for k, v in MAP.items(): BI[bi == k] = v
     BI[~land] = 0
-    # 極圏(北緯・南緯66度より極側)は極寒で人が住めない: 国を置かず(国=0)、70度より極側の陸は氷河(群系11)にする。国の点分割は住める陸だけで行う。
-    latr = np.abs(90 - 180 * (np.arange(Hh) + 0.5) / Hh)[:, None] * np.ones((1, W)); polar66 = latr >= 66; BI[land & (latr >= 70)] = 11
-    hab = land & ~polar66
-    print('住める陸(極圏を除く)の割合 %.1f%% / 陸全体 %.1f%% / 極圏の陸 %.1f%%(陸のうち)' % (100 * hab.mean(), 100 * land.mean(), 100 * (land & polar66).sum() / max(land.sum(), 1)))
+    # 極: データ(群系・国)は変えない。両極の雪や氷は絵だけで表す(11-24 23:17 ユーザー)。国の置き方は未定=仮の12分割を陸全体で行う。
+    latr = np.abs(90 - 180 * (np.arange(Hh) + 0.5) / Hh)[:, None] * np.ones((1, W)); BIpic = BI.copy(); BIpic[land & (latr >= 70)] = 11   # 絵と面の色だけに使う
+    hab = land
     rs = np.random.RandomState(seed); ys, xs = np.nonzero(hab); idx = rs.choice(len(ys), 12, replace=False)
     seeds = np.stack([ys[idx], xs[idx]], 1); ST = np.zeros((Hh, W), int)
     d2 = ((ys[:, None] - seeds[None, :, 0]) ** 2 + (xs[:, None] - seeds[None, :, 1]) ** 2); ST[ys, xs] = d2.argmin(1) + 1
@@ -58,18 +49,18 @@ def main(pre, outdir, name, seed=1):
     os.environ['FM_LP_UV'] = '1'; os.environ['FM_LP_ATLAS'] = '1'; os.environ['FM_LP_DUMP'] = name
     import cv2, forest_world_layer, flat_picture; from PIL import Image as _I
     layers = []
-    layers.append(forest_world_layer.build(dat, seed))                               # 森の塊(第10版)
+    datpic = dat.copy(); datpic[..., 1] = BIpic; layers.append(forest_world_layer.build(datpic, seed))                               # 森の塊(第10版)
     if D is not None:
         import water_layer
         wo = outdir + '/water-only.png'; print(water_layer.make(G, lake, land0, H, wo, shift, seed, rivers_in_texture=True, min_order=5))   # 川と湖も絵の中に描く
         wl = cv2.imread(wo, cv2.IMREAD_UNCHANGED); layers.append(_I.fromarray(cv2.cvtColor(wl, cv2.COLOR_BGRA2RGBA)))
-    pic = flat_picture.draw(H, land, BI, seed, layers)
+    pic = flat_picture.draw(H, land, BIpic, seed, layers)
     pp = outdir + '/world-picture.png'; cv2.imwrite(pp, cv2.cvtColor(pic, cv2.COLOR_RGB2BGR)); _I.fromarray(pic).save(name + '_sea.jpg', quality=92)   # 海の面にも同じ絵を貼る(陸は立体が覆う)
     # ---- ②ローポリを作り ③その絵をUVで貼る(絵はそのまま。立体側で足さない) ----
     os.environ['FM_LP_PICTURE'] = pp; os.environ.pop('FM_LP_OVERLAY', None)
     import lowpoly
     img = np.zeros((Hh, W, 3), np.float32) + np.array([206, 223, 235], np.float32)
-    lowpoly.paint(img, H, land, BI, seed)
+    lowpoly.paint(img, H, land, BIpic, seed)
     return {'land': float(land.mean()), 'w': W, 'h': Hh}
 if __name__ == '__main__':
     print(main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 1))
