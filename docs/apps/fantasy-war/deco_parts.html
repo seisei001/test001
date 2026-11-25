@@ -146,6 +146,15 @@ const PARTS={
 
  ph_lamp:{name:'ランプ(無償部品)',kind:'Poly Haven・CC0・作者Monsta3D・7208枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_oil_lamp/vintage_oil_lamp.gltf',size:26,r:34},
  ph_watch:{name:'懐中時計(無償部品)',kind:'Poly Haven・CC0・作者Tal Swicegood・4200枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_pocket_watch/vintage_pocket_watch.gltf',size:9,r:16},
+ qk_CandleStick_Triple:{name:'燭台(3灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/CandleStick_Triple.gltf',size:16,r:36},
+ qk_CandleStick:{name:'燭台(1灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/CandleStick.gltf',size:14,r:20},
+ qk_Candle_1:{name:'蝋燭(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Candle_1.gltf',size:10,r:17},
+ qk_Book_5:{name:'本(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Book_5.gltf',size:14,r:17},
+ qk_Book_7:{name:'本(厚い)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Book_7.gltf',size:14,r:17},
+ qk_Scroll_1:{name:'巻物(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Scroll_1.gltf',size:14,r:17},
+ qk_Lantern_Wall:{name:'ランタン(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Lantern_Wall.gltf',size:16,r:20},
+ qk_Potion_1:{name:'小瓶(インク壺の代用)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Potion_1.gltf',size:12,r:14},
+ qk_Chandelier:{name:'シャンデリア(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Chandelier.gltf',size:30,r:42},
  book:{name:'本',kind:'真の立体(箱)',moves:'なし',
   build(d){const m=META.book,hc=24,w=hc*m.front[0]/m.front[1],dp=hc*m.spine[0]/m.spine[1];
    const paper=mat({color:0xe3d8b2});
@@ -155,7 +164,7 @@ const PARTS={
    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,hc,dp),mats);
    return {obj:mesh,r:36};}}
 };
-const order=['compass','scalebar','inkpot','quill','watch','lamp','book','ph_lamp','ph_watch'];
+const order=['compass','scalebar','inkpot','quill','watch','lamp','book','ph_lamp','ph_watch','qk_CandleStick_Triple','qk_CandleStick','qk_Candle_1','qk_Book_5','qk_Book_7','qk_Scroll_1','qk_Lantern_Wall','qk_Potion_1','qk_Chandelier'];
 scene.add(new THREE.AmbientLight(0xffffff,1.1));const dl=new THREE.DirectionalLight(0xffffff,2.2);dl.position.set(5,10,7);scene.add(dl);
 const gl=new GLTFLoader();
 
@@ -166,8 +175,8 @@ DET.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.n;b
 const tgs=[['自動回転',()=>auto=!auto,()=>auto],['骨組み',()=>{wire=!wire;applyWire()},()=>wire],['三面図',()=>{srcOn=!srcOn;showSrc()},()=>srcOn]];
 let srcOn=false;
 tgs.forEach(([n,f,st])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{f();refreshUI()};b.dataset.n=n;elTg.appendChild(b)});
-const SRC={ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
-function showSrc(){src.style.display=srcOn?'block':'none';if(srcOn)src.style.backgroundImage=`url(mapstyle/gv/deco/${SRC[cur]})`}
+const SRC={qk_CandleStick_Triple:'lamp_3view.png',qk_CandleStick:'lamp_3view.png',qk_Candle_1:'lamp_3view.png',qk_Book_5:'lamp_3view.png',qk_Book_7:'lamp_3view.png',qk_Scroll_1:'lamp_3view.png',qk_Lantern_Wall:'lamp_3view.png',qk_Potion_1:'lamp_3view.png',qk_Chandelier:'lamp_3view.png',ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
+function showSrc(){src.style.display=srcOn?'block':'none';if(srcOn)src.style.backgroundImage=(cur.startsWith('qk_')||cur.startsWith('ph_'))?'none':`url(mapstyle/gv/deco/${SRC[cur]})`}
 function refreshUI(){
   elParts.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===cur));
   elDet.querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.i===det));
