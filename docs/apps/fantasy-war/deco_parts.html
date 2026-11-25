@@ -27,8 +27,10 @@ button.on{background:var(--ac);color:#1b1208;border-color:var(--ac);font-weight:
 <div class="row" id="parts"></div>
 <div class="row"><span class="lbl">細かさ</span><span id="det"></span><span class="lbl" style="margin-left:6px">表示</span><span id="tg"></span></div>
 </div></div>
+<script type="importmap">{"imports":{"three":"../sekai-hex/design/vendor/three.module.min.js"}}</script>
 <script type="module">
 import * as THREE from '../sekai-hex/design/vendor/three.module.min.js';
+import {GLTFLoader} from '../sekai-hex/design/vendor/GLTFLoader.js';
 const P='mapstyle/gv/deco/parts/';
 const META=await (await fetch(P+'meta.json')).json();
 const cv=document.getElementById('cv');
@@ -141,6 +143,9 @@ const PARTS={
    sp.position.set(fx,fy,0);sp.scale.set(2.6,2.6,1);gr.add(sp);
    anim.push(t=>{const k=1+0.12*Math.sin(t*13)+0.08*Math.sin(t*7.3+1);sp.scale.set(2.6*k,2.9*k,1);sp.material.opacity=0.75+0.2*Math.sin(t*9)});
    return {obj:gr,r:34};}},
+
+ ph_lamp:{name:'ランプ(無償部品)',kind:'Poly Haven・CC0・作者Monsta3D・7208枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_oil_lamp/vintage_oil_lamp.gltf',size:26,r:34},
+ ph_watch:{name:'懐中時計(無償部品)',kind:'Poly Haven・CC0・作者Tal Swicegood・4200枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_pocket_watch/vintage_pocket_watch.gltf',size:9,r:16},
  book:{name:'本',kind:'真の立体(箱)',moves:'なし',
   build(d){const m=META.book,hc=24,w=hc*m.front[0]/m.front[1],dp=hc*m.spine[0]/m.spine[1];
    const paper=mat({color:0xe3d8b2});
@@ -150,7 +155,9 @@ const PARTS={
    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,hc,dp),mats);
    return {obj:mesh,r:36};}}
 };
-const order=['compass','scalebar','inkpot','quill','watch','lamp','book'];
+const order=['compass','scalebar','inkpot','quill','watch','lamp','book','ph_lamp','ph_watch'];
+scene.add(new THREE.AmbientLight(0xffffff,1.1));const dl=new THREE.DirectionalLight(0xffffff,2.2);dl.position.set(5,10,7);scene.add(dl);
+const gl=new GLTFLoader();
 
 /* ---- UI ---- */
 const elParts=document.getElementById('parts'),elDet=document.getElementById('det'),elTg=document.getElementById('tg'),hud=document.getElementById('hud'),src=document.getElementById('src');
@@ -159,7 +166,7 @@ DET.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.n;b
 const tgs=[['自動回転',()=>auto=!auto,()=>auto],['骨組み',()=>{wire=!wire;applyWire()},()=>wire],['三面図',()=>{srcOn=!srcOn;showSrc()},()=>srcOn]];
 let srcOn=false;
 tgs.forEach(([n,f,st])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{f();refreshUI()};b.dataset.n=n;elTg.appendChild(b)});
-const SRC={compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
+const SRC={ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
 function showSrc(){src.style.display=srcOn?'block':'none';if(srcOn)src.style.backgroundImage=`url(mapstyle/gv/deco/${SRC[cur]})`}
 function refreshUI(){
   elParts.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===cur));
@@ -173,7 +180,14 @@ let rad=30,theta=0.6,phi=1.2,target=new THREE.Vector3();
 function show(k){
   cur=k;anim=[];
   if(group){scene.remove(group);group.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
-  const r=PARTS[k].build(det);group=new THREE.Group();group.add(r.obj);scene.add(group);
+  group=new THREE.Group();scene.add(group);
+  if(PARTS[k].gltf){
+    const kk=k;gl.load(PARTS[k].gltf,g=>{if(cur!==kk)return;const o=g.scene;const b=new THREE.Box3().setFromObject(o);const sz=b.getSize(new THREE.Vector3());const s=PARTS[kk].size/Math.max(sz.x,sz.y,sz.z);o.scale.setScalar(s);const c=b.getCenter(new THREE.Vector3()).multiplyScalar(s);o.position.sub(c);group.add(o);applyWire();
+      const t=countTris(group);hud.innerHTML=`<span class="k">${PARTS[kk].name}</span><br>${PARTS[kk].kind}<br>三角形(実測) <span class="k">${t}</span> 枚`});
+    rad=PARTS[k].r*Math.max(1,1/cam.aspect)*1.15;theta=0.5;phi=1.25;
+    hud.innerHTML=`<span class="k">${PARTS[k].name}</span> 読み込み中…`;refreshUI();showSrc();return;
+  }
+  const r=PARTS[k].build(det);group.add(r.obj);
   rad=r.r*Math.max(1,1/cam.aspect)*1.15;theta=0.5;phi=1.25;applyWire();
   const t=countTris(group);
   hud.innerHTML=`<span class="k">${PARTS[k].name}</span> ・ ${PARTS[k].kind}<br>三角形 <span class="k">${t}</span> 枚 ・ 動き: ${PARTS[k].moves}`;
