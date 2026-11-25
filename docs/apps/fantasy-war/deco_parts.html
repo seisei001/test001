@@ -172,7 +172,15 @@ const gl=new GLTFLoader();
 
 /* ---- UI ---- */
 const elParts=document.getElementById('parts'),elDet=document.getElementById('det'),elTg=document.getElementById('tg'),hud=document.getElementById('hud'),src=document.getElementById('src');
-order.forEach(k=>{const b=document.createElement('button');b.textContent=PARTS[k].name;b.dataset.k=k;b.onclick=()=>show(k);elParts.appendChild(b)});
+let holdOpen=false;
+function renderParts(){
+  elParts.innerHTML='';
+  const mk=(k,host)=>{const b=document.createElement('button');const v=V[k];b.textContent=(v==='sel'?'✔ ':'')+PARTS[k].name;b.dataset.k=k;b.classList.toggle('on',k===cur);b.onclick=()=>show(k);host.appendChild(b)};
+  order.filter(k=>V[k]!=='hold'&&V[k]!=='trash').forEach(k=>mk(k,elParts));
+  const held=order.filter(k=>V[k]==='hold');
+  if(held.length){const g=document.createElement('button');g.textContent=`⏸ 保留(${held.length}) ${holdOpen?'▲':'▼'}`;g.className=holdOpen?'on':'';g.dataset.g='1';g.onclick=()=>{holdOpen=!holdOpen;renderParts()};elParts.appendChild(g);
+    if(holdOpen){const sep=document.createElement('div');sep.style.cssText='flex-basis:100%;height:0';elParts.appendChild(sep);held.forEach(k=>mk(k,elParts))}}
+}
 DET.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.n;b.dataset.i=i;b.onclick=()=>{det=i;show(cur)};elDet.appendChild(b)});
 const tgs=[['自動回転',()=>auto=!auto,()=>auto],['骨組み',()=>{wire=!wire;applyWire()},()=>wire],['三面図',()=>{srcOn=!srcOn;showSrc()},()=>srcOn]];
 let srcOn=false;
@@ -180,10 +188,9 @@ tgs.forEach(([n,f,st])=>{const b=document.createElement('button');b.textContent=
 const SRC={qk_CandleStick_Triple:'lamp_3view.png',qk_CandleStick:'lamp_3view.png',qk_Candle_1:'lamp_3view.png',qk_Book_5:'lamp_3view.png',qk_Book_7:'lamp_3view.png',qk_Scroll_1:'lamp_3view.png',qk_Lantern_Wall:'lamp_3view.png',qk_Potion_1:'lamp_3view.png',qk_Chandelier:'lamp_3view.png',ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
 function showSrc(){src.style.display=srcOn?'block':'none';if(srcOn)src.style.backgroundImage=(cur.startsWith('qk_')||cur.startsWith('ph_'))?'none':`url(mapstyle/gv/deco/${SRC[cur]})`}
 function refreshUI(){
-  elParts.querySelectorAll('button').forEach(b=>{const v=V[b.dataset.k];b.textContent=(v?VN[v][2]+' ':'')+PARTS[b.dataset.k].name});
+  renderParts();
   if(typeof elVd!=='undefined'){elVd.querySelectorAll('button[data-v]').forEach(b=>b.classList.toggle('vd-'+b.dataset.v,V[cur]===b.dataset.v));
     const c={sel:0,hold:0,trash:0};order.forEach(p=>{if(V[p])c[V[p]]++});vsum.textContent=`選択${c.sel}・保留${c.hold}・ゴミ箱${c.trash}`}
-  elParts.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===cur));
   elDet.querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.i===det));
   elTg.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',tgs[i][2]()));
 }
@@ -194,9 +201,10 @@ function countTris(o){let n=0;o.traverse(x=>{if(x.isMesh){const g=x.geometry;n+=
 /* ---- 選択・保留・ゴミ箱(端末に保存。反映はClaudeへ一覧を送る) ---- */
 const VK='decoVerdict';let V={};try{V=JSON.parse(localStorage.getItem(VK)||'{}')}catch(e){}
 const saveV=()=>{try{localStorage.setItem(VK,JSON.stringify(V))}catch(e){}};
-const VN={sel:['選択','vs','✔'],hold:['保留','vh','⏸'],trash:['ゴミ箱','vt','🗑']};
+const hist=[];const VN={sel:['選択','vs','✔'],hold:['保留','vh','⏸'],trash:['ゴミ箱','vt','🗑']};
 const elVd=document.getElementById('vd');
-Object.keys(VN).forEach(k=>{const b=document.createElement('button');b.textContent=VN[k][0];b.className=VN[k][1];b.dataset.v=k;b.onclick=()=>{if(!cur)return;if(V[cur]===k)delete V[cur];else V[cur]=k;saveV();refreshUI()};elVd.appendChild(b)});
+Object.keys(VN).forEach(k=>{const b=document.createElement('button');b.textContent=VN[k][0];b.className=VN[k][1];b.dataset.v=k;b.onclick=()=>{if(!cur)return;hist.push([cur,V[cur]]);if(V[cur]===k)delete V[cur];else V[cur]=k;saveV();if(V[cur]==='trash'||V[cur]==='hold'){const nx=order.find(p=>V[p]!=='trash'&&V[p]!=='hold');if(nx&&nx!==cur){show(nx);return}}refreshUI()};elVd.appendChild(b)});
+const un=document.createElement('button');un.textContent='取り消し';un.onclick=()=>{const h=hist.pop();if(!h)return;if(h[1])V[h[0]]=h[1];else delete V[h[0]];saveV();show(h[0])};elVd.appendChild(un);
 const cp=document.createElement('button');cp.textContent='一覧をコピー';cp.onclick=async()=>{const txt='【小物の仕分け】\n'+Object.keys(VN).map(k=>VN[k][0]+': '+order.filter(p=>V[p]===k).map(p=>PARTS[p].name+'('+p+')').join('、')).join('\n');try{await navigator.clipboard.writeText(txt);cp.textContent='コピーしました'}catch(e){prompt('コピーしてください',txt)}setTimeout(()=>cp.textContent='一覧をコピー',1800)};elVd.appendChild(cp);
 const vsum=document.createElement('span');vsum.className='lbl';elVd.appendChild(vsum);
 
