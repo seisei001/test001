@@ -158,7 +158,7 @@ const PARTS={
  qk_Potion_1:{name:'小瓶(インク壺の代用)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Potion_1.gltf',size:12,r:14},
  qk_Chandelier:{name:'シャンデリア(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Chandelier.gltf',size:30,r:42},
  wcompass:{name:'懐中羅針盤(時計+方位)',kind:'案の試作: 懐中時計の文字盤を方位の絵に置き換え(自作ポリゴン)',moves:'方位盤がゆれる(後で地図の向きに連動させる想定)',
-  build(d){const R=2.6,T=1.7,seg=[16,32,64][d];
+  build(d){const R=2.6,T=0.85,seg=[16,32,64][d];
    const gr=new THREE.Group(),dark=mat({color:0xa68f58}),brass=mat({color:0xcdbd8e});
    const face=new THREE.Mesh(new THREE.CircleGeometry(R*0.97,seg),mat({color:0xe9dcbc}));face.position.z=T/2+0.01;
    const m=META.compass,rose=new THREE.Mesh(new THREE.PlaneGeometry(R*1.85,R*1.85*m.size[1]/m.size[0]),aMat('compass',{alphaTest:0.3}));rose.position.z=T/2+0.03;
