@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>建築技法データベース</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb}
+@media(prefers-color-scheme:dark){:root{--bg:#141416;--p:#1e1e22;--bd:#34343a;--tx:#ececf0;--mu:#9a9aa5;--ac:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.6}
+.w{max-width:640px;margin:0 auto;padding:16px}a{color:var(--ac);text-decoration:none}
+h1{font-size:1.25rem;margin:6px 0}.note{font-size:.82rem;color:var(--mu);margin:0 0 12px}
+input{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--p);color:var(--tx)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.chips button{font:inherit;font-size:.85rem;padding:6px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--p);color:var(--tx)}
+.chips button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.card{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+.card b{display:block}.tag{font-size:.72rem;color:var(--mu)}.src{font-size:.78rem;color:var(--mu);margin-top:6px}
+mark{background:#fde68a;color:#000;border-radius:3px}.cnt{font-size:.82rem;color:var(--mu);margin:4px 0 10px}
+</style></head><body><div class="w">
+<a href="index.html">← ハブへ</a>
+<h1 id="h">建築技法データベース</h1><p class="note" id="n"></p>
+<input id="q" type="search" placeholder="検索(例: 屋根 / 柱 / 中庭 / 石)" autocomplete="off">
+<div class="chips" id="c"></div><div class="cnt" id="k"></div><div id="l"></div>
+<script>
+let D,area='全部';const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function hl(s,q){s=esc(s);if(!q)return s;const r=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return s.replace(new RegExp(r,'gi'),m=>'<mark>'+m+'</mark>')}
+function draw(){const q=$('q').value.trim();const L=D.entries.filter(e=>(area==='全部'||e.area===area)&&(!q||(e.title+e.text+e.source).toLowerCase().includes(q.toLowerCase())));
+$('k').textContent=L.length+'件 / 全'+D.entries.length+'件';
+$('l').innerHTML=L.map(e=>'<div class="card"><b>'+hl(e.title,q)+'</b><span class="tag">'+esc(e.area)+'・'+esc(e.depth)+'</span><div>'+hl(e.text.replace(/出典: ?.*$/,''),q)+'</div>'+(e.source?'<div class="src">出典: '+hl(e.source,q)+'</div>':'')+'</div>').join('')||'<div class="note">該当なし</div>'}
+function chips(){const A=['全部',...new Set(D.entries.map(e=>e.area))];$('c').innerHTML=A.map(a=>'<button class="'+(a===area?'on':'')+'" data-a="'+a+'">'+a+'</button>').join('');$('c').onclick=ev=>{const a=ev.target.dataset.a;if(a){area=a;chips();draw()}}}
+fetch('arch_db.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{D=j;$('h').textContent=j.title;$('n').textContent=j.note+'(更新 '+j.updated+')';chips();draw();$('q').oninput=draw});
+</script></div></body></html>
