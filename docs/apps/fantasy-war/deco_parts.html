@@ -59,6 +59,33 @@ function woodTex(){
   g.putImageData(im,0,0);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.anisotropy=4;texCache.__wood=t;return t;
 }
+
+/* ---- 蝋燭の炎(調べた作り方: しずく形の板をカメラへ向け、色は 青い根元→白黄の芯→橙→赤の先、先端のゆれ+全体のちらつき、加算合成、ぼんやりした光の輪+小さな光源) ---- */
+const FV=`varying vec2 vUv;void main(){vUv=uv;vec4 mv=modelViewMatrix*vec4(0.,0.,0.,1.);
+ vec2 s=vec2(length(modelMatrix[0].xyz),length(modelMatrix[1].xyz));mv.xy+=position.xy*s;gl_Position=projectionMatrix*mv;}`;
+const FF=`varying vec2 vUv;uniform float uT;uniform float uSeed;
+float n(float x){return sin(x)+0.5*sin(2.3*x+1.7)+0.25*sin(5.1*x+0.4);}
+void main(){
+ float y=vUv.y;float t=uT+uSeed;
+ float fl=0.08*n(t*9.0)+0.04*n(t*23.0);                 // ちらつき(太さ・明るさ)
+ float sway=(0.20*n(t*2.6+y*3.0)+0.06*n(t*11.0+y*6.0))*y*y; // 先端ほど大きくゆれる
+ float p=(vUv.x-0.5)*2.0-sway;
+ float w=sin(3.14159*pow(clamp(y,0.0,1.0),0.62))*(1.0-0.55*y)*(0.80+fl); // しずく形の幅
+ float d=abs(p)/max(w,0.001);
+ float a=smoothstep(1.0,0.55,d)*smoothstep(1.0,0.82,y)*smoothstep(0.0,0.06,y);
+ float core=exp(-pow(abs(p)/max(w*0.45,0.001),2.0))*(1.0-smoothstep(0.0,0.7,y));
+ vec3 blue=vec3(0.25,0.4,1.0),yel=vec3(1.0,0.93,0.55),org=vec3(1.0,0.55,0.12),red=vec3(0.85,0.18,0.05);
+ vec3 c=mix(org,red,smoothstep(0.55,1.0,y));c=mix(yel,c,smoothstep(0.15,0.55,y));c=mix(blue,c,smoothstep(0.0,0.14,y));
+ c+=vec3(1.0,0.95,0.8)*core*0.8;
+ gl_FragColor=vec4(c*a*(1.05+fl),a);}`;
+function addFlame(o,pos,h,w,seed,withLight){
+  const g=new THREE.PlaneGeometry(1,1);g.translate(0,0.5,0);
+  const m=new THREE.ShaderMaterial({vertexShader:FV,fragmentShader:FF,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uT:{value:0},uSeed:{value:seed}}});
+  const f=new THREE.Mesh(g,m);f.position.copy(pos);f.scale.set(w,h,1);f.renderOrder=5;o.add(f);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:flameTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0.55}));
+  sp.position.set(pos.x,pos.y+h*0.45,pos.z);sp.scale.set(h*2.6,h*2.6,1);o.add(sp);
+  let pl=null;if(withLight){pl=new THREE.PointLight(0xffa640,20,0,2);pl.position.set(pos.x,pos.y+h*0.5,pos.z+0.0);o.add(pl)}
+  anim.push(t=>{m.uniforms.uT.value=t;const k=1+0.10*Math.sin((t+seed)*9)+0.06*Math.sin((t+seed)*23);sp.material.opacity=0.45+0.12*Math.sin((t+seed)*7);if(pl)pl.intensity=20*k})}
 const mat=(o)=>new THREE.MeshBasicMaterial(o);
 const aMat=(name,extra={})=>mat({map:tex(name),alphaTest:0.4,side:THREE.DoubleSide,...extra});
 
@@ -161,9 +188,12 @@ const PARTS={
 
  ph_lamp:{name:'ランプ(無償部品)',kind:'Poly Haven・CC0・作者Monsta3D・7208枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_oil_lamp/vintage_oil_lamp.gltf',size:26,r:34},
  ph_watch:{name:'懐中時計(無償部品)',kind:'Poly Haven・CC0・作者Tal Swicegood・4200枚・実物の質感',moves:'なし',gltf:'mapstyle/gv/deco/ph/vintage_pocket_watch/vintage_pocket_watch.gltf',size:9,r:16},
- qk_CandleStick_Triple:{name:'燭台(3灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/CandleStick_Triple.gltf',size:16,r:36},
- qk_CandleStick:{name:'燭台(1灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/CandleStick.gltf',size:14,r:20},
- qk_Candle_1:{name:'蝋燭(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Candle_1.gltf',size:10,r:17},
+ qk_CandleStick_Triple:{name:'燭台(3灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'炎がゆらぐ(火)',gltf:'mapstyle/gv/deco/qk/CandleStick_Triple.gltf',size:16,r:34,
+  after(o){addFlame(o,new THREE.Vector3(0.003,0.465,0.001),0.07,0.04,0.0,true);addFlame(o,new THREE.Vector3(-0.169,0.343,0.0),0.07,0.04,2.1,false);addFlame(o,new THREE.Vector3(0.172,0.342,0.005),0.07,0.04,4.2,false)}},
+ qk_CandleStick:{name:'燭台(1灯)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'炎がゆらぐ(火)',gltf:'mapstyle/gv/deco/qk/CandleStick.gltf',size:14,r:26,
+  after(o){addFlame(o,new THREE.Vector3(-0.005,0.144,0.0),0.075,0.05,1.3,true)}},
+ qk_Candle_1:{name:'蝋燭(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'炎がゆらぐ(火)',gltf:'mapstyle/gv/deco/qk/Candle_1.gltf',size:10,r:26,
+  after(o){addFlame(o,new THREE.Vector3(-0.005,0.135,-0.004),0.075,0.05,0.0,true)}},
  qk_Book_5:{name:'本(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Book_5.gltf',size:14,r:17},
  qk_Book_7:{name:'本(厚い)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Book_7.gltf',size:14,r:17},
  qk_Scroll_1:{name:'巻物(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Scroll_1.gltf',size:14,r:17},
@@ -250,10 +280,10 @@ function show(k){
   if(PARTS[k].gltf){
     const kk=k;gl.load(PARTS[k].gltf,g=>{if(cur!==kk)return;const o=g.scene;const b=new THREE.Box3().setFromObject(o);const sz=b.getSize(new THREE.Vector3());const s=PARTS[kk].size/Math.max(sz.x,sz.y,sz.z);o.scale.setScalar(s);const c=b.getCenter(new THREE.Vector3()).multiplyScalar(s);o.position.sub(c);group.add(o);if(PARTS[kk].after)PARTS[kk].after(o);applyWire();
       const t=countTris(group);hud.innerHTML=`<span class="k">${PARTS[kk].name}</span><br>${PARTS[kk].kind}<br>三角形(実測) <span class="k">${t}</span> 枚`});
-    rad=PARTS[k].r*Math.max(1,1/cam.aspect)*1.15;theta=0.5;phi=1.25;
+    rad=PARTS[k].r*Math.max(1,1/cam.aspect)*1.15;theta=0.5;phi=1.25;target.set(0,PARTS[k].size*0.22,0);
     hud.innerHTML=`<span class="k">${PARTS[k].name}</span> 読み込み中…`;refreshUI();showSrc();return;
   }
-  const r=PARTS[k].build(det);group.add(r.obj);
+  target.set(0,0,0);const r=PARTS[k].build(det);group.add(r.obj);
   rad=r.r*Math.max(1,1/cam.aspect)*1.15;theta=0.5;phi=1.25;applyWire();
   const t=countTris(group);
   hud.innerHTML=`<span class="k">${PARTS[k].name}</span> ・ ${PARTS[k].kind}<br>三角形 <span class="k">${t}</span> 枚 ・ 動き: ${PARTS[k].moves}`;
