@@ -46,6 +46,19 @@ function tex(name){
   if(!texCache[name]){const t=loader.load(P+name+'.png');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;t.generateMipmaps=true;texCache[name]=t}
   return texCache[name];
 }
+
+function woodTex(){
+  if(texCache.__wood)return texCache.__wood;
+  const W=512,H=128,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d'),im=g.createImageData(W,H),P=Math.PI*2;
+  let s=12345;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const w=y+9*Math.sin(P*x/W*2+y*0.05)+5*Math.sin(P*x/W*5+y*0.21)+2*Math.sin(P*x/W*11+y*0.5);
+    let gr=0.5+0.5*Math.sin(w*0.75);gr=gr*0.75+rnd()*0.12;
+    const r=84+gr*64,gg=50+gr*42,b=26+gr*22,o=(y*W+x)*4;
+    im.data[o]=r;im.data[o+1]=gg;im.data[o+2]=b;im.data[o+3]=255}
+  g.putImageData(im,0,0);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.anisotropy=4;texCache.__wood=t;return t;
+}
 const mat=(o)=>new THREE.MeshBasicMaterial(o);
 const aMat=(name,extra={})=>mat({map:tex(name),alphaTest:0.4,side:THREE.DoubleSide,...extra});
 
@@ -164,7 +177,9 @@ const PARTS={
    const m=META.compass,rose=new THREE.Mesh(new THREE.PlaneGeometry(R*1.85,R*1.85*m.size[1]/m.size[0]),aMat('compass',{alphaTest:0.3}));rose.position.z=T/2+0.03;
    const rim=new THREE.Mesh(new THREE.TorusGeometry(R,0.14,8,seg*2),brass);rim.position.z=T/2;
    const b=new THREE.Mesh(new THREE.CircleGeometry(R,seg),mat({map:tex('watch_back')}));b.rotation.y=Math.PI;b.position.z=-T/2;
-   const side=new THREE.Mesh(new THREE.CylinderGeometry(R,R,T,seg,1,true),brass);side.rotation.x=Math.PI/2;
+   const sg=new THREE.CylinderGeometry(R,R,T,seg,8,true),sp=sg.attributes.position;
+   for(let k=0;k<sp.count;k++){const y=sp.getY(k),f=1+0.10*(1-Math.pow(2*y/T,2));sp.setX(k,sp.getX(k)*f);sp.setZ(k,sp.getZ(k)*f)}
+   const side=new THREE.Mesh(sg,mat({map:woodTex()}));side.rotation.x=Math.PI/2;
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.7,12),dark);crown.position.y=R+.3;
    const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.35,10),dark);neck.position.y=R+.05;
    const bow=new THREE.Mesh(new THREE.TorusGeometry(.95,.11,6,[10,20,36][d]),dark);bow.position.y=R+1.55;
