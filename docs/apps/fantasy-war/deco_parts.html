@@ -204,7 +204,8 @@ const PARTS={
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:flameTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));sp.position.copy(c);sp.scale.set(0.75,0.75,1);o.add(sp);
    anim.push(t=>{const k=1+0.14*Math.sin(t*12)+0.09*Math.sin(t*7.1+1);pl.intensity=100*k;core.scale.set(k,1.4*k,k);sp.scale.set(0.75*k,0.8*k,1);sp.material.opacity=0.8+0.15*Math.sin(t*9)})}},
  qk_Potion_1:{name:'小瓶(インク壺の代用)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Potion_1.gltf',size:12,r:14},
- qk_Chandelier:{name:'シャンデリア(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Chandelier.gltf',size:30,r:42},
+ qk_Chandelier:{name:'シャンデリア(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'炎がゆらぐ(火)',gltf:'mapstyle/gv/deco/qk/Chandelier.gltf',size:30,r:42,
+  after(o){addFlame(o,new THREE.Vector3(-0.579,-0.898,-0),0.2,0.12,0,true);addFlame(o,new THREE.Vector3(-0.409,-0.959,-0.411),0.2,0.12,1.7,false);addFlame(o,new THREE.Vector3(0,-0.933,-0.577),0.2,0.12,3.4,false);addFlame(o,new THREE.Vector3(0.409,-0.898,-0.409),0.2,0.12,5.1,false);addFlame(o,new THREE.Vector3(0.58,-0.898,0.002),0.2,0.12,6.8,true);addFlame(o,new THREE.Vector3(0.408,-0.959,0.411),0.2,0.12,8.5,false);addFlame(o,new THREE.Vector3(-0.001,-0.933,0.579),0.2,0.12,10.2,false);addFlame(o,new THREE.Vector3(-0.408,-0.898,0.412),0.2,0.12,11.9,false)}},
  wcompass:{name:'懐中羅針盤(時計+方位)',kind:'案の試作: 懐中時計の文字盤を方位の絵に置き換え(自作ポリゴン)',moves:'方位盤がゆれる(後で地図の向きに連動させる想定)',
   build(d){const R=2.6,T=0.85,seg=[16,32,64][d];
    const gr=new THREE.Group(),dark=mat({color:0xe2b230}),brass=mat({color:0xcdbd8e});
