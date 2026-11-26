@@ -9,13 +9,14 @@ html,body{margin:0;height:100%;background:var(--bg2);color:var(--fg);font:14px/1
 #app{display:flex;flex-direction:column;height:100dvh}
 header{padding:8px 12px 4px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 header b{font-size:15px}header a{color:var(--ac);font-size:12px}
-#stage{position:relative;flex:1;min-height:0;background:radial-gradient(ellipse at 50% 40%,var(--bg1),var(--bg2) 75%)}
+#stage{position:relative;flex:1;min-height:42dvh;background:radial-gradient(ellipse at 50% 40%,var(--bg1),var(--bg2) 75%)}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 #src{position:absolute;inset:0;display:none;background:#777 center/contain no-repeat;z-index:2}
 #hud{position:absolute;left:8px;right:8px;top:6px;z-index:3;pointer-events:none;font-size:12.5px;text-shadow:0 1px 2px #000}
 #hud .k{color:var(--ac)}
 #ctl{padding:6px 8px calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;background:#120d09}
 .row{display:flex;flex-wrap:wrap;gap:6px}
+#parts{max-height:24dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 button{background:var(--bt);color:var(--fg);border:1px solid #6b563f;border-radius:8px;padding:7px 10px;font:inherit;min-height:38px}
 button.on{background:var(--ac);color:#1b1208;border-color:var(--ac);font-weight:600}
 .vs{background:#2c3a2c}.vh{background:#3a3626}.vt{background:#3a2626}.vd-sel{background:#5fa35f!important;color:#06200a!important;border-color:#5fa35f!important}.vd-hold{background:#d9b441!important;color:#2a2005!important;border-color:#d9b441!important}.vd-trash{background:#b5503f!important;color:#fff!important;border-color:#b5503f!important}
@@ -204,6 +205,15 @@ const PARTS={
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:flameTex(),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));sp.position.copy(c);sp.scale.set(0.75,0.75,1);o.add(sp);
    anim.push(t=>{const k=1+0.14*Math.sin(t*12)+0.09*Math.sin(t*7.1+1);pl.intensity=100*k;core.scale.set(k,1.4*k,k);sp.scale.set(0.75*k,0.8*k,1);sp.material.opacity=0.8+0.15*Math.sin(t*9)})}},
  qk_Potion_1:{name:'小瓶(インク壺の代用)(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'なし',gltf:'mapstyle/gv/deco/qk/Potion_1.gltf',size:12,r:14},
+ kk_house:{name:'民家(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/house.glb',size:10,r:20},
+ kk_market:{name:'市場(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/market.glb',size:10,r:20},
+ kk_barracks:{name:'兵舎(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/barracks.glb',size:10,r:20},
+ kk_watchtower:{name:'見張り塔(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/watchtower.glb',size:10,r:20},
+ kk_castle:{name:'城(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/castle.glb',size:12,r:24},
+ kk_mill:{name:'風車小屋(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/mill.glb',size:10,r:20},
+ kk_well:{name:'井戸(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/well.glb',size:10,r:20},
+ kk_wall_straight:{name:'城壁(直線)(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/wall_straight.glb',size:10,r:20},
+ kk_wall_gate:{name:'城門(街の部品・無償)',kind:'KayKit・CC0・平塗りの立体',moves:'なし',gltf:'mapstyle/gv/deco/kk/wall_gate.glb',size:10,r:20},
  qk_Chandelier:{name:'シャンデリア(無償部品)',kind:'Quaternius・CC0・手描き調',moves:'炎がゆらぐ(火)',gltf:'mapstyle/gv/deco/qk/Chandelier.gltf',size:30,r:42,
   after(o){addFlame(o,new THREE.Vector3(-0.579,-0.898,-0),0.2,0.12,0,true);addFlame(o,new THREE.Vector3(-0.409,-0.959,-0.411),0.2,0.12,1.7,false);addFlame(o,new THREE.Vector3(0,-0.933,-0.577),0.2,0.12,3.4,false);addFlame(o,new THREE.Vector3(0.409,-0.898,-0.409),0.2,0.12,5.1,false);addFlame(o,new THREE.Vector3(0.58,-0.898,0.002),0.2,0.12,6.8,true);addFlame(o,new THREE.Vector3(0.408,-0.959,0.411),0.2,0.12,8.5,false);addFlame(o,new THREE.Vector3(-0.001,-0.933,0.579),0.2,0.12,10.2,false);addFlame(o,new THREE.Vector3(-0.408,-0.898,0.412),0.2,0.12,11.9,false)}},
  wcompass:{name:'懐中羅針盤(時計+方位)',kind:'案の試作: 懐中時計の文字盤を方位の絵に置き換え(自作ポリゴン)',moves:'方位盤がゆれる(後で地図の向きに連動させる想定)',
@@ -231,7 +241,7 @@ const PARTS={
    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,hc,dp),mats);
    return {obj:mesh,r:36};}}
 };
-const order=['compass','scalebar','inkpot','quill','watch','wcompass','lamp','book','ph_lamp','ph_watch','qk_CandleStick_Triple','qk_CandleStick','qk_Candle_1','qk_Book_5','qk_Book_7','qk_Scroll_1','qk_Lantern_Wall','qk_Potion_1','qk_Chandelier'];
+const order=['compass','scalebar','inkpot','quill','watch','wcompass','lamp','book','ph_lamp','ph_watch','qk_CandleStick_Triple','qk_CandleStick','qk_Candle_1','qk_Book_5','qk_Book_7','qk_Scroll_1','qk_Lantern_Wall','qk_Potion_1','qk_Chandelier','kk_house','kk_market','kk_barracks','kk_watchtower','kk_castle','kk_mill','kk_well','kk_wall_straight','kk_wall_gate'];
 scene.add(new THREE.AmbientLight(0xffffff,1.1));const dl=new THREE.DirectionalLight(0xffffff,2.2);dl.position.set(5,10,7);scene.add(dl);
 const gl=new GLTFLoader();
 
@@ -250,7 +260,7 @@ DET.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.n;b
 const tgs=[['自動回転',()=>auto=!auto,()=>auto],['骨組み',()=>{wire=!wire;applyWire()},()=>wire],['三面図',()=>{srcOn=!srcOn;showSrc()},()=>srcOn]];
 let srcOn=false;
 tgs.forEach(([n,f,st])=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{f();refreshUI()};b.dataset.n=n;elTg.appendChild(b)});
-const SRC={wcompass:'compass.png',qk_CandleStick_Triple:'lamp_3view.png',qk_CandleStick:'lamp_3view.png',qk_Candle_1:'lamp_3view.png',qk_Book_5:'lamp_3view.png',qk_Book_7:'lamp_3view.png',qk_Scroll_1:'lamp_3view.png',qk_Lantern_Wall:'lamp_3view.png',qk_Potion_1:'lamp_3view.png',qk_Chandelier:'lamp_3view.png',ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
+const SRC={wcompass:'compass.png',qk_CandleStick_Triple:'lamp_3view.png',qk_CandleStick:'lamp_3view.png',qk_Candle_1:'lamp_3view.png',qk_Book_5:'lamp_3view.png',qk_Book_7:'lamp_3view.png',qk_Scroll_1:'lamp_3view.png',qk_Lantern_Wall:'lamp_3view.png',qk_Potion_1:'lamp_3view.png',kk_house:'lamp_3view.png',kk_market:'lamp_3view.png',kk_barracks:'lamp_3view.png',kk_watchtower:'lamp_3view.png',kk_castle:'lamp_3view.png',kk_mill:'lamp_3view.png',kk_well:'lamp_3view.png',kk_wall_straight:'lamp_3view.png',kk_wall_gate:'lamp_3view.png',qk_Chandelier:'lamp_3view.png',ph_lamp:'lamp_3view.png',ph_watch:'watch_3view.png',compass:'compass.png',scalebar:'scalebar.png',inkpot:'inkpot_3view.png',quill:'quill_3view.png',watch:'watch_3view.png',lamp:'lamp_3view.png',book:'book_3view.png'};
 function showSrc(){src.style.display=srcOn?'block':'none';if(srcOn)src.style.backgroundImage=(cur.startsWith('qk_')||cur.startsWith('ph_'))?'none':`url(mapstyle/gv/deco/${SRC[cur]})`}
 function refreshUI(){
   renderParts();
