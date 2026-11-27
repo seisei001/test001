@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>間取りの学習ノート</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--ok:#15803d;--wn:#b45309}
+@media(prefers-color-scheme:dark){:root{--bg:#141416;--p:#1e1e22;--bd:#34343a;--tx:#ececf0;--mu:#9a9aa5;--ac:#6ea0ff;--ok:#4ade80;--wn:#fbbf24}}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.65}
+.w{max-width:680px;margin:0 auto;padding:16px}a{color:var(--ac);text-decoration:none;word-break:break-all}
+h1{font-size:1.3rem;margin:6px 0}h2{font-size:1.05rem;margin:0 0 8px}
+.note{font-size:.82rem;color:var(--mu);margin:0 0 12px}
+.card{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.tag{display:inline-block;font-size:.7rem;border:1px solid var(--bd);border-radius:99px;padding:1px 8px;margin-right:6px;color:var(--mu)}
+.ok{color:var(--ok);border-color:var(--ok)}.wn{color:var(--wn);border-color:var(--wn)}
+table{width:100%;border-collapse:collapse;font-size:.86rem;margin:6px 0}
+th,td{border:1px solid var(--bd);padding:6px 8px;vertical-align:top;text-align:left}th{background:var(--bg)}
+details{margin:0 0 12px}summary{cursor:pointer;font-weight:600;background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px}
+details[open] summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+details .in{background:var(--p);border:1px solid var(--bd);border-top:0;border-radius:0 0 12px 12px;padding:10px 14px}
+ul{margin:6px 0;padding-left:1.2em}li{margin:3px 0}.mu{color:var(--mu);font-size:.82rem}
+.src li{font-size:.8rem}
+</style></head><body><div class="w">
+<a href="index.html">← ハブへ</a>
+<h1>間取りの学習ノート</h1>
+<p class="note">2026-11-28 作成。ユーザーの指示「家屋の間取りをちゃんと勉強してね」への学習結果。<span class="tag ok">確定</span>=ユーザーが決めたこと / <span class="tag wn">案</span>=Claudeの整理(要確認) / 無印=資料にあった事実。資料は要約経由で、平面図は見ていない。</p>
+
+<div class="card"><h2>概要(まず3行)</h2>
+<ul>
+<li>間取りで最も重要なのは<b>利便性</b>。ただし何が便利かは、<b>自然・生業・社会・構造</b>の4つの入力で決まる。<span class="tag ok">確定</span>(利便性)<span class="tag wn">案</span>(4入力の整理)</li>
+<li>間取りは「必要な機能の集合」を「ゾーンに分け」「つながり」を決めて「外形」に収めたもの。形の分類ではない。<span class="tag wn">案</span></li>
+<li>家のあり方は、上位(自然条件)から下位(部品)へ導いて書く。<span class="tag ok">確定</span></li>
+</ul></div>
+
+<div class="card"><h2>1. ユーザーが決めたこと(11-28 05:26)<span class="tag ok">確定</span></h2>
+<ul>
+<li>間取りで最も重要な要素は利便性。太陽の位置も大きな理由。</li>
+<li>都市は山の端で水のある所にできる。南斜面。庭は南に作る。向きの問題は太陽が理由。</li>
+<li>屋根は降水量の問題。</li>
+<li>地震の多い日本は岩造りに合わず、簡単に壊れる軽い家を作る文化(自然との融合)。</li>
+<li>砂漠の民は木がないので粘土を材料にした。粘土の家は平屋が中心。焼きレンガで家を作る土地は砂漠化する。岩の家は岩を産出する地域特有の様式。地域性。</li>
+<li>多角的な観点から、家のあり方を上位から下位に向けて書く。シミュレーターである前に、その作りがClaudeやプログラムに向いている。</li>
+</ul>
+<p class="mu">※原文の「年度」は「粘土」と読んだ(要確認)。「南=日が当たる側」は北半球の話。</p></div>
+
+<div class="card"><h2>2. 間取りを決める4つの入力<span class="tag wn">案</span></h2>
+<table>
+<tr><th>入力</th><th>中身</th><th>平面・形への出方(資料の例)</th></tr>
+<tr><td>自然</td><td>日・雨・雪・風・地震・水と地形・産する材料</td><td>乾燥地=厚い土壁と中庭 / 湿地=高床と通風 / 豪雪=太い柱梁で背が高い / 地震=軽い木造と礎石 / 冬の風=屋敷林</td></tr>
+<tr><td>生業</td><td>農・漁・牧・養蚕・酒造・商い</td><td>土間・庭先・納屋・牛馬屋 / 馬屋付きのL字(曲り屋・中門造) / 屋根裏の多層利用(養蚕) / 番屋 / 町家の店</td></tr>
+<tr><td>社会</td><td>家族・身分・習俗・宗教・防衛</td><td>座敷・蔵・離れ・格式で使い分ける出入口 / 中庭式の表(客)と奥(家族) / 曲がって見通せない入口 / 核家族を前提にした51C型</td></tr>
+<tr><td>構造</td><td>柱と梁の枠・材料の寸法</td><td>梁間の枠を足して桁行へ増築(最多) / 畳の寸法(約90×180cm) / 1間(低地ドイツは約2.5m)</td></tr>
+</table></div>
+
+<div class="card"><h2>3. 上位から下位への導出の階段<span class="tag wn">案</span></h2>
+<ol>
+<li><b>目的</b>: 利便性(暮らしやすさ)</li>
+<li><b>入力</b>: 自然・生業・社会・構造(上の表)</li>
+<li><b>立地</b>: 山の端・水辺・南斜面</li>
+<li><b>向きと配置</b>: 南向き・庭は南・開口は南(北半球)</li>
+<li><b>構造と材料</b>: 地震が多い→軽い木造 / 木がない→粘土→平屋 / 石の産地→石造 / 焼きレンガ→燃料の木を使い森が減る</li>
+<li><b>屋根</b>: 降水量で勾配と軒の出が決まる</li>
+<li><b>間取り</b>: 利便性(動線・ゾーン・隣接)を外形に収める。機能の集合は生業と社会で決まる</li>
+<li><b>部品</b>: 機能から導く</li>
+</ol>
+<p class="mu">下位で分かったことが上位を変えさせる往復は、これまでのルールどおり残す(変えるときは理由と日付を記録)。</p></div>
+
+<details open><summary>4. 日本の民家</summary><div class="in">
+<ul>
+<li><b>基本</b>: 土間(作業・調理)と床上(暮らし)が並ぶ。土間が建物の半分を超える家もある。</li>
+<li><b>型の変遷</b>: 広間型三間取り → 食違い四間取り(広間を南北に仕切る・中期) → 整形四間取り=田の字型(江戸後期・最多)。広間型は、広間が中央、下手に土間、上手に客間「出居」と寝室「納戸」。17世紀後半〜18世紀初頭の中堅農民・庄屋の家。「田の字が最古」という通説は戦後の研究で覆り、広間型のほうが古い。</li>
+<li><b>増やし方</b>: 仕切り直すより外へ足す。①土間側へ ②土間だけ前へ ③床上を背面へ ④桁行方向に部屋を足す(最多)。理由は、梁間の枠を増やして間をつなぐ架構だから。<span class="tag wn">案</span>構造の枠が増築の向きを決める。</li>
+<li><b>身分と敷地</b>: 地主300坪以上・自作200坪・小作100坪(摂津市の例)。地主は田の字に1列足して3続きにし、蔵と離れ座敷が付く。農家に共通の機能=庭先(干す場)・納屋・牛馬屋。</li>
+<li><b>生業・気候の反映</b>: 馬屋付きL字=曲り屋・中門造(東北) / 養蚕=屋根裏を多層に使う(兜造・合掌造) / 漁=番屋 / 酒造・藍=専用の棟 / 豪雪=柱梁が太く背が高い / 風=屋敷林 / 防火=町家の漆喰・土蔵造 / 材料は地元調達(松・茅)。</li>
+<li><b>町家</b>: 間口が狭く奥へ続く。土間は側面の通り道に縮小。二階建て。店の奥に居室が3列並ぶ例もある。</li>
+<li><b>分棟型(九州)</b>: 土間と居室を別棟にして結ぶ。</li>
+<li><b>日本の特徴(世界の比較資料より)</b>: 畳が基準寸法、紙の可動間仕切り、縁側、礎石の上に柱(地震で石が個別に動く)。</li>
+</ul></div></details>
+
+<details><summary>5. 世界の家</summary><div class="in">
+<table>
+<tr><th>型</th><th>特徴</th><th>理由・背景</th></tr>
+<tr><td>中庭式(アラブ・中国・韓国)</td><td>中庭を囲む口の字。外壁は高く窓は小さい。入口は曲がり見通せない。開口は中庭へ向く。表は客、奥は家族。</td><td>仮説=高温乾燥・視線の遮断・密集・宗教法。原因は未解明。</td></tr>
+<tr><td>乾燥地の設計(米国)</td><td>厚さ約40cmの土壁(蓄熱)。L字/コ字で寝室を中庭に向ける。公は道側。深い庇。二階建て密集は壁を共有して外気に触れる面を減らす。</td><td>日射と温度の調整。</td></tr>
+<tr><td>粘土の家(北アフリカ・中東)</td><td>厚約50cmの未焼成の壁。ヤシの梁。屋根に粘土。密集した多層(イエメンは8階)。格子窓。石の基礎。</td><td>肥えた土地を残すため密集して建てる。熱の安定。</td></tr>
+<tr><td>高床(河・湖・海辺)</td><td>床を上げ、通風と湿気を逃がす。</td><td>増水・湿気・漁との近さ。</td></tr>
+<tr><td>遊牧のテント</td><td>分割の布で男女を分ける。煙が入口に来ない向きに立てる。</td><td>移動。</td></tr>
+<tr><td>トルコのソファ型</td><td>廊下を作らず、中心の広間に各個室が直接つながる。</td><td>遊牧のテントの集まりが起源。廊下型の対極。</td></tr>
+<tr><td>英国のホールハウス</td><td>機能が一列に並ぶ核。広間が中央、一端がサービス(貯蔵・食糧庫、通り抜けの通路)、反対端が客間・私室。台所は後に裏の別棟へ。ウィールド型は4間の原型で、広間が吹き抜け、両端間の上に私室。</td><td>16〜17世紀に床と暖炉を入れて吹き抜けが終わる。足し方=床を入れる・翼・裏へ・上へ・差し掛け。</td></tr>
+<tr><td>英国の大邸宅</td><td>中庭型。門楼・前庭(馬屋・納屋)・長い廊下(ギャラリー)。広間と私室(プリヴィ)が分離。</td><td>身分と防衛。</td></tr>
+<tr><td>低地ドイツ型ホールハウス</td><td>1間約2.5m、2〜10間。妻側の大扉→中央の土間通路(ディーレ)→両脇に家畜小屋→奥に炉・台所→居住部。人と家畜が同居。</td><td>英国と入口の向きが違う(英=側面の通り抜け、独=妻の大扉)。</td></tr>
+</table></div></details>
+
+<details><summary>6. 現代の間取り</summary><div class="in">
+<ul>
+<li><b>手順</b>: 要望(必要な機能)→ゾーニング→動線→敷地に収める。</li>
+<li><b>ゾーン</b>: 公(LDK・玄関)/私(寝室・子供室)/水回り。二世帯は親・子・共用。階をまたぐ(垂直)と同じ階(水平)がある。</li>
+<li><b>動線</b>: 家事・生活・来客の3種。来客動線は私の空間と分ける。家事を優先し、水回りを集約。回遊できれば廊下が短い。</li>
+<li><b>型</b>: 賃貸2LDKでも、居室とリビングが半分ずつ並ぶ型・リビング全幅の型・寝室を前に置く型・横並び型・上下2階の型の5型ほど。違いは同じ部屋群の並べ方だけ。</li>
+<li><b>歴史</b>: 西山夘三の食寝分離論 → 1951年の51C型(約35平米・台所を広くして食事と寝る場を分ける=DKの始まり・襖で仕切る) → 公団の2DK・3DK → 1964年に3LDKの表記。核家族が前提。51CがnLDKの原型かは研究者で意見が分かれる。</li>
+<li><b>自動生成の研究</b>: 間取り=部屋(長方形が大半)の集まり。入力は①外形 ②部屋の種類とつながりの図(バブルダイアグラム) ③途中までの間取り。</li>
+</ul></div></details>
+
+<div class="card"><h2>7. 本質(私の理解)<span class="tag wn">案</span></h2>
+<ul>
+<li>間取り = 機能の集合 + ゾーン + 隣接・行き来の関係 + 外形。長方形の部屋と廊下のつながり、というユーザーの捉え方と同じ抽象。</li>
+<li>古今東西の家は、同じ構造で「機能の集合」と「外形の伸び方」が違う。機能の集合は生業と社会が、外形と材料は自然と構造が決める。</li>
+<li>これまでの私の「並べ方8種」は外形の分類だけを見ていて、上位(自然→地域)が抜けていた。</li>
+<li>等級は、機能の多さ(大きな家ほど回廊・離れ・別棟の台所が加わる)で決められそう。「4」には根拠がなかった。</li>
+</ul></div>
+
+<div class="card"><h2>8. 限界・未確認</h2>
+<ul>
+<li>資料の大半は、要約を介して読んだ。平面図そのものは見ていない。寸法の数値は少ない(低地ドイツの約2.5m、畳、壁厚程度)。</li>
+<li>未学習: 中国の合院、地中海の石造、東南アジア、欧州大陸の石造・木骨、アフリカの円形住居。</li>
+<li>未読: 庶民の家(英国)・中部ドイツ型・ウィキのテューダー建築(取得制限)。日本の間取りの歴史の学術論文(筑波大のPDFなど)。</li>
+<li>世界データ(気候・降水・気流)に、地震・材料の産地・日照があるかは未確認。</li>
+<li>「南が日当たり」は北半球のみ。ファンタジー世界で南半球や別の太陽の動きがある場合は別に決める。</li>
+</ul></div>
+
+<details><summary>9. 出典</summary><div class="in"><ul class="src">
+<li>日本の住宅間取りの歴史(ノムコム) <a href="https://www.nomu.com/mansion/library/trend/history/ide02.html">https://www.nomu.com/mansion/library/trend/history/ide02.html</a></li>
+<li>広間型(JAANUS) <a href="https://aisf.or.jp/~jaanus/deta/h/hiromagata.htm">https://aisf.or.jp/~jaanus/deta/h/hiromagata.htm</a></li>
+<li>民家(JAANUS) <a href="https://projects.mcah.columbia.edu/jaanus/record/minka">https://projects.mcah.columbia.edu/jaanus/record/minka</a></li>
+<li>東京都の民家の平面形式(日本大学) <a href="https://www.cst.nihon-u.ac.jp/research/gakujutu/63/pdf/I-13.pdf">https://www.cst.nihon-u.ac.jp/research/gakujutu/63/pdf/I-13.pdf</a></li>
+<li>摂津市の民家 <a href="https://www.city.settsu.osaka.jp/material/files/group/43/p92-93.pdf">https://www.city.settsu.osaka.jp/material/files/group/43/p92-93.pdf</a></li>
+<li>日本の民家(コトバンク・ニッポニカ) <a href="https://kotobank.jp/word/%E6%97%A5%E6%9C%AC%E3%81%AE%E6%B0%91%E5%AE%B6-1616904">コトバンク「日本の民家」</a></li>
+<li>世界の住まいと気候(デンマーク建築センター) <a href="https://dac.dk/en/magazine/homes-around-the-world-show-how-architecture-adapts-to-climate">https://dac.dk/en/magazine/homes-around-the-world-show-how-architecture-adapts-to-climate</a></li>
+<li>中庭式住宅(お茶の水女子大の資料) <a href="https://www.li.ocha.ac.jp/archive/hum/history/teacher/miura/5sumai.pdf">https://www.li.ocha.ac.jp/archive/hum/history/teacher/miura/5sumai.pdf</a></li>
+<li>乾燥地の住宅設計(米国住宅都市開発省) <a href="https://www.huduser.gov/publications/pdf/southwesthousing/sht_ch5.pdf">https://www.huduser.gov/publications/pdf/southwesthousing/sht_ch5.pdf</a></li>
+<li>住居と気候風土(法政大の資料) <a href="https://www.hosei.ac.jp/application/files/7516/0462/7129/8a55b62baf00f1b99b69f42890ed3fa3.pdf">https://www.hosei.ac.jp/application/files/7516/0462/7129/8a55b62baf00f1b99b69f42890ed3fa3.pdf</a></li>
+<li>ゾーニング(スマイティ) <a href="https://sumaity.com/glossary/kozo/zoningu/">https://sumaity.com/glossary/kozo/zoningu/</a></li>
+<li>動線(アットホーム) <a href="https://www.athome.co.jp/contents/custom/build-kiso/traffic-line-of-daily-life/">https://www.athome.co.jp/contents/custom/build-kiso/traffic-line-of-daily-life/</a></li>
+<li>2LDKの5タイプ(ホームズ) <a href="https://www.homes.co.jp/cont/living/living_00433/">https://www.homes.co.jp/cont/living/living_00433/</a></li>
+<li>間取りの決め方(SFC) <a href="https://sfc.jp/ie/myhome/articles/chumon-madori20250930/">https://sfc.jp/ie/myhome/articles/chumon-madori20250930/</a></li>
+<li>間取り自動生成の総説論文 <a href="https://arxiv.org/pdf/2504.09694">https://arxiv.org/pdf/2504.09694</a></li>
+<li>田の字型の例(All About) <a href="https://allabout.co.jp/gm/gc/28995">https://allabout.co.jp/gm/gc/28995</a></li>
+<li>英国: Historic England「Vernacular Houses」/ Looking at Buildings「中世の家」/ ウィキペディア「Wealden hall house」「Low German house」/ ヴィクトリア州史(VCH)のホールハウス資料 / カントリーライフ誌(テューダー朝の大邸宅)/ ブダペスト工科大の木骨住居ページ(個別のURLは設計記録STATE.mdの検証欄を参照)</li>
+</ul></div></details>
+
+<p class="mu">関連: <a href="arch_db.html">建築技法データベース</a> / <a href="house_class.html">家クラスの設計案</a> / <a href="house_kit.html">家の部品庫</a></p>
+</div></body></html>
