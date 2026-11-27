@@ -22,10 +22,11 @@ a{color:var(--ac)}
 <p class="note">概要: 木骨の家を、部品(柱・間柱・筋かい・曲がり材・詰め物・茅葺き・土台)の組み合わせで作る試作です。型・間の数・幅・屋根の高さ・翼を変えられます。寸法は文献に数値が無いため私の仮置きです。ドラッグで回転、2本指で拡大縮小。</p>
 <canvas id="stage"></canvas>
 <div class="ctl">
+<label>材質の組(英国の地域) <select id="set"><option value="suffolk">サフォーク(木骨+ピンクの石灰塗り)</option><option value="cotswolds">コッツウォルズ(金色の石灰岩)</option><option value="devon">デヴォン(コブ土壁+茅)</option><option value="pennine">ペナイン(グリットストーン+平石の屋根)</option><option value="cumbria">カンブリア(粗石+スレート+円筒煙突)</option></select></label>
 <label>型 <select id="type"><option value="cruck">曲がり材の広間型(〜1500年頃)</option><option value="box">箱を積む二階建て(1500〜1700年頃)</option></select></label>
 <label>間の数 <b id="vb"></b><input type="range" id="bays" min="2" max="6" step="1" value="4"></label>
 <label>幅(m) <b id="vw"></b><input type="range" id="width" min="4.4" max="7.4" step="0.2" value="5.8"></label>
-<label>屋根の高さ(m) <b id="vr"></b><input type="range" id="ridge" min="4.8" max="9.5" step="0.1" value="6.2"></label>
+<label>屋根の高さ(m) <b id="vr"></b><input type="range" id="ridge" min="4.2" max="9.5" step="0.1" value="6.2"></label>
 <label class="chk"><input type="checkbox" id="wing"> 翼(L字に足す)</label>
 </div>
 <div class="bt" id="bt"></div>
@@ -39,6 +40,16 @@ a{color:var(--ac)}
 <tr><td>二階建て型</td><td>全間が2階建て</td><td>各階が箱。上階が張り出す・中央に煙突</td></tr>
 <tr><td>翼</td><td>端から前へ延ばす2階建て</td><td>L字。前面が張り出す</td></tr>
 </table>
+<h2>材質の組(英国の地域)</h2>
+<table>
+<tr><th>地域</th><th>壁</th><th>屋根</th><th>他</th></tr>
+<tr><td>サフォーク</td><td>木骨+密な間柱(約45cm間隔)+ピンクの石灰塗り</td><td>茅・急勾配の切妻</td><td>ベリーや血で着色するピンク</td></tr>
+<tr><td>コッツウォルズ</td><td>金色の石灰岩(上等は切り石)</td><td>石のスレート</td><td>最良の石の地域</td></tr>
+<tr><td>デヴォン</td><td>コブ(厚い土壁・窓は奥が深い)</td><td>丸みのある茅・半寄棟</td><td>パン窯の出っ張り</td></tr>
+<tr><td>ペナイン</td><td>グリットストーン(暗い灰色・角ばった枠)</td><td>大きな平石・緩い勾配</td><td>厳めしい見た目</td></tr>
+<tr><td>カンブリア</td><td>粗い石積み</td><td>スレート</td><td>円筒形のウェストモーランド煙突・木骨はほぼ無い</td></tr>
+</table>
+<p class="note">未実装: デヴォンの半寄棟(今は普通の切妻)、コブの窓の奥行きの表現、石の積み目の模様(絵にする)、勾配の数値(出典に無く、ペナインの緩い勾配とサフォークの急勾配以外は私の仮置き)。色は私の見立て。</p>
 <h2>使った部品</h2>
 <table id="parts"></table>
 <p class="note">根拠: 建築技法データベースの「英国の広間型住居」「欧州の木骨 骨組み型」「張り出し」「密な間柱」「ウィールド型」(斜め材45度・柱15〜30cm・張り出しは13〜17世紀・壁の詰め物=編んだ木に土漆喰)。<br>仮置き(要確認): 1間=3.9m、柱の太さ=0.22m、屋根の勾配、階高(1階2.3〜2.6m)、窓の大きさ、煙突。<br>飾り(彫り・紋様)は作らず、絵にする方針です。</p>
@@ -54,6 +65,14 @@ S.add(new THREE.HemisphereLight(0xffffff,0x778877,1.0));
 const sun=new THREE.DirectionalLight(0xfff2dd,1.1);sun.position.set(-8,14,10);S.add(sun);
 const cam=new THREE.PerspectiveCamera(40,1,0.1,200);
 const B=3.9,T=0.22,PL=0.35;
+const SETS={
+ suffolk:{n:'サフォーク',masonry:false,wall:0xe3b4ae,thick:0.12,roof:0xb89a5a,rt:0.6,ridgeC:0x8e7440,studSp:0.45,chim:'brick',rd:{cruck:6.6,box:8.8}},
+ cotswolds:{n:'コッツウォルズ',masonry:true,wall:0xd9b86b,thick:0.5,roof:0xb9a27a,rt:0.4,ridgeC:0x9c875f,studSp:0,chim:'stone',rd:{cruck:6.2,box:8.4}},
+ devon:{n:'デヴォン',masonry:true,wall:0xd6c29a,thick:0.62,roof:0xb89a5a,rt:0.65,ridgeC:0x8e7440,studSp:0,chim:'oven',rd:{cruck:6.0,box:8.2}},
+ pennine:{n:'ペナイン',masonry:true,wall:0x5e5c58,thick:0.5,roof:0x6f6d69,rt:0.35,ridgeC:0x55534f,studSp:0,chim:'stone',rd:{cruck:4.6,box:7.0}},
+ cumbria:{n:'カンブリア',masonry:true,wall:0x80857c,thick:0.55,roof:0x4a5560,rt:0.28,ridgeC:0x3b444d,studSp:0,chim:'west',rd:{cruck:5.8,box:8.0}}
+};
+let SK=SETS.suffolk,WO=0.07;
 const COL={oak:0x4a3524,cream:0xe9e1cc,thatch:0xb89a5a,stone:0x8d8d86,dark:0x1d1814,plank:0x8b6a45,fire:0xff8a2a,grass:0x7d9a62,brick:0x9a5a46};
 const G={base:new THREE.Group(),frame:new THREE.Group(),panel:new THREE.Group(),roof:new THREE.Group(),inner:new THREE.Group(),jetty:new THREE.Group()};
 Object.values(G).forEach(g=>S.add(g));
@@ -70,34 +89,39 @@ function beam(g,name,a,b,th,c){const A=new THREE.Vector3(...a),Bv=new THREE.Vect
 function sub(x,y,z,ry,fn){const g0=new THREE.Group();g0.position.set(x,y,z);g0.rotation.y=ry;SUB=g0;fn();SUB=null;return g0}
 function place(g,sg){G[g].add(sg)}
 // ---- 部品 ----
-function wall(g,z,y0,y1,x0,x1){const h=y1-y0,N=Math.max(1,Math.round((x1-x0)/(B/3)));
+function wall(g,z,y0,y1,x0,x1){const h=y1-y0;
+ if(SK.masonry){box('panel','石積み・土壁',x1-x0,h,SK.thick,SK.wall,(x0+x1)/2,(y0+y1)/2,z);
+  for(const xx of [x0,x1])box('panel','隅石',0.3,h,SK.thick+0.04,SK.wall,xx,(y0+y1)/2,z);
+  box('panel','窓まぐさの帯',x1-x0,0.12,SK.thick+0.03,SK.wall,(x0+x1)/2,y1-0.06,z);return}
+ const N=Math.max(1,Math.round((x1-x0)/(SK.studSp||B/3)));
  box(g,'土台梁・桁',x1-x0,0.2,T,COL.oak,(x0+x1)/2,y0+0.1,z);box(g,'土台梁・桁',x1-x0,0.2,T,COL.oak,(x0+x1)/2,y1-0.1,z);
- box('panel','詰め物(土漆喰)',x1-x0,h-0.4,0.12,COL.cream,(x0+x1)/2,(y0+y1)/2,z);
+ box('panel','詰め物(土漆喰)',x1-x0,h-0.4,0.12,SK.wall,(x0+x1)/2,(y0+y1)/2,z);
  for(let i=0;i<=N;i++){const x=x0+i*(x1-x0)/N;const post=i==0||i==N||Math.abs(x/B-Math.round(x/B))<0.02;
   box(g,post?'柱':'間柱',post?T:0.12,h,post?T:0.12,COL.oak,x,(y0+y1)/2,z)}
  const nb=Math.max(1,Math.round((x1-x0)/B)),bw=(x1-x0)/nb;
  for(let i=0;i<nb;i++){const xa=x0+i*bw,xb=xa+bw,sg=(i%2?1:-1),dd=Math.min(h-0.4,bw-0.3);
   beam(g,'筋かい(45度)',[sg>0?xa+0.15:xb-0.15,y0+0.2,z],[sg>0?xa+0.15+dd:xb-0.15-dd,y0+0.2+dd,z],0.11,COL.oak)}}
 function roofSlabs(L,cx,ez,ey,ry){const run=Math.hypot(ez,ry-ey),ang=Math.atan2(ry-ey,ez);
- [-1,1].forEach(s=>{const m=add('roof','茅葺き屋根の面',new THREE.BoxGeometry(L,0.6,run),COL.thatch,cx,(ry+ey)/2-0.05,s*ez/2,s*ang,0,0)});
- box('roof','棟の覆い',L,0.3,0.7,0x8e7440,cx,ry+0.05,0)}
+ [-1,1].forEach(s=>{const m=add('roof','屋根の面('+SK.n+')',new THREE.BoxGeometry(L,SK.rt,run),SK.roof,cx,(ry+ey)/2-0.05,s*ez/2,s*ang,0,0)});
+ box('roof','棟の覆い',L,0.3,0.7,SK.ridgeC,cx,ry+0.05,0)}
 function gableX(x,hz,top,ridgeY,lowFrom){ // 妻(x一定の面)
- box('panel','詰め物(土漆喰)',0.12,top-PL-0.2,2*hz,COL.cream,x,(PL+top)/2,0);
+ box('panel','詰め物(土漆喰)',0.12,top-PL-0.2,2*hz,SK.wall,x,(PL+top)/2,0);
  const sh=new THREE.Shape();sh.moveTo(-hz,top);sh.lineTo(hz,top);sh.lineTo(0,ridgeY-0.35);sh.lineTo(-hz,top);
- add('panel','詰め物(三角の妻)',new THREE.ExtrudeGeometry(sh,{depth:0.12,bevelEnabled:false}),COL.cream,x-0.06,0,0,0,Math.PI/2,0);
- for(let i=-2;i<=2;i++)box('frame','妻の柱',T*0.6,top-PL,0.12,COL.oak,x,(PL+top)/2,i*hz/2);
- box('frame','妻の梁',0.14,0.18,2*hz,COL.oak,x,top,0)}
+ add('panel','詰め物(三角の妻)',new THREE.ExtrudeGeometry(sh,{depth:0.12,bevelEnabled:false}),SK.wall,x-0.06,0,0,0,Math.PI/2,0);
+ if(!SK.masonry){for(let i=-2;i<=2;i++)box('frame','妻の柱',T*0.6,top-PL,0.12,COL.oak,x,(PL+top)/2,i*hz/2);
+ box('frame','妻の梁',0.14,0.18,2*hz,COL.oak,x,top,0)}}
 function gableZ(z,xc,hx,top,ridgeY){
- box('panel','詰め物(土漆喰)',2*hx,top-PL-0.2,0.12,COL.cream,xc,(PL+top)/2,z);
+ box('panel','詰め物(土漆喰)',2*hx,top-PL-0.2,0.12,SK.wall,xc,(PL+top)/2,z);
  const sh=new THREE.Shape();sh.moveTo(xc-hx,top);sh.lineTo(xc+hx,top);sh.lineTo(xc,ridgeY-0.35);sh.lineTo(xc-hx,top);
- add('panel','詰め物(三角の妻)',new THREE.ExtrudeGeometry(sh,{depth:0.12,bevelEnabled:false}),COL.cream,0,0,z-0.06);
- for(let i=-2;i<=2;i++)box('frame','妻の柱',0.13,top-PL,T*0.6,COL.oak,xc+i*hx/2,(PL+top)/2,z)}
+ add('panel','詰め物(三角の妻)',new THREE.ExtrudeGeometry(sh,{depth:0.12,bevelEnabled:false}),SK.wall,0,0,z-0.06);
+ if(!SK.masonry)for(let i=-2;i<=2;i++)box('frame','妻の柱',0.13,top-PL,T*0.6,COL.oak,xc+i*hx/2,(PL+top)/2,z)}
 function curvePts(zs,hz,ridge,n){const A=[0,PL,zs*(hz-0.1)],C=[0,3.1,zs*(hz+0.45)],Bp=[0,ridge-0.45,0];const p=[];for(let i=0;i<=n;i++){const t=i/n,u=1-t;
  p.push([0,u*u*A[1]+2*u*t*C[1]+t*t*Bp[1],u*u*A[2]+2*u*t*C[2]+t*t*Bp[2]])}return p}
 function zAt(pts,y){for(let i=0;i<pts.length-1;i++){if(pts[i][1]<=y&&pts[i+1][1]>=y){const f=(y-pts[i][1])/(pts[i+1][1]-pts[i][1]);return pts[i][2]+f*(pts[i+1][2]-pts[i][2])}}return 0}
 // ---- 組み立て ----
 function build(P){
  Object.values(G).forEach(g=>{while(g.children.length){const c=g.children.pop();c.geometry&&c.geometry.dispose()}});cnt={};
+ SK=SETS[P.set];WO=SK.masonry?SK.thick/2+0.03:0.07;const JT=SK.masonry?0:1;
  const n=P.bays,W=P.width,HZ=W/2,LEN=n*B,RIDGE=P.ridge,solar=n>=3,wing=P.wing,cr=P.type==='cruck';
  const doorX=B+0.7;
  add('base','地面',new THREE.PlaneGeometry(60,60),COL.grass,LEN/2,-0.01,0,-Math.PI/2,0,0);
@@ -106,13 +130,13 @@ function build(P){
  let eaveY,topY,ez;
  if(cr){const HW=2.5,HL=2.3;eaveY=2.6;topY=HW;ez=HZ+0.9;
   const sx=solar?(n-1)*B:LEN;
-  [-1,1].forEach(s=>{wall('frame',s*HZ,PL,HL,0,sx);if(solar){wall('frame',s*HZ,PL,HL,sx,LEN);wall('jetty',s*(HZ+0.3),HL,HL+0.8,sx,LEN);
-   box('jetty','張り出しの腕木',B,0.25,0.5,COL.oak,sx+B/2,HL-0.12,s*(HZ+0.05));
-   for(let i=0;i<8;i++)box('jetty','根太の端',0.14,0.2,0.62,COL.oak,sx+0.25+i*(B-0.5)/7,HL-0.1,s*(HZ+0.05));
-   box('inner','窓',1.0,0.6,0.1,COL.dark,sx+B/2,HL+0.4,s*(HZ+0.37));box('inner','窓',1.0,0.9,0.1,COL.dark,sx+B/2,1.5,s*(HZ+0.07))}
-   box('inner','戸',1.0,1.9,0.1,COL.dark,doorX,PL+0.95,s*(HZ+0.07));
-   for(let k=1;k<n-(solar?1:0);k++)if(k!=1)box('inner','窓',0.9,0.8,0.1,COL.dark,(k+0.5)*B,1.55,s*(HZ+0.07));
-   box('inner','窓',0.9,0.8,0.1,COL.dark,0.5*B,1.55,s*(HZ+0.07))});
+  [-1,1].forEach(s=>{wall('frame',s*HZ,PL,HL,0,sx);if(solar){wall('frame',s*HZ,PL,HL,sx,LEN);wall('jetty',s*(HZ+0.3*JT),HL,HL+0.8,sx,LEN);
+   if(JT)box('jetty','張り出しの腕木',B,0.25,0.5,COL.oak,sx+B/2,HL-0.12,s*(HZ+0.05));
+   if(JT)for(let i=0;i<8;i++)box('jetty','根太の端',0.14,0.2,0.62,COL.oak,sx+0.25+i*(B-0.5)/7,HL-0.1,s*(HZ+0.05));
+   box('inner','窓',1.0,0.6,0.1,COL.dark,sx+B/2,HL+0.4,s*(HZ+WO+0.3*JT));box('inner','窓',1.0,0.9,0.1,COL.dark,sx+B/2,1.5,s*(HZ+WO))}
+   box('inner','戸',1.0,1.9,0.1,COL.dark,doorX,PL+0.95,s*(HZ+WO));
+   for(let k=1;k<n-(solar?1:0);k++)if(k!=1)box('inner','窓',0.9,0.8,0.1,COL.dark,(k+0.5)*B,1.55,s*(HZ+WO));
+   box('inner','窓',0.9,0.8,0.1,COL.dark,0.5*B,1.55,s*(HZ+WO))});
   gableX(0,HZ,HW,RIDGE,0);if(!wing)gableX(LEN,HZ,HW,RIDGE,0);
   for(let f=0;f<=n;f++){const x=f*B;
    [-1,1].forEach(s=>{const pts=curvePts(s,HZ,RIDGE,10);for(let i=0;i<10;i++){const a=pts[i],b=pts[i+1];beam('frame','曲がり材(クラック)',[x,a[1],a[2]],[x,b[1],b[2]],0.26,COL.oak)}});
@@ -133,15 +157,15 @@ function build(P){
   roofSlabs(wing?LEN+0.6:LEN+1.2,wing?(LEN-0.6)/2:LEN/2,ez,eaveY,RIDGE);
  } else { // 箱を積む二階建て(各階が別の箱)
   const F1=2.9,TOP=5.4,J=0.35;eaveY=TOP-0.3;ez=HZ+J+0.6;
-  [-1,1].forEach(s=>{wall('frame',s*HZ,PL,F1,0,LEN);wall('jetty',s*(HZ+J),F1,TOP,0,LEN);
-   for(let i=0;i<=n*3;i++)box('jetty','根太の端',0.14,0.2,J+0.35,COL.oak,i*LEN/(n*3),F1-0.1,s*(HZ+J/2-0.1));
-   box('jetty','張り出し梁',LEN,0.25,0.3,COL.oak,LEN/2,F1-0.12,s*(HZ+0.05));
-   for(let k=0;k<n;k++){box('inner','窓',0.9,0.9,0.1,COL.dark,(k+0.5)*B,1.6,s*(HZ+0.07));box('inner','窓',0.9,0.9,0.1,COL.dark,(k+0.5)*B,F1+1.2,s*(HZ+J+0.07))}
-   box('inner','戸',1.0,1.9,0.1,COL.dark,B*(n>2?1.5:0.5)+0.0,PL+0.95,s*(HZ+0.07))});
-  gableX(0,HZ+J,TOP,RIDGE,0);if(!wing)gableX(LEN,HZ+J,TOP,RIDGE,0);
+  [-1,1].forEach(s=>{wall('frame',s*HZ,PL,F1,0,LEN);wall('jetty',s*(HZ+J*JT),F1,TOP,0,LEN);
+   if(JT)for(let i=0;i<=n*3;i++)box('jetty','根太の端',0.14,0.2,J+0.35,COL.oak,i*LEN/(n*3),F1-0.1,s*(HZ+J/2-0.1));
+   if(JT)box('jetty','張り出し梁',LEN,0.25,0.3,COL.oak,LEN/2,F1-0.12,s*(HZ+0.05));
+   for(let k=0;k<n;k++){box('inner','窓',0.9,0.9,0.1,COL.dark,(k+0.5)*B,1.6,s*(HZ+WO));box('inner','窓',0.9,0.9,0.1,COL.dark,(k+0.5)*B,F1+1.2,s*(HZ+J*JT+WO))}
+   box('inner','戸',1.0,1.9,0.1,COL.dark,B*(n>2?1.5:0.5)+0.0,PL+0.95,s*(HZ+WO))});
+  gableX(0,HZ+J*JT,TOP,RIDGE,0);if(!wing)gableX(LEN,HZ+J*JT,TOP,RIDGE,0);
   box('inner','1階の床(梁と板)',LEN,0.14,W,COL.plank,LEN/2,F1,0);
   for(let i=0;i<=n*3;i++)beam('frame','根太',[i*LEN/(n*3),F1-0.1,-HZ-J],[i*LEN/(n*3),F1-0.1,HZ+J],0.12,COL.oak);
-  const hz2=HZ+J;
+  const hz2=HZ+J*JT;
   for(let f=0;f<=n;f++){const x=f*B;beam('frame','繋ぎ梁(タイビーム)',[x,TOP,-hz2],[x,TOP,hz2],0.2,COL.oak);
    [-1,1].forEach(s=>beam('frame','垂木・合掌',[x,TOP,s*hz2],[x,RIDGE-0.4,0],0.16,COL.oak));
    beam('frame','真束(キングポスト)',[x,TOP,0],[x,RIDGE-0.4,0],0.16,COL.oak);
@@ -150,18 +174,20 @@ function build(P){
   [-1,1].forEach(s=>box('frame','軒桁',LEN,0.18,0.18,COL.oak,LEN/2,TOP,s*(hz2+0.02)));
   box('inner','仕切り壁',0.14,2.4,W-0.4,COL.plank,LEN/2,PL+1.2,0);
   // 煙突(1570年以降に増える)
-  box('panel','煙突(煉瓦)',1.3,RIDGE+0.9,1.3,COL.brick,LEN/2,(RIDGE+0.9)/2,0);box('panel','煙突の笠',1.5,0.2,1.5,COL.stone,LEN/2,RIDGE+0.95,0);
+  if(SK.chim==='west'){add('panel','煙突(円筒・ウェストモーランド型)',new THREE.CylinderGeometry(0.45,0.75,RIDGE+1.4,10),SK.wall,LEN/2,(RIDGE+1.4)/2,0);add('panel','煙突の笠',new THREE.CylinderGeometry(0.62,0.62,0.18,10),COL.stone,LEN/2,RIDGE+1.5,0)}
+  else{box('panel','煙突',1.3,RIDGE+0.9,1.3,SK.chim==='brick'?COL.brick:SK.wall,LEN/2,(RIDGE+0.9)/2,0);box('panel','煙突の笠',1.5,0.2,1.5,COL.stone,LEN/2,RIDGE+0.95,0)}
+  if(SK.chim==='oven'&&!wing)box('panel','パン窯の出っ張り',1.2,2.2,1.3,SK.wall,LEN+0.6,1.4,0);
   roofSlabs(wing?LEN+0.6:LEN+1.2,wing?(LEN-0.6)/2:LEN/2,ez,eaveY,RIDGE);
  }
  // ---- 翼(L字) ----
  if(wing){const WX=4.8,WL=6.5,F1=2.8,TOP=5.2,J=0.3,x0=LEN,x1=LEN+WX,zb=-HZ,zf=HZ+WL,RW=Math.max(RIDGE+0.8,7.2);
   box('base','石の土台',WX+0.4,PL,0.4,COL.stone,(x0+x1)/2,PL/2,zf);
   [x0,x1].forEach(X=>{box('base','石の土台',0.4,PL,zf-zb,COL.stone,X,PL/2,(zb+zf)/2);
-   place('frame',sub(X,0,0,-Math.PI/2,()=>{wall('frame',0,PL,F1,zb,zf);wall('frame',0,F1,TOP,zb,zf);box('inner','窓',0.9,0.9,0.1,COL.dark,HZ+2,1.6,0.07);box('inner','窓',0.9,0.9,0.1,COL.dark,HZ+2,F1+1.2,0.07)}))});
-  wall('frame',zf,PL,F1,x0,x1);wall('jetty',zf+J,F1,TOP,x0-0.0,x1);
-  for(let i=0;i<=5;i++)box('jetty','根太の端',0.14,0.2,J+0.4,COL.oak,x0+i*WX/5,F1-0.1,zf+J/2-0.1);
-  box('inner','戸',1.0,1.9,0.1,COL.dark,(x0+x1)/2,PL+0.95,zf+0.07);box('inner','窓',0.9,0.9,0.1,COL.dark,(x0+x1)/2,F1+1.2,zf+J+0.07);
-  gableZ(zf+J,(x0+x1)/2,WX/2,TOP,RW);gableZ(zb,(x0+x1)/2,WX/2,TOP,RW);
+   place('frame',sub(X,0,0,-Math.PI/2,()=>{wall('frame',0,PL,F1,zb,zf);wall('frame',0,F1,TOP,zb,zf);box('inner','窓',0.9,0.9,0.1,COL.dark,HZ+2,1.6,WO);box('inner','窓',0.9,0.9,0.1,COL.dark,HZ+2,F1+1.2,WO)}))});
+  wall('frame',zf,PL,F1,x0,x1);wall('jetty',zf+J*JT,F1,TOP,x0-0.0,x1);
+  if(JT)for(let i=0;i<=5;i++)box('jetty','根太の端',0.14,0.2,J+0.4,COL.oak,x0+i*WX/5,F1-0.1,zf+J/2-0.1);
+  box('inner','戸',1.0,1.9,0.1,COL.dark,(x0+x1)/2,PL+0.95,zf+WO);box('inner','窓',0.9,0.9,0.1,COL.dark,(x0+x1)/2,F1+1.2,zf+J*JT+WO);
+  gableZ(zf+J*JT,(x0+x1)/2,WX/2,TOP,RW);gableZ(zb,(x0+x1)/2,WX/2,TOP,RW);
   box('inner','翼の床',WX,0.14,zf-zb,COL.plank,(x0+x1)/2,F1,(zb+zf)/2);
   for(let i=0;i<=4;i++)beam('frame','垂木・合掌',[ (x0+x1)/2-WX/2-0.0,TOP,zb+i*(zf-zb)/4],[(x0+x1)/2,RW-0.4,zb+i*(zf-zb)/4],0.14,COL.oak),beam('frame','垂木・合掌',[(x0+x1)/2+WX/2,TOP,zb+i*(zf-zb)/4],[(x0+x1)/2,RW-0.4,zb+i*(zf-zb)/4],0.14,COL.oak);
   const rl=zf-zb+1.6;
@@ -170,7 +196,7 @@ function build(P){
  let total=0,nn=0,tb='<tr><th>部品</th><th>個数</th><th>三角形</th></tr>';
  Object.entries(cnt).filter(([k])=>k!=='地面').forEach(([k,v])=>{total+=v.t;nn+=v.n;tb+=`<tr><td>${k}</td><td>${v.n}</td><td>${v.t}</td></tr>`});
  document.getElementById('parts').innerHTML=tb+`<tr><td><b>合計(地面を除く)</b></td><td>${nn}</td><td><b>${total}</b></td></tr>`;
- document.getElementById('info').textContent=`全長${LEN.toFixed(1)}m・幅${W}m・棟高${RIDGE}m${wing?'・翼あり':''}(仮置き)。三角形 約${total}。`;
+ document.getElementById('info').textContent=`全長${LEN.toFixed(1)}m・幅${W}m・棟高${RIDGE}m${wing?'・翼あり':''}(仮置き)。材質の組=${SK.n}。三角形 約${total}。`;
  tgt.set(wing?(LEN+3)/2:LEN/2,cr?2.6:3.6,wing?3:0);dist0=Math.max(LEN,W)*1.6+(wing?6:0)+8;
 }
 // ---- 表示切替 ----
@@ -186,17 +212,18 @@ function draw(){cam.position.set(tgt.x+dist*Math.cos(el)*Math.sin(az),tgt.y+dist
 function size(){const w=cv.clientWidth,h=cv.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();draw()}
 addEventListener('resize',size);
 const $=id=>document.getElementById(id);
-const P={type:'cruck',bays:4,width:5.8,ridge:6.2,wing:false};
+const P={set:'suffolk',type:'cruck',bays:4,width:5.8,ridge:6.6,wing:false};
 function ui(){$('vb').textContent=P.bays;$('vw').textContent=P.width;$('vr').textContent=P.ridge}
 function rebuild(fit){ui();build(P);if(fit)dist=dist0;draw()}
-$('type').onchange=e=>{P.type=e.target.value;P.ridge=P.type==='box'?8.4:6.2;P.width=P.type==='box'?5.4:5.8;$('ridge').value=P.ridge;$('width').value=P.width;rebuild(true)};
+$('set').onchange=e=>{P.set=e.target.value;P.ridge=SETS[P.set].rd[P.type];$('ridge').value=P.ridge;rebuild(false)};
+$('type').onchange=e=>{P.type=e.target.value;P.ridge=SETS[P.set].rd[P.type];P.width=P.type==='box'?5.4:5.8;$('ridge').value=P.ridge;$('width').value=P.width;rebuild(true)};
 $('bays').oninput=e=>{P.bays=+e.target.value;rebuild(true)};
 $('width').oninput=e=>{P.width=+e.target.value;rebuild(false)};
 $('ridge').oninput=e=>{P.ridge=+e.target.value;rebuild(false)};
 $('wing').onchange=e=>{P.wing=e.target.checked;rebuild(true)};
-{const q=new URLSearchParams(location.search);if(q.get('type'))P.type=q.get('type');if(q.get('bays'))P.bays=+q.get('bays');if(q.get('wing'))P.wing=q.get('wing')==='1';
- if(P.type==='box'&&!q.get('ridge')){P.ridge=8.4;P.width=5.4}if(q.get('ridge'))P.ridge=+q.get('ridge');
- $('type').value=P.type;$('bays').value=P.bays;$('width').value=P.width;$('ridge').value=P.ridge;$('wing').checked=P.wing}
+{const q=new URLSearchParams(location.search);if(q.get('set')&&SETS[q.get('set')])P.set=q.get('set');if(q.get('type'))P.type=q.get('type');P.ridge=SETS[P.set].rd[P.type];if(q.get('bays'))P.bays=+q.get('bays');if(q.get('wing'))P.wing=q.get('wing')==='1';
+ if(P.type==='box')P.width=5.4;if(q.get('ridge'))P.ridge=+q.get('ridge');
+ $('set').value=P.set;$('type').value=P.type;$('bays').value=P.bays;$('width').value=P.width;$('ridge').value=P.ridge;$('wing').checked=P.wing}
 size();rebuild(true);
 const ptr=new Map();let pd=0;
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);if(ptr.size==2){const [a,b]=[...ptr.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1])}});
