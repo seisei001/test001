@@ -62,7 +62,12 @@ const cv=document.getElementById('stage');
 const R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
 const S=new THREE.Scene();S.background=new THREE.Color(0xcfd8e3);
 S.add(new THREE.HemisphereLight(0xffffff,0x778877,1.0));
-const sun=new THREE.DirectionalLight(0xfff2dd,1.1);sun.position.set(-8,14,10);S.add(sun);
+const sun=new THREE.DirectionalLight(0xfff2dd,1.1);S.add(sun);S.add(sun.target);
+R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.04;
+const LIGHT=[-8.5,14,-2.5]; // 初期の見た目で「左上・やや手前」から。世界に固定
+function aimSun(c,r){sun.target.position.copy(c);sun.position.set(c.x+LIGHT[0],c.y+LIGHT[1],c.z+LIGHT[2]);
+ const sc=sun.shadow.camera;sc.left=-r;sc.right=r;sc.top=r;sc.bottom=-r;sc.near=1;sc.far=60;sc.updateProjectionMatrix()}
 const cam=new THREE.PerspectiveCamera(40,1,0.1,200);
 const B=3.9,T=0.22,PL=0.35;
 const SETS={
@@ -87,12 +92,12 @@ const tgt_=g=>SUB?SUB:G[g];
 function reg(name,g,t){cnt[name]=cnt[name]||{n:0,t:0};cnt[name].n++;cnt[name].t+=t}
 function add(g,name,geo,c,x,y,z,rx=0,ry=0,rz=0){
  if(typeof c==='object'&&c.map&&!c.userData.custom){if(geo.type==='BoxGeometry'){const p=geo.parameters;scaleBoxUV(geo,p.width,p.height,p.depth,3)}else scaleUV(geo,1/3)}
- const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);m.rotation.set(rx,ry,rz);tgt_(g).add(m);
+ const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=name!=='地面';m.receiveShadow=true;tgt_(g).add(m);
  reg(name,g,(geo.index?geo.index.count:geo.attributes.position.count)/3);return m}
 const box=(g,name,w,h,d,c,x,y,z)=>add(g,name,new THREE.BoxGeometry(w,h,d),c,x,y,z);
 function beam(g,name,a,b,th,c){const A=new THREE.Vector3(...a),Bv=new THREE.Vector3(...b),d=Bv.clone().sub(A),L=d.length();
  const m=new THREE.Mesh(new THREE.BoxGeometry(th,L,th),mat(c));m.position.copy(A.clone().add(Bv).multiplyScalar(.5));
- m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());tgt_(g).add(m);reg(name,g,12);return m}
+ m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;m.receiveShadow=true;tgt_(g).add(m);reg(name,g,12);return m}
 function sub(x,y,z,ry,fn){const g0=new THREE.Group();g0.position.set(x,y,z);g0.rotation.y=ry;SUB=g0;fn();SUB=null;return g0}
 function place(g,sg){G[g].add(sg)}
 // ---- 部品 ----
@@ -206,7 +211,7 @@ function build(P){
  Object.entries(cnt).filter(([k])=>k!=='地面').forEach(([k,v])=>{total+=v.t;nn+=v.n;tb+=`<tr><td>${k}</td><td>${v.n}</td><td>${v.t}</td></tr>`});
  document.getElementById('parts').innerHTML=tb+`<tr><td><b>合計(地面を除く)</b></td><td>${nn}</td><td><b>${total}</b></td></tr>`;
  document.getElementById('info').textContent=`全長${LEN.toFixed(1)}m・幅${W}m・棟高${RIDGE}m${wing?'・翼あり':''}(仮置き)。材質の組=${SK.n}。三角形 約${total}。`;
- tgt.set(wing?(LEN+3)/2:LEN/2,cr?2.6:3.6,wing?3:0);dist0=Math.max(LEN,W)*1.6+(wing?6:0)+8;
+ tgt.set(wing?(LEN+3)/2:LEN/2,cr?2.6:3.6,wing?3:0);aimSun(new THREE.Vector3(tgt.x,0,tgt.z),Math.max(LEN,W)*0.7+9+(wing?4:0));dist0=Math.max(LEN,W)*1.6+(wing?6:0)+8;
 }
 // ---- 表示切替 ----
 const lab={base:'土台・地面',frame:'骨組み(柱・曲がり材)',panel:'壁の詰め物',jetty:'張り出し',inner:'内部・戸窓',roof:'屋根'};
@@ -214,6 +219,7 @@ const bt=document.getElementById('bt');
 const bs=Object.keys(lab).map(k=>{const b=document.createElement('button');b.className='on';b.textContent=lab[k];b.onclick=()=>{G[k].visible=!G[k].visible;b.classList.toggle('on',G[k].visible);draw()};bt.appendChild(b);return b});
 const sync=()=>bs.forEach((b,i)=>b.classList.toggle('on',G[Object.keys(G)[i]].visible));
 {const b=document.createElement('button');b.textContent='骨組みだけ';b.onclick=()=>{Object.keys(G).forEach(k=>G[k].visible=(k==='frame'||k==='jetty'||k==='base'));sync();draw()};bt.appendChild(b)}
+{const b=document.createElement('button');b.className='on';b.textContent='影';b.onclick=()=>{sun.castShadow=!sun.castShadow;b.classList.toggle('on',sun.castShadow);draw()};bt.appendChild(b)}
 {const b=document.createElement('button');b.textContent='全部表示';b.onclick=()=>{Object.values(G).forEach(g=>g.visible=true);sync();draw()};bt.appendChild(b)}
 // ---- カメラ ----
 let az=-0.75,el=0.42,dist=30,dist0=30;const tgt=new THREE.Vector3(8,2.6,0);
