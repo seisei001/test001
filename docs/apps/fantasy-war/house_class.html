@@ -20,7 +20,7 @@ svg text{font-family:-apple-system,"Hiragino Sans",sans-serif}
 .q li{margin:4px 0}
 </style></head><body><div class="w">
 <h1>家クラスの詳細設計(案)</h1>
-<p class="note">概要: 街や村の「でき方」と「家そのもの」を切り分ける。家は<b>クラス</b>(間取りが元データ、部品はそのメンバ)として作り、外観はそこから導く。ローポリを先に作ると無駄になるので、ここは形でなく<b>構造</b>の設計。すべて私の案(未確定)。</p>
+<p class="note">概要(改訂 11-28): 家は<b>クラス</b>。間取りは「長方形のブロック+つながり(廊下もブロック)」を元データとし、型(約50種)と等級(序列)で作り分ける。部品はそこから導く。屋敷の回廊・塔も、新しい部品でなく等級で付く。ここは形でなく<b>構造</b>の設計。すべて私の案(未確定)。</p>
 
 <h2>1. 切り分け(4つの層)</h2>
 <table><tr><th>層</th><th>役割</th><th>この設計の対象か</th></tr>
@@ -36,51 +36,53 @@ svg text{font-family:-apple-system,"Hiragino Sans",sans-serif}
 <h3>AからBへ渡す「家の注文書」</h3>
 <table><tr><th>項目</th><th>内容</th></tr>
 <tr><td>位置・向き</td><td>敷地の中の場所と正面の向き(Aが決める)</td></tr>
-<tr><td>等級</td><td>大・中・小・安(Aが決める。街の中心=大、周り=中、区画外れ=小・安、村=大の周りに小〜中)</td></tr>
+<tr><td>等級</td><td>序列の値(Aが決める。街の中心=高い、周り=中、区画外れ=低い。村=高い家の周りに中〜低)。段階の数はA層の設計で決める(未決)</td></tr>
 <tr><td>用途</td><td>住居・店・工房・館 など</td></tr>
-<tr><td>敷地</td><td>幅・奥行き(家と付属が収まる大きさ)</td></tr>
+<tr><td>敷地</td><td>家と付属が収まる大きさ(ユニット数で表す)</td></tr>
 <tr><td>地方・年代</td><td>材質の組を決める(同じ集落は同じ地方)</td></tr></table>
 
-<h2>3. 家クラス(B)の構造</h2>
+<h2>3. 家クラス(B)の構造(改訂)</h2>
 <div class="box">
 <b>House(家)</b><br>
-├ 属性: 等級・用途・地方・年代・向き・敷地<br>
-├ <b>Plan(間取り)</b> ← 元データ。升目(1升=長さ3.9m×奥行4.9m)の上に部屋を置く<br>
-│ ├ Room(部屋): 升の範囲・階・機能(広間・台所・寝室・私室・貯蔵・玄関・階段・店・作業)・炉の有無<br>
-│ └ Opening(開口): 戸・窓(細/二連/低/大)・店の開口。壁のどの位置か<br>
+├ 属性: <b>等級(序列の値)</b>・用途・地方・年代・向き・敷地<br>
+├ <b>Pattern(間取りの型)</b> ← 構造の軸から出した約50種(下の一覧)<br>
+├ <b>Plan(間取り)</b> ← 元データ。型を選び、等級で大きさと付属を決めて作る<br>
+│ ├ Block(ブロック): 長方形・平面の位置と大きさ・<b>階の範囲(高さ)</b>・機能(広間・台所・寝室・貯蔵・店・玄関・階段・<b>廊下</b>など)<br>
+│ └ Link(つながり): ブロックとブロックを結ぶ戸・通路。<b>廊下もブロック</b>(回廊=中庭を囲むブロックのつながり、塔=背の高いブロック)<br>
 ├ <b>Parts(部品=クラスのメンバ)</b> ← 間取りから導く(下の規則)<br>
-│ 土台・壁・階の箱・張り出し・屋根・煙突・窓一式・戸一式・ポーチ・差し掛け・出窓・階段塔 など<br>
 └ Looks(体裁): 材質・屋根材・色の微妙なばらつき(幅は小さく)
 </div>
+<p class="note">1ユニット(ブロックの基準寸法)は、その土地の計り方で決め、部品はそれに合わせて作る(ユーザー確定 11-28)。ここでは寸法を数字にせず、1ユニット=1升と呼ぶ。実物の計り方は別に調べる。</p>
 <h3>間取りから部品を導く規則(案)</h3>
 <table><tr><th>間取りにあるもの</th><th>導かれる部品</th></tr>
-<tr><td>外周の升の境</td><td>壁(材質は地方の組)。凹凸があれば翼・屋根が別に生える</td></tr>
-<tr><td>階の数</td><td>階の箱。木骨なら上階の張り出し、石造なら帯石</td></tr>
-<tr><td>炉のある部屋</td><td>煙突(炉の数だけ。位置はその部屋の上)</td></tr>
-<tr><td>台所</td><td>小窓+差し掛け小屋(裏、等級が中以上なら)</td></tr>
+<tr><td>ブロックの外周</td><td>壁(材質は地方の組)。凹凸があれば翼・屋根が別に生える</td></tr>
+<tr><td>ブロックの階の範囲</td><td>階の箱。木骨なら上階の張り出し、石造なら帯石。背の高いブロックは塔</td></tr>
+<tr><td>炉のあるブロック</td><td>煙突(炉の数だけ。そのブロックの上)</td></tr>
+<tr><td>台所</td><td>小窓+差し掛け小屋(等級が上なら)</td></tr>
 <tr><td>広間</td><td>大きな窓(多連)</td></tr>
-<tr><td>玄関(戸のある升)</td><td>戸一式(扉・枠・踏み石)。必要ならポーチ</td></tr>
-<tr><td>階段(等級が大)</td><td>階段塔(2m角の塔と角錐屋根)。それ以外は内部の階段で外には出ない</td></tr>
-<tr><td>店</td><td>広い開口+庇</td></tr>
-<tr><td>寝室・私室・貯蔵</td><td>機能に応じた窓の数・大きさ</td></tr></table>
-<p class="note">効果: 部品の置き方がそのまま間取り図になる。家の中に入る層(D)を作る時は、同じ間取りから内部を作れる。作らない場合でも、クラスは家の体裁を持つ。</p>
+<tr><td>玄関(戸のあるつながり)</td><td>戸一式(扉・枠・踏み石)。必要ならポーチ</td></tr>
+<tr><td>廊下・回廊のブロック</td><td>低い屋根(差し掛け)・柱列。中庭を囲めば回廊</td></tr>
+<tr><td>店</td><td>広い開口+庇</td></tr></table>
+<p class="note">効果: 部品の置き方がそのまま間取り図になる。家の中に入る層(D)を作る時は、同じ間取りから内部を作れる。</p>
 
-<h2>4. 等級と、家の型(間取りのパターン)</h2>
-<table><tr><th>等級</th><th>目安</th><th>使われ方(Aの層で決める)</th></tr>
-<tr><td>安</td><td>1室・1階。小屋のような家</td><td>区画外れ・貧しい群</td></tr>
-<tr><td>小</td><td>1〜2室</td><td>村の外側・街の外縁</td></tr>
-<tr><td>中</td><td>3〜4室・1〜2階。広間+台所+寝室</td><td>街の周り・村の主</td></tr>
-<tr><td>大</td><td>多室・2〜3階・翼・階段塔</td><td>街の中心・村の大きな家</td></tr></table>
-<p class="note">下の間取りは、家の型の案(7種)。ばらつき(升の数・向き・開口の位置・付属・材質・色)は、型の中で小さく動かす。図は間取りのデータから描いている。左が1階、右が2階。◆=炉、赤=戸、青=窓、橙=店の開口。</p>
-<div id="types"></div>
+<h2>4. 等級と、間取りの型(約50種)</h2>
+<div class="box"><b>等級</b>は、「許すブロック数・階数・付属(差し掛け・ポーチ・翼・回廊・塔)の幅」と「材質の格」を決める序列の値。屋敷のような巨大な建物も、新しい部品は要らず、等級が上がるだけで回廊や塔がつく。<b>段階の数は、街・村の構成(A層)が必要とする区別から決める(未決)</b>。それまでは序列の値のまま持つ。</div>
+<div class="box"><b>型(パターン)の出し方</b>: 間取りの形は無限にあるが、費用をかけず約50のパターンで持つ。軸の掛け算で出す。<br>
+軸1 並べ方(8): 一列・L字・T字・コ字・H字・口字(中庭)・並列(2棟を廊下で結ぶ)・奥行き二重<br>
+軸2 つなぎ方(形ごとに違う): なし(部屋が直接つながる)・通り抜け(玄関の通路)・片廊下・中廊下・回廊<br>
+軸3 階の構成(3): 平屋・一部だけ2階・全部2階<br>
+塔・吹き抜けは型に含めず、等級で付く部品(背の高いブロック)にする。<span id="pcount"></span></div>
+<p class="note">図は型の骨組み(ブロックとつながり)。濃い色=2階あり、灰色=廊下、点=つながり。同じ型でも、ブロックの大きさ・向き・機能・開口は小さく動かして個体差を出す。つながりの数は図からの自動集計(目安。廊下との接点も数える)。</p>
+<div id="pats"></div>
+<details class="card"><summary><b>機能をつけた間取りの例(旧案の型7種は例示で、型の全体ではない)</b></summary>
+<div id="types"></div></details>
 
 <h2>5. 未決(あなたの判断が要る点)</h2>
 <ol class="q">
-<li>1升の大きさ(3.9m×4.9m)と、等級4段階(大・中・小・安)でよいか。</li>
-<li>間取りは「部屋の機能」まで持つ(内部の層に渡せる)形でよいか。</li>
-<li>型7種の過不足(例: 馬小屋・農家の納屋つき・宿屋 など)。</li>
+<li>型の軸(並べ方8・つなぎ方・階の構成3)に過不足がないか。51種で足りるか。</li>
+<li>等級の段階数は、街・村の構成(A層)を設計する時に、必要な区別から決めてよいか。</li>
 </ol>
-<p class="note">限界: 英国の広間型・箱型の知識に偏る。階段塔は大きな家だけに限定した。外観の細部(貼り絵・色)は未設計。1升の寸法や部屋の数は、実物の寸法を調べて直す前提の仮置き。</p>
+<p class="note">限界: 英国の広間型・箱型の知識に偏る。1ユニットの寸法は未決(土地の計り方を調べて決める)。型の図は骨組みだけで、機能・開口は旧案の例にだけある。外観の細部(貼り絵・色)は未設計。</p>
 </div>
 <script>
 const SX=40,SY=50,M=14;
@@ -119,5 +121,44 @@ function derive(t){const f1=t.fl[0],all=t.fl.flatMap(f=>f.r),W=Math.max(...f1.r.
 document.getElementById('types').innerHTML=T.map(t=>{const d=derive(t);
  return `<div class="card"><h3>${t.n}<span class="note"> 等級: ${t.rank}</span></h3><div class="fl">${t.fl.map((f,i)=>`<div><div class="note" style="margin:0">${i+1}階</div>${svgFloor(f,d.W,d.H)}</div>`).join('')}</div>
  <div class="note" style="margin:4px 0 0">間取りから導いた部品:</div><div class="chips">${d.c.map(x=>`<span class="chip">${x}</span>`).join('')}</div></div>`}).join('');
+
+// ---- 型(パターン)の生成 ----
+const SH={
+ '一列':n=>({b:[0,1,2].map(i=>({x:i,y:0,w:1,h:1}))}),
+ 'L字':n=>({b:[{x:0,y:0,w:1,h:1},{x:1,y:0,w:1,h:1},{x:2,y:0,w:1,h:1},{x:2,y:1,w:1,h:1}]}),
+ 'T字':n=>({b:[{x:0,y:0,w:1,h:1},{x:1,y:0,w:1,h:1},{x:2,y:0,w:1,h:1},{x:1,y:1,w:1,h:1}]}),
+ 'コ字':n=>({b:[0,1,2,3].map(i=>({x:i,y:0,w:1,h:1})).concat([{x:0,y:1,w:1,h:1},{x:3,y:1,w:1,h:1}])}),
+ 'H字':n=>({b:[{x:0,y:0,w:1,h:1},{x:0,y:1,w:1,h:1},{x:0,y:2,w:1,h:1},{x:1,y:1,w:1,h:1},{x:2,y:0,w:1,h:1},{x:2,y:1,w:1,h:1},{x:2,y:2,w:1,h:1}]}),
+ '口字':n=>({b:[{x:0,y:0,w:1,h:1},{x:1,y:0,w:1,h:1},{x:2,y:0,w:1,h:1},{x:0,y:1,w:1,h:1},{x:2,y:1,w:1,h:1},{x:0,y:2,w:1,h:1},{x:1,y:2,w:1,h:1},{x:2,y:2,w:1,h:1}]}),
+ '並列':n=>({b:[0,1,2].map(i=>({x:i,y:0,w:1,h:1})).concat([0,1,2].map(i=>({x:i,y:1.5,w:1,h:1})))}),
+ '奥行き二重':n=>({b:[0,1,2].map(i=>({x:i,y:0,w:1,h:1})).concat([0,1,2].map(i=>({x:i,y:1,w:1,h:1})))})
+};
+const CONN={'一列':['なし','通り抜け','片廊下'],'L字':['なし','通り抜け','片廊下'],'T字':['なし','片廊下'],'コ字':['片廊下','回廊'],'H字':['片廊下','中廊下'],'口字':['回廊','中廊下'],'並列':['廊下で結ぶ'],'奥行き二重':['なし','中廊下']};
+const FLR=['平屋','一部2階','全2階'];
+function mkPat(shape,conn,flr){const bl=SH[shape]().b.map(o=>({...o,room:1,z1:1}));const cor=[];
+ const maxx=Math.max(...bl.map(o=>o.x+o.w)),maxy=Math.max(...bl.map(o=>o.y+o.h));
+ if(conn==='片廊下')cor.push({x:0,y:maxy,w:maxx,h:.35,room:0,z1:1});
+ if(conn==='中廊下'&&shape==='奥行き二重'){bl.forEach(o=>{if(o.y>=1)o.y+=.35});cor.push({x:0,y:1,w:maxx,h:.35,room:0,z1:1})}
+ if(conn==='中廊下'&&shape==='H字'){const m=bl.find(o=>o.x===1&&o.y===1);if(m)m.room=0}
+ if(conn==='中廊下'&&shape==='口字')cor.push({x:1,y:1,w:1,h:1,room:0,z1:1});
+ if(conn==='通り抜け'){const m=bl.find(o=>o.x===1&&o.y===0);if(m){m.room=0;m.pass=1}}
+ if(conn==='回廊'){cor.push({x:-.35,y:-.35,w:maxx+.7,h:.3,room:0,z1:1});cor.push({x:-.35,y:maxy+.05,w:maxx+.7,h:.3,room:0,z1:1})}
+ const rooms=bl.filter(o=>o.room);
+ if(flr==='全2階')rooms.forEach(o=>o.z1=2);if(flr==='一部2階')rooms.filter(o=>o.x===Math.max(...rooms.map(q=>q.x))||o.y===0&&o.x===0).slice(0,2).forEach(o=>o.z1=2);
+ return {shape,conn,flr,blocks:bl.concat(cor)}}
+const PATS=[];for(const sh of Object.keys(SH))for(const cn of CONN[sh])for(const fl of FLR)PATS.push(mkPat(sh,cn,fl));
+function thumb(p){const U=16,Mg=8;const all=p.blocks;const x0=Math.min(...all.map(o=>o.x)),y0=Math.min(...all.map(o=>o.y)),x1=Math.max(...all.map(o=>o.x+o.w)),y1=Math.max(...all.map(o=>o.y+o.h));
+ const w=(x1-x0)*U+2*Mg,h=(y1-y0)*U+2*Mg;let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+ all.forEach(o=>{const f=!o.room?'#bdbdbd':o.pass?'#e6e1d0':o.z1>1?'#e0a86a':'#f3d9a8';s+=`<rect x="${Mg+(o.x-x0)*U}" y="${Mg+(o.y-y0)*U}" width="${o.w*U}" height="${o.h*U}" fill="${f}" stroke="#555" stroke-width="1"/>`});
+ const B=all.filter(o=>o.room||o.h>.5||true);let links=0;
+ for(let i=0;i<all.length;i++)for(let j=i+1;j<all.length;j++){const a=all[i],b=all[j],e=.01;
+  const sx=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x),sy=Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y);
+  let cx,cy;if(Math.abs(a.x+a.w-b.x)<e||Math.abs(b.x+b.w-a.x)<e){if(sy>e){cx=Math.abs(a.x+a.w-b.x)<e?a.x+a.w:a.x;cy=Math.max(a.y,b.y)+sy/2}}
+  else if(Math.abs(a.y+a.h-b.y)<e||Math.abs(b.y+b.h-a.y)<e){if(sx>e){cy=Math.abs(a.y+a.h-b.y)<e?a.y+a.h:a.y;cx=Math.max(a.x,b.x)+sx/2}}
+  if(cx!=null){links++;s+=`<circle cx="${Mg+(cx-x0)*U}" cy="${Mg+(cy-y0)*U}" r="2.2" fill="#2563eb"/>`}}
+ return {svg:s+'</svg>',links}}
+document.getElementById('pats').innerHTML=Object.keys(SH).map(sh=>{const L=PATS.filter(p=>p.shape===sh);
+ return `<h3>${sh}(${L.length}種)</h3><div class="fl">`+L.map(p=>{const t=thumb(p);return `<div class="card" style="margin:0;padding:6px 8px"><div class="note" style="margin:0">${p.conn}・${p.flr}</div>${t.svg}<div class="note" style="margin:0">ブロック${p.blocks.filter(o=>o.room).length}・つながり${t.links}</div></div>`}).join('')+'</div>'}).join('');
+document.getElementById('pcount').textContent='→ 並べ方8 × つなぎ方(形ごと)× 階3 = '+PATS.length+'種(数は掛け算の結果。約50の目安に収まった)';
 window.__ready=true;
 </script></body></html>
