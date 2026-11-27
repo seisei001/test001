@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家クラスの詳細設計(案)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f2f2f4;--p:#fff;--bd:#d6d6dc;--tx:#1c1c1f;--mu:#666670;--ac:#2563eb}
+@media(prefers-color-scheme:dark){:root{--bg:#141416;--p:#1e1e22;--bd:#34343a;--tx:#ececf0;--mu:#9a9aa5;--ac:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx)}
+.w{max-width:720px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:1.15rem;margin:4px 0}h2{font-size:1rem;margin:22px 0 6px}h3{font-size:.92rem;margin:14px 0 4px}
+.note{font-size:.82rem;color:var(--mu);margin:2px 0 8px;line-height:1.6}
+.box{background:var(--p);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:.88rem;line-height:1.65;margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:.8rem;background:var(--p);border-radius:10px;overflow:hidden}
+td,th{border-bottom:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}th{color:var(--mu);font-weight:600}
+.card{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin:10px 0}
+.card h3{margin:0 0 2px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.chip{font-size:.74rem;border:1px solid var(--bd);border-radius:99px;padding:2px 9px;background:var(--bg)}
+.fl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+svg text{font-family:-apple-system,"Hiragino Sans",sans-serif}
+.q li{margin:4px 0}
+</style></head><body><div class="w">
+<h1>家クラスの詳細設計(案)</h1>
+<p class="note">概要: 街や村の「でき方」と「家そのもの」を切り分ける。家は<b>クラス</b>(間取りが元データ、部品はそのメンバ)として作り、外観はそこから導く。ローポリを先に作ると無駄になるので、ここは形でなく<b>構造</b>の設計。すべて私の案(未確定)。</p>
+
+<h2>1. 切り分け(4つの層)</h2>
+<table><tr><th>層</th><th>役割</th><th>この設計の対象か</th></tr>
+<tr><td>A 集落の構成</td><td>街・村の「でき方」。どこに何の家を建てるか</td><td>別の設計。家へは「注文書」だけ渡す</td></tr>
+<tr><td>B 家クラス</td><td>家1軒の構造(等級・間取り・部品)</td><td><b>今の詳細設計の対象</b></td></tr>
+<tr><td>C 見せ方</td><td>地図では記号。画面に映す時だけ配置して描く(物の背後は記号に戻す)</td><td>別の設計(n-symbol)。必要な時だけ配置</td></tr>
+<tr><td>D 家の内部</td><td>家の中に入れる層。作るかどうかも未定</td><td>別の層。ただしBの間取りを元データに使える形にしておく</td></tr></table>
+
+<h2>2. 集落の構成(Aの層・参考の整理だけ)</h2>
+<div class="box"><b>街(大きな街)</b>: 中心に大きな家。その周りに中くらいの家。比較的整然とした区画で、碁盤の目に近い建ち方が多い。区画が変わると、やや小さく安っぽい建物群に変わる。<br>
+<b>村</b>: 大きな家の周りを、少し小さな家が比較的丸く取り囲む。碁盤の区画の村は存在しない。地形に合わせて建つ。密集した村も、バラバラの村もある。<br>
+<span class="note">→ 家の側では「街らしさ」を考えない。街・村のパターンは別に設計し、実際の配置は見せる必要がある時だけ行う。</span></div>
+<h3>AからBへ渡す「家の注文書」</h3>
+<table><tr><th>項目</th><th>内容</th></tr>
+<tr><td>位置・向き</td><td>敷地の中の場所と正面の向き(Aが決める)</td></tr>
+<tr><td>等級</td><td>大・中・小・安(Aが決める。街の中心=大、周り=中、区画外れ=小・安、村=大の周りに小〜中)</td></tr>
+<tr><td>用途</td><td>住居・店・工房・館 など</td></tr>
+<tr><td>敷地</td><td>幅・奥行き(家と付属が収まる大きさ)</td></tr>
+<tr><td>地方・年代</td><td>材質の組を決める(同じ集落は同じ地方)</td></tr></table>
+
+<h2>3. 家クラス(B)の構造</h2>
+<div class="box">
+<b>House(家)</b><br>
+├ 属性: 等級・用途・地方・年代・向き・敷地<br>
+├ <b>Plan(間取り)</b> ← 元データ。升目(1升=長さ3.9m×奥行4.9m)の上に部屋を置く<br>
+│ ├ Room(部屋): 升の範囲・階・機能(広間・台所・寝室・私室・貯蔵・玄関・階段・店・作業)・炉の有無<br>
+│ └ Opening(開口): 戸・窓(細/二連/低/大)・店の開口。壁のどの位置か<br>
+├ <b>Parts(部品=クラスのメンバ)</b> ← 間取りから導く(下の規則)<br>
+│ 土台・壁・階の箱・張り出し・屋根・煙突・窓一式・戸一式・ポーチ・差し掛け・出窓・階段塔 など<br>
+└ Looks(体裁): 材質・屋根材・色の微妙なばらつき(幅は小さく)
+</div>
+<h3>間取りから部品を導く規則(案)</h3>
+<table><tr><th>間取りにあるもの</th><th>導かれる部品</th></tr>
+<tr><td>外周の升の境</td><td>壁(材質は地方の組)。凹凸があれば翼・屋根が別に生える</td></tr>
+<tr><td>階の数</td><td>階の箱。木骨なら上階の張り出し、石造なら帯石</td></tr>
+<tr><td>炉のある部屋</td><td>煙突(炉の数だけ。位置はその部屋の上)</td></tr>
+<tr><td>台所</td><td>小窓+差し掛け小屋(裏、等級が中以上なら)</td></tr>
+<tr><td>広間</td><td>大きな窓(多連)</td></tr>
+<tr><td>玄関(戸のある升)</td><td>戸一式(扉・枠・踏み石)。必要ならポーチ</td></tr>
+<tr><td>階段(等級が大)</td><td>階段塔(2m角の塔と角錐屋根)。それ以外は内部の階段で外には出ない</td></tr>
+<tr><td>店</td><td>広い開口+庇</td></tr>
+<tr><td>寝室・私室・貯蔵</td><td>機能に応じた窓の数・大きさ</td></tr></table>
+<p class="note">効果: 部品の置き方がそのまま間取り図になる。家の中に入る層(D)を作る時は、同じ間取りから内部を作れる。作らない場合でも、クラスは家の体裁を持つ。</p>
+
+<h2>4. 等級と、家の型(間取りのパターン)</h2>
+<table><tr><th>等級</th><th>目安</th><th>使われ方(Aの層で決める)</th></tr>
+<tr><td>安</td><td>1室・1階。小屋のような家</td><td>区画外れ・貧しい群</td></tr>
+<tr><td>小</td><td>1〜2室</td><td>村の外側・街の外縁</td></tr>
+<tr><td>中</td><td>3〜4室・1〜2階。広間+台所+寝室</td><td>街の周り・村の主</td></tr>
+<tr><td>大</td><td>多室・2〜3階・翼・階段塔</td><td>街の中心・村の大きな家</td></tr></table>
+<p class="note">下の間取りは、家の型の案(7種)。ばらつき(升の数・向き・開口の位置・付属・材質・色)は、型の中で小さく動かす。図は間取りのデータから描いている。左が1階、右が2階。◆=炉、赤=戸、青=窓、橙=店の開口。</p>
+<div id="types"></div>
+
+<h2>5. 未決(あなたの判断が要る点)</h2>
+<ol class="q">
+<li>1升の大きさ(3.9m×4.9m)と、等級4段階(大・中・小・安)でよいか。</li>
+<li>間取りは「部屋の機能」まで持つ(内部の層に渡せる)形でよいか。</li>
+<li>型7種の過不足(例: 馬小屋・農家の納屋つき・宿屋 など)。</li>
+</ol>
+<p class="note">限界: 英国の広間型・箱型の知識に偏る。階段塔は大きな家だけに限定した。外観の細部(貼り絵・色)は未設計。1升の寸法や部屋の数は、実物の寸法を調べて直す前提の仮置き。</p>
+</div>
+<script>
+const SX=40,SY=50,M=14;
+const FN={'広間':'#f3d9a8','台所':'#f1b98a','寝室':'#b9d3ea','私室':'#cfc2e8','貯蔵':'#d6d6c4','玄関':'#e6e1d0','階段':'#bcbcbc','店':'#f4c28f','作業':'#c8dcb8','一室':'#f3d9a8','吹き抜け':'#eeeeee'};
+const T=[
+ {n:'A 一室小屋',rank:'安',fl:[{r:[{f:'一室',x:0,y:0,w:1,h:1,h2:1}],o:[['door','S',.5],['win','N',.5,'s']]}]},
+ {n:'B 二室',rank:'小',fl:[{r:[{f:'広間',x:0,y:0,w:1,h:1,h2:1},{f:'貯蔵',x:1,y:0,w:1,h:1}],o:[['door','S',.5],['win','S',1.5,'d'],['win','N',.5,'s']]}]},
+ {n:'C 広間型(貯蔵-通路-広間-私室)',rank:'中',fl:[{r:[{f:'貯蔵',x:0,y:0,w:1,h:1},{f:'玄関',x:1,y:0,w:1,h:1},{f:'広間',x:2,y:0,w:1,h:1,h2:1},{f:'私室',x:3,y:0,w:1,h:1}],o:[['door','S',1.5],['door','N',1.5],['win','S',2.5,'l'],['win','S',.5,'s'],['win','S',3.5,'d']]},{r:[{f:'寝室',x:3,y:0,w:1,h:1}],o:[['win','S',3.5,'d']]}]},
+ {n:'D 二階建て箱型',rank:'中',fl:[{r:[{f:'階段',x:0,y:0,w:1,h:1},{f:'広間',x:1,y:0,w:1,h:1,h2:1},{f:'台所',x:2,y:0,w:1,h:1,h2:1}],o:[['door','S',.5],['win','S',1.5,'l'],['win','S',2.5,'d']]},{r:[{f:'寝室',x:0,y:0,w:1,h:1},{f:'寝室',x:1,y:0,w:1,h:1},{f:'寝室',x:2,y:0,w:1,h:1}],o:[['win','S',.5,'d'],['win','S',1.5,'d'],['win','S',2.5,'d']]}]},
+ {n:'E L字型(広間型+翼)',rank:'中',fl:[{r:[{f:'台所',x:0,y:0,w:1,h:1,h2:1},{f:'広間',x:1,y:0,w:1,h:1,h2:1},{f:'私室',x:2,y:0,w:1,h:1},{f:'作業',x:2,y:1,w:1,h:1}],o:[['door','S',1.5,null,1],['win','S',.5,'s',1],['win','E',1.5,'d']]},{r:[{f:'寝室',x:2,y:0,w:1,h:1}],o:[['win','N',2.5,'d']]}]},
+ {n:'F 店舗型(1階が店)',rank:'中',fl:[{r:[{f:'店',x:0,y:0,w:1,h:1},{f:'台所',x:1,y:0,w:1,h:1,h2:1}],o:[['shop','S',.5],['door','S',1.5]]},{r:[{f:'私室',x:0,y:0,w:1,h:1},{f:'寝室',x:1,y:0,w:1,h:1}],o:[['win','S',.5,'d'],['win','S',1.5,'d']]}]},
+ {n:'G 館(コ字・広間は吹き抜け)',rank:'大',fl:[{r:[{f:'台所',x:0,y:0,w:1,h:1,h2:1},{f:'広間',x:1,y:0,w:2,h:1,h2:1},{f:'私室',x:3,y:0,w:1,h:1},{f:'貯蔵',x:0,y:1,w:1,h:1},{f:'階段',x:3,y:1,w:1,h:1}],o:[['door','S',1.5,null,1],['win','N',1.5,'l'],['win','N',2.5,'l'],['win','S',.5,'d']]},{r:[{f:'寝室',x:0,y:0,w:1,h:1},{f:'吹き抜け',x:1,y:0,w:2,h:1},{f:'寝室',x:3,y:0,w:1,h:1},{f:'寝室',x:0,y:1,w:1,h:1}],o:[['win','N',.5,'d'],['win','N',3.5,'d']]}]}
+];
+const C={door:'#d33',win:'#2563eb',shop:'#e8892b'};
+function svgFloor(fl,W,H){const w=W*SX+2*M,h=H*SY+2*M;let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+ fl.r.forEach(r=>{const x=M+r.x*SX,y=M+r.y*SY,ww=r.w*SX,hh=r.h*SY;s+=`<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="${FN[r.f]||'#ddd'}" stroke="#555" stroke-width="1.5"/>`;
+  s+=`<text x="${x+ww/2}" y="${y+hh/2+3}" font-size="10" text-anchor="middle" fill="#222">${r.f}</text>`;
+  if(r.h2)s+=`<text x="${x+8}" y="${y+14}" font-size="12" fill="#c05a00">◆</text>`;
+  if(r.f==='階段')for(let i=0;i<6;i++)s+=`<line x1="${x+4}" y1="${y+8+i*6}" x2="${x+ww-4}" y2="${y+8+i*6}" stroke="#777" stroke-width=".8"/>`});
+ fl.o.forEach(([k,sd,p,sz,row])=>{let x1,y1,x2,y2,L=k==='shop'?SX*.8:sz==='l'?SX*.7:sz==='d'?SX*.5:sz==='s'?SX*.25:SX*.35;
+  if(sd==='S'||sd==='N'){const cx=M+p*SX,y=sd==='S'?M+(row!=null?row:H)*SY:M;x1=cx-L/2;x2=cx+L/2;y1=y2=y}else{const cy=M+p*SY,x=sd==='E'?M+W*SX:M;y1=cy-L/2;y2=cy+L/2;x1=x2=x}
+  s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${C[k]}" stroke-width="${k==='door'?5:4}" stroke-linecap="round"/>`});
+ return s+'</svg>'}
+function derive(t){const f1=t.fl[0],all=t.fl.flatMap(f=>f.r),W=Math.max(...f1.r.map(r=>r.x+r.w)),H=Math.max(...f1.r.map(r=>r.y+r.h));
+ const hearth=all.filter(r=>r.h2).length,doors=t.fl.flatMap(f=>f.o).filter(o=>o[0]==='door').length;
+ const wins={s:0,d:0,l:0};t.fl.flatMap(f=>f.o).forEach(o=>{if(o[0]==='win')wins[o[3]]++});
+ const has=n=>all.some(r=>r.f===n),c=[];
+ c.push('升 '+W+'×'+H+'('+(W*3.9).toFixed(1)+'m×'+(H*4.9).toFixed(1)+'m)');c.push('階の箱 '+t.fl.length);
+ c.push('屋根(切妻)'+(H>1&&W>2?2:1));if(hearth)c.push('煙突 '+hearth);c.push('戸一式 '+doors);
+ c.push('窓 細'+wins.s+'・二連'+wins.d+'・大'+wins.l);
+ if(has('台所')&&t.rank!=='安'&&t.rank!=='小')c.push('差し掛け小屋(台所の裏)');
+ if(has('階段')&&t.rank==='大')c.push('階段塔');if(has('店'))c.push('庇+広い開口');
+ if(t.fl.length>1&&/箱|店|L|館/.test(t.n))c.push('上階の張り出し/帯石');
+ if(t.n[0]==='C')c.push('通り抜けの戸(前後)');
+ return {c,W,H}}
+document.getElementById('types').innerHTML=T.map(t=>{const d=derive(t);
+ return `<div class="card"><h3>${t.n}<span class="note"> 等級: ${t.rank}</span></h3><div class="fl">${t.fl.map((f,i)=>`<div><div class="note" style="margin:0">${i+1}階</div>${svgFloor(f,d.W,d.H)}</div>`).join('')}</div>
+ <div class="note" style="margin:4px 0 0">間取りから導いた部品:</div><div class="chips">${d.c.map(x=>`<span class="chip">${x}</span>`).join('')}</div></div>`}).join('');
+window.__ready=true;
+</script></body></html>
