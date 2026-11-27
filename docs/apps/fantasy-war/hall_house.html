@@ -159,10 +159,19 @@ function curvePts(zs,hz,ridge,n){const A=[0,PL,zs*(hz-0.1)],C=[0,3.1,zs*(hz+0.45
  p.push([0,u*u*A[1]+2*u*t*C[1]+t*t*Bp[1],u*u*A[2]+2*u*t*C[2]+t*t*Bp[2]])}return p}
 function zAt(pts,y){for(let i=0;i<pts.length-1;i++){if(pts[i][1]<=y&&pts[i+1][1]>=y){const f=(y-pts[i][1])/(pts[i+1][1]-pts[i][1]);return pts[i][2]+f*(pts[i+1][2]-pts[i][2])}}return 0}
 let SEED=1;const rn=i=>hash(SEED*17.1+i*3.3,i*1.7+SEED);
-function winR(x,y,z,i,w,h){const rw=w*(0.8+0.4*rn(i)),rh=h*(0.85+0.3*rn(i+50)),rx=x+(rn(i+99)-0.5)*0.5,sg=z>0?1:-1;
+function doorP(x,z,w){const sg=z>0?1:-1,lw=w||1.14,fw=lw+0.4;
+ box('inner','戸の枠',fw,2.22,0.16,SK.masonry?COL.stone:COL.oak,x,PL+1.11,z+sg*0.02);
+ box('inner','戸',lw,2.07,0.1,COL.dark,x,PL+1.035,z+sg*0.08);
+ box('inner','戸の把手',0.12,0.16,0.07,COL.stone,x+lw*0.36,PL+1.0,z+sg*0.14);
+ box('base','戸の踏み石',fw,0.12,0.68,COL.stone,x,0.06,z+sg*0.34)}
+function winR(x,y,z,i,w,h){const kind=rn(i+7),sg=z>0?1:-1;
+ let rw=kind<0.3?0.45:kind<0.85?0.8:1.1;let rh=(kind>0.85?0.55:0.85)*(h/0.85);rh*=(0.9+0.2*rn(i+50));
+ const rx=x+(rn(i+99)-0.5)*0.5;
  box('inner','窓',rw,rh,0.1,COL.dark,rx,y,z);
- box('inner','窓台',rw+0.25,0.07,0.2,COL.stone,rx,y-rh/2-0.04,z+sg*0.06);
- box('inner','窓の上枠',rw+0.2,0.1,0.18,SK.masonry?COL.stone:COL.oak,rx,y+rh/2+0.05,z+sg*0.05)}
+ box('inner','窓枠',rw+0.2,rh+0.2,0.07,SK.masonry?COL.stone:COL.oak,rx,y,z-sg*0.01);
+ box('inner','窓台',rw+0.25,0.07,0.2,COL.stone,rx,y-rh/2-0.09,z+sg*0.06);
+ box('inner','窓の上枠',rw+0.3,0.1,0.18,SK.masonry?COL.stone:COL.oak,rx,y+rh/2+0.1,z+sg*0.05);
+ if(rn(i+31)<0.4){[-1,1].forEach(a=>box('inner','よろい戸(板)',0.34,rh+0.1,0.05,COL.oak,rx+a*(rw/2+0.3),y,z+sg*0.05))}}
 function triX(x,hz,top,ridgeY,mt){const sh=new THREE.Shape();sh.moveTo(-hz,top);sh.lineTo(hz,top);sh.lineTo(0,ridgeY-0.2);sh.lineTo(-hz,top);
  add('panel','詰め物(三角の妻)',new THREE.ExtrudeGeometry(sh,{depth:0.12,bevelEnabled:false}),mt,x-0.06,0,0,0,Math.PI/2,0)}
 // ---- 組み立て ----
@@ -182,7 +191,7 @@ function build(P){
    if(JT)box('jetty','張り出しの腕木',B,0.25,0.5,COL.oak,sx+B/2,HL-0.12,s*(HZ+0.05));
    if(JT)for(let i=0;i<8;i++)box('jetty','根太の端',0.14,0.2,0.62,COL.oak,sx+0.25+i*(B-0.5)/7,HL-0.1,s*(HZ+0.05));
    box('inner','窓',1.0,0.6,0.1,COL.dark,sx+B/2,HL+0.4,s*(HZ+WO+0.3*JT));box('inner','窓',1.0,0.9,0.1,COL.dark,sx+B/2,1.5,s*(HZ+WO))}
-   box('inner','戸',1.0,1.9,0.1,COL.dark,doorX,PL+0.95,s*(HZ+WO));
+   if(s>0)doorP(doorX,HZ+WO);else box('inner','戸',1.0,1.9,0.1,COL.dark,doorX,PL+0.95,s*(HZ+WO));
    for(let k=1;k<n-(solar?1:0);k++)if(k!=1)winR((k+0.5)*B,1.55,s*(HZ+WO),k+(s>0?0:100),0.9,0.8);
    winR(0.5*B,1.55,s*(HZ+WO),7+(s>0?0:100),0.9,0.8)});
   gableX(0,HZ,HW,RIDGE,0);if(!wing)gableX(LEN,HZ,HW,RIDGE,0);
@@ -209,7 +218,7 @@ function build(P){
    if(JT)for(let i=0;i<=n*3;i++)box('jetty','根太の端',0.14,0.2,J+0.35,COL.oak,i*LEN/(n*3),F1-0.1,s*(HZ+J/2-0.1));
    if(JT)box('jetty','張り出し梁',LEN,0.25,0.3,COL.oak,LEN/2,F1-0.12,s*(HZ+0.05));
    for(let k=0;k<n;k++){if(Math.abs((k+0.5)*B-DX)>1.0)winR((k+0.5)*B,1.6,s*(HZ+WO),k+(s>0?0:100),0.9,0.9);winR((k+0.5)*B+0.3*(rn(k+300)-0.5),F1+1.2,s*(HZ+J*JT+WO),k+200+(s>0?0:100),0.9,0.9)}
-   box('inner','戸',1.0,1.9,0.1,COL.dark,B*(n>2?1.5:0.5)+0.0,PL+0.95,s*(HZ+WO))});
+   if(s>0)doorP(B*(n>2?1.5:0.5),HZ+WO);else box('inner','戸',1.0,1.9,0.1,COL.dark,B*(n>2?1.5:0.5)+0.0,PL+0.95,s*(HZ+WO))});
   gableX(0,HZ+J*JT,TOP,RIDGE,0);if(!wing)gableX(LEN,HZ+J*JT,TOP,RIDGE,0);
   box('inner','1階の床(梁と板)',LEN,0.14,W,COL.plank,LEN/2,F1,0);
   for(let i=0;i<=n*3;i++)beam('frame','根太',[i*LEN/(n*3),F1-0.1,-HZ-J*JT],[i*LEN/(n*3),F1-0.1,HZ+J*JT],0.12,COL.oak);
@@ -223,7 +232,7 @@ function build(P){
   box('inner','仕切り壁',0.14,2.4,W-0.4,COL.plank,LEN/2,PL+1.2,0);
   // 煙突(1570年以降に増える)
   if(SK.chim==='west'){add('panel','煙突(円筒・ウェストモーランド型)',new THREE.CylinderGeometry(0.45,0.75,RIDGE+1.4,10),SK.wall,CX,(RIDGE+1.4)/2,0);add('panel','煙突の笠',new THREE.CylinderGeometry(0.62,0.62,0.18,10),COL.stone,CX,RIDGE+1.5,0)}
-  else{box('panel','煙突',1.3,RIDGE+0.9,1.3,SK.chim==='brick'?COL.brick:WM,CX,(RIDGE+0.9)/2,0);box('panel','煙突の笠',1.5,0.2,1.5,COL.stone,CX,RIDGE+0.95,0)}
+  else{for(let k=0;k<(rn(5)<0.5?2:3);k++)add('panel','煙突の壺',new THREE.CylinderGeometry(0.11,0.14,0.5,8),COL.brick,CX+(k-0.5*((rn(5)<0.5?2:3)-1))*0.42,RIDGE+1.2,0);box('panel','煙突',1.3,RIDGE+0.9,1.3,SK.chim==='brick'?COL.brick:WM,CX,(RIDGE+0.9)/2,0);box('panel','煙突の笠',1.5,0.2,1.5,COL.stone,CX,RIDGE+0.95,0)}
   if(SK.chim==='oven'&&!wing)box('panel','パン窯の出っ張り',1.2,2.2,1.3,SK.wall,LEN+0.6,1.4,0);
   roofSlabs(wing?LEN+0.6:LEN+1.2,wing?(LEN-0.6)/2:LEN/2,ez,eaveY,RIDGE);
  }
