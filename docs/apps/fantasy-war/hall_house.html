@@ -31,6 +31,7 @@ a{color:var(--ac)}
 <label class="chk"><input type="checkbox" id="porch" checked> 玄関ポーチ</label>
 <label class="chk"><input type="checkbox" id="lean" checked> 裏の差し掛け小屋</label>
 <label class="chk"><input type="checkbox" id="dormer" checked> 屋根窓</label>
+<label class="chk"><input type="checkbox" id="bay" checked> 出窓・仕切り</label>
 <label>個体の違い(種) <b id="vs"></b><button id="seedb" style="font:inherit;padding:6px 12px;border-radius:99px;border:1px solid var(--bd);background:var(--p);color:var(--tx)">別の個体にする</button></label>
 </div>
 <div class="bt" id="bt"></div>
@@ -236,6 +237,18 @@ function build(P){
   if(SK.chim==='oven'&&!wing)box('panel','パン窯の出っ張り',1.2,2.2,1.3,SK.wall,LEN+0.6,1.4,0);
   roofSlabs(wing?LEN+0.6:LEN+1.2,wing?(LEN-0.6)/2:LEN/2,ez,eaveY,RIDGE);
  }
+ // ---- 出窓・階の仕切り(部品の学び 11-28) ----
+ {const bays=[];for(let k=0;k<n-(cr&&solar?1:0);k++){const bx=(k+0.5)*B;if(Math.abs(bx-DX)>1.9)bays.push(bx)}
+  if(bays.length&&P.bay){const bx=bays[Math.floor(rn(11)*bays.length)],by=1.6,z=HZ+WO;
+   box('panel','出窓の箱',1.7,1.3,0.55,WM,bx,by,z+0.28);
+   box('inner','出窓の窓',1.4,0.9,0.06,COL.dark,bx,by,z+0.58);
+   box('inner','出窓の枠',1.55,1.05,0.05,SK.masonry?COL.stone:COL.oak,bx,by,z+0.57);
+   box('inner','出窓の台',1.9,0.1,0.75,COL.stone,bx,by-0.7,z+0.34);
+   add('roof','出窓の屋根',new THREE.BoxGeometry(1.95,0.08,0.85),RM||SK.roof,bx,by+0.78,z+0.3,0.3,0,0)}
+  if(!cr||true){ // 階の仕切り: 帯石(石造)または妻面の仕切り梁(木骨)。二階建て型のみ
+   if(!cr){const F=2.9;
+    if(SK.masonry)[-1,1].forEach(sg=>box('jetty','帯石(階の仕切り)',LEN+0.2,0.16,0.14,COL.stone,LEN/2,F,sg*(HZ+0.1)));
+    else [0,LEN].forEach(x=>box('jetty','階の仕切り梁(妻)',0.2,0.2,W+0.7,COL.oak,x,F-0.1,0))}}}
  // ---- 縁の細部・付属 ----
  {const eY=eaveY,eZ=ez;
   for(let i=0;-0.3+i*0.55<=(wing?LEN-0.35:LEN+0.35);i++){const x=-0.3+i*0.55;[-1,1].forEach(s=>box('roof','垂木の先',0.1,0.13,0.45,COL.oak,x,eY-0.28,s*(eZ-0.15)))}
@@ -294,7 +307,7 @@ function draw(){cam.position.set(tgt.x+dist*Math.cos(el)*Math.sin(az),tgt.y+dist
 function size(){const w=cv.clientWidth,h=cv.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();draw()}
 addEventListener('resize',size);
 const $=id=>document.getElementById(id);
-const P={set:'suffolk',type:'cruck',bays:4,width:5.8,ridge:6.6,wing:false,porch:true,lean:true,dormer:true,seed:1};
+const P={set:'suffolk',type:'cruck',bays:4,width:5.8,ridge:6.6,wing:false,porch:true,lean:true,dormer:true,bay:true,seed:1};
 function ui(){$('vs').textContent=P.seed;$('vb').textContent=P.bays;$('vw').textContent=P.width;$('vr').textContent=P.ridge}
 function rebuild(fit){ui();build(P);if(fit)dist=dist0;draw()}
 $('set').onchange=e=>{P.set=e.target.value;P.ridge=SETS[P.set].rd[P.type];$('ridge').value=P.ridge;rebuild(false)};
@@ -303,11 +316,11 @@ $('bays').oninput=e=>{P.bays=+e.target.value;rebuild(true)};
 $('width').oninput=e=>{P.width=+e.target.value;rebuild(false)};
 $('ridge').oninput=e=>{P.ridge=+e.target.value;rebuild(false)};
 $('wing').onchange=e=>{P.wing=e.target.checked;rebuild(true)};
-for(const k of ['porch','lean','dormer'])$(k).onchange=e=>{P[k]=e.target.checked;rebuild(false)};
+for(const k of ['porch','lean','dormer','bay'])$(k).onchange=e=>{P[k]=e.target.checked;rebuild(false)};
 $('seedb').onclick=()=>{P.seed=P.seed%99+1;rebuild(false)};
-{const q=new URLSearchParams(location.search);if(q.get('set')&&SETS[q.get('set')])P.set=q.get('set');if(q.get('type'))P.type=q.get('type');P.ridge=SETS[P.set].rd[P.type];if(q.get('bays'))P.bays=+q.get('bays');if(q.get('wing'))P.wing=q.get('wing')==='1';if(q.get('seed'))P.seed=+q.get('seed');for(const k of ['porch','lean','dormer'])if(q.get(k))P[k]=q.get(k)==='1';
+{const q=new URLSearchParams(location.search);if(q.get('set')&&SETS[q.get('set')])P.set=q.get('set');if(q.get('type'))P.type=q.get('type');P.ridge=SETS[P.set].rd[P.type];if(q.get('bays'))P.bays=+q.get('bays');if(q.get('wing'))P.wing=q.get('wing')==='1';if(q.get('seed'))P.seed=+q.get('seed');for(const k of ['porch','lean','dormer','bay'])if(q.get(k))P[k]=q.get(k)==='1';
  if(P.type==='box')P.width=5.4;if(q.get('ridge'))P.ridge=+q.get('ridge');
- $('set').value=P.set;$('type').value=P.type;$('bays').value=P.bays;$('width').value=P.width;$('ridge').value=P.ridge;$('wing').checked=P.wing;for(const k of ['porch','lean','dormer'])$(k).checked=P[k]}
+ $('set').value=P.set;$('type').value=P.type;$('bays').value=P.bays;$('width').value=P.width;$('ridge').value=P.ridge;$('wing').checked=P.wing;for(const k of ['porch','lean','dormer','bay'])$(k).checked=P[k]}
 size();rebuild(true);
 const ptr=new Map();let pd=0;
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);if(ptr.size==2){const [a,b]=[...ptr.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1])}});
