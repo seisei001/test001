@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家の部品庫の検証(街に並べる)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f2f2f4;--p:#fff;--bd:#d6d6dc;--tx:#1c1c1f;--mu:#666670;--ac:#2563eb}
+@media(prefers-color-scheme:dark){:root{--bg:#141416;--p:#1e1e22;--bd:#34343a;--tx:#ececf0;--mu:#9a9aa5;--ac:#6ea0ff}}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx)}
+.w{max-width:700px;margin:0 auto;padding:12px 16px}
+h1{font-size:1.15rem;margin:4px 0}h2{font-size:1rem;margin:18px 0 6px}
+.note{font-size:.82rem;color:var(--mu);margin:2px 0 8px;line-height:1.55}
+#stage{width:100%;height:50dvh;min-height:320px;background:#cfd8e3;border-radius:12px;touch-action:none;display:block}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+button{font:inherit;padding:8px 14px;border-radius:99px;border:1px solid var(--bd);background:var(--p);color:var(--tx)}
+button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+table{border-collapse:collapse;width:100%;font-size:.82rem;background:var(--p);border-radius:10px;overflow:hidden}
+td,th{border-bottom:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}th{color:var(--mu);font-weight:600}
+.box{background:var(--p);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:.88rem;line-height:1.6}
+</style></head><body><div class="w">
+<h1>家の部品庫の検証(街に並べる)</h1>
+<p class="note">概要: 家は「部品を配合するだけ」で、同じ仲間の少しずつ違う家になる。ここでは約30点の部品から、36軒を自動で組み立てて並べた。大きさは±数%、色は同じ材質の範囲で±数%にとどめている。形や数値は私の案(未確定)。部品の作り方は他の部品集から「点数と種類」だけを学び、形・色は写していない。</p>
+<canvas id="stage"></canvas>
+<div class="bar"><button id="reseed">別の街にする</button><button id="focus">1軒に寄る</button><button id="all" class="on">街全体</button></div>
+<div class="box" id="metrics">読み込み中…</div>
+
+<h2>1. 他の部品集から学んだ点数(数だけ・形は写さない)</h2>
+<table><tr><th>部品集</th><th>点数・種類</th><th>学び</th></tr>
+<tr><td>Andersson「Modular Medieval Building Pack」(CC0・Blenderで実測)</td><td>窓14・戸4・煙突3・階段4・バルコニー4・増築4(塔含む)・屋根2・看板1。家は階ごとの箱+梁+屋根の組。</td><td>窓は「ガラス+枠+よろい戸」に分ける/家は階ごとに積む/屋根は外・内・骨の3層/細部は壁でなく梁の部品</td></tr>
+<tr><td>Quaternius 中世の村(公式表記)</td><td>176点(以前調査)。MegaKitは300点以上と表記</td><td>点数の大半は壁・窓・屋根の組み合わせ違い。つまり少数の型を掛け合わせて数を出す</td></tr>
+<tr><td>KayKit 中世ビルダー</td><td>建物9棟(完成品)</td><td>完成品だけだと変化が出ない(参考のみ)</td></tr></table>
+
+<h2>2. 部品庫の案(家だけ・約<span id="kn"></span>点)</h2>
+<p class="note">街には家と全く別の要素(広場・道・井戸・店・塀・荷車など)がある。ここは「家」の分だけ。変化の幅は、大きさ±数%・色目±数%(同じ材質の範囲)。</p>
+<table id="kit"><tr><th>機能</th><th>部品</th><th>種類</th></tr></table>
+
+<h2>3. 検証の結果</h2>
+<div class="box" id="result">計算中…</div>
+<p class="note">限界: 三角形数は部品の簡易な箱組みでの数。iPhoneの実機速度は未測定。見た目の絵(貼り絵)は未適用で、色だけ。</p>
+</div>
+<script type="importmap">{"imports":{"three":"../sekai-hex/design/vendor/three.module.min.js"}}</script>
+<script type="module">
+import * as THREE from '../sekai-hex/design/vendor/three.module.min.js';
+const cv=document.getElementById('stage'),$=id=>document.getElementById(id);
+const R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(2,devicePixelRatio||1));
+const S=new THREE.Scene();S.background=new THREE.Color(0xcfd8e3);
+const cam=new THREE.PerspectiveCamera(42,1,0.5,600);
+S.add(new THREE.HemisphereLight(0xffffff,0x6d7a5a,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(-8.5,14,-2.5);S.add(sun);
+// ---- 部品庫の案(機能→部品→種類) ----
+const KIT=[
+['建つ','石の土台',1],['建つ','壁:漆喰',1],['建つ','壁:石積み',1],['建つ','壁:木骨(漆喰+柱)',1],['建つ','階の箱(平屋/二階)',2],['建つ','張り出し梁/帯石',2],['建つ','妻の三角',1],
+['雨を防ぐ','屋根:茅',1],['雨を防ぐ','屋根:石板(スレート)',1],['雨を防ぐ','屋根:瓦',1],['雨を防ぐ','棟木',1],
+['光を入れる','窓:細・二連・低',3],['光を入れる','窓枠・窓台',1],['光を入れる','よろい戸',1],
+['出入りする','戸一式(扉・枠・踏み石・把手)',1],['出入りする','ポーチ',1],
+['煮炊き・暖','煙突(本体+壺)',2],
+['台所・貯蔵','差し掛け小屋',1],['光・眺め','出窓',1],
+['囲う','塀(柱+横木)・門',2],['しまう','小屋(別棟)',1]
+];
+const kc=KIT.reduce((a,k)=>a+k[2],0);$('kn').textContent=kc;
+{const t=$('kit');KIT.forEach(k=>{const r=t.insertRow();r.innerHTML='<td>'+k[0]+'</td><td>'+k[1]+'</td><td>'+k[2]+'</td>'})}
+// ---- 乱数・色 ----
+function RNG(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+const pickW=(r,a,w)=>{let t=r()*w.reduce((x,y)=>x+y,0);for(let i=0;i<a.length;i++){t-=w[i];if(t<=0)return a[i]}return a[a.length-1]};
+const mats=new Map();const mt=c=>{let m=mats.get(c);if(!m){m=new THREE.MeshLambertMaterial({color:c});mats.set(c,m)}return m};
+const BASE={plaster:0xe8dcc3,stone:0xc9ae78,timber:0xe3c3b8,thatch:0xb89a5a,slate:0x7d756a,tile:0xb5654a,oak:0x4a3524,dark:0x1d1814,plank:0x8b6a45,stoneTrim:0x9a9a92,brick:0x9a5a46};
+// ---- 1軒を組み立てる ----
+function mkHouse(r){
+ const jit=(hex,dl=0.04,ds=0.03,dh=0.012)=>{const c=new THREE.Color(hex);c.offsetHSL((r()-.5)*2*dh,(r()-.5)*2*ds,(r()-.5)*2*dl);return c.getHex()};
+ const n=pickW(r,[2,3,4],[.3,.45,.25]),st=pickW(r,[1,2],[.45,.55]),wt=pickW(r,['plaster','stone','timber'],[.3,.35,.35]);
+ const rt=wt==='stone'?pickW(r,['slate','thatch','tile'],[.6,.25,.15]):pickW(r,['thatch','tile','slate'],[.4,.4,.2]);
+ const B=3.9*(1+(r()-.5)*.08),L=n*B,W=4.9*(1+(r()-.5)*.12),H1=2.5*(1+(r()-.5)*.08),H2=2.4*(1+(r()-.5)*.08),pitch=0.8*(1+(r()-.5)*.1);
+ const wallC=jit(BASE[wt]),roofC=jit(BASE[rt],.05),trim=jit(BASE.stoneTrim,.03),oak=jit(BASE.oak,.03);
+ const RT={thatch:.35,slate:.1,tile:.08}[rt];
+ const g=new THREE.Group();let tri=0;
+ const bx=(w,h,d,c,x,y,z,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mt(c));m.position.set(x,y,z);m.rotation.set(rx,ry,rz);g.add(m);tri+=12;return m};
+ const y0=0.35,jet=wt==='timber'&&st===2?0.18:0,Wt=W+(st===2?2*jet:0),top=y0+H1+(st===2?H2:0),rise=(Wt/2)*pitch;
+ bx(L+0.2,0.35,W+0.2,trim,0,0.175,0);
+ bx(L,H1,W,wallC,0,y0+H1/2,0);
+ if(st===2){bx(L,H2,Wt,wallC,0,y0+H1+H2/2,0);
+  if(wt==='timber')bx(L+0.1,0.18,Wt+0.1,oak,0,y0+H1,0);else bx(L+0.12,0.14,W+0.12,trim,0,y0+H1,0)}
+ if(wt==='timber'){for(let i=0;i<=n;i++){const x=-L/2+i*B;[1,-1].forEach(s=>{bx(0.14,H1,0.14,oak,x,y0+H1/2,s*(W/2+0.03));if(st===2)bx(0.14,H2,0.14,oak,x,y0+H1+H2/2,s*(Wt/2+0.03))})}}
+ // 妻
+ const sh=new THREE.Shape();sh.moveTo(-Wt/2,0);sh.lineTo(Wt/2,0);sh.lineTo(0,rise);sh.lineTo(-Wt/2,0);
+ [-1,1].forEach(s=>{const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:0.25,bevelEnabled:false}),mt(wallC));m.rotation.y=Math.PI/2;m.position.set(s>0?L/2-0.25:-L/2,top,0);g.add(m);tri+=8});
+ // 屋根
+ const a=Wt/2+0.4,ang=Math.atan(pitch),yr=top+rise,len=a/Math.cos(ang)+0.1;
+ [1,-1].forEach(s=>bx(L+0.5,RT,len,roofC,0,yr-a*pitch/2+RT/2/Math.cos(ang),s*a/2,s*ang,0,0));
+ bx(L+0.5,0.12,0.2,jit(BASE.oak,.03),0,yr+RT*0.7,0);
+ // 煙突(暖と煮炊き)
+ const cp=pickW(r,['end','mid'],[.6,.4]),cx=cp==='end'?(r()<.5?-1:1)*(L/2-0.8):(r()-.5)*B;
+ bx(1.0,rise+1.0+RT,0.9,wt==='stone'?trim:jit(BASE.brick,.04),cx,top+(rise+1.0+RT)/2-0.0,0);
+ [-0.22,0.22].forEach(d=>bx(0.2,0.4,0.2,jit(BASE.brick,.04),cx+d,top+rise+1.0+RT+0.2,0));
+ // 戸と窓
+ const dI=r()<.5?0:Math.min(1,n-1),dx=-L/2+B*(dI+.5),sg=1;
+ bx(1.54,2.22,0.16,oak,dx,y0+1.11,W/2+0.02);bx(1.14,2.07,0.1,BASE.dark,dx,y0+1.035,W/2+0.08);bx(1.54,0.12,0.68,trim,dx,0.06,W/2+0.34);
+ const win=(x,y,z,s,k)=>{const w=k==='s'?0.45:k==='d'?0.9:0.9,h=k==='l'?0.5:0.85;bx(w,h,0.08,BASE.dark,x,y,z+s*0.04);bx(w+0.2,h+0.2,0.06,oak,x,y,z+s*0.01);bx(w+0.25,0.07,0.2,trim,x,y-h/2-0.09,z+s*0.06);
+  if(r()<.3)[-1,1].forEach(q=>bx(0.34,h+0.1,0.05,oak,x+q*(w/2+0.3),y,z+s*0.05))};
+ const wp=[];
+ for(let i=0;i<n;i++){const x=-L/2+B*(i+.5);
+  if(i!==dI){const k=pickW(r,['s','d','l'],[.3,.5,.2]);wp.push(k);win(x+(r()-.5)*.3,y0+1.35,W/2,1,k)}
+  if(st===2){const k=pickW(r,['s','d','l'],[.3,.5,.2]);wp.push(k);win(x+(r()-.5)*.3,y0+H1+1.2,Wt/2,1,k)}
+  if(i%2===0){win(x,y0+1.35,-W/2,-1,'d');if(st===2)win(x,y0+H1+1.2,-Wt/2,-1,'d')}}
+ // 付属(機能から)
+ const porch=r()<.3,lean=r()<.3,bay=r()<.2,fence=r()<.45,shed=r()<.3;
+ if(porch){[-1,1].forEach(q=>bx(0.15,2.3,0.15,oak,dx+q*1.0,y0+1.15,W/2+1.5));bx(2.4,0.08,1.9,roofC,dx,y0+2.5,W/2+0.85,0.18,0,0)}
+ if(lean){const Ls=B*1.5,lx=-L/2+0.4+r()*(L-Ls-0.8);bx(Ls,2.1,2.0,wallC,lx+Ls/2,y0+1.05,-(W/2+1.0));bx(Ls+0.3,RT,2.55,roofC,lx+Ls/2,y0+2.25,-(W/2+1.1),-0.3,0,0)}
+ if(bay){const bi=(dI===0?1:0)%n,bxx=-L/2+B*(bi+.5);bx(1.7,1.3,0.5,wallC,bxx,y0+1.0,W/2+0.25);bx(1.4,0.9,0.06,BASE.dark,bxx,y0+1.0,W/2+0.53);bx(1.95,0.08,0.85,roofC,bxx,y0+1.75,W/2+0.3,0.3,0,0)}
+ if(fence){const z=W/2+3.0,cnt=Math.round((L+2)/1.2);for(let i=0;i<=cnt;i++){const x=-(L+2)/2+i*(L+2)/cnt;if(Math.abs(x-dx)<0.8)continue;bx(0.1,0.9,0.1,BASE.plank,x,0.45,z)}bx(L+2,0.07,0.06,BASE.plank,0,0.8,z);bx(L+2,0.07,0.06,BASE.plank,0,0.45,z)}
+ if(shed){const sx=L/2+2.8,sw=2.6,sd=2.3,sh2=2.2;bx(sw,sh2,sd,jit(BASE.plank,.05),sx,sh2/2,-0.5);const ar=Math.atan(0.5);[1,-1].forEach(q=>bx(sw+0.3,0.08,sd/2/Math.cos(ar)+0.2,jit(BASE.thatch,.05),sx,sh2+0.35,-0.5+q*sd/4,q*ar,0,0))}
+ return{g,tri,wallC,wt,sig:[n,st,wt,rt,cp,+porch,+lean,+bay,+fence,+shed,wp.join('')].join('/'),L,W,fence,shed,lean,porch,bay,wp};
+}
+// ---- 街 ----
+const TOWN=new THREE.Group();S.add(TOWN);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial({color:0x8aa070}));ground.rotation.x=-Math.PI/2;S.add(ground);
+let H=[],seed=7,foc=-1;
+function lightness(hex){const c=new THREE.Color(hex),o={};c.getHSL(o);return o.l}
+function build(){
+ TOWN.clear();H=[];const r=RNG(seed*7919+13);
+ for(let j=0;j<6;j++)for(let i=0;i<6;i++){const h=mkHouse(r);h.g.position.set((i-2.5)*23+(r()-.5)*1.4,0,(j-2.5)*17+(r()-.5)*1.4);h.g.rotation.y=(r()-.5)*0.07;TOWN.add(h.g);H.push(h)}
+ // 指標
+ const tris=H.map(h=>h.tri),avg=Math.round(tris.reduce((x,y)=>x+y,0)/36),mx=Math.max(...tris),mn=Math.min(...tris);
+ const sigs=new Set(H.map(h=>h.sig)).size;
+ const spread={};['plaster','stone','timber'].forEach(t=>{const L=H.filter(h=>h.wt===t).map(h=>lightness(h.wallC));if(L.length)spread[t]=[Math.min(...L),Math.max(...L),L.length]});
+ const sp=Object.entries(spread).map(([k,v])=>({plaster:'漆喰',stone:'石積み',timber:'木骨'}[k])+'('+v[2]+'軒)の明るさの幅 '+((v[1]-v[0])*100).toFixed(1)+'ポイント').join(' / ');
+ const ls=H.map(h=>h.L),Ws=H.map(h=>h.W);
+ $('metrics').innerHTML='36軒・三角形(1軒) 平均'+avg+'・最小'+mn+'・最大'+mx+'・36軒の合計'+tris.reduce((x,y)=>x+y,0)+'<br>配合の違い: 36軒中 '+sigs+'通り(同じ配合は'+(36-sigs)+'軒)<br>'+sp;
+ // 配合数
+ const combos=3*2*3*3*2*2*2*2*2*2*27;
+ $('result').innerHTML='<b>配合の数(目安)</b>: 間数3×階2×壁3×屋根3×煙突2×付属(ポーチ・差し掛け・出窓・塀・小屋 各あり/なし=32)×窓の並び(約27) ≒ <b>'+(3*2*3*3*2*32*27).toLocaleString()+'通り</b>。部品は約'+kc+'点。<br><b>変化の幅</b>: 1間の長さ±4%・幅±6%・階高±4%・勾配±5%。色は明るさ±4%・彩度±3%・色相±1%。極端な形(塔・極端に大きい家)は入れていない。<br><b>三角形</b>: 1軒平均'+avg+'(最大'+mx+')。街に100軒なら約'+(avg*100).toLocaleString()+'。同じ部品は1回でまとめて描く(インスタンス化)と、さらに軽くできる(未実装)。';
+ draw();
+}
+// ---- カメラ ----
+let az=0.5,el=0.75,dist=125,tgt=new THREE.Vector3(0,0,0);
+function size(){const w=cv.clientWidth,h=cv.clientHeight;if(!w)return;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+function draw(){size();cam.position.set(tgt.x+dist*Math.cos(el)*Math.sin(az),tgt.y+dist*Math.sin(el),tgt.z+dist*Math.cos(el)*Math.cos(az));cam.lookAt(tgt);R.render(S,cam)}
+const ptr=new Map();let pd=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);if(ptr.size==2){const[a,b]=[...ptr.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1])}});
+cv.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);
+ if(ptr.size==1){az-=(e.clientX-o[0])*0.006;el=Math.max(0.15,Math.min(1.45,el+(e.clientY-o[1])*0.005));ptr.set(e.pointerId,[e.clientX,e.clientY])}
+ else{ptr.set(e.pointerId,[e.clientX,e.clientY]);const[a,b]=[...ptr.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)dist=Math.max(10,Math.min(220,dist*pd/d));pd=d}draw()});
+const up=e=>{ptr.delete(e.pointerId);pd=0};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(10,Math.min(220,dist*(1+e.deltaY*0.001)));draw()},{passive:false});
+addEventListener('resize',draw);
+function setMode(m){['all','focus'].forEach(k=>$(k).classList.toggle('on',k===m))}
+$('reseed').onclick=()=>{seed=seed%99+1;build()};
+$('all').onclick=()=>{foc=-1;tgt.set(0,0,0);dist=125;setMode('all');draw()};
+$('focus').onclick=()=>{foc=(foc+1)%36;const h=H[foc].g.position;tgt.set(h.x,2,h.z);dist=34;setMode('focus');draw()};
+window.__set=(a,e,d,f)=>{az=a;el=e;dist=d;if(f!=null){foc=f;const h=H[f].g.position;tgt.set(h.x,2,h.z)}else tgt.set(0,0,0);draw()};
+build();window.__ready=true;
+</script></body></html>
