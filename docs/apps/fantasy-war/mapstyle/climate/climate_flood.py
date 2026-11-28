@@ -59,16 +59,25 @@ dent = np.clip(-(elev - ndi.gaussian_filter(elev, 6)) / 0.3, 0, 1)   # 周りよ
 coast = G(dist, 0.0, 150.0) * G(elev, 0.0, 0.15)           # 海岸低地(出口を塞がれやすい)
 flash = np.clip((slope - 40) / 120, 0, 1)                  # 急斜面=鉄砲水
 fit = np.clip(np.maximum.reduce([fp, 0.6 * plain, 0.8 * dent * G(elev, 0.5, 1.5), 0.8 * coast, 0.5 * flash]), 0, 1)
-# 雨の強さ(月ごと)。月ごとに作り直し、年の危うさ=12か月の最大
-Pa = P.sum(0); MELT_W = 0.7                                # 融雪の重み【仮】(0.35から強めた)
+# 雨の強さ(月ごと)=嵐の出現と雪解けを、それぞれガウスで決める(ユーザー指示 11-29 02:18。細かい計算はしない)
+Pa = P.sum(0)
+rs = np.random.RandomState(7)
+alat = np.abs(lat); coastal = np.exp(-dist / 400.0)
 score_m = []
+snow = np.zeros_like(Pa)                                    # 積雪(寒い月の雨=雪として貯まる)
 for m in range(12):
-    # 雨の項=その土地の普段に対する大雨の確率(ガウスの尾)。普段の月平均の1.0倍+20mmを超える雨=川や地面がさばけない量【仮】
-    cap = 1.0 * Pa / 12.0 + 20.0; sd = 0.5 * P[m] + 10.0
-    rain = 0.5 * erfc((cap - P[m]) / (sd * 2 ** 0.5))
-    soil = 1 - np.exp(-P[m - 1] / 120.0)                   # 前の月の雨=土の湿り
-    melt = np.clip((T[m] + 2) / 8, 0, 1) * np.clip(-T[m - 1] / 8 + 0.2, 0, 1) * (1 - np.exp(-Pa / 300))   # 凍→融けの月
-    score_m.append(np.where(land, np.clip(rain * (0.6 + 0.4 * soil) + MELT_W * melt, 0, 1) * fit, 0.0))
+    s_ = np.sin(2 * np.pi * (m - 3) / 12.0) * np.sign(lat)  # +1=その半球の夏
+    snow = np.where(T[m] < 0, np.minimum(snow + P[m], 600.0), snow * 0.6)   # 寒い月は貯まり、暖かい月は解けて減る
+    # 嵐の出現(ガウス): 中緯度の低気圧(緯度47度付近・冬寄り)と、熱帯低気圧(緯度15度付近・海に近い・夏〜秋)
+    c_itcz = 6.0 + 6.0 * np.sin(2 * np.pi * (m - 3) / 12.0)   # 収束帯の中心(季節で南北に動く)
+    storm = 0.55 * G(alat, 47, 10) * (0.7 - 0.3 * s_) + 0.9 * G(alat, 15, 7) * coastal * np.clip(0.2 + 0.8 * s_, 0, 1) + 0.9 * G(lat, c_itcz, 9)
+    storm = storm * np.exp(0.35 * ndi.gaussian_filter(rs.randn(h, w), 4) / 0.25 * 0.25)   # 嵐の出方の揺らぎ(ガウス)
+    wetf = 1 - np.exp(-P[m] / 80.0)                          # その月に水があるほど大雨になる(飽和)
+    rain = np.clip(storm * wetf * 1.4, 0, 1)
+    # 雪解け(ガウス): 積雪が多く、気温が2度付近(0〜4度)の月に最大
+    melt = (1 - np.exp(-snow / 150.0)) * G(T[m], 2.0, 4.0) * (T[m] > -3)
+    soil = 1 - np.exp(-P[m - 1] / 120.0)
+    score_m.append(np.where(land, np.clip(np.maximum(rain * (0.7 + 0.3 * soil), 0.9 * melt), 0, 1) * fit, 0.0))
 score_m = np.array(score_m); score = score_m.max(0)
 area = np.cos(np.deg2rad(lat)).clip(0.05, None)
 L = land & (np.abs(lat) < 60) | land  # 全陸(南極相当は下で除外)
