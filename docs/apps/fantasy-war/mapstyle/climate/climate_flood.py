@@ -58,25 +58,29 @@ plain = low * flat                                         # 氾濫原・低い�
 dent = np.clip(-(elev - ndi.gaussian_filter(elev, 6)) / 0.8, 0, 1)   # 周りより低い窪み・谷底
 coast = G(dist, 0.0, 150.0) * G(elev, 0.0, 0.15)           # 海岸低地(出口を塞がれやすい)
 flash = np.clip((slope - 40) / 120, 0, 1)                  # 急斜面=鉄砲水
-fit = np.clip(np.maximum.reduce([fp, 0.6 * plain, 0.8 * dent * G(elev, 0.5, 1.5), 0.8 * coast, 0.5 * flash]), 0, 1)
+rem = np.ones_like(elev); fit = np.zeros_like(elev)
+for x in (fp, plain, dent, coast, flash):                    # 局所の山をそのままの値で取り、残りで次を取る(足し算・平均にしない)
+    take = rem * np.clip(x, 0, 1); fit += take; rem = rem - take
 # 雨の強さ(月ごと)=嵐の出現と雪解けを、それぞれガウスで決める(ユーザー指示 11-29 02:18。細かい計算はしない)
 Pa = P.sum(0)
 alat = np.abs(lat); coastal = np.exp(-dist / 400.0)
 score_m = []
-snow = np.zeros_like(Pa)                                    # 積雪(寒い月の雨=雪として貯まる)
+snow = np.zeros_like(Pa)
 for m in range(12):
-    s_ = np.sin(2 * np.pi * (m - 3) / 12.0) * np.sign(lat)  # +1=その半球の夏
-    snow = np.where(T[m] < 0, np.minimum(snow + P[m], 600.0), snow * 0.6)   # 寒い月は貯まり、暖かい月は解けて減る
-    # 嵐の出現(ガウス): 中緯度の低気圧(緯度47度付近・冬寄り)と、熱帯低気圧(緯度15度付近・海に近い・夏〜秋)
-    c_itcz = 6.0 + 6.0 * np.sin(2 * np.pi * (m - 3) / 12.0)   # 収束帯の中心(季節で南北に動く)
-    storm = 0.5 * G(alat, 47, 10) * (0.7 - 0.3 * s_) + 0.4 * G(alat, 15, 7) * coastal * np.clip(0.2 + 0.8 * s_, 0, 1) + 0.6 * G(lat, c_itcz, 9)   # 嵐の平均の強さ(ガウスの山の重ね合わせ)
-    wetf = 1 - np.exp(-P[m] / 80.0)                          # その月に水があるほど大雨になる
-    melt = (1 - np.exp(-snow / 150.0)) * G(T[m], 2.0, 4.0) * (T[m] > -3)   # 雪解けの平均の強さ(積雪×気温2度付近のガウス)
-    W = np.clip(storm * wetf + 0.8 * melt, 0, 1.5)           # その月に地面へ入る水の平均の強さ
-    SD = 0.2                                                  # 日々の揺らぎ=正規分布の幅【仮】
-    C = 1.0 - 0.7 * fit                                       # その土地がさばける量。氾濫原・窪みほど小さい
-    prob = 0.5 * erfc((C - W) / (SD * 2 ** 0.5))             # 水の入り方が正規分布のとき、さばける量を超える確率(正規分布の尾)
-    score_m.append(np.where(land, prob, 0.0))
+    s_ = np.sin(2 * np.pi * (m - 3) / 12.0) * np.sign(lat); c_itcz = 6.0 + 6.0 * np.sin(2 * np.pi * (m - 3) / 12.0)
+    snow = np.where(T[m] < 0, np.minimum(snow + P[m], 600.0), snow * 0.6)
+    A = P[m]                                                 # その月の雨(mm)=全体の量
+    rem = np.ones_like(A); conc = np.zeros_like(A)
+    for g in (G(lat, c_itcz, 9),                              # 収束帯の嵐
+              G(alat, 47, 10) * (0.7 - 0.3 * s_),             # 中緯度の低気圧
+              G(alat, 15, 7) * coastal * np.clip(0.2 + 0.8 * s_, 0, 1)):   # 熱帯低気圧
+        take = rem * np.clip(g, 0, 1); conc += take; rem = rem - take   # 局所の集中の山をそのまま取り、残りでやり直す
+    X = A * conc * 0.6                                        # 嵐に集中した雨の量(mm)【0.6=嵐の雨が短時間に集中する割合・仮】
+    melt_amt = snow * G(T[m], 2.0, 4.0) * (T[m] > -3) * 0.35 # 雪解けの水(mm)=積雪のうち気温2度付近のガウスの取り分【0.35仮】
+    X = X + melt_amt
+    C = 120.0 * (1.0 - 0.7 * fit)                             # さばける量(mm)。氾濫原・窪みほど小さい【仮】
+    sd = 0.3 * X + 10.0                                       # 揺らぎ(正規分布の幅)
+    score_m.append(np.where(land, 0.5 * erfc((C - X) / (sd * 2 ** 0.5)), 0.0))
 score_m = np.array(score_m); score = score_m.max(0)
 area = np.cos(np.deg2rad(lat)).clip(0.05, None)
 L = land & (np.abs(lat) < 60) | land  # 全陸(南極相当は下で除外)
