@@ -5,6 +5,7 @@ import sys, json, numpy as np
 sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 import climate_base as cb
 from scipy import ndimage as ndi
+from scipy.special import erfc
 G = lambda x, mu, sd: np.exp(-0.5 * ((x - mu) / sd) ** 2)
 d, wd, out = sys.argv[1], sys.argv[2], sys.argv[3]
 P = np.load(d + '/_P.npy'); T = np.load(d + '/_T.npy')
@@ -62,7 +63,9 @@ fit = np.clip(np.maximum.reduce([fp, 0.6 * plain, 0.8 * dent * G(elev, 0.5, 1.5)
 Pa = P.sum(0); MELT_W = 0.7                                # 融雪の重み【仮】(0.35から強めた)
 score_m = []
 for m in range(12):
-    rain = 1 - np.exp(-P[m] / 200.0)                       # その月の雨
+    # 雨の項=その土地の普段に対する大雨の確率(ガウスの尾)。普段の月平均の1.0倍+20mmを超える雨=川や地面がさばけない量【仮】
+    cap = 1.0 * Pa / 12.0 + 20.0; sd = 0.5 * P[m] + 10.0
+    rain = 0.5 * erfc((cap - P[m]) / (sd * 2 ** 0.5))
     soil = 1 - np.exp(-P[m - 1] / 120.0)                   # 前の月の雨=土の湿り
     melt = np.clip((T[m] + 2) / 8, 0, 1) * np.clip(-T[m - 1] / 8 + 0.2, 0, 1) * (1 - np.exp(-Pa / 300))   # 凍→融けの月
     score_m.append(np.where(land, np.clip(rain * (0.6 + 0.4 * soil) + MELT_W * melt, 0, 1) * fit, 0.0))
