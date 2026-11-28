@@ -34,15 +34,23 @@ score_m = np.array(score_m); score = score_m.max(0)
 area = np.cos(np.deg2rad(lat)).clip(0.05, None)
 L = land & (np.abs(lat) < 60) | land  # 全陸(南極相当は下で除外)
 Lm = land & (lat > -60)                                    # 南極を除く
-res = {'share_land_excl_antarctica': {}}
-for th in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6):
+# 地球の値(100年洪水が浸す陸=9.1%)に合うよう、洪水と呼ぶ線(閾値)を自動で合わせる【仮の当てはめ】
+TARGET = 0.091
+lo, hi = 0.0, 1.0
+for _ in range(40):
+    mid = (lo + hi) / 2
+    if ((score > mid) * area)[Lm].sum() / area[Lm].sum() > TARGET: lo = mid
+    else: hi = mid
+TH = (lo + hi) / 2
+res = {'threshold_fit_to_earth_9.1pct': round(TH, 3), 'share_land_excl_antarctica': {}}
+for th in (TH,):
     res['share_land_excl_antarctica'][str(th)] = float(((score > th) * area)[Lm].sum() / area[Lm].sum())
 res['mean_score_by_lat'] = {}
 for a in range(-60, 90, 15):
     m = land & (lat >= a) & (lat < a + 15)
-    if m.sum(): res['mean_score_by_lat'][f'{a}~{a+15}'] = round(float(((score > 0.2) * area)[m].sum() / area[m].sum()), 3)
+    if m.sum(): res['mean_score_by_lat'][f'{a}~{a+15}'] = round(float(((score > TH) * area)[m].sum() / area[m].sum()), 3)
 # 気候帯別(年降水)の洪水域率
 for nm, m in (('乾燥(<250mm)', Pa < 250), ('半乾燥(250-600)', (Pa >= 250) & (Pa < 600)), ('湿潤(600-1500)', (Pa >= 600) & (Pa < 1500)), ('多雨(>1500)', Pa >= 1500)):
     mm = land & m & (lat > -60)
-    res.setdefault('share_by_rain', {})[nm] = round(float(((score > 0.2) * area)[mm].sum() / max(area[mm].sum(), 1e-9)), 3)
+    res.setdefault('share_by_rain', {})[nm] = round(float(((score > TH) * area)[mm].sum() / max(area[mm].sum(), 1e-9)), 3)
 json.dump(res, open(out, 'w'), ensure_ascii=False, indent=1); print(json.dumps(res, ensure_ascii=False, indent=1))
