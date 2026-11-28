@@ -43,7 +43,7 @@ def rain_design(f, q):
     la = f['la']; itcz = G(la, f['phi0'], 9); mid = G(np.abs(la), 47, 12); sub = G(np.abs(la), 25, 7)
     return np.stack([np.ones_like(q), q, q * q, f['T'], mid, f['wind'], f['up'] / 1000.0, q * f['up'] / 1000.0, itcz * q, sub * q, f['elev']], 1)
 RAIN_NAMES = ['定数', '比湿', '比湿^2', '気温', '中緯度', '風速', '風上で登った高さkm', '比湿×登った高さ', '収束帯×比湿', '亜熱帯高圧×比湿', '標高km']
-if sys.argv[1] == 'fit':
+if __name__ == '__main__' and sys.argv[1] == 'fit':
     import xarray as xr
     d = np.load(sys.argv[2]); z = d['z']; P2 = d['P'].astype(np.float32)
     land = z > 0; elev = np.clip(z / 1000.0, 0, None)
@@ -75,7 +75,7 @@ if sys.argv[1] == 'fit':
         mm = gd & (la_all >= a) & (la_all < a + 15)
         if mm.sum() > 100: print(f'  {a:>4}~{a + 15:>3}: {12 * np.nanmean(tru[mm]):6.0f} / {12 * np.nanmean(prd[mm]):6.0f}')
     print('湿度R2', round(r2rh, 3), '降水R2(log)', round(r2p, 3), '月降水の相関', round(corr, 3)); print(dict(zip(RAIN_NAMES, np.round(cp, 4))))
-else:
+elif __name__ == '__main__':
     cf = json.load(open(sys.argv[2])); cr = np.array(cf['rh_coef']); cp = np.array(cf['rain_coef'])
     land, H = cb.load(sys.argv[3]); elev = np.where(land, np.clip((H - 20.3) / (100 - 20.3), 0, 1) * cb.ELEV_TOP_KM, 0.0)
     feats, (iy0, ix0, h, w, LAT) = features(land, elev); P = np.zeros((12, h, w), np.float32); T = np.zeros((12, h, w), np.float32); RHm = np.zeros((12, h, w), np.float32)
