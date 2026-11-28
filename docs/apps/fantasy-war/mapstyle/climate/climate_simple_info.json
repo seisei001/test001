@@ -1,0 +1,7 @@
+{
+ "method": "gauss",
+ "scale": 1.8273725459464225,
+ "global_mean_precip_mm": 1000.0000003131906,
+ "land_mean_precip_mm": 786.3841535039987,
+ "ocean_mean_precip_mm": 1209.4886390735517
+}
