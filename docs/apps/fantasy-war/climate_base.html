@@ -35,14 +35,43 @@ img{max-width:100%;height:auto;border-radius:8px}ul{margin:6px 0;padding-left:1.
 <table>
 <tr><th>項目</th><th>値</th></tr>
 <tr><td>全球平均の降水</td><td>1000 mm/年(倍率で合わせた仮)</td></tr>
-<tr><td>陸の平均 / 海の平均</td><td>790 / 1199 mm/年</td></tr>
+<tr><td>陸の平均 / 海の平均</td><td>775 / 1221 mm/年</td></tr>
 <tr><td>水の収支(蒸発÷降水)</td><td>1.02</td></tr>
-<tr><td>陸の平均気温</td><td>6.3 度</td></tr>
-<tr><td>陸で年250mm未満の割合</td><td>58 %(氷河などの極地を含む)</td></tr>
-<tr><td>陸で年2000mm超の割合</td><td>8 %</td></tr>
-<tr><td>陸で降水が可能蒸発散の半分未満の割合</td><td>27 %</td></tr>
+<tr><td>陸の平均気温</td><td>6.1 度</td></tr>
+<tr><td>陸で年250mm未満の割合</td><td>60 %(氷河などの極地を含む)</td></tr>
+<tr><td>陸で年2000mm超の割合</td><td>7 %</td></tr>
+<tr><td>陸で降水が可能蒸発散の半分未満の割合</td><td>29 %</td></tr>
 </table></div>
 
+<div class="card"><h2>地球との照合(11-29)</h2>
+<p class="mu">地球の値は公開資料から(下の出典)。こちらの全球平均は年1000mmに合わせた仮の倍率なので、一致しても検証にならない。</p>
+<img src="mapstyle/climate/compare.png" alt="緯度ごとの年降水と地球の目印">
+<table>
+<tr><th>項目</th><th>こちら</th><th>地球</th><th>判定</th></tr>
+<tr><td>全球平均の降水</td><td>1000 mm(倍率で合わせた)</td><td>982〜1017 mm</td><td>合わせただけ</td></tr>
+<tr><td>陸の平均</td><td>775 mm</td><td>794〜818 mm</td><td>近い(ただし陸の割合が地球の約29%でなく約54%)</td></tr>
+<tr><td>海の平均</td><td>1221 mm</td><td>1055〜1107 mm</td><td>10〜16%多い</td></tr>
+<tr><td>陸÷海</td><td>0.63</td><td>0.72〜0.78</td><td>陸が少なめ</td></tr>
+<tr><td>赤道の多雨帯のピーク</td><td>2578 mm・緯度 -2.5 度</td><td>約2000 mm・北緯約6度</td><td>約28%強い・位置が南北対称</td></tr>
+<tr><td>亜熱帯の乾燥の中心</td><td>北緯 27.5度 / 南緯 32.5度</td><td>緯度20度付近</td><td>7〜13度ずれて極寄り</td></tr>
+<tr><td>中緯度の第2の極大</td><td>北 699 mm・南 583 mm(緯度37.5度)</td><td>北緯30〜60度・南緯35〜65度に極大</td><td>位置は範囲内だが弱い</td></tr>
+<tr><td>極に近い海(緯度80度以上)</td><td>約830〜930 mm</td><td>地球では高緯度ほど少ない(数値は資料に無し)</td><td><b>食い違い</b>(極で増える)</td></tr>
+<tr><td>乾燥帯(B)の割合(陸)</td><td>25%(緯度60度未満の陸だと30%)</td><td>約30%</td><td>緯度60度未満では近い</td></tr>
+<tr><td>冷帯(D)の割合(陸)</td><td>1%</td><td>北緯40〜70度の大陸内陸に分布(割合は資料に無し)</td><td><b>食い違い</b>(ほぼ出ない)</td></tr>
+</table>
+<ul>
+<li><b>一緒な点</b>: 赤道の多雨帯が季節で動く/その両側の亜熱帯が乾く/海より陸が少ない/山で降り風下が乾く/世界全体の水の収支が合う(地球は蒸発=降水)。</li>
+<li><b>違う点</b>: ①赤道の多雨帯が強すぎ、位置も赤道にある ②亜熱帯の乾燥が極寄りにずれる(帯の中心を28度にした仮の値が原因と見る) ③中緯度の雨が弱い ④極に近い海で雨が増える ⑤冷帯がほぼ出ない(陸の季節の振れが小さく、冬が氷点下まで冷えない。原因の見立て=内陸度の効きが弱い)。</li>
+<li><b>確かめていない点</b>: 地球の緯度別の気温(資料が見つからず、仮の曲線は私の知識)/陸の年較差/冷帯の面積割合。</li>
+</ul></div>
+
+<div class="card"><h2>出典(地球の値)</h2>
+<ul class="mu">
+<li>全球・陸・海の降水(2000〜2010年平均、表): <a href="https://ntrs.nasa.gov/api/citations/20170002756/downloads/20170002756.pdf">NASA NTRS 20170002756</a></li>
+<li>GPCP 1979〜2014の全球・陸・海、亜熱帯の極小と中緯度の極大の記述: <a href="https://link.springer.com/article/10.1007/s10712-017-9416-4">Surveys in Geophysics 2017</a></li>
+<li>帯状平均のピーク約5.5mm/日・北緯約6度(GPCP): <a href="https://ntrs.nasa.gov/api/citations/20040171853/downloads/20040171853.pdf">NASA NTRS 20040171853</a></li>
+<li>乾燥帯が陸の約30%・冷帯の分布: <a href="https://open.maricopa.edu/hazards/chapter/10-3/">Maricopa 教科書 12.3</a></li>
+</ul></div>
 <div class="card"><h2>目で見た評価(Claude)</h2>
 <ul>
 <li>よく出た点: 赤道の多雨帯が1月と7月でずれる/亜熱帯(緯度15〜30度)の乾燥/山で降り、風下の低地は乾く/陸は海より少ない。</li>
@@ -55,6 +84,7 @@ img{max-width:100%;height:auto;border-radius:8px}ul{margin:6px 0;padding-left:1.
 <li>入っていないもの: 海流・季節風(モンスーン)・気圧・雲・雪の積もりと溶け・ファンタジーの魔力の影響。</li>
 <li>半分の解像度で計算した。川・湖・水位は扱っていない(持ち主が未決)。</li>
 <li>seed31 の1つの世界だけで試した。</li>
+<li>訂正(11-29): 最初の計算で、群系0の陸画素(湖など約2%、2506個の塊)を海として扱っていた。陸=高さが海面より上に直して再計算した(陸の平均 790→775mm、海 1199→1221mm)。</li>
 <li>まだ地図データには書き込んでいない(保存したのは別ファイル)。土地の類推(気候帯)も未実装。</li>
 </ul></div>
 
@@ -62,6 +92,7 @@ img{max-width:100%;height:auto;border-radius:8px}ul{margin:6px 0;padding-left:1.
 <ul>
 <li><a href="mapstyle/climate/climate_base.py">climate_base.py</a>(計算本体)</li>
 <li><a href="mapstyle/climate/render.py">render.py</a>(画像にする)</li>
+<li><a href="mapstyle/climate/compare_earth.py">compare_earth.py</a>(地球との照合)・<a href="mapstyle/climate/compare.json">compare.json</a>(照合の数値)</li>
 <li><a href="mapstyle/climate/climate_base.npz">climate_base.npz</a>(月ごとの気温・降水・陸海・標高。気温は0.1度単位、降水は0.1mm単位の整数)</li>
 <li><a href="mapstyle/climate/climate_base_info.json">climate_base_info.json</a>(実測値)</li>
 </ul></div>

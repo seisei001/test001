@@ -6,7 +6,7 @@ from PIL import Image
 d = sys.argv[1]
 P = np.load(d + '/_P.npy'); T = np.load(d + '/_T.npy'); U = np.load(d + '/_U.npy'); V = np.load(d + '/_V.npy')
 a = np.array(Image.open(sys.argv[2])).astype(np.float32)
-land = ((a[..., 1] > 0) & (a[..., 0] >= 20))
+land = a[..., 0] >= 51
 h2, w2 = a.shape[0] // 2, a.shape[1] // 2
 land = land[:h2 * 2, :w2 * 2].reshape(h2, 2, w2, 2).mean(axis=(1, 3)) > 0.5
 Pa = P.sum(0)

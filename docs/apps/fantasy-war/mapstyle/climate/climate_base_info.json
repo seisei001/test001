@@ -4,13 +4,13 @@
   700
  ],
  "cell_km_equator": 11.702857142857143,
- "scale_mm_per_unit": 8130.191723905792,
- "global_mean_precip_mm": 999.9999974797826,
- "land_mean_precip_mm": 790.1993410330679,
- "ocean_mean_precip_mm": 1199.2992286012864,
- "evap_over_precip_global": 1.0227271982669757,
- "land_mean_T": 6.318973127761342,
- "land_frac_P_lt_250": 0.581585349425087,
- "land_frac_P_gt_2000": 0.07613734517762474,
- "land_frac_arid_P_lt_half_PET": 0.266567876189646
+ "scale_mm_per_unit": 8188.292473948899,
+ "global_mean_precip_mm": 999.9999974266065,
+ "land_mean_precip_mm": 774.5466940679822,
+ "ocean_mean_precip_mm": 1220.7001449680058,
+ "evap_over_precip_global": 1.0231459734336807,
+ "land_mean_T": 6.139058863362351,
+ "land_frac_P_lt_250": 0.6040989714162807,
+ "land_frac_P_gt_2000": 0.07353720646187173,
+ "land_frac_arid_P_lt_half_PET": 0.2861367808939998
 }
