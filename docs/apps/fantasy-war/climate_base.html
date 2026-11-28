@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>気候シミュレーター 簡易版(基本値)</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f8;--p:#fff;--bd:#dcdce0;--tx:#1c1c1f;--mu:#6b6b73;--ac:#2563eb;--wn:#b45309}
+@media(prefers-color-scheme:dark){:root{--bg:#141416;--p:#1e1e22;--bd:#34343a;--tx:#ececf0;--mu:#9a9aa5;--ac:#6ea0ff;--wn:#fbbf24}}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--tx);line-height:1.6}
+.w{max-width:680px;margin:0 auto;padding:16px}a{color:var(--ac);text-decoration:none;word-break:break-all}
+h1{font-size:1.3rem;margin:6px 0}h2{font-size:1.05rem;margin:0 0 8px}
+.note{font-size:.82rem;color:var(--mu);margin:0 0 12px}
+.card{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.tag{display:inline-block;font-size:.7rem;border:1px solid var(--bd);border-radius:99px;padding:1px 8px;margin-right:6px;color:var(--mu)}
+.wn{color:var(--wn);border-color:var(--wn)}
+table{width:100%;border-collapse:collapse;font-size:.86rem;margin:6px 0}
+th,td{border:1px solid var(--bd);padding:6px 8px;vertical-align:top;text-align:left}th{background:var(--bg)}
+img{max-width:100%;height:auto;border-radius:8px}ul{margin:6px 0;padding-left:1.2em}li{margin:3px 0}.mu{color:var(--mu);font-size:.82rem}
+</style></head><body><div class="w">
+<a href="index.html">← ハブへ</a>
+<h1>気候シミュレーター 簡易版(基本値)</h1>
+<p class="note">2026-11-28 試作。ユーザー指示「気候シミュレーターで水を作る。初期値は真剣に作る。作ってみて。簡易版」。<span class="tag wn">仮</span>=係数はすべて仮(地球の帯平均に似せた目分量)。世界は seed31。</p>
+
+<div class="card"><h2>概要</h2>
+<ul>
+<li>地図データ(高さ・陸海)から、<b>月ごとの気温・風・降水(水の発生)</b>を1回だけ計算して保存した。これが「基本値」。</li>
+<li>水の動き: 海で蒸発→風で運ぶ→冷えると雨になる。山で雨が増え、風下は乾く(雨陰)。赤道の多雨帯と亜熱帯の乾燥帯が、季節でずれて現れた。</li>
+<li>水の収支は合っている(蒸発÷降水 = 1.02)。全球平均は年1000mmに合わせた<b>仮の倍率</b>。</li>
+</ul></div>
+
+<div class="card"><h2>絵(年降水・年平均気温・1月と7月の降水)</h2>
+<img src="mapstyle/climate/overview.png" alt="年降水・年平均気温・1月と7月の降水">
+<p class="mu">左上=年降水(mm) 右上=年平均気温 下=1月と7月の降水(mm/月)。黒線=海岸。</p></div>
+
+<div class="card"><h2>実測(seed31・半分の解像度 700×350・1マス≒11.7km)</h2>
+<table>
+<tr><th>項目</th><th>値</th></tr>
+<tr><td>全球平均の降水</td><td>1000 mm/年(倍率で合わせた仮)</td></tr>
+<tr><td>陸の平均 / 海の平均</td><td>790 / 1199 mm/年</td></tr>
+<tr><td>水の収支(蒸発÷降水)</td><td>1.02</td></tr>
+<tr><td>陸の平均気温</td><td>6.3 度</td></tr>
+<tr><td>陸で年250mm未満の割合</td><td>58 %(氷河などの極地を含む)</td></tr>
+<tr><td>陸で年2000mm超の割合</td><td>8 %</td></tr>
+<tr><td>陸で降水が可能蒸発散の半分未満の割合</td><td>27 %</td></tr>
+</table></div>
+
+<div class="card"><h2>目で見た評価(Claude)</h2>
+<ul>
+<li>よく出た点: 赤道の多雨帯が1月と7月でずれる/亜熱帯(緯度15〜30度)の乾燥/山で降り、風下の低地は乾く/陸は海より少ない。</li>
+<li>気になる点: 大陸の内陸が広く乾いている(乾燥が強め)/7月の多雨帯が陸の上で細い線になる(収束帯の帯の幅が一定のため)/中緯度の西岸の雨が弱い。</li>
+</ul></div>
+
+<div class="card"><h2>限界・未確認</h2>
+<ul>
+<li>係数(風の帯・蒸発の速さ・雨のなりやすさ・標高6km・気温の曲線)はすべて目分量の仮。地球の観測データとは照合していない。</li>
+<li>入っていないもの: 海流・季節風(モンスーン)・気圧・雲・雪の積もりと溶け・ファンタジーの魔力の影響。</li>
+<li>半分の解像度で計算した。川・湖・水位は扱っていない(持ち主が未決)。</li>
+<li>seed31 の1つの世界だけで試した。</li>
+<li>まだ地図データには書き込んでいない(保存したのは別ファイル)。土地の類推(気候帯)も未実装。</li>
+</ul></div>
+
+<div class="card"><h2>道具とデータ</h2>
+<ul>
+<li><a href="mapstyle/climate/climate_base.py">climate_base.py</a>(計算本体)</li>
+<li><a href="mapstyle/climate/render.py">render.py</a>(画像にする)</li>
+<li><a href="mapstyle/climate/climate_base.npz">climate_base.npz</a>(月ごとの気温・降水・陸海・標高。気温は0.1度単位、降水は0.1mm単位の整数)</li>
+<li><a href="mapstyle/climate/climate_base_info.json">climate_base_info.json</a>(実測値)</li>
+</ul></div>
+</div></body></html>
